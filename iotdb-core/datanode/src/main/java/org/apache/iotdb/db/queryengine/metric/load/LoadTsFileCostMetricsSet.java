@@ -33,19 +33,23 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 
 public class LoadTsFileCostMetricsSet implements IMetricSet {
+
   private static final LoadTsFileCostMetricsSet INSTANCE = new LoadTsFileCostMetricsSet();
 
   public static final String ANALYSIS = "analysis";
   public static final String FIRST_PHASE = "first_phase";
   public static final String SECOND_PHASE = "second_phase";
+  public static final String LOAD_LOCALLY = "load_locally";
 
   private LoadTsFileCostMetricsSet() {
     // empty constructor
   }
 
   private Timer analyzerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer splitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer writeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer firstPhaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer secondPhaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadLocallyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
   private Rate diskIORate = DoNothingMetricManager.DO_NOTHING_RATE;
 
   public void recordPhaseTimeCost(String stage, long costTimeInNanos) {
@@ -54,10 +58,13 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
         analyzerTimer.updateNanos(costTimeInNanos);
         break;
       case FIRST_PHASE:
-        splitTimer.updateNanos(costTimeInNanos);
+        firstPhaseTimer.updateNanos(costTimeInNanos);
         break;
       case SECOND_PHASE:
-        writeTimer.updateNanos(costTimeInNanos);
+        secondPhaseTimer.updateNanos(costTimeInNanos);
+        break;
+      case LOAD_LOCALLY:
+        loadLocallyTimer.updateNanos(costTimeInNanos);
         break;
       default:
         throw new UnsupportedOperationException("Unsupported stage: " + stage);
@@ -73,18 +80,24 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
     analyzerTimer =
         metricService.getOrCreateTimer(
             Metric.LOAD_TIME_COST.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), ANALYSIS);
-    splitTimer =
+    firstPhaseTimer =
         metricService.getOrCreateTimer(
             Metric.LOAD_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             FIRST_PHASE);
-    writeTimer =
+    secondPhaseTimer =
         metricService.getOrCreateTimer(
             Metric.LOAD_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             SECOND_PHASE);
+    loadLocallyTimer =
+        metricService.getOrCreateTimer(
+            Metric.LOAD_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LOAD_LOCALLY);
 
     diskIORate =
         metricService.getOrCreateRate(
@@ -96,7 +109,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Arrays.asList(ANALYSIS, FIRST_PHASE, SECOND_PHASE)
+    Arrays.asList(ANALYSIS, FIRST_PHASE, SECOND_PHASE, LOAD_LOCALLY)
         .forEach(
             stage ->
                 metricService.remove(

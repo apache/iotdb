@@ -109,12 +109,13 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
+
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
-  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
-      LoadTsFileCostMetricsSet.getInstance();
 
   private static final Set<String> LOADING_FILE_SET = new HashSet<>();
 
@@ -180,16 +181,38 @@ public class LoadTsFileScheduler implements IScheduler {
                   partitionFetcher.queryDataPartition(
                       slotList,
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
-            isLoadSingleTsFileSuccess = loadLocally(node);
+            final long startTime = System.nanoTime();
+            try {
+              isLoadSingleTsFileSuccess = loadLocally(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
+            }
+
             node.clean();
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
 
-            boolean isFirstPhaseSuccess = firstPhase(node);
-            boolean isSecondPhaseSuccess =
-                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            long startTime = System.nanoTime();
+            final boolean isFirstPhaseSuccess;
+            try {
+              isFirstPhaseSuccess = firstPhase(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
+            }
+
+            startTime = System.nanoTime();
+            final boolean isSecondPhaseSuccess;
+            try {
+              isSecondPhaseSuccess =
+                  secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
+            }
 
             node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
@@ -233,7 +256,6 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
-    long startTime = System.nanoTime();
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
@@ -257,9 +279,6 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } finally {
       tsFileDataManager.clear();
-
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
     }
     return true;
   }
@@ -391,7 +410,6 @@ public class LoadTsFileScheduler implements IScheduler {
       throw new LoadReadOnlyException();
     }
 
-    long startTime = System.nanoTime();
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -413,9 +431,6 @@ public class LoadTsFileScheduler implements IScheduler {
               e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
-    } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 
     // add metrics

@@ -866,8 +866,6 @@ public class StorageEngine implements IService {
       return status;
     }
 
-    LoadTsFileCostMetricsSet.getInstance().recordDiskIO(pieceNode.getDataSize());
-
     return RpcUtils.SUCCESS_STATUS;
   }
 
@@ -877,7 +875,6 @@ public class StorageEngine implements IService {
       boolean isGeneratedByPipe,
       ProgressIndex progressIndex) {
     TSStatus status = new TSStatus();
-    long startTime = System.nanoTime();
     try {
       switch (loadCommand) {
         case EXECUTE:
@@ -910,9 +907,6 @@ public class StorageEngine implements IService {
       LOGGER.error("Execute load command {} error.", loadCommand, e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
-    } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 
     return status;
