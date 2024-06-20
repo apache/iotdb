@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationContextWrapper;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -40,6 +41,8 @@ public class PriorityMergeReader implements IPointReader {
 
   protected long usedMemorySize = 0;
 
+  protected SynchronizedMemoryReservationContextWrapper memoryReservationContextWrapper;
+
   public PriorityMergeReader() {
     heap =
         new PriorityQueue<>(
@@ -49,6 +52,11 @@ public class PriorityMergeReader implements IPointReader {
                       o1.getTimeValuePair().getTimestamp(), o2.getTimeValuePair().getTimestamp());
               return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
+  }
+
+  public void setMemoryReservationContextWrapper(
+      SynchronizedMemoryReservationContextWrapper memoryReservationContextWrapper) {
+    this.memoryReservationContextWrapper = memoryReservationContextWrapper;
   }
 
   @TestOnly
@@ -67,7 +75,11 @@ public class PriorityMergeReader implements IPointReader {
       Element element = new Element(reader, reader.nextTimeValuePair(), priority);
       heap.add(element);
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
-      usedMemorySize += element.getReader().getUsedMemorySize();
+      long size = element.getReader().getUsedMemorySize();
+      usedMemorySize += size;
+      if (memoryReservationContextWrapper != null) {
+        memoryReservationContextWrapper.reserveMemoryAccumulatively(size);
+      }
     } else {
       reader.close();
     }
@@ -96,7 +108,11 @@ public class PriorityMergeReader implements IPointReader {
       top.setTimeValuePair(topNext);
       heap.add(top);
     } else {
-      usedMemorySize -= top.getReader().getUsedMemorySize();
+      long size = top.getReader().getUsedMemorySize();
+      usedMemorySize -= size;
+      if (memoryReservationContextWrapper != null) {
+        memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+      }
     }
     return ret;
   }
@@ -121,7 +137,11 @@ public class PriorityMergeReader implements IPointReader {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
-        usedMemorySize -= e.getReader().getUsedMemorySize();
+        long size = e.getReader().getUsedMemorySize();
+        usedMemorySize -= size;
+        if (memoryReservationContextWrapper != null) {
+          memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+        }
         e.getReader().close();
         continue;
       }
@@ -133,7 +153,11 @@ public class PriorityMergeReader implements IPointReader {
           e.next();
           heap.add(e);
         } else {
-          usedMemorySize -= e.getReader().getUsedMemorySize();
+          long size = e.getReader().getUsedMemorySize();
+          usedMemorySize -= size;
+          if (memoryReservationContextWrapper != null) {
+            memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+          }
           // the chunk is end
           e.close();
         }
