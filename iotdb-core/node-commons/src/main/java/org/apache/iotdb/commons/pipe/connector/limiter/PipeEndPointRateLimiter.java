@@ -81,7 +81,9 @@ public class PipeEndPointRateLimiter {
         bytes,
         PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
-      if (Objects.nonNull(taskAgent) && taskAgent.getPipeCreationTime(pipeName) != creationTime) {
+      final PipeTaskAgent finalTaskAgent = taskAgent;
+      if (Objects.nonNull(finalTaskAgent)
+          && finalTaskAgent.getPipeCreationTime(pipeName) != creationTime) {
         return false;
       }
     }
