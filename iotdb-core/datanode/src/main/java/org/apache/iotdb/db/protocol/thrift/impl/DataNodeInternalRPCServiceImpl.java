@@ -74,7 +74,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
@@ -460,7 +460,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
     } else {
       // fallback to use local generated progress index for compatibility
-      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
       LOGGER.info(
           "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
     }
@@ -1050,7 +1050,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     try {
       List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
-          PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+          PipeDataNodeAgent.task().handlePipeMetaChanges(pipeMetas);
 
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
@@ -1070,10 +1070,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TPushPipeMetaRespExceptionMessage exceptionMessage;
       if (req.isSetPipeNameToDrop()) {
-        exceptionMessage = PipeAgent.task().handleDropPipe(req.getPipeNameToDrop());
+        exceptionMessage = PipeDataNodeAgent.task().handleDropPipe(req.getPipeNameToDrop());
       } else if (req.isSetPipeMeta()) {
         final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
-        exceptionMessage = PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+        exceptionMessage = PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       } else {
         throw new Exception("Invalid TPushSinglePipeMetaReq");
       }
@@ -1099,7 +1099,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (req.isSetPipeNamesToDrop()) {
         for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
           TPushPipeMetaRespExceptionMessage message =
-              PipeAgent.task().handleDropPipe(pipeNameToDrop);
+              PipeDataNodeAgent.task().handleDropPipe(pipeNameToDrop);
           exceptionMessages.add(message);
           if (message != null) {
             // If there is any exception, skip the remaining pipes
@@ -1111,7 +1111,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         for (ByteBuffer byteBuffer : req.getPipeMetas()) {
           final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
           TPushPipeMetaRespExceptionMessage message =
-              PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+              PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
           exceptionMessages.add(message);
           if (message != null) {
             // If there is any exception, skip the remaining pipes
@@ -1291,7 +1291,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
     final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
-    PipeAgent.task().collectPipeMetaList(req, resp);
+    PipeDataNodeAgent.task().collectPipeMetaList(req, resp);
     return resp;
   }
 
@@ -1591,7 +1591,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {
-      PipeAgent.task().collectPipeMetaList(resp);
+      PipeDataNodeAgent.task().collectPipeMetaList(resp);
     }
 
     if (req.isSetConfigNodeEndPoints()) {
@@ -1853,7 +1853,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       commonConfig.setNodeStatus(NodeStatus.parse(status));
       if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
-        PipeAgent.runtime().stop();
+        PipeDataNodeAgent.runtime().stop();
       }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -2250,7 +2250,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createPipePlugin(TCreatePipePluginInstanceReq req) {
     try {
       PipePluginMeta pipePluginMeta = PipePluginMeta.deserialize(req.pipePluginMeta);
-      PipeAgent.plugin().register(pipePluginMeta, req.jarFile);
+      PipeDataNodeAgent.plugin().register(pipePluginMeta, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
@@ -2261,7 +2261,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropPipePlugin(TDropPipePluginInstanceReq req) {
     try {
-      PipeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
+      PipeDataNodeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())

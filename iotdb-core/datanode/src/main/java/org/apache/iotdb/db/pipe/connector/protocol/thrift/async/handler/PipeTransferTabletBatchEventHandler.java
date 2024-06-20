@@ -49,7 +49,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
 
   private final List<EnrichedEvent> events;
-  private final Map<String, Long> pipeName2BytesAccumulated;
+  private final Map<Pair<String, Long>, Long> pipeName2BytesAccumulated;
 
   private final TPipeTransferReq req;
   private final double reqCompressionRatio;
@@ -75,9 +75,12 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
-    for (final Map.Entry<String, Long> entry : pipeName2BytesAccumulated.entrySet()) {
+    for (final Map.Entry<Pair<String, Long>, Long> entry : pipeName2BytesAccumulated.entrySet()) {
       connector.rateLimitIfNeeded(
-          entry.getKey(), client.getEndPoint(), (long) (entry.getValue() * reqCompressionRatio));
+          entry.getKey().getLeft(),
+          entry.getKey().getRight(),
+          client.getEndPoint(),
+          (long) (entry.getValue() * reqCompressionRatio));
     }
 
     client.pipeTransfer(req, this);

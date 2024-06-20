@@ -183,7 +183,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       transfer(
           new PipeTransferTsFileHandler(
               this,
-              tsFileBatch.deepCopyPipeName2WeightMap(),
+              tsFileBatch.deepCopyPipe2WeightMap(),
               tsFileBatch.deepCopyEvents(),
               tsFile,
               null,
@@ -323,7 +323,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
               this,
-              Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
+              Collections.singletonMap(new Pair<>(pipeTsFileInsertionEvent.getPipeName(), pipeTsFileInsertionEvent.getCreationTime()), 1.0),
               Collections.singletonList(pipeTsFileInsertionEvent),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -39,6 +40,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final Set<IoTDBDataRegionExtractor> dataRegionExtractors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<PipeProcessorSubtask> dataRegionProcessors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<PipeConnectorSubtask> dataRegionConnectors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -55,6 +58,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   long getRemainingEvents() {
     return dataRegionExtractors.stream()
             .map(IoTDBDataRegionExtractor::getEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + dataRegionProcessors.stream()
+            .map(processorSubtask -> processorSubtask.getEventCount(false))
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionConnectors.stream()
@@ -82,6 +89,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final int totalDataRegionWriteEventCount =
         dataRegionExtractors.stream()
                 .map(IoTDBDataRegionExtractor::getEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
+            + dataRegionProcessors.stream()
+                .map(processorSubtask -> processorSubtask.getEventCount(true))
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionConnectors.stream()
@@ -154,6 +165,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   void register(final IoTDBDataRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
     dataRegionExtractors.add(extractor);
+  }
+
+  void register(final PipeProcessorSubtask processorSubtask) {
+    setNameAndCreationTime(processorSubtask.getPipeName(), processorSubtask.getCreationTime());
+    dataRegionProcessors.add(processorSubtask);
   }
 
   void register(

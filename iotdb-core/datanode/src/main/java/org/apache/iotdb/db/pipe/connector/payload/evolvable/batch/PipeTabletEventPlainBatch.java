@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -55,7 +56,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final PipeMemoryBlock allocatedMemoryBlock;
 
   // Used to rate limit when transferring data
-  private final Map<String, Long> pipeName2BytesAccumulated = new HashMap<>();
+  private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
 
   PipeTabletEventPlainBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     super(maxDelayInMs);
@@ -88,8 +89,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       throws WALPipeException, IOException {
     final int bufferSize = buildTabletInsertionBuffer(event);
     totalBufferSize += bufferSize;
-    pipeName2BytesAccumulated.compute(
-        ((EnrichedEvent) event).getPipeName(),
+    pipe2BytesAccumulated.compute(
+        new Pair<>(((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
         (pipeName, bytesAccumulated) ->
             bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
     return true;
@@ -103,7 +104,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
-    pipeName2BytesAccumulated.clear();
+    pipe2BytesAccumulated.clear();
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
@@ -116,12 +117,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
-  public Map<String, Long> deepCopyPipeName2BytesAccumulated() {
-    return new HashMap<>(pipeName2BytesAccumulated);
+  public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
+    return new HashMap<>(pipe2BytesAccumulated);
   }
 
-  public Map<String, Long> getPipeName2BytesAccumulated() {
-    return pipeName2BytesAccumulated;
+  public Map<Pair<String, Long>, Long> getPipe2BytesAccumulated() {
+    return pipe2BytesAccumulated;
   }
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)

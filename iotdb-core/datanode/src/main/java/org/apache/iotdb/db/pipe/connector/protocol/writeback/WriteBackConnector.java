@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -132,7 +132,7 @@ public class WriteBackConnector implements PipeConnector {
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     if (Objects.isNull(insertNode)) {
       status =
-          PipeAgent.receiver()
+          PipeDataNodeAgent.receiver()
               .thrift()
               .receive(
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(

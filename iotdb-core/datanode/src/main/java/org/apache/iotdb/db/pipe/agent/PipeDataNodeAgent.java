@@ -25,8 +25,8 @@ import org.apache.iotdb.db.pipe.agent.runtime.PipeDataNodeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTaskAgent;
 import org.apache.iotdb.db.service.DataNode;
 
-/** {@link PipeAgent} is the entry point of the pipe module in {@link DataNode}. */
-public class PipeAgent {
+/** {@link PipeDataNodeAgent} is the entry point of the pipe module in {@link DataNode}. */
+public class PipeDataNodeAgent {
 
   private final PipeDataNodePluginAgent pipeDataNodePluginAgent;
   private final PipeDataNodeTaskAgent pipeDataNodeTaskAgent;
@@ -34,16 +34,16 @@ public class PipeAgent {
   private final PipeDataNodeReceiverAgent pipeDataNodeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
-  private PipeAgent() {
+  private PipeDataNodeAgent() {
     pipeDataNodePluginAgent = new PipeDataNodePluginAgent();
     pipeDataNodeTaskAgent = new PipeDataNodeTaskAgent();
     pipeDataNodeRuntimeAgent = new PipeDataNodeRuntimeAgent();
     pipeDataNodeReceiverAgent = new PipeDataNodeReceiverAgent();
   }
 
-  /** The singleton holder of {@link PipeAgent}. */
-  private static class PipeAgentHolder {
-    private static final PipeAgent HANDLE = new PipeAgent();
+  /** The singleton holder of {@link PipeDataNodeAgent}. */
+  private static class PipeDataNodeAgentHolder {
+    private static final PipeDataNodeAgent HANDLE = new PipeDataNodeAgent();
   }
 
   /**
@@ -52,7 +52,7 @@ public class PipeAgent {
    * @return the singleton instance of {@link PipeDataNodeTaskAgent}
    */
   public static PipeDataNodeTaskAgent task() {
-    return PipeAgentHolder.HANDLE.pipeDataNodeTaskAgent;
+    return PipeDataNodeAgentHolder.HANDLE.pipeDataNodeTaskAgent;
   }
 
   /**
@@ -61,7 +61,7 @@ public class PipeAgent {
    * @return the singleton instance of {@link PipeDataNodePluginAgent}
    */
   public static PipeDataNodePluginAgent plugin() {
-    return PipeAgentHolder.HANDLE.pipeDataNodePluginAgent;
+    return PipeDataNodeAgentHolder.HANDLE.pipeDataNodePluginAgent;
   }
 
   /**
@@ -70,7 +70,7 @@ public class PipeAgent {
    * @return the singleton instance of {@link PipeDataNodeRuntimeAgent}
    */
   public static PipeDataNodeRuntimeAgent runtime() {
-    return PipeAgentHolder.HANDLE.pipeDataNodeRuntimeAgent;
+    return PipeDataNodeAgentHolder.HANDLE.pipeDataNodeRuntimeAgent;
   }
 
   /**
@@ -79,6 +79,6 @@ public class PipeAgent {
    * @return the singleton instance of {@link PipeDataNodeReceiverAgent}
    */
   public static PipeDataNodeReceiverAgent receiver() {
-    return PipeAgentHolder.HANDLE.pipeDataNodeReceiverAgent;
+    return PipeDataNodeAgentHolder.HANDLE.pipeDataNodeReceiverAgent;
   }
 }

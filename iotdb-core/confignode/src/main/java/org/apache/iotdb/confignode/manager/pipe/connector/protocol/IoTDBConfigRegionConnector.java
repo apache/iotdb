@@ -131,6 +131,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
       rateLimitIfNeeded(
           pipeConfigRegionWritePlanEvent.getPipeName(),
+          pipeConfigRegionWritePlanEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
@@ -182,16 +183,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   private void doTransfer(final PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final String pipeName = snapshotEvent.getPipeName();
+    final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
     transferFilePieces(
-        Collections.singletonMap(pipeName, 1.0), snapshotFile, clientAndStatus, true);
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0), snapshotFile, clientAndStatus, true);
     if (Objects.nonNull(templateFile)) {
       transferFilePieces(
-          Collections.singletonMap(pipeName, 1.0), templateFile, clientAndStatus, true);
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0), templateFile, clientAndStatus, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
@@ -209,6 +211,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
+          snapshotEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);

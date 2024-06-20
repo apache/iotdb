@@ -106,8 +106,8 @@ public class SubscriptionEventBinaryCache {
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor * ((double) oldMemory / newMemory));
                   LOGGER.info(
                       "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
@@ -117,8 +117,8 @@ public class SubscriptionEventBinaryCache {
                 oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
                   LOGGER.info(
                       "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,

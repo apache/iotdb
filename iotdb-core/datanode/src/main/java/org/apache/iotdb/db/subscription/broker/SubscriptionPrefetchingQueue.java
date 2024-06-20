@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -123,7 +123,7 @@ public abstract class SubscriptionPrefetchingQueue {
     // leader transfers or restarts.
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeAgent.runtime().getRebootTimes(),
+        PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
         subscriptionCommitIdGenerator.getAndIncrement());
@@ -132,7 +132,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeAgent.runtime().getRebootTimes(),
+        PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
         -1);

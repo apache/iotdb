@@ -211,10 +211,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
       final double compressionRatio = (double) compressedSize / uncompressedSize;
 
-      for (final Map.Entry<String, Long> entry :
-          batchToTransfer.getPipeName2BytesAccumulated().entrySet()) {
+      for (final Map.Entry<Pair<String, Long>, Long> entry :
+          batchToTransfer.getPipe2BytesAccumulated().entrySet()) {
         rateLimitIfNeeded(
-            entry.getKey(),
+            entry.getKey().getLeft(),
+            entry.getKey().getRight(),
             clientAndStatus.getLeft().getEndPoint(),
             (long) (entry.getValue() * compressionRatio));
       }
@@ -249,7 +250,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     if (Objects.isNull(tsFile)) {
       return;
     }
-    doTransfer(batchToTransfer.deepCopyPipeName2WeightMap(), tsFile, null);
+    doTransfer(batchToTransfer.deepCopyPipe2WeightMap(), tsFile, null);
     try {
       FileUtils.delete(tsFile);
     } catch (final NoSuchFileException e) {
@@ -296,6 +297,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
+          pipeInsertNodeTabletInsertionEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
@@ -357,6 +359,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   pipeRawTabletInsertionEvent.isAligned()));
       rateLimitIfNeeded(
           pipeRawTabletInsertionEvent.getPipeName(),
+          pipeRawTabletInsertionEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
@@ -395,7 +398,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         return;
       }
       doTransfer(
-          Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
+          Collections.singletonMap(new Pair<>(pipeTsFileInsertionEvent.getPipeName(), pipeTsFileInsertionEvent.getCreationTime()), 1.0),
           pipeTsFileInsertionEvent.getTsFile(),
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
     } finally {
@@ -405,8 +408,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransfer(
-      final Map<String, Double> pipeName2WeightMap, final File tsFile, final File modFile)
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap, final File tsFile, final File modFile)
       throws PipeException, IOException {
+
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
@@ -414,18 +418,21 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
       transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
       transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, true);
+
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
+
         pipeName2WeightMap.forEach(
-            (pipeName, weight) ->
+            (pipePair, weight) ->
                 rateLimitIfNeeded(
-                    pipeName,
+                    pipePair.getLeft(),pipePair.getRight(),
                     clientAndStatus.getLeft().getEndPoint(),
                     (long) (req.getBody().length * weight)));
+
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
@@ -436,17 +443,20 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       }
     } else {
       transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, false);
+
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+
         pipeName2WeightMap.forEach(
-            (pipeName, weight) ->
+            (pipePair, weight) ->
                 rateLimitIfNeeded(
-                    pipeName,
+                    pipePair.getLeft(), pipePair.getRight(),
                     clientAndStatus.getLeft().getEndPoint(),
                     (long) (req.getBody().length * weight)));
+
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);

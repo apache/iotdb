@@ -145,7 +145,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      final Map<String, Double> pipeName2WeightMap,
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
       final File file,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
@@ -171,10 +171,11 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                   isMultiFile
                       ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
                       : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
-          pipeName2WeightMap.forEach(
-              (pipeName, weight) ->
+          pipe2WeightMap.forEach(
+              (namePair, weight) ->
                   rateLimitIfNeeded(
-                      pipeName,
+                      namePair.getLeft(),
+                      namePair.getRight(),
                       clientAndStatus.getLeft().getEndPoint(),
                       (long) (req.getBody().length * weight)));
           resp =

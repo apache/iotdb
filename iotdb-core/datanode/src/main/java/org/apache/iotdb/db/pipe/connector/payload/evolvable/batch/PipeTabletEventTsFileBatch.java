@@ -34,6 +34,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -71,7 +72,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private final long maxSizeInBytes;
 
-  private final Map<String, Double> pipeName2WeightMap = new HashMap<>();
+  private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
 
   private volatile TsFileWriter fileWriter;
   private boolean currentFileNonEmpty = false;
@@ -185,7 +186,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             writeTablet(
                 tablets.get(index),
                 ((PipeInsertNodeTabletInsertionEvent) event).isAligned(index),
-                event.getPipeName());
+                event.getPipeName(), event.getCreationTime());
         if (!tabletSuccessful) {
           failedEvent2TabletIndexMap
               .computeIfAbsent(event, failedEvent -> new ArrayList<>())
@@ -201,7 +202,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           writeTablet(
               rawTabletInsertionEvent.convertToTablet(),
               rawTabletInsertionEvent.isAligned(),
-              rawTabletInsertionEvent.getPipeName());
+              rawTabletInsertionEvent.getPipeName(), event.getCreationTime());
       if (!tabletSuccessful) {
         failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, Collections.emptyList());
       }
@@ -217,7 +218,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return isSuccessful;
   }
 
-  private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
+  private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName, final long creationTime)
       throws IOException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -256,7 +257,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
-    pipeName2WeightMap.compute(pipeName, (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+    pipeName2WeightMap.compute(new Pair<>(pipeName, creationTime), (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
     return true;
   }
 
@@ -266,7 +267,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return !failedEvent2TabletIndexMap.isEmpty() && currentFileNonEmpty || super.shouldEmit();
   }
 
-  public Map<String, Double> deepCopyPipeName2WeightMap() {
+  public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {
     final double sum = pipeName2WeightMap.values().stream().reduce(Double::sum).orElse(0.0);
     if (sum == 0.0) {
       return Collections.emptyMap();

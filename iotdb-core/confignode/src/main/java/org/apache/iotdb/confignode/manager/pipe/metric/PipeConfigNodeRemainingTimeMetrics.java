@@ -111,9 +111,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   public void thawRate(final String pipeID) {
     if (!remainingTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to thaw pipe remaining time rate, RemainingTimeOperator({}) does not exist",
-          pipeID);
+      // The configNode may have no pipe task after "startPipe"
       return;
     }
     remainingTimeOperatorMap.get(pipeID).thawRate(true);
@@ -121,9 +119,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   public void freezeRate(final String pipeID) {
     if (!remainingTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to freeze pipe remaining time rate, RemainingTimeOperator({}) does not exist",
-          pipeID);
+      // The configNode may have no pipe task after "stopPipe"
       return;
     }
     remainingTimeOperatorMap.get(pipeID).freezeRate(true);
@@ -147,7 +143,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
     final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", pipeID);
       return;
     }

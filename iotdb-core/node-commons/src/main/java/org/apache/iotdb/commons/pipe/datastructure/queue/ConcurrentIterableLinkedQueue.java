@@ -24,9 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -57,8 +58,8 @@ public class ConcurrentIterableLinkedQueue<E> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private final Condition hasNextCondition = lock.writeLock().newCondition();
 
-  private final ConcurrentMap<DynamicIterator, DynamicIterator> iteratorSet =
-      new ConcurrentHashMap<>();
+  private final Set<DynamicIterator> iteratorSet =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * Add an element to the tail of the queue.
@@ -110,7 +111,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       // Iterate over iterators to find the minimum valid newFirstIndex
-      for (final DynamicIterator iterator : iteratorSet.keySet()) {
+      for (final DynamicIterator iterator : iteratorSet) {
         newFirstIndex = Math.min(newFirstIndex, iterator.getNextIndex());
       }
       newFirstIndex = Math.max(newFirstIndex, firstIndex);
@@ -138,14 +139,12 @@ public class ConcurrentIterableLinkedQueue<E> {
       }
 
       // Update iterators if necessary
-      iteratorSet
-          .keySet()
-          .forEach(
-              iterator -> {
-                if (iterator.nextIndex == firstIndex) {
-                  iterator.currentNode = pilotNode;
-                }
-              });
+      iteratorSet.forEach(
+          iterator -> {
+            if (iterator.nextIndex == firstIndex) {
+              iterator.currentNode = pilotNode;
+            }
+          });
 
       hasNextCondition.signalAll();
 
@@ -160,7 +159,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       // Use a new set to avoid ConcurrentModificationException
-      ImmutableSet.copyOf(iteratorSet.keySet()).forEach(DynamicIterator::close);
+      ImmutableSet.copyOf(iteratorSet).forEach(DynamicIterator::close);
 
       tryRemoveBefore(tailIndex);
     } finally {
@@ -237,7 +236,7 @@ public class ConcurrentIterableLinkedQueue<E> {
 
   public DynamicIterator iterateFrom(final long offset) {
     final DynamicIterator iterator = new DynamicIterator(offset);
-    iteratorSet.put(iterator, iterator);
+    iteratorSet.add(iterator);
     return iterator;
   }
 

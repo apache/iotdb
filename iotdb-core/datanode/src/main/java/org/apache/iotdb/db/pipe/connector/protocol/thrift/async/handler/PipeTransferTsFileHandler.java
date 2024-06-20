@@ -39,6 +39,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   private final IoTDBDataRegionAsyncConnector connector;
 
   // Used to rate limit the transfer
-  private final Map<String, Double> pipeName2WeightMap;
+  private final Map<Pair<String, Long>, Double> pipeName2WeightMap;
 
   // The original events to be transferred, can be multiple events if
   // the file is batched with other events
@@ -86,7 +87,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
-      final Map<String, Double> pipeName2WeightMap,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
       final File tsFile,
       final File modFile,
@@ -151,9 +152,9 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
                 : uncompressedReq;
 
         pipeName2WeightMap.forEach(
-            (pipeName, weight) ->
+            (pipePair, weight) ->
                 connector.rateLimitIfNeeded(
-                    pipeName, client.getEndPoint(), (long) (req.getBody().length * weight)));
+                        pipePair.getLeft(), pipePair.getRight(), client.getEndPoint(), (long) (req.getBody().length * weight)));
 
         client.pipeTransfer(req, this);
       }
@@ -177,9 +178,9 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
             : uncompressedReq;
 
     pipeName2WeightMap.forEach(
-        (pipeName, weight) ->
+        (pipePair, weight) ->
             connector.rateLimitIfNeeded(
-                pipeName, client.getEndPoint(), (long) (req.getBody().length * weight)));
+                    pipePair.getLeft(), pipePair.getRight(), client.getEndPoint(), (long) (req.getBody().length * weight)));
 
     client.pipeTransfer(req, this);
 
