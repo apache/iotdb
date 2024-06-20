@@ -37,7 +37,9 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -498,6 +500,11 @@ public class NodeManager {
     return dataNodeLocations;
   }
 
+  public Map<Integer, TConfigNodeLocation> getRegisteredConfigNodeLocations() {
+    return nodeInfo.getRegisteredConfigNodes().stream()
+        .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+  }
+
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
@@ -787,14 +794,21 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> loadConfiguration() {
+  public List<TSStatus> askEveryNodeToLoadConfiguration() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+    DataNodeAsyncRequestContext<Object, TSStatus> dataNodeRequestContext =
         new DataNodeAsyncRequestContext<>(
             CnToDnRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(dataNodeRequestContext);
+    ConfigNodeAsyncRequestContext<Object, TSStatus> configNodeRequestContext =
+        new ConfigNodeAsyncRequestContext<>(
+            CnToCnNodeRequestType.LOAD_CONFIGURATION,
+            configManager.getNodeManager().getRegisteredConfigNodeLocations());
+    CnToCnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(configNodeRequestContext);
+    return dataNodeRequestContext.getResponseList();
   }
 
   public TShowConfigurationResp showConfiguration(int nodeId) {

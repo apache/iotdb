@@ -831,6 +831,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus submitLoadConfigurationTask() throws TException {
+    return configManager.submitLoadConfigurationTask();
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }

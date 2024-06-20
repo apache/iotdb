@@ -44,7 +44,7 @@ public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static SystemPropertiesHandler systemPropertiesHandler =
+  private static final SystemPropertiesHandler systemPropertiesHandler =
       ConfigNodeSystemPropertiesHandler.getInstance();
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();

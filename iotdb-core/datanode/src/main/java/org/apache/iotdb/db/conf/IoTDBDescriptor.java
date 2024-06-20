@@ -1729,6 +1729,9 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
+      // update cluster name
+      conf.setClusterName(
+          properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(

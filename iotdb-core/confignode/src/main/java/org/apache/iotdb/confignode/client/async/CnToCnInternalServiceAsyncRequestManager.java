@@ -49,6 +49,8 @@ public class CnToCnInternalServiceAsyncRequestManager
         CnToCnNodeRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((ConfigNodeTSStatusRPCHandler) handler));
+    //    actionMapBuilder.put(CnToCnNodeRequestType.LOAD_CONFIGURATION, (req, client, handler) ->
+    // client.loadConfiguration())
   }
 
   @Override
