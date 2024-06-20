@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationContext;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -65,7 +65,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final FragmentInstanceStateMachine stateMachine;
 
-  private final MemoryReservationContext memoryReservationContext;
+  private final MemoryReservationManager memoryReservationManager;
 
   private IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
@@ -197,8 +197,8 @@ public class FragmentInstanceContext extends QueryContext {
         globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
-    this.memoryReservationContext =
-        new SynchronizedMemoryReservationContext(id.getQueryId(), this.getClass().getName());
+    this.memoryReservationManager =
+        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -209,8 +209,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
-    this.memoryReservationContext =
-        new SynchronizedMemoryReservationContext(id.getQueryId(), this.getClass().getName());
+    this.memoryReservationManager =
+        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -226,8 +226,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataRegion = dataRegion;
     this.globalTimeFilter = globalTimeFilter;
     this.dataNodeQueryContextMap = null;
-    this.memoryReservationContext =
-        new SynchronizedMemoryReservationContext(id.getQueryId(), this.getClass().getName());
+    this.memoryReservationManager =
+        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   @TestOnly
@@ -242,7 +242,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = null;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
-    this.memoryReservationContext = null;
+    this.memoryReservationManager = null;
   }
 
   public void start() {
@@ -380,12 +380,12 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
-  public MemoryReservationContext getMemoryReservationContext() {
-    return memoryReservationContext;
+  public MemoryReservationManager getMemoryReservationContext() {
+    return memoryReservationManager;
   }
 
   public void releaseMemoryReservationContext() {
-    memoryReservationContext.releaseAllReservedMemory();
+    memoryReservationManager.releaseAllReservedMemory();
   }
 
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {

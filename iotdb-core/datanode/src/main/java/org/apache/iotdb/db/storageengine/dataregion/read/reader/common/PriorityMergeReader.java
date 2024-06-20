@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationContextWrapper;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationManagerWrapper;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -41,7 +41,7 @@ public class PriorityMergeReader implements IPointReader {
 
   protected long usedMemorySize = 0;
 
-  protected SynchronizedMemoryReservationContextWrapper memoryReservationContextWrapper;
+  protected SynchronizedMemoryReservationManagerWrapper memoryReservationContextWrapper;
 
   public PriorityMergeReader() {
     heap =
@@ -55,7 +55,7 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   public void setMemoryReservationContextWrapper(
-      SynchronizedMemoryReservationContextWrapper memoryReservationContextWrapper) {
+      SynchronizedMemoryReservationManagerWrapper memoryReservationContextWrapper) {
     this.memoryReservationContextWrapper = memoryReservationContextWrapper;
   }
 

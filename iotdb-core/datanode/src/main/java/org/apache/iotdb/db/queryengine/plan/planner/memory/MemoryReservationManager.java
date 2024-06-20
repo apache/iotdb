@@ -19,30 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.db.queryengine.common.QueryId;
+public interface MemoryReservationManager {
+  /**
+   * Reserve memory for the given size. The memory reservation request will be accumulated and the
+   * actual memory will be reserved when the accumulated memory exceeds the threshold.
+   *
+   * @param size the size of memory to reserve
+   */
+  void reserveMemoryAccumulatively(final long size);
 
-public class SynchronizedMemoryReservationContext extends UnsynchronizedMemoryReservationContext {
-  public SynchronizedMemoryReservationContext(QueryId queryId, String contextHolder) {
-    super(queryId, contextHolder);
-  }
+  /** Reserve memory for the accumulated memory size immediately. */
+  void reserveMemoryImmediately();
 
-  @Override
-  public synchronized void reserveMemoryAccumulatively(long size) {
-    super.reserveMemoryAccumulatively(size);
-  }
+  /**
+   * Release memory for the given size.
+   *
+   * @param size the size of memory to release
+   */
+  void releaseMemoryAccumulatively(final long size);
 
-  @Override
-  public synchronized void reserveMemoryImmediately() {
-    super.reserveMemoryImmediately();
-  }
-
-  @Override
-  public synchronized void releaseMemoryAccumulatively(long size) {
-    super.releaseMemoryAccumulatively(size);
-  }
-
-  @Override
-  public synchronized void releaseAllReservedMemory() {
-    super.releaseAllReservedMemory();
-  }
+  /**
+   * Release all reserved memory immediately. Make sure this method is called when the lifecycle of
+   * this context ends, Or the memory to be released in the batch may not be released correctly.
+   */
+  void releaseAllReservedMemory();
 }

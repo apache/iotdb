@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationContext;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.UnsynchronizedMemoryReservationContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.UnsynchronizedMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -79,13 +79,13 @@ public class MPPQueryContext {
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
-  private final MemoryReservationContext memoryReservationContext;
+  private final MemoryReservationManager memoryReservationManager;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
-    this.memoryReservationContext =
-        new UnsynchronizedMemoryReservationContext(queryId, this.getClass().getName());
+    this.memoryReservationManager =
+        new UnsynchronizedMemoryReservationManager(queryId, this.getClass().getName());
   }
 
   // TODO too many callers just pass a null SessionInfo which should be forbidden
@@ -307,19 +307,19 @@ public class MPPQueryContext {
    * single-threaded manner.
    */
   public void reserveMemoryForFrontEnd(final long bytes) {
-    this.memoryReservationContext.reserveMemoryAccumulatively(bytes);
+    this.memoryReservationManager.reserveMemoryAccumulatively(bytes);
   }
 
   public void reserveMemoryForFrontEndImmediately() {
-    this.memoryReservationContext.reserveMemoryImmediately();
+    this.memoryReservationManager.reserveMemoryImmediately();
   }
 
   public void releaseAllMemoryReservedForFrontEnd() {
-    this.memoryReservationContext.releaseAllReservedMemory();
+    this.memoryReservationManager.releaseAllReservedMemory();
   }
 
   public void releaseMemoryReservedForFrontEnd(final long bytes) {
-    this.memoryReservationContext.releaseMemoryAccumulatively(bytes);
+    this.memoryReservationManager.releaseMemoryAccumulatively(bytes);
   }
 
   // endregion

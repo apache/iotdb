@@ -20,53 +20,53 @@
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 /**
- * SynchronizedMemoryReservationContext synchronizes the memory reservation and release operations.
+ * SynchronizedMemoryReservationManager synchronizes the memory reservation and release operations.
  * However, synchronization is not necessary every time for the memory reservation and release
  * operations in single thread context. For example, each SeriesScanUtil itself reserves and
  * releases memory in a single thread context, but SeriesScanUtils in the same FI may share the same
- * SynchronizedMemoryReservationContext. So we can use this wrapper to batch the reserve and release
+ * SynchronizedMemoryReservationManager. So we can use this wrapper to batch the reserve and release
  * operations to reduce the overhead of synchronization. The actual reserve and release operations
- * are delegated to the wrapped MemoryReservationContext.
+ * are delegated to the wrapped MemoryReservationManager.
  */
-public class SynchronizedMemoryReservationContextWrapper implements MemoryReservationContext {
+public class SynchronizedMemoryReservationManagerWrapper implements MemoryReservationManager {
 
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
-  private final MemoryReservationContext memoryReservationContext;
+  private final MemoryReservationManager memoryReservationManager;
 
   private long bytesToBeReserved = 0;
 
   private long bytesToBeReleased = 0;
 
-  public SynchronizedMemoryReservationContextWrapper(
-      MemoryReservationContext memoryReservationContext) {
-    this.memoryReservationContext = memoryReservationContext;
+  public SynchronizedMemoryReservationManagerWrapper(
+      MemoryReservationManager memoryReservationManager) {
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   @Override
   public void reserveMemoryAccumulatively(long size) {
     this.bytesToBeReserved += size;
     if (this.bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
-      memoryReservationContext.reserveMemoryAccumulatively(bytesToBeReserved);
+      memoryReservationManager.reserveMemoryAccumulatively(bytesToBeReserved);
       this.bytesToBeReserved = 0;
     }
   }
 
   @Override
   public void reserveMemoryImmediately() {
-    memoryReservationContext.reserveMemoryImmediately();
+    memoryReservationManager.reserveMemoryImmediately();
   }
 
   @Override
   public void releaseMemoryAccumulatively(long size) {
     this.bytesToBeReleased += size;
     if (this.bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
-      memoryReservationContext.releaseMemoryAccumulatively(this.bytesToBeReleased);
+      memoryReservationManager.releaseMemoryAccumulatively(this.bytesToBeReleased);
       this.bytesToBeReleased = 0;
     }
   }
 
   @Override
   public void releaseAllReservedMemory() {
-    memoryReservationContext.releaseAllReservedMemory();
+    memoryReservationManager.releaseAllReservedMemory();
   }
 }
