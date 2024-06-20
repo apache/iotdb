@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
@@ -37,6 +38,8 @@ public class LoadTsFileRateLimiter {
   private final RateLimiter loadWriteRateLimiter;
 
   public void acquire(long bytes) {
+    LoadTsFileCostMetricsSet.getInstance().recordDiskIO(bytes);
+
     if (reloadParams()) {
       return;
     }
