@@ -20,7 +20,6 @@
 package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
-import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.commons.cli.CommandLine;
@@ -204,29 +203,32 @@ public class ImportTsFile extends AbstractTsFileTool {
       ioTPrinter.println("Encounter an error when parsing the provided options: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
-    int resultCode = importFromTargetPath();
+
+    final int resultCode = importFromTargetPath();
     ioTPrinter.println(
         "Successfully load "
             + loadFileSuccessfulNum.sum()
-            + " files ("
+            + " file(s) (--on_success operations: "
             + processingLoadSuccessfulFileSuccessfulNum.sum()
-            + " files operations succeed, "
+            + " succeed, "
             + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
             + " failed)");
     ioTPrinter.println(
-        "Failed load "
+        "Failed to load "
             + loadFileFailedNum.sum()
-            + " files ("
+            + " file(s) (--on_fail operations: "
             + processingLoadFailedFileSuccessfulNum.sum()
-            + " files operations succeed, "
+            + " succeed, "
             + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
             + " failed)");
-    ioTPrinter.println("Total operation time(ms) : " + (System.currentTimeMillis() - startTime));
-    ioTPrinter.println("Work has been completed");
+    ioTPrinter.println("For more details, please check the log.");
+    ioTPrinter.println(
+        "Total operation time: " + (System.currentTimeMillis() - startTime) + " ms.");
+    ioTPrinter.println("Work has been completed!");
     System.exit(resultCode);
   }
 
-  private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
+  private static void parseSpecialParams(CommandLine commandLine) {
     source = commandLine.getOptionValue(SOURCE_ARGS);
     if (!Files.exists(Paths.get(source))) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", source));
