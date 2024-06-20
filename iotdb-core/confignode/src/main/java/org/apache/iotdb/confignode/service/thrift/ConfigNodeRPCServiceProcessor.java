@@ -335,6 +335,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The dataReplicationFactor should be positive.");
     }
 
+    if (!databaseSchema.isSetTimePartitionOrigin()) {
+      databaseSchema.setTimePartitionOrigin(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
+    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+    }
+
     if (!databaseSchema.isSetTimePartitionInterval()) {
       databaseSchema.setTimePartitionInterval(
           CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
@@ -409,6 +419,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage(
                   "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
     }
+
+    if (databaseSchema.isSetTimePartitionOrigin()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+    }
+
     if (databaseSchema.isSetTimePartitionInterval()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
