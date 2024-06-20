@@ -46,8 +46,8 @@ public class UnsynchronizedMemoryReservationContext implements MemoryReservation
 
   @Override
   public void reserveMemoryAccumulatively(final long size) {
-    this.bytesToBeReserved += size;
-    if (this.bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
+    bytesToBeReserved += size;
+    if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
       reserveMemoryImmediately();
     }
   }
@@ -57,25 +57,25 @@ public class UnsynchronizedMemoryReservationContext implements MemoryReservation
     if (bytesToBeReserved != 0) {
       LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
           bytesToBeReserved, reservedBytesInTotal, queryId.getId(), contextHolder);
-      this.reservedBytesInTotal += bytesToBeReserved;
-      this.bytesToBeReserved = 0;
+      reservedBytesInTotal += bytesToBeReserved;
+      bytesToBeReserved = 0;
     }
   }
 
   @Override
   public void releaseMemoryAccumulatively(final long size) {
-    this.bytesToBeReleased += size;
+    bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
       long bytesToRelease;
-      if (this.bytesToBeReleased <= bytesToBeReserved) {
-        bytesToBeReserved -= this.bytesToBeReleased;
+      if (bytesToBeReleased <= bytesToBeReserved) {
+        bytesToBeReserved -= bytesToBeReleased;
       } else {
-        bytesToRelease = this.bytesToBeReleased - bytesToBeReserved;
+        bytesToRelease = bytesToBeReleased - bytesToBeReserved;
         bytesToBeReserved = 0;
         LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
         reservedBytesInTotal -= bytesToRelease;
       }
-      this.bytesToBeReleased = 0;
+      bytesToBeReleased = 0;
     }
   }
 

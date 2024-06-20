@@ -676,7 +676,7 @@ public class AggregationPushDown implements PlanOptimizer {
     }
 
     public void releaseMemoryForFrontEnd(final long bytes) {
-      this.context.releaseAllMemoryReservedForFrontEnd(bytes);
+      this.context.releaseMemoryReservedForFrontEnd(bytes);
     }
   }
 }

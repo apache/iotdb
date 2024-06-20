@@ -85,7 +85,7 @@ public class MPPQueryContext {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
     this.memoryReservationContext =
-        new UnsynchronizedMemoryReservationContext(queryId, "MPPQueryContext");
+        new UnsynchronizedMemoryReservationContext(queryId, this.getClass().getName());
   }
 
   // TODO too many callers just pass a null SessionInfo which should be forbidden
@@ -318,7 +318,7 @@ public class MPPQueryContext {
     this.memoryReservationContext.releaseAllReservedMemory();
   }
 
-  public void releaseAllMemoryReservedForFrontEnd(final long bytes) {
+  public void releaseMemoryReservedForFrontEnd(final long bytes) {
     this.memoryReservationContext.releaseMemoryAccumulatively(bytes);
   }
 
