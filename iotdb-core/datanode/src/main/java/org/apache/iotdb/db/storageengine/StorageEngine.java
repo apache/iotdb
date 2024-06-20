@@ -54,7 +54,6 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -116,9 +115,6 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
-
-  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
-      LoadTsFileCostMetricsSet.getInstance();
 
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
@@ -875,6 +871,7 @@ public class StorageEngine implements IService {
       boolean isGeneratedByPipe,
       ProgressIndex progressIndex) {
     TSStatus status = new TSStatus();
+
     try {
       switch (loadCommand) {
         case EXECUTE:
