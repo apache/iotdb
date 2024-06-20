@@ -37,13 +37,8 @@ public class TimePartitionUtils {
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
-    time -= timePartitionOrigin;
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (time > 0 || time % timePartitionInterval == 0) {
-      timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime((time / timePartitionInterval - 1) * timePartitionInterval);
-    }
+    timePartitionSlot.setStartTime(getTimePartitionLowerBound(time));
     return timePartitionSlot;
   }
 
@@ -51,19 +46,15 @@ public class TimePartitionUtils {
     return timePartitionInterval;
   }
 
+  public static long getTimePartitionLowerBound(long time) {
+    long lowerBoundOfTimePartition;
+    lowerBoundOfTimePartition =
+        getTimePartitionId(time) * timePartitionInterval + timePartitionOrigin;
+    return lowerBoundOfTimePartition;
+  }
+
   public static long getTimePartitionUpperBound(long time) {
-    time -= timePartitionOrigin;
-    long upperBoundOfTimePartition;
-    if (time > 0 || time % TimePartitionUtils.timePartitionInterval == 0) {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval + 1)
-              * TimePartitionUtils.timePartitionInterval;
-    } else {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval;
-    }
-    return upperBoundOfTimePartition;
+    return getTimePartitionLowerBound(time) + timePartitionInterval;
   }
 
   public static long getTimePartitionId(long time) {
