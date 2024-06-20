@@ -22,9 +22,12 @@ package org.apache.iotdb.db.pipe.pattern;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -48,6 +51,27 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class CachedSchemaPatternMatcherTest {
+
+  private static class MockedPipeRealtimeEvent extends PipeRealtimeEvent {
+
+    public MockedPipeRealtimeEvent(
+        EnrichedEvent event,
+        TsFileEpoch tsFileEpoch,
+        Map<IDeviceID, String[]> device2Measurements,
+        PipePattern pattern) {
+      super(event, tsFileEpoch, device2Measurements, pattern);
+    }
+
+    @Override
+    public boolean shouldParseTime() {
+      return false;
+    }
+
+    @Override
+    public boolean shouldParsePattern() {
+      return false;
+    }
+  }
 
   private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
@@ -128,8 +152,8 @@ public class CachedSchemaPatternMatcherTest {
     long totalTime = 0;
     for (int i = 0; i < epochNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        PipeRealtimeEvent event =
-            new PipeRealtimeEvent(
+        MockedPipeRealtimeEvent event =
+            new MockedPipeRealtimeEvent(
                 null,
                 null,
                 Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements),
@@ -138,7 +162,7 @@ public class CachedSchemaPatternMatcherTest {
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, null);
+      MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap, null);
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);

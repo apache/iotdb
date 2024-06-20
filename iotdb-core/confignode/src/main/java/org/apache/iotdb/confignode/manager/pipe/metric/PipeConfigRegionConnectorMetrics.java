@@ -127,7 +127,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = configRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe config region write plan event, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;

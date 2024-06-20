@@ -22,15 +22,14 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -86,8 +85,7 @@ public class WalChecker {
   }
 
   private boolean checkFile(File walFile) {
-    try (DataInputStream logStream =
-        new DataInputStream(new BufferedInputStream(new FileInputStream(walFile)))) {
+    try (DataInputStream logStream = new DataInputStream(new WALInputStream(walFile))) {
       while (logStream.available() > 0) {
         WALEntry walEntry = WALEntry.deserialize(logStream);
         if (walEntry.getType() == WALEntryType.WAL_FILE_INFO_END_MARKER) {

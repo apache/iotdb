@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 
@@ -68,7 +69,7 @@ public class TTLInfoTest {
 
   @Test
   public void testSetAndUnsetTTL() throws IllegalPathException {
-    ShowTTLResp resp = ttlInfo.showAllTTL();
+    ShowTTLResp resp = ttlInfo.showTTL(new ShowTTLPlan());
     Map<String, Long> ttlMap = resp.getPathTTLMap();
 
     Map<String, Long> resultMap = new HashMap<>();
@@ -80,125 +81,125 @@ public class TTLInfoTest {
     PartialPath path = new PartialPath("root.test.db1.**");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 121322323L));
     resultMap.put(path.getFullPath(), 121322323L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(2, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test.db1.group1.group1.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 2222L));
     resultMap.put(path.getFullPath(), 2222L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(3, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test.db1.group1.group2.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 1));
     resultMap.put(path.getFullPath(), 1L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(4, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 599722L));
     resultMap.put(path.getFullPath(), 599722L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(5, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1.**");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 9999999L));
     resultMap.put(path.getFullPath(), 9999999L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(6, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1.d2.**");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 888888L));
     resultMap.put(path.getFullPath(), 888888L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(7, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1.d2");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 9898989898L));
     resultMap.put(path.getFullPath(), 9898989898L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(8, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test.db1.group1.group2.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 11111222L));
     resultMap.put(path.getFullPath(), 11111222L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(8, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.test.db1.group1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), Long.MAX_VALUE));
     resultMap.put(path.getFullPath(), Long.MAX_VALUE);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(9, ttlInfo.getTTLCount());
 
     // set ttl
     path = new PartialPath("root.**");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 222222L));
     resultMap.put(path.getFullPath(), 222222L);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(9, ttlInfo.getTTLCount());
 
     // set ttl, not support negative ttl
     path = new PartialPath("root.test.db1.group1.group2");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(9, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test.db1.group1.group2");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(9, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test.db1.group1");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(8, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.**");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.put(path.getFullPath(), ttl);
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(8, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1.d2");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(7, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test.db1.**");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(6, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(5, ttlInfo.getTTLCount());
 
     // unset ttl
     path = new PartialPath("root.test1.db1.group1.group2.d1.d2.**");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
     resultMap.remove(path.getFullPath());
-    Assert.assertEquals(resultMap, ttlInfo.showAllTTL().getPathTTLMap());
+    Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(4, ttlInfo.getTTLCount());
   }
 

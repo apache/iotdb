@@ -406,13 +406,8 @@ public class ConfigManager implements IManager {
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status =
-          ClusterNodeStartUtils.confirmNodeRegistration(
-              NodeType.DataNode,
-              req.getClusterName(),
-              req.getDataNodeConfiguration().getLocation(),
-              this);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status = ClusterNodeStartUtils.confirmDataNodeRegistration(req, this);
+      if (!req.isPreCheck() && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return nodeManager.registerDataNode(req);
       }
     }
@@ -631,10 +626,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+  public DataSet showTTL(ShowTTLPlan showTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return ttlManager.showAllTTL(showTTLPlan);
+      return ttlManager.showTTL(showTTLPlan);
     } else {
       ShowTTLResp resp = new ShowTTLResp();
       resp.setStatus(status);
@@ -1216,12 +1211,7 @@ public class ConfigManager implements IManager {
       // Make sure the global configurations are consist
       status = checkConfigNodeGlobalConfig(req);
       if (status == null) {
-        status =
-            ClusterNodeStartUtils.confirmNodeRegistration(
-                NodeType.ConfigNode,
-                req.getClusterParameters().getClusterName(),
-                req.getConfigNodeLocation(),
-                this);
+        status = ClusterNodeStartUtils.confirmConfigNodeRegistration(req, this);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return nodeManager.registerConfigNode(req);
         }

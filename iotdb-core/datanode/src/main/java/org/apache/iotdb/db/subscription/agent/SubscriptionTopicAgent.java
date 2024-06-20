@@ -60,12 +60,12 @@ public class SubscriptionTopicAgent {
   ////////////////////////// Topic Management Entry //////////////////////////
 
   public TPushTopicMetaRespExceptionMessage handleSingleTopicMetaChanges(
-      TopicMeta topicMetaFromCoordinator) {
+      final TopicMeta topicMetaFromCoordinator) {
     acquireWriteLock();
     try {
       handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
       final String exceptionMessage =
           String.format(
@@ -86,13 +86,13 @@ public class SubscriptionTopicAgent {
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
-      List<TopicMeta> topicMetasFromCoordinator) {
+      final List<TopicMeta> topicMetasFromCoordinator) {
     acquireWriteLock();
     try {
-      for (TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
+      for (final TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
         try {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
-        } catch (Exception e) {
+        } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           final String exceptionMessage =
               String.format(
@@ -109,12 +109,12 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  public TPushTopicMetaRespExceptionMessage handleDropTopic(String topicName) {
+  public TPushTopicMetaRespExceptionMessage handleDropTopic(final String topicName) {
     acquireWriteLock();
     try {
       handleDropTopicInternal(topicName);
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String exceptionMessage =
           String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       LOGGER.warn(exceptionMessage);
@@ -125,11 +125,11 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  private void handleDropTopicInternal(String topicName) {
+  private void handleDropTopicInternal(final String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
   }
 
-  public boolean isTopicExisted(String topicName) {
+  public boolean isTopicExisted(final String topicName) {
     acquireReadLock();
     try {
       return topicMetaKeeper.containsTopicMeta(topicName);
@@ -138,13 +138,25 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  public String getTopicFormat(String topicName) {
+  public String getTopicFormat(final String topicName) {
     acquireReadLock();
     try {
       return topicMetaKeeper
           .getTopicMeta(topicName)
           .getConfig()
           .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
     } finally {
       releaseReadLock();
     }

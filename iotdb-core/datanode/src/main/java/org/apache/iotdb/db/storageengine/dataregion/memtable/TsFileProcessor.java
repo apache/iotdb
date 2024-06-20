@@ -35,8 +35,9 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -299,7 +300,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -373,7 +374,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -484,7 +485,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -1875,7 +1876,7 @@ public class TsFileProcessor {
    * get the related ChunkMetadata of data on disk.
    */
   public void queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
     long startTime = System.nanoTime();
@@ -1885,9 +1886,9 @@ public class TsFileProcessor {
           new HashMap<>();
       flushQueryLock.readLock().lock();
       try {
-        for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
+        for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
           IDeviceID deviceID = entry.getKey();
-          boolean isAligned = entry.getValue();
+          boolean isAligned = entry.getValue().isAligned();
           long timeLowerBound = getQueryTimeLowerBound(deviceID);
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();

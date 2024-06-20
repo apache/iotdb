@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
@@ -75,15 +74,6 @@ public class DataNodeTTLCache {
     }
   }
 
-  public long getTTL(String path) throws IllegalPathException {
-    lock.readLock().lock();
-    try {
-      return ttlCache.getClosestTTL(PathUtils.splitPathToDetachedNodes(path));
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
   public long getTTL(IDeviceID deviceID) {
     lock.readLock().lock();
     try {
@@ -98,16 +88,6 @@ public class DataNodeTTLCache {
     lock.readLock().lock();
     try {
       return ttlCache.getClosestTTL(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /** Get all ttl map under path node. */
-  public Map<String, Long> getTTLUnderOneNode(String path) throws IllegalPathException {
-    lock.readLock().lock();
-    try {
-      return ttlCache.getAllTTLUnderOneNode(PathUtils.splitPathToDetachedNodes(path));
     } finally {
       lock.readLock().unlock();
     }

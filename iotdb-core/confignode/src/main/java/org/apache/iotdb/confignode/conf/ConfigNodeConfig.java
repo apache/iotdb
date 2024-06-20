@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -1195,5 +1196,19 @@ public class ConfigNodeConfig {
   public void setDataRegionRatisPeriodicSnapshotInterval(
       long dataRegionRatisPeriodicSnapshotInterval) {
     this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public TConfigNodeLocation generateLocalConfigNodeLocationWithSpecifiedNodeId(int configNodeId) {
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
+  }
+
+  public TConfigNodeLocation generateLocalConfigNodeLocation() {
+    return new TConfigNodeLocation(
+        getConfigNodeId(),
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
   }
 }

@@ -24,13 +24,14 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -71,7 +72,11 @@ public class PipeEventCollector implements EventCollector {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent
+          && ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
+              == PlanNodeType.DELETE_DATA) {
+        // This is only for delete data node in data region since plan nodes in schema regions are
+        // already parsed in schema region extractor
         parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
@@ -128,6 +133,8 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
+    // Only used by events containing delete data node, no need to bind progress index here since
+    // delete data event does not have progress index currently
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
         .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(
@@ -135,6 +142,7 @@ public class PipeEventCollector implements EventCollector {
                 new PipeSchemaRegionWritePlanEvent(
                     planNode,
                     deleteDataEvent.getPipeName(),
+                    deleteDataEvent.getCreationTime(),
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getPipePattern(),
                     deleteDataEvent.isGeneratedByPipe()))
@@ -152,7 +160,7 @@ public class PipeEventCollector implements EventCollector {
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
 
       // Assign a rebootTime for pipeConsensus
-      ((EnrichedEvent) event).setRebootTimes(PipeAgent.runtime().getRebootTimes());
+      ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
     }
 
     if (event instanceof PipeHeartbeatEvent) {

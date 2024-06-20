@@ -56,6 +56,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.anal
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeFrom;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /** Methods in this class are used for aggregation, templated with align by device situation. */
 public class TemplatedAggregationAnalyze {
@@ -120,7 +121,7 @@ public class TemplatedAggregationAnalyze {
     context.generateGlobalTimeFilter(analysis);
 
     // fetch partition information
-    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
+    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context);
     return true;
   }
 
@@ -143,24 +144,57 @@ public class TemplatedAggregationAnalyze {
 
     Set<Expression> aggregationExpressions = new LinkedHashSet<>();
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-      } else if (paginationController.hasCurLimit()) {
-        Expression selectExpression = resultColumn.getExpression();
+      Expression selectExpression = resultColumn.getExpression();
+
+      if (selectExpression instanceof FunctionExpression
+          && COUNT_TIME.equalsIgnoreCase(
+              ((FunctionExpression) selectExpression).getFunctionName())) {
         outputExpressions.add(new Pair<>(selectExpression, resultColumn.getAlias()));
         selectExpressions.add(selectExpression);
         aggregationExpressions.add(selectExpression);
+
+        analysis.getExpressionTypes().put(NodeRef.of(selectExpression), TSDataType.INT64);
+        ((FunctionExpression) selectExpression)
+            .setExpressions(Collections.singletonList(new TimestampOperand()));
+        continue;
+      }
+
+      List<Expression> subExpressions;
+      if (selectExpression.getOutputSymbol().contains("*")) {
+        // when exist wildcard, only support agg(*) and count_time(*)
         if (selectExpression instanceof FunctionExpression
-            && "count_time"
-                .equalsIgnoreCase(((FunctionExpression) selectExpression).getFunctionName())) {
-          analysis.getExpressionTypes().put(NodeRef.of(selectExpression), TSDataType.INT64);
-          ((FunctionExpression) selectExpression)
-              .setExpressions(Collections.singletonList(new TimestampOperand()));
+            && selectExpression.getExpressions().size() == 1
+            && "*".equalsIgnoreCase(selectExpression.getExpressions().get(0).getOutputSymbol())) {
+          subExpressions = new ArrayList<>();
+          FunctionExpression functionExpression = (FunctionExpression) selectExpression;
+          for (String measurement : template.getSchemaMap().keySet()) {
+            FunctionExpression subFunctionExpression =
+                new FunctionExpression(
+                    functionExpression.getFunctionName(),
+                    functionExpression.getFunctionAttributes(),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(new String[] {measurement}))));
+            subFunctionExpression.setFunctionType(functionExpression.getFunctionType());
+            subExpressions.add(subFunctionExpression);
+          }
         } else {
-          analyzeExpressionType(analysis, selectExpression);
+          return false;
         }
       } else {
-        break;
+        subExpressions = Collections.singletonList(selectExpression);
+      }
+
+      for (Expression expression : subExpressions) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+        } else if (paginationController.hasCurLimit()) {
+          outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+          selectExpressions.add(expression);
+          aggregationExpressions.add(expression);
+          analyzeExpressionType(analysis, expression);
+        } else {
+          break;
+        }
       }
     }
 

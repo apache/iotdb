@@ -76,14 +76,10 @@ public abstract class RequestDelegate<T> {
    */
   public final T requestAllAndCompare() throws SQLException {
     List<T> results = requestAll();
-    T data = results.get(0);
-    for (int i = 1; i < results.size(); i++) {
-      T anotherData = results.get(i);
-      if (!compare(data, anotherData)) {
-        throw new InconsistentDataException(results, endpoints);
-      }
+    if (!results.stream().allMatch(result -> compare(results.get(0), result))) {
+      throw new InconsistentDataException(results, endpoints);
     }
-    return data;
+    return results.get(0);
   }
 
   private boolean compare(T data, T anotherData) {

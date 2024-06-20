@@ -31,7 +31,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   private final UserDefinedEvent userDefinedEvent;
   private final EnrichedEvent enrichedEvent;
 
-  public static Event maybeOf(Event event) {
+  public static Event maybeOf(final Event event) {
     return event instanceof UserDefinedEvent
             && ((UserDefinedEvent) event).getSourceEvent() instanceof EnrichedEvent
         ? new UserDefinedEnrichedEvent(
@@ -39,9 +39,11 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         : event;
   }
 
-  private UserDefinedEnrichedEvent(UserDefinedEvent userDefinedEvent, EnrichedEvent enrichedEvent) {
+  private UserDefinedEnrichedEvent(
+      final UserDefinedEvent userDefinedEvent, final EnrichedEvent enrichedEvent) {
     super(
         enrichedEvent.getPipeName(),
+        enrichedEvent.getCreationTime(),
         enrichedEvent.getPipeTaskMeta(),
         enrichedEvent.getPipePattern(),
         enrichedEvent.getStartTime(),
@@ -55,12 +57,12 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return enrichedEvent.internallyIncreaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return enrichedEvent.internallyDecreaseResourceReferenceCount(holderMessage);
   }
 
@@ -71,13 +73,14 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return enrichedEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-        pipeName, pipeTaskMeta, pattern, startTime, endTime);
+        pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
@@ -88,5 +91,10 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return enrichedEvent.mayEventTimeOverlappedWithTimeRange();
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return enrichedEvent.mayEventPathsOverlappedWithPattern();
   }
 }

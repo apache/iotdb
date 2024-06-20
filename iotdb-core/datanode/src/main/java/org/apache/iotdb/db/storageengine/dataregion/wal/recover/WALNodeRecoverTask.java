@@ -172,6 +172,7 @@ public class WALNodeRecoverTask implements Runnable {
             }
           }
         }
+        metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
         metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
       }
     } catch (Exception e) {
