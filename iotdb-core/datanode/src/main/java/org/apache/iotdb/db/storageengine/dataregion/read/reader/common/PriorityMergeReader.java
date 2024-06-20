@@ -41,7 +41,7 @@ public class PriorityMergeReader implements IPointReader {
 
   protected long usedMemorySize = 0;
 
-  protected SynchronizedMemoryReservationManagerWrapper memoryReservationContextWrapper;
+  protected SynchronizedMemoryReservationManagerWrapper memoryReservationManagerWrapper;
 
   public PriorityMergeReader() {
     heap =
@@ -54,9 +54,9 @@ public class PriorityMergeReader implements IPointReader {
             });
   }
 
-  public void setMemoryReservationContextWrapper(
-      SynchronizedMemoryReservationManagerWrapper memoryReservationContextWrapper) {
-    this.memoryReservationContextWrapper = memoryReservationContextWrapper;
+  public void setMemoryReservationManagerWrapper(
+      SynchronizedMemoryReservationManagerWrapper memoryReservationManagerWrapper) {
+    this.memoryReservationManagerWrapper = memoryReservationManagerWrapper;
   }
 
   @TestOnly
@@ -77,8 +77,8 @@ public class PriorityMergeReader implements IPointReader {
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
       long size = element.getReader().getUsedMemorySize();
       usedMemorySize += size;
-      if (memoryReservationContextWrapper != null) {
-        memoryReservationContextWrapper.reserveMemoryAccumulatively(size);
+      if (memoryReservationManagerWrapper != null) {
+        memoryReservationManagerWrapper.reserveMemoryAccumulatively(size);
       }
     } else {
       reader.close();
@@ -110,8 +110,8 @@ public class PriorityMergeReader implements IPointReader {
     } else {
       long size = top.getReader().getUsedMemorySize();
       usedMemorySize -= size;
-      if (memoryReservationContextWrapper != null) {
-        memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+      if (memoryReservationManagerWrapper != null) {
+        memoryReservationManagerWrapper.releaseMemoryAccumulatively(size);
       }
     }
     return ret;
@@ -139,8 +139,8 @@ public class PriorityMergeReader implements IPointReader {
       if (!e.hasNext()) {
         long size = e.getReader().getUsedMemorySize();
         usedMemorySize -= size;
-        if (memoryReservationContextWrapper != null) {
-          memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+        if (memoryReservationManagerWrapper != null) {
+          memoryReservationManagerWrapper.releaseMemoryAccumulatively(size);
         }
         e.getReader().close();
         continue;
@@ -155,8 +155,8 @@ public class PriorityMergeReader implements IPointReader {
         } else {
           long size = e.getReader().getUsedMemorySize();
           usedMemorySize -= size;
-          if (memoryReservationContextWrapper != null) {
-            memoryReservationContextWrapper.releaseMemoryAccumulatively(size);
+          if (memoryReservationManagerWrapper != null) {
+            memoryReservationManagerWrapper.releaseMemoryAccumulatively(size);
           }
           // the chunk is end
           e.close();

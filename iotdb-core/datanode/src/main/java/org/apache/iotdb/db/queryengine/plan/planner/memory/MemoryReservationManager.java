@@ -40,7 +40,7 @@ public interface MemoryReservationManager {
 
   /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of
-   * this context ends, Or the memory to be released in the batch may not be released correctly.
+   * this manager ends, Or the memory to be released in the batch may not be released correctly.
    */
   void releaseAllReservedMemory();
 }

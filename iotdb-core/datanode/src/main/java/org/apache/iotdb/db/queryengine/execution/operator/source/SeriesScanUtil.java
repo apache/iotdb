@@ -144,7 +144,7 @@ public class SeriesScanUtil implements Accountable {
       this.orderUtils = new DescTimeOrderUtils();
       this.mergeReader = getDescPriorityMergeReader();
     }
-    this.mergeReader.setMemoryReservationContextWrapper(
+    this.mergeReader.setMemoryReservationManagerWrapper(
         new SynchronizedMemoryReservationManagerWrapper(context.getMemoryReservationContext()));
 
     // init TimeSeriesMetadata materializer

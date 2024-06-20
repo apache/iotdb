@@ -384,7 +384,7 @@ public class FragmentInstanceContext extends QueryContext {
     return memoryReservationManager;
   }
 
-  public void releaseMemoryReservationContext() {
+  public void releaseMemoryReservationManager() {
     memoryReservationManager.releaseAllReservedMemory();
   }
 
