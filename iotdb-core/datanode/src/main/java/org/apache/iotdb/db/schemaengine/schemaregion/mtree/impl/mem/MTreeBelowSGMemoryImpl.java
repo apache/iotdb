@@ -1420,16 +1420,25 @@ public class MTreeBelowSGMemoryImpl {
   // region table device management
 
   public void createTableDevice(
-      PartialPath devicePath, IntSupplier attributePointerGetter, IntConsumer attributeUppdater)
+      String tableName,
+      Object[] devicePath,
+      IntSupplier attributePointerGetter,
+      IntConsumer attributeUppdater)
       throws MetadataException {
-    String[] nodeNames = devicePath.getNodes();
+    // todo implement storage for device of diverse data types
     IMemMNode cur = storageGroupMNode;
-    IMemMNode child;
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-      child = cur.getChild(nodeNames[i]);
+    IMemMNode child = cur.getChild(tableName);
+    if (child == null) {
+      child = store.addChild(cur, tableName, nodeFactory.createInternalMNode(cur, tableName));
+    }
+    cur = child;
+
+    String nodeName;
+    for (int i = 0; i < devicePath.length; i++) {
+      nodeName = devicePath[i] == null ? null : devicePath[i].toString();
+      child = cur.getChild(nodeName);
       if (child == null) {
-        child =
-            store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
+        child = store.addChild(cur, nodeName, nodeFactory.createInternalMNode(cur, nodeName));
       }
       cur = child;
     }

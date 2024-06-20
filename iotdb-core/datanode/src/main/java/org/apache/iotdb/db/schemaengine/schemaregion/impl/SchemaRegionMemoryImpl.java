@@ -1275,13 +1275,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public void createTableDevice(
-      List<PartialPath> devicePathList,
+      String tableName,
+      List<Object[]> devicePathList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList)
+      List<Object[]> attributeValueList)
       throws MetadataException {
     for (int i = 0; i < devicePathList.size(); i++) {
       int finalI = i;
       mtree.createTableDevice(
+          tableName,
           devicePathList.get(i),
           () ->
               deviceAttributeStore.createAttribute(

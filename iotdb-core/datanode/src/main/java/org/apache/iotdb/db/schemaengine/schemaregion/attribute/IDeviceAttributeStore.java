@@ -31,9 +31,9 @@ public interface IDeviceAttributeStore {
 
   void loadFromSnapshot(File snapshotDir, String sgSchemaDirPath) throws IOException;
 
-  int createAttribute(List<String> nameList, List<String> valueList);
+  int createAttribute(List<String> nameList, Object[] valueList);
 
-  void alterAttribute(int pointer, List<String> nameList, List<String> valueList);
+  void alterAttribute(int pointer, List<String> nameList, Object[] valueList);
 
   String getAttribute(int pointer, String name);
 }

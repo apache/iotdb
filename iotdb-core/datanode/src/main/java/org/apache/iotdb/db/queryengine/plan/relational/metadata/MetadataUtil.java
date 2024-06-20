@@ -84,7 +84,7 @@ public class MetadataUtil {
                 .orElseThrow(
                     () ->
                         new SemanticException(
-                            "Catalog must be specified when session catalog is not set"));
+                            "Database must be specified when session database is not set"));
 
     return new QualifiedObjectName(databaseName, objectName);
   }

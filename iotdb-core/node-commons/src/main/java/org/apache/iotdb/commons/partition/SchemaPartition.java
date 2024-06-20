@@ -63,6 +63,21 @@ public class SchemaPartition extends Partition {
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
+  // table model usage
+
+  /**
+   * For table model usage.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID) {
+    // todo implement this interface, @Potato
+    throw new UnsupportedOperationException();
+  }
+
+  // [root, db, ....]
   public TRegionReplicaSet getSchemaRegionReplicaSet(IDeviceID deviceID) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
