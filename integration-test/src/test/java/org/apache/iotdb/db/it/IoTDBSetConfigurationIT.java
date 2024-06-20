@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -36,6 +39,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
 @RunWith(IoTDBTestRunner.class)
@@ -85,5 +89,31 @@ public class IoTDBSetConfigurationIT {
       Assert.assertTrue(content.contains("enable_seq_space_compaction=false"));
       Assert.assertTrue(content.contains("enable_cross_space_compaction=false"));
     }
+  }
+
+  @Test
+  public void testSetClusterName() throws Exception {
+    Connection connection = EnvFactory.getEnv().getConnection();
+    Statement statement = connection.createStatement();
+    // set cluster name on cn and dn
+    statement.execute("set configuration \"cluster_name\"=\"xx\"");
+    ResultSet variables = statement.executeQuery("show variables");
+    variables.next();
+    Assert.assertEquals("xx", variables.getString(2));
+    // restart successfully
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    Thread.sleep(10000);
+    IConfigNodeRPCService.Iface configNodeClient =
+        EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    TShowClusterResp resp = configNodeClient.showCluster();
+    Assert.assertEquals(NodeStatus.Running.toString(), resp.getNodeStatus().get(1));
+    // set cluster name on datanode, cannot restart
+    statement.executeQuery("set configuration \"cluster_name\"=\"yy\" on 1");
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    Thread.sleep(10000);
+    resp = configNodeClient.showCluster();
+    Assert.assertEquals(NodeStatus.Unknown.toString(), resp.getNodeStatus().get(1));
   }
 }

@@ -261,18 +261,13 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
-    if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
-      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
-    }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
-
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
       config.setSchemaRegionConsensusProtocolClass(
           properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
     }
-
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
       config.setDataRegionConsensusProtocolClass(
           properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL));
