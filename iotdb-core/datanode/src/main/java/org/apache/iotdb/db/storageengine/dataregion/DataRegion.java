@@ -973,31 +973,25 @@ public class DataRegion implements IDataRegionForQuery {
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTreeTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
-    insertTablet(insertTabletNode, insertTabletNode::getDeviceID, i ->
-        config.isEnableSeparateData()
-            ? lastFlushTimeMap.getFlushedTime(
-            TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
-            insertTabletNode.getDeviceID())
-            : Long.MAX_VALUE,
-        false
-    );
+    insertTablet(insertTabletNode, false);
   }
 
   public void insertRelationalTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
-    insertTablet(insertTabletNode, insertTabletNode::getDeviceID, i ->
-            config.isEnableSeparateData()
-                ? lastFlushTimeMap.getFlushedTime(
-                TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
-                insertTabletNode.getDeviceID(i))
-                : Long.MAX_VALUE,
-        true
-    );
+    insertTablet(insertTabletNode, true);
+  }
+
+  private long getLastFlushTime(long timePartitionID, IDeviceID deviceID) {
+   return config.isEnableSeparateData()
+        ? lastFlushTimeMap.getFlushedTime(
+        timePartitionID,
+        deviceID)
+        : Long.MAX_VALUE;
   }
 
 
   private boolean splitAndInsert(InsertTabletNode insertTabletNode,
-      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter, int loc,
+      int loc,
       TSStatus[] results)
       throws BatchProcessException, WriteProcessException {
     boolean noFailure = true;
@@ -1014,9 +1008,9 @@ public class DataRegion implements IDataRegionForQuery {
     // if is sequence
     boolean isSequence = false;
     while (loc < insertTabletNode.getRowCount()) {
-      long lastFlushTime = rowLastFlushTimeGetter.applyAsLong(loc);
       long time = insertTabletNode.getTimes()[loc];
       final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+      long lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
       // always in some time partition
       // judge if we should insert sequence
       if (timePartitionId != beforeTimePartition) {
@@ -1024,7 +1018,7 @@ public class DataRegion implements IDataRegionForQuery {
         noFailure =
             insertTabletToTsFileProcessor(
                 insertTabletNode, before, loc, isSequence, results,
-                beforeTimePartition, rowDeviceIdGetter, noFailure)
+                beforeTimePartition, noFailure)
                 && noFailure;
         before = loc;
         beforeTimePartition = timePartitionId;
@@ -1035,7 +1029,7 @@ public class DataRegion implements IDataRegionForQuery {
         noFailure =
             insertTabletToTsFileProcessor(
                 insertTabletNode, before, loc, isSequence, results,
-                beforeTimePartition, rowDeviceIdGetter, noFailure)
+                beforeTimePartition, noFailure)
                 && noFailure;
         before = loc;
         isSequence = true;
@@ -1048,7 +1042,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (before < loc) {
       noFailure =
           insertTabletToTsFileProcessor(
-              insertTabletNode, before, loc, isSequence, results, beforeTimePartition, rowDeviceIdGetter, noFailure)
+              insertTabletNode, before, loc, isSequence, results, beforeTimePartition, noFailure)
               && noFailure;
     }
 
@@ -1062,7 +1056,6 @@ public class DataRegion implements IDataRegionForQuery {
    */
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   private void insertTablet(InsertTabletNode insertTabletNode,
-      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter,
       boolean checkAllRowTtl)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject(null);
@@ -1078,10 +1071,10 @@ public class DataRegion implements IDataRegionForQuery {
       boolean noFailure;
 
       int loc = checkTTL(insertTabletNode, results, i -> DataNodeTTLCache.getInstance()
-          .getTTL(rowDeviceIdGetter.apply(i)), !checkAllRowTtl);
+          .getTTL(insertTabletNode.getDeviceID(i)), !checkAllRowTtl);
       noFailure = loc != 0;
 
-      noFailure = noFailure & splitAndInsert(insertTabletNode, rowDeviceIdGetter, rowLastFlushTimeGetter, loc, results);
+      noFailure = noFailure & splitAndInsert(insertTabletNode, loc, results);
 
       startTime = System.nanoTime();
       tryToUpdateInsertTabletLastCache(insertTabletNode);
@@ -1182,7 +1175,6 @@ public class DataRegion implements IDataRegionForQuery {
       boolean sequence,
       TSStatus[] results,
       long timePartitionId,
-      IntFunction<IDeviceID> rowDeviceIdGetter,
       boolean noFailure) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
@@ -1201,7 +1193,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, start, end, results, rowDeviceIdGetter, noFailure);
+      tsFileProcessor.insertTablet(insertTabletNode, start, end, results, noFailure);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;

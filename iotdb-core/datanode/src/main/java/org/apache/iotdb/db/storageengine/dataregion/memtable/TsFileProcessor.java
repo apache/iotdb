@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -421,11 +422,7 @@ public class TsFileProcessor {
     long[] memIncrements;
     try {
       long startTime = System.nanoTime();
-      if (insertTabletNode.isWriteToTable()) {
-        memIncrements = checkTreeMemCost(insertTabletNode, start, end, noFailure, results);
-      } else {
-        memIncrements = checkTableMemCost(insertTabletNode, start, end, noFailure, results);
-      }
+      memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -437,18 +434,14 @@ public class TsFileProcessor {
     return memIncrements;
   }
 
-  private long[] checkTreeMemCost(InsertTabletNode insertTabletNode, int start, int end,
+  private long[] checkMemCost(InsertTabletNode insertTabletNode, int start, int end,
       boolean noFailure, TSStatus[] results)
       throws WriteProcessException {
     long[] memIncrements;
     if (insertTabletNode.isAligned()) {
       memIncrements =
-          checkAlignedMemCostAndAddToTspForTablet(
-              insertTabletNode.getDeviceID(),
-              insertTabletNode.getMeasurements(),
-              insertTabletNode.getDataTypes(),
-              insertTabletNode.getColumns(),
-              insertTabletNode.getColumnCategories(),
+          checkAlignedMemCost(
+              insertTabletNode,
               start,
               end,
               noFailure, results);
@@ -465,7 +458,7 @@ public class TsFileProcessor {
     return memIncrements;
   }
 
-  private long[] checkTableMemCost(InsertTabletNode insertTabletNode, int start, int end,
+  private long[] checkAlignedMemCost(InsertTabletNode insertTabletNode, int start, int end,
       boolean noFailure, TSStatus[] results)
       throws WriteProcessException {
     List<Pair<IDeviceID, Integer>> deviceEndPosList = insertTabletNode.splitByDevice(start, end);
@@ -501,7 +494,6 @@ public class TsFileProcessor {
    */
   public void insertTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results,
-      IntFunction<IDeviceID> rowDeviceIdGetter,
       boolean noFailure)
       throws WriteProcessException {
 
