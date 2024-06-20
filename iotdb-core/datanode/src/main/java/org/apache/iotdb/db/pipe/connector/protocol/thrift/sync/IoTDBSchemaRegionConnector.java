@@ -98,10 +98,16 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
     transferFilePieces(
-        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0), mTreeSnapshotFile, clientAndStatus, true);
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+        mTreeSnapshotFile,
+        clientAndStatus,
+        true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
       transferFilePieces(
-          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0), tagLogSnapshotFile, clientAndStatus, true);
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          tagLogSnapshotFile,
+          clientAndStatus,
+          true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {

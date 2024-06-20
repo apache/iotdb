@@ -186,7 +186,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             writeTablet(
                 tablets.get(index),
                 ((PipeInsertNodeTabletInsertionEvent) event).isAligned(index),
-                event.getPipeName(), event.getCreationTime());
+                event.getPipeName(),
+                event.getCreationTime());
         if (!tabletSuccessful) {
           failedEvent2TabletIndexMap
               .computeIfAbsent(event, failedEvent -> new ArrayList<>())
@@ -202,7 +203,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           writeTablet(
               rawTabletInsertionEvent.convertToTablet(),
               rawTabletInsertionEvent.isAligned(),
-              rawTabletInsertionEvent.getPipeName(), event.getCreationTime());
+              rawTabletInsertionEvent.getPipeName(),
+              event.getCreationTime());
       if (!tabletSuccessful) {
         failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, Collections.emptyList());
       }
@@ -218,7 +220,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return isSuccessful;
   }
 
-  private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName, final long creationTime)
+  private boolean writeTablet(
+      final Tablet tablet, final boolean isAligned, final String pipeName, final long creationTime)
       throws IOException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -257,7 +260,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
-    pipeName2WeightMap.compute(new Pair<>(pipeName, creationTime), (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+    pipeName2WeightMap.compute(
+        new Pair<>(pipeName, creationTime),
+        (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
     return true;
   }
 

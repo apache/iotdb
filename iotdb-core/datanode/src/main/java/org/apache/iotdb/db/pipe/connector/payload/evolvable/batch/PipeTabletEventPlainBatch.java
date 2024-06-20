@@ -90,7 +90,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     final int bufferSize = buildTabletInsertionBuffer(event);
     totalBufferSize += bufferSize;
     pipe2BytesAccumulated.compute(
-        new Pair<>(((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
+        new Pair<>(
+            ((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
         (pipeName, bytesAccumulated) ->
             bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
     return true;

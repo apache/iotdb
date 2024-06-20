@@ -154,7 +154,10 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
                 connector.rateLimitIfNeeded(
-                        pipePair.getLeft(), pipePair.getRight(), client.getEndPoint(), (long) (req.getBody().length * weight)));
+                    pipePair.getLeft(),
+                    pipePair.getRight(),
+                    client.getEndPoint(),
+                    (long) (req.getBody().length * weight)));
 
         client.pipeTransfer(req, this);
       }
@@ -180,7 +183,10 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
             connector.rateLimitIfNeeded(
-                    pipePair.getLeft(), pipePair.getRight(), client.getEndPoint(), (long) (req.getBody().length * weight)));
+                pipePair.getLeft(),
+                pipePair.getRight(),
+                client.getEndPoint(),
+                (long) (req.getBody().length * weight)));
 
     client.pipeTransfer(req, this);
 

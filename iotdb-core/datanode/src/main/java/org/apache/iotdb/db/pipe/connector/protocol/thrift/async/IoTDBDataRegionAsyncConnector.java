@@ -323,7 +323,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
               this,
-              Collections.singletonMap(new Pair<>(pipeTsFileInsertionEvent.getPipeName(), pipeTsFileInsertionEvent.getCreationTime()), 1.0),
+              Collections.singletonMap(
+                  new Pair<>(
+                      pipeTsFileInsertionEvent.getPipeName(),
+                      pipeTsFileInsertionEvent.getCreationTime()),
+                  1.0),
               Collections.singletonList(pipeTsFileInsertionEvent),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),

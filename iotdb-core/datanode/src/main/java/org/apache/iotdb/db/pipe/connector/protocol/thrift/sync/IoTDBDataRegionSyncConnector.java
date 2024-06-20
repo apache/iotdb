@@ -398,7 +398,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         return;
       }
       doTransfer(
-          Collections.singletonMap(new Pair<>(pipeTsFileInsertionEvent.getPipeName(), pipeTsFileInsertionEvent.getCreationTime()), 1.0),
+          Collections.singletonMap(
+              new Pair<>(
+                  pipeTsFileInsertionEvent.getPipeName(),
+                  pipeTsFileInsertionEvent.getCreationTime()),
+              1.0),
           pipeTsFileInsertionEvent.getTsFile(),
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
     } finally {
@@ -408,7 +412,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransfer(
-      final Map<Pair<String, Long>, Double> pipeName2WeightMap, final File tsFile, final File modFile)
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final File tsFile,
+      final File modFile)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
@@ -429,7 +435,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
                 rateLimitIfNeeded(
-                    pipePair.getLeft(),pipePair.getRight(),
+                    pipePair.getLeft(),
+                    pipePair.getRight(),
                     clientAndStatus.getLeft().getEndPoint(),
                     (long) (req.getBody().length * weight)));
 
@@ -453,7 +460,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
                 rateLimitIfNeeded(
-                    pipePair.getLeft(), pipePair.getRight(),
+                    pipePair.getLeft(),
+                    pipePair.getRight(),
                     clientAndStatus.getLeft().getEndPoint(),
                     (long) (req.getBody().length * weight)));
 
