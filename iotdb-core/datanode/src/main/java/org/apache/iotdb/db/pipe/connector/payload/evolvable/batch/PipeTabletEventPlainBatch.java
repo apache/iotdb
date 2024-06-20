@@ -84,7 +84,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  protected void constructBatch(final TabletInsertionEvent event)
+  protected boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException {
     final int bufferSize = buildTabletInsertionBuffer(event);
     totalBufferSize += bufferSize;
@@ -92,6 +92,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         ((EnrichedEvent) event).getPipeName(),
         (pipeName, bytesAccumulated) ->
             bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
+    return true;
   }
 
   @Override

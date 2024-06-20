@@ -33,7 +33,7 @@ import java.util.Objects;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
-  private final List<EnrichedEvent> events = new ArrayList<>();
+  protected final List<EnrichedEvent> events = new ArrayList<>();
 
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
@@ -64,9 +64,10 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       // We increase the reference count for this event to determine if the event may be released.
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
-        events.add((EnrichedEvent) event);
 
-        constructBatch(event);
+        if (constructBatch(event)) {
+          events.add((EnrichedEvent) event);
+        }
 
         if (firstEventProcessingTime == Long.MIN_VALUE) {
           firstEventProcessingTime = System.currentTimeMillis();
@@ -80,7 +81,15 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return shouldEmit();
   }
 
-  protected abstract void constructBatch(final TabletInsertionEvent event)
+  /**
+   * Added an {@link TabletInsertionEvent} into batch.
+   *
+   * @param event the {@link TabletInsertionEvent} in batch
+   * @return {@code true} if the event is calculated into batch, {@code false} if the event is
+   *     cached and not emitted in this batch. If there are failure encountered, just throw
+   *     exceptions and do not return {@code false} heere.
+   */
+  protected abstract boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
 
   protected boolean shouldEmit() {

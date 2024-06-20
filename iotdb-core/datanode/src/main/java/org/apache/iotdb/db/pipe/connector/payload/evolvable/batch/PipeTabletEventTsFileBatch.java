@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -41,10 +42,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,9 +74,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private volatile TsFileWriter fileWriter;
 
-  private final List<Tablet> unsequenceTabletList = new LinkedList<>();
-  private final List<Boolean> unsequenceIsAlignedList = new LinkedList<>();
-  private final List<String> unsequencePipeNameList = new LinkedList<>();
+  private final Map<EnrichedEvent, List<Integer>> failedEvent2TabletIndexMap = new HashMap<>();
 
   PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     super(maxDelayInMs);
@@ -126,38 +125,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  protected void constructBatch(final TabletInsertionEvent event)
-      throws IOException, WriteProcessException {
-    if (Objects.isNull(fileWriter)) {
-      fileWriter =
-          new TsFileWriter(
-              new File(
-                  batchFileBaseDir,
-                  TS_FILE_PREFIX
-                      + "_"
-                      + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
-                      + "_"
-                      + currentBatchId.get()
-                      + "_"
-                      + tsFileIdGenerator.getAndIncrement()
-                      + TsFileConstant.TSFILE_SUFFIX));
-    }
-
-    if (!unsequenceTabletList.isEmpty()) {
-      final int size = unsequenceTabletList.size();
-      LOGGER.info("Rewriting out-of-order tablets, tablets count: {}", size);
-      for (int i = 0; i < size; ++i) {
-        writeTablet(
-            unsequenceTabletList.remove(0),
-            unsequenceIsAlignedList.remove(0),
-            unsequencePipeNameList.remove(0));
-      }
-
-      if (!unsequenceTabletList.isEmpty()) {
-        LOGGER.info(
-            "There are still {} tablets out of order after retry.", unsequenceTabletList.size());
-      }
-    }
+  protected boolean constructBatch(final TabletInsertionEvent event) throws IOException {
+    initAndWriteUnSequenceTabletsIfNecessary();
+    boolean isSuccessful = true;
 
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
@@ -168,18 +138,30 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         if (tablet.rowSize == 0) {
           continue;
         }
-        writeTablet(
-            tablet,
-            insertNodeTabletInsertionEvent.isAligned(i),
-            insertNodeTabletInsertionEvent.getPipeName());
+        boolean tabletSuccessful =
+            writeTablet(
+                tablet,
+                insertNodeTabletInsertionEvent.isAligned(i),
+                insertNodeTabletInsertionEvent.getPipeName());
+        if (!tabletSuccessful) {
+          failedEvent2TabletIndexMap
+              .computeIfAbsent(insertNodeTabletInsertionEvent, failedEvent -> new ArrayList<>())
+              .add(i);
+        }
+        isSuccessful &= tabletSuccessful;
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
-      writeTablet(
-          rawTabletInsertionEvent.convertToTablet(),
-          rawTabletInsertionEvent.isAligned(),
-          rawTabletInsertionEvent.getPipeName());
+      boolean tabletSuccessful =
+          writeTablet(
+              rawTabletInsertionEvent.convertToTablet(),
+              rawTabletInsertionEvent.isAligned(),
+              rawTabletInsertionEvent.getPipeName());
+      if (!tabletSuccessful) {
+        failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, new ArrayList<>());
+      }
+      isSuccessful &= tabletSuccessful;
     } else {
       LOGGER.warn(
           "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
@@ -187,10 +169,75 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event,
           event.getClass());
     }
+    return isSuccessful;
   }
 
-  private void writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
-      throws IOException, WriteProcessException {
+  private void initAndWriteUnSequenceTabletsIfNecessary() throws IOException {
+    if (Objects.nonNull(fileWriter)) {
+      return;
+    }
+
+    fileWriter =
+        new TsFileWriter(
+            new File(
+                batchFileBaseDir,
+                TS_FILE_PREFIX
+                    + "_"
+                    + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+                    + "_"
+                    + currentBatchId.get()
+                    + "_"
+                    + tsFileIdGenerator.getAndIncrement()
+                    + TsFileConstant.TSFILE_SUFFIX));
+
+    // We only write un-sequence tablets when fileWriter is null
+    // because non-null writer implies that previous batch is still in calculation
+    // hence the tablets are still out of order
+    if (!failedEvent2TabletIndexMap.isEmpty()) {
+      final int size = failedEvent2TabletIndexMap.size();
+      LOGGER.info("Rewriting may out-of-order events, event count: {}", size);
+
+      final Map<EnrichedEvent, List<Integer>> originalMap =
+          new HashMap<>(failedEvent2TabletIndexMap);
+      failedEvent2TabletIndexMap.clear();
+
+      for (Map.Entry<EnrichedEvent, List<Integer>> entry : originalMap.entrySet()) {
+        final EnrichedEvent event = entry.getKey();
+        boolean isSuccessful = true;
+        if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+          final List<Tablet> tablets =
+              ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
+          for (final Integer index : entry.getValue()) {
+            isSuccessful &=
+                writeTablet(
+                    tablets.get(index),
+                    ((PipeInsertNodeTabletInsertionEvent) event).isAligned(index),
+                    event.getPipeName());
+          }
+        } else if (event instanceof PipeRawTabletInsertionEvent) {
+          final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
+              (PipeRawTabletInsertionEvent) event;
+          isSuccessful &=
+              writeTablet(
+                  rawTabletInsertionEvent.convertToTablet(),
+                  rawTabletInsertionEvent.isAligned(),
+                  rawTabletInsertionEvent.getPipeName());
+        }
+        if (isSuccessful) {
+          events.add(event);
+        }
+      }
+
+      if (!failedEvent2TabletIndexMap.isEmpty()) {
+        LOGGER.info(
+            "There are still {} events out of order after retry.",
+            failedEvent2TabletIndexMap.size());
+      }
+    }
+  }
+
+  private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
+      throws IOException {
     if (isAligned) {
       try {
         fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
@@ -204,15 +251,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         fileWriter.writeAligned(tablet);
       } catch (final WriteProcessException e) {
         // Handle out-of-order data
-        if (e.getMessage().contains("out-of-order")) {
-          LOGGER.debug(
-              "An out-of-order aligned tablet is encountered, message: {}", e.getMessage());
-          unsequenceTabletList.add(tablet);
-          unsequenceIsAlignedList.add(true);
-          unsequencePipeNameList.add(pipeName);
-          return;
-        }
-        throw e;
+        // Do not judge the message for performance
+        LOGGER.info(
+            "A may out-of-order aligned tablet is encountered, message: {}", e.getMessage());
+        return false;
       }
     } else {
       for (final MeasurementSchema schema : tablet.getSchemas()) {
@@ -229,25 +271,21 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         fileWriter.write(tablet);
       } catch (final WriteProcessException e) {
         // Handle out-of-order data
-        if (e.getMessage().contains("out-of-order")) {
-          LOGGER.debug("An out-of-order tablet is encountered, message: {}", e.getMessage());
-          unsequenceTabletList.add(tablet);
-          unsequenceIsAlignedList.add(false);
-          unsequencePipeNameList.add(pipeName);
-          return;
-        }
-        throw e;
+        // Do not judge the message for performance
+        LOGGER.info("A may out-of-order tablet is encountered, message: {}", e.getMessage());
+        return false;
       }
     }
 
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
     pipeName2WeightMap.compute(pipeName, (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+    return true;
   }
 
   @Override
   protected boolean shouldEmit() {
     // If there are out-of-order tablets, we should terminate the tsFile.
-    return !unsequenceTabletList.isEmpty() || super.shouldEmit();
+    return !failedEvent2TabletIndexMap.isEmpty() || super.shouldEmit();
   }
 
   public Map<String, Double> deepCopyPipeName2WeightMap() {
@@ -297,9 +335,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     super.close();
 
     pipeName2WeightMap.clear();
-    unsequenceTabletList.clear();
-    unsequenceIsAlignedList.clear();
-    unsequencePipeNameList.clear();
+    failedEvent2TabletIndexMap
+        .keySet()
+        .forEach(event -> event.clearReferenceCount(PipeTabletEventTsFileBatch.class.getName()));
+    failedEvent2TabletIndexMap.values().forEach(List::clear);
+    failedEvent2TabletIndexMap.clear();
 
     if (Objects.nonNull(fileWriter)) {
       try {
@@ -326,5 +366,15 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
       fileWriter = null;
     }
+  }
+
+  @Override
+  boolean isEmpty() {
+    try {
+      initAndWriteUnSequenceTabletsIfNecessary();
+    } catch (final IOException e) {
+      LOGGER.warn("Unexpected IOException in writing unSequence tablets or init tsfile writer", e);
+    }
+    return super.isEmpty();
   }
 }
