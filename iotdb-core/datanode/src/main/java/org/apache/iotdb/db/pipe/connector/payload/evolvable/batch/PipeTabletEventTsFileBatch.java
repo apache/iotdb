@@ -74,7 +74,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final Map<String, Double> pipeName2WeightMap = new HashMap<>();
 
   private volatile TsFileWriter fileWriter;
-
+  private boolean currentFileNonEmpty = false;
   private final Map<EnrichedEvent, List<Integer>> failedEvent2TabletIndexMap = new HashMap<>();
 
   PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
@@ -132,27 +132,25 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void initAndWriteUnSequenceTabletsIfNecessary() throws IOException {
-    if (Objects.nonNull(fileWriter)) {
-      return;
+    if (Objects.isNull(fileWriter)) {
+      fileWriter =
+          new TsFileWriter(
+              new File(
+                  batchFileBaseDir,
+                  TS_FILE_PREFIX
+                      + "_"
+                      + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+                      + "_"
+                      + currentBatchId.get()
+                      + "_"
+                      + tsFileIdGenerator.getAndIncrement()
+                      + TsFileConstant.TSFILE_SUFFIX));
     }
 
-    fileWriter =
-        new TsFileWriter(
-            new File(
-                batchFileBaseDir,
-                TS_FILE_PREFIX
-                    + "_"
-                    + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
-                    + "_"
-                    + currentBatchId.get()
-                    + "_"
-                    + tsFileIdGenerator.getAndIncrement()
-                    + TsFileConstant.TSFILE_SUFFIX));
-
-    // We only write un-sequence tablets when fileWriter is null
-    // because non-null writer implies that previous batch is still in calculation
-    // hence the tablets are still out of order
-    if (!failedEvent2TabletIndexMap.isEmpty()) {
+    // Only write out-of-order tablets to empty tsFiles to avoid meaningless write in retry.
+    // If the current file is non-empty and there exists failed events, we should emit in this round
+    // and "onSuccess()" shall be called to clear the previous tsFileWriter.
+    if (!currentFileNonEmpty && !failedEvent2TabletIndexMap.isEmpty()) {
       final int size = failedEvent2TabletIndexMap.size();
       LOGGER.info("Rewriting may out-of-order events, event count: {}", size);
 
@@ -194,6 +192,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               .add(index);
         }
         isSuccessful &= tabletSuccessful;
+        currentFileNonEmpty |= tabletSuccessful;
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
@@ -207,6 +206,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, Collections.emptyList());
       }
       isSuccessful &= tabletSuccessful;
+      currentFileNonEmpty |= tabletSuccessful;
     } else {
       LOGGER.warn(
           "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
@@ -219,14 +219,14 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
       throws IOException {
+    if (!checkSorted(tablet)) {
+      sortTablet(tablet);
+    }
     if (isAligned) {
       try {
         fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
       } catch (final WriteProcessException ignore) {
         // Do nothing if the timeSeries has been registered
-      }
-      if (!checkSorted(tablet)) {
-        sortTablet(tablet);
       }
       try {
         fileWriter.writeAligned(tablet);
@@ -244,9 +244,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         } catch (final WriteProcessException ignore) {
           // Do nothing if the timeSeries has been registered
         }
-      }
-      if (!checkSorted(tablet)) {
-        sortTablet(tablet);
       }
       try {
         fileWriter.write(tablet);
@@ -266,7 +263,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   protected boolean shouldEmit() {
     // If there are out-of-order tablets, we should terminate the tsFile.
-    return !failedEvent2TabletIndexMap.isEmpty() || super.shouldEmit();
+    return !failedEvent2TabletIndexMap.isEmpty() && currentFileNonEmpty || super.shouldEmit();
   }
 
   public Map<String, Double> deepCopyPipeName2WeightMap() {
@@ -309,6 +306,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // We don't need to delete the tsFile here, because the tsFile
     // will be deleted after the file is transferred.
     fileWriter = null;
+    currentFileNonEmpty = false;
   }
 
   @Override
@@ -350,12 +348,15 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  boolean isEmpty() {
+  synchronized boolean isEmpty() {
+    if (isClosed) {
+      return true;
+    }
     try {
       initAndWriteUnSequenceTabletsIfNecessary();
     } catch (final IOException e) {
       LOGGER.warn("Unexpected IOException in writing unSequence tablets or init tsfile writer", e);
     }
-    return super.isEmpty();
+    return !currentFileNonEmpty;
   }
 }
