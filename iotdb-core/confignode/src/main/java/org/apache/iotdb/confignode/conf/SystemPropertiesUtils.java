@@ -224,8 +224,6 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
-    systemProperties.setProperty("cluster_name", conf.getClusterName());
-    LOGGER.info("[SystemProperties] store cluster_name: {}", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
     LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
     systemProperties.setProperty(

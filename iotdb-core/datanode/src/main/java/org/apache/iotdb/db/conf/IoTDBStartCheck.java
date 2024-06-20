@@ -285,8 +285,7 @@ public class IoTDBStartCheck {
   /** call this method to serialize ClusterName and DataNodeId */
   public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
       throws IOException {
-    systemPropertiesHandler.put(
-        IoTDBConstant.CLUSTER_NAME, clusterName, DATA_NODE_ID, String.valueOf(dataNodeId));
+    systemPropertiesHandler.put(DATA_NODE_ID, String.valueOf(dataNodeId));
   }
 
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
