@@ -208,7 +208,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     ioTPrinter.println(
         "Successfully load "
             + loadFileSuccessfulNum.sum()
-            + " file(s) (--on_success operations: "
+            + " file(s) (--on_success operation(s): "
             + processingLoadSuccessfulFileSuccessfulNum.sum()
             + " succeed, "
             + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
@@ -216,7 +216,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     ioTPrinter.println(
         "Failed to load "
             + loadFileFailedNum.sum()
-            + " file(s) (--on_fail operations: "
+            + " file(s) (--on_fail operation(s): "
             + processingLoadFailedFileSuccessfulNum.sum()
             + " succeed, "
             + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
