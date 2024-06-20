@@ -52,6 +52,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq.checkSorted;
 import static org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq.sortTablet;
@@ -127,49 +128,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   protected boolean constructBatch(final TabletInsertionEvent event) throws IOException {
     initAndWriteUnSequenceTabletsIfNecessary();
-    boolean isSuccessful = true;
-
-    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-      final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
-          (PipeInsertNodeTabletInsertionEvent) event;
-      final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
-      for (int i = 0; i < tablets.size(); ++i) {
-        final Tablet tablet = tablets.get(i);
-        if (tablet.rowSize == 0) {
-          continue;
-        }
-        boolean tabletSuccessful =
-            writeTablet(
-                tablet,
-                insertNodeTabletInsertionEvent.isAligned(i),
-                insertNodeTabletInsertionEvent.getPipeName());
-        if (!tabletSuccessful) {
-          failedEvent2TabletIndexMap
-              .computeIfAbsent(insertNodeTabletInsertionEvent, failedEvent -> new ArrayList<>())
-              .add(i);
-        }
-        isSuccessful &= tabletSuccessful;
-      }
-    } else if (event instanceof PipeRawTabletInsertionEvent) {
-      final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
-          (PipeRawTabletInsertionEvent) event;
-      boolean tabletSuccessful =
-          writeTablet(
-              rawTabletInsertionEvent.convertToTablet(),
-              rawTabletInsertionEvent.isAligned(),
-              rawTabletInsertionEvent.getPipeName());
-      if (!tabletSuccessful) {
-        failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, new ArrayList<>());
-      }
-      isSuccessful &= tabletSuccessful;
-    } else {
-      LOGGER.warn(
-          "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
-          currentBatchId.get(),
-          event,
-          event.getClass());
-    }
-    return isSuccessful;
+    return writeEventWithSpecifiedIndexes((EnrichedEvent) event, Collections.emptyList());
   }
 
   private void initAndWriteUnSequenceTabletsIfNecessary() throws IOException {
@@ -201,30 +160,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           new HashMap<>(failedEvent2TabletIndexMap);
       failedEvent2TabletIndexMap.clear();
 
-      for (Map.Entry<EnrichedEvent, List<Integer>> entry : originalMap.entrySet()) {
-        final EnrichedEvent event = entry.getKey();
-        boolean isSuccessful = true;
-        if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-          final List<Tablet> tablets =
-              ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
-          for (final Integer index : entry.getValue()) {
-            isSuccessful &=
-                writeTablet(
-                    tablets.get(index),
-                    ((PipeInsertNodeTabletInsertionEvent) event).isAligned(index),
-                    event.getPipeName());
-          }
-        } else if (event instanceof PipeRawTabletInsertionEvent) {
-          final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
-              (PipeRawTabletInsertionEvent) event;
-          isSuccessful &=
-              writeTablet(
-                  rawTabletInsertionEvent.convertToTablet(),
-                  rawTabletInsertionEvent.isAligned(),
-                  rawTabletInsertionEvent.getPipeName());
-        }
-        if (isSuccessful) {
-          events.add(event);
+      for (final Map.Entry<EnrichedEvent, List<Integer>> entry : originalMap.entrySet()) {
+        if (writeEventWithSpecifiedIndexes(entry.getKey(), entry.getValue())) {
+          events.add(entry.getKey());
         }
       }
 
@@ -234,6 +172,49 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             failedEvent2TabletIndexMap.size());
       }
     }
+  }
+
+  private boolean writeEventWithSpecifiedIndexes(final EnrichedEvent event, List<Integer> indexes)
+      throws IOException {
+    boolean isSuccessful = true;
+    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+      final List<Tablet> tablets = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
+      if (indexes.isEmpty()) {
+        indexes = IntStream.range(0, tablets.size()).boxed().collect(Collectors.toList());
+      }
+      for (final Integer index : indexes) {
+        final boolean tabletSuccessful =
+            writeTablet(
+                tablets.get(index),
+                ((PipeInsertNodeTabletInsertionEvent) event).isAligned(index),
+                event.getPipeName());
+        if (!tabletSuccessful) {
+          failedEvent2TabletIndexMap
+              .computeIfAbsent(event, failedEvent -> new ArrayList<>())
+              .add(index);
+        }
+        isSuccessful &= tabletSuccessful;
+      }
+    } else if (event instanceof PipeRawTabletInsertionEvent) {
+      final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) event;
+      final boolean tabletSuccessful =
+          writeTablet(
+              rawTabletInsertionEvent.convertToTablet(),
+              rawTabletInsertionEvent.isAligned(),
+              rawTabletInsertionEvent.getPipeName());
+      if (!tabletSuccessful) {
+        failedEvent2TabletIndexMap.put(rawTabletInsertionEvent, Collections.emptyList());
+      }
+      isSuccessful &= tabletSuccessful;
+    } else {
+      LOGGER.warn(
+          "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
+          currentBatchId.get(),
+          event,
+          event.getClass());
+    }
+    return isSuccessful;
   }
 
   private boolean writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
