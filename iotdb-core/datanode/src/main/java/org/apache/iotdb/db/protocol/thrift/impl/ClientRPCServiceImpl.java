@@ -133,6 +133,7 @@ import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCompressedInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -1729,6 +1730,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         quota.close();
       }
     }
+  }
+
+  @Override
+  public TSStatus insertCompressedRecords(TSCompressedInsertRecordsReq req) {
+    return null;
   }
 
   @Override
