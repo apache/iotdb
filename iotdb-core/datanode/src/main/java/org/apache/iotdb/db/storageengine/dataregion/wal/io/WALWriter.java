@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
+
   public static final String MAGIC_STRING_V1 = "WAL";
   public static final String MAGIC_STRING_V2 = "V2-WAL";
   public static final int MAGIC_STRING_V1_BYTES =
@@ -44,7 +45,11 @@ public class WALWriter extends LogWriter {
   private WALFileVersion version = WALFileVersion.V2;
 
   public WALWriter(File logFile) throws IOException {
-    super(logFile);
+    this(logFile, WALFileVersion.V2);
+  }
+
+  public WALWriter(File logFile, WALFileVersion version) throws IOException {
+    super(logFile, version);
   }
 
   /**
@@ -71,7 +76,7 @@ public class WALWriter extends LogWriter {
             endMarker.serializedSize()
                 + metaDataSize
                 + Integer.BYTES
-                + (version == WALFileVersion.V2 ? MAGIC_STRING_V2_BYTES : MAGIC_STRING_V1_BYTES));
+                + (version != WALFileVersion.V2 ? MAGIC_STRING_V1_BYTES : MAGIC_STRING_V2_BYTES));
     // mark info part ends
     endMarker.serialize(buffer);
     // flush meta data
@@ -79,7 +84,7 @@ public class WALWriter extends LogWriter {
     buffer.putInt(metaDataSize);
     // add magic string
     buffer.put(
-        (version == WALFileVersion.V2 ? MAGIC_STRING_V2 : MAGIC_STRING_V1)
+        (version != WALFileVersion.V2 ? MAGIC_STRING_V1 : MAGIC_STRING_V2)
             .getBytes(StandardCharsets.UTF_8));
     size += buffer.position();
     writeMetadata(buffer);

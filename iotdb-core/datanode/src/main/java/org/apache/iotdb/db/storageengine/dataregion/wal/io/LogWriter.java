@@ -61,13 +61,16 @@ public abstract class LogWriter implements ILogWriter {
   /** Minimum size to compress, default is 32 KB */
   private static long MIN_COMPRESSION_SIZE = 32 * 1024L;
 
-  protected LogWriter(File logFile) throws IOException {
+  protected LogWriter(File logFile, WALFileVersion version) throws IOException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
     if (!logFile.exists() || logFile.length() == 0) {
       this.logChannel.write(
-          ByteBuffer.wrap(WALWriter.MAGIC_STRING_V2.getBytes(StandardCharsets.UTF_8)));
+          ByteBuffer.wrap(
+              version == WALFileVersion.V1
+                  ? WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8)
+                  : WALWriter.MAGIC_STRING_V2.getBytes(StandardCharsets.UTF_8)));
       size += logChannel.position();
     }
   }

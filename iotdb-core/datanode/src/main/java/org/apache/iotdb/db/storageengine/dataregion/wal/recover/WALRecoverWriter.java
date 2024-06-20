@@ -67,8 +67,7 @@ public class WALRecoverWriter {
       channel.truncate(truncateSize);
     }
     // flush metadata
-    try (WALWriter walWriter = new WALWriter(logFile)) {
-      walWriter.setVersion(version);
+    try (WALWriter walWriter = new WALWriter(logFile, version)) {
       walWriter.updateMetaData(metaData);
     }
   }
