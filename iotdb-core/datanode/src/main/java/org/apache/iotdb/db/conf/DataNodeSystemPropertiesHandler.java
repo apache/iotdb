@@ -45,7 +45,7 @@ public class DataNodeSystemPropertiesHandler extends SystemPropertiesHandler {
               IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                   + File.separator
                   + PROPERTIES_FILE_NAME);
-      INSTANCE.recover();
+      INSTANCE.init();
     }
     return INSTANCE;
   }

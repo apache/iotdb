@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.Properties;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 
 public class SystemPropertiesUtils {
 
@@ -319,26 +318,6 @@ public class SystemPropertiesUtils {
     }
     systemPropertiesHandler.put(
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
-  }
-
-  /**
-   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
-   * restarted.
-   *
-   * @return The property of cluster_name in confignode-system.properties file
-   * @throws IOException When load confignode-system.properties file failed
-   */
-  public static String loadClusterNameWhenRestarted() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
-    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName == null) {
-      LOGGER.warn(
-          "Lack cluster_name field in "
-              + "data/confignode/system/confignode-system.properties, set it as defaultCluster");
-      systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
-      return systemProperties.getProperty(CLUSTER_NAME, null);
-    }
-    return clusterName;
   }
 
   /**
