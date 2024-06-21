@@ -59,8 +59,16 @@ public class SchemaFetchScanOperatorTest {
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =
-        new SchemaFetchScanOperator(
-            null, null, patternTree, Collections.emptyMap(), schemaRegion, false, true);
+        SchemaFetchScanOperator.ofSeries(
+            null,
+            null,
+            patternTree,
+            Collections.emptyMap(),
+            schemaRegion,
+            false,
+            false,
+            true,
+            false);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
@@ -151,7 +159,9 @@ public class SchemaFetchScanOperatorTest {
     patternTree.appendPathPattern(new PartialPath("root.**.status"));
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
-    Mockito.when(schemaRegion.fetchSchema(patternTree, Collections.emptyMap(), false, true))
+    Mockito.when(
+            schemaRegion.fetchSeriesSchema(
+                patternTree, Collections.emptyMap(), false, false, true, false))
         .thenReturn(clusterSchemaTree);
 
     return schemaRegion;

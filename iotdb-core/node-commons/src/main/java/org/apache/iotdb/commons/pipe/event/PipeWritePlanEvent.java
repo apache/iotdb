@@ -31,10 +31,11 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   protected PipeWritePlanEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
@@ -67,6 +68,11 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
+    return true;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
     return true;
   }
 

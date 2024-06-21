@@ -33,12 +33,18 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/../compile-tools/thrift/target/thrift-${thrift.version}/lib/cpp/src</directory>
+            <directory>${project.build.directory}/thrift/include</directory>
             <includes>
-                <include>**/*.h</include>
-                <include>**/*.tcc</include>
+                <include>**</include>
             </includes>
             <outputDirectory>include</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/thrift/lib</directory>
+            <includes>
+                <include>**</include>
+            </includes>
+            <outputDirectory>lib</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>${project.build.directory}/build/main</directory>

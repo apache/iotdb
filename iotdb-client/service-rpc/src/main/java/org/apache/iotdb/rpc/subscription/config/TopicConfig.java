@@ -28,7 +28,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TopicConfig extends PipeParameters {
 
@@ -39,6 +42,25 @@ public class TopicConfig extends PipeParameters {
   public TopicConfig(final Map<String, String> attributes) {
     super(attributes);
   }
+
+  private static final Map<String, String> REALTIME_BATCH_MODE_CONFIG =
+      Collections.singletonMap("realtime.mode", "batch");
+  private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
+      Collections.singletonMap("realtime.mode", "stream");
+
+  private static final Map<String, String> QUERY_MODE_CONFIG =
+      Collections.singletonMap("mode", "query");
+  private static final Map<String, String> SUBSCRIBE_MODE_CONFIG =
+      Collections.singletonMap("mode", "subscribe");
+
+  private static final Set<String> LOOSE_RANGE_KEY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<String>() {
+            {
+              add("history.loose-range");
+              add("realtime.loose-range");
+            }
+          });
 
   /////////////////////////////// de/ser ///////////////////////////////
 
@@ -84,21 +106,29 @@ public class TopicConfig extends PipeParameters {
       attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
     }
 
-    // enable loose range when using tsfile format
-    if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
-        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
-      attributesWithTimeRange.put("history.loose-range", "time");
-      attributesWithTimeRange.put("realtime.loose-range", "time");
-    }
-
     return attributesWithTimeRange;
   }
 
   public Map<String, String> getAttributesWithRealtimeMode() {
     return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
             attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? Collections.singletonMap("realtime.mode", "batch")
-        : Collections.singletonMap("realtime.mode", "hybrid");
+        ? REALTIME_BATCH_MODE_CONFIG
+        : REALTIME_STREAM_MODE_CONFIG;
+  }
+
+  public Map<String, String> getAttributesWithSourceMode() {
+    return TopicConstant.MODE_QUERY_VALUE.equals(
+            attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
+        ? QUERY_MODE_CONFIG
+        : SUBSCRIBE_MODE_CONFIG;
+  }
+
+  public Map<String, String> getAttributesWithSourceLooseRange() {
+    final String looseRangeValue =
+        attributes.getOrDefault(
+            TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_DEFAULT_VALUE);
+    return LOOSE_RANGE_KEY_SET.stream()
+        .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
   }
 
   public Map<String, String> getAttributesWithProcessorPrefix() {

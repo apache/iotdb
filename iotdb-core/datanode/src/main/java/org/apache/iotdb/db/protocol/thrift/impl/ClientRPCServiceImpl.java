@@ -49,7 +49,7 @@ import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -362,6 +362,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        finished = true;
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -389,6 +390,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -454,6 +456,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -478,6 +481,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -542,6 +546,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -567,6 +572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -629,6 +635,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -654,6 +661,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -964,6 +972,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException("error code: " + result.status);
       }
 
@@ -996,6 +1005,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -1116,6 +1126,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
@@ -1663,6 +1674,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
@@ -1694,6 +1706,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSFetchResultsResp(
           onQueryException(e, getContentOfRequest(req, queryExecution)));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -2698,7 +2711,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
-    return PipeAgent.receiver()
+    return PipeDataNodeAgent.receiver()
         .legacy()
         .handshake(
             info,
@@ -2709,18 +2722,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
-    return PipeAgent.receiver().legacy().transportPipeData(buff);
+    return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
       throws TException {
-    return PipeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
   }
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) {
-    return PipeAgent.receiver().thrift().receive(req);
+    return PipeDataNodeAgent.receiver().thrift().receive(req);
   }
 
   @Override
@@ -2736,6 +2749,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
     return SESSION_MANAGER.getAllConnectionInfo();
+  }
+
+  @Override
+  public TSStatus testConnectionEmptyRPC() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -2865,8 +2883,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    PipeAgent.receiver().thrift().handleClientExit();
-    PipeAgent.receiver().legacy().handleClientExit();
+    PipeDataNodeAgent.receiver().thrift().handleClientExit();
+    PipeDataNodeAgent.receiver().legacy().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
   }
 }

@@ -22,9 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 
@@ -45,7 +45,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   protected final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup;
   protected final boolean executeOnAllReplicaset;
 
-  protected final DataNodeRequestType dataNodeRequestType;
+  protected final CnToDnRequestType dataNodeRequestType;
   protected final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q>
       dataNodeRequestGenerator;
 
@@ -55,7 +55,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigManager configManager,
       Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
       boolean executeOnAllReplicaset,
-      DataNodeRequestType dataNodeRequestType,
+      CnToDnRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = configManager;
     this.targetSchemaRegionGroup = targetSchemaRegionGroup;
@@ -68,7 +68,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigNodeProcedureEnv env,
       Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
       boolean executeOnAllReplicaset,
-      DataNodeRequestType dataNodeRequestType,
+      CnToDnRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = env.getConfigManager();
     this.targetSchemaRegionGroup = targetSchemaRegionGroup;
@@ -86,8 +86,10 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
             : getLeaderDataNodeRegionGroupMap(
                 configManager.getLoadManager().getRegionLeaderMap(), targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
-      AsyncClientHandler<Q, R> clientHandler = prepareRequestHandler(dataNodeConsensusGroupIdMap);
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      DataNodeAsyncRequestContext<Q, R> clientHandler =
+          prepareRequestHandler(dataNodeConsensusGroupIdMap);
+      CnToDnInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 
@@ -112,12 +114,13 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     }
   }
 
-  private AsyncClientHandler<Q, R> prepareRequestHandler(
+  private DataNodeAsyncRequestContext<Q, R> prepareRequestHandler(
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    AsyncClientHandler<Q, R> clientHandler = new AsyncClientHandler<>(dataNodeRequestType);
+    DataNodeAsyncRequestContext<Q, R> clientHandler =
+        new DataNodeAsyncRequestContext<>(dataNodeRequestType);
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
-      clientHandler.putDataNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());
+      clientHandler.putNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());
       clientHandler.putRequest(
           entry.getKey().getDataNodeId(),
           dataNodeRequestGenerator.apply(entry.getKey(), entry.getValue()));

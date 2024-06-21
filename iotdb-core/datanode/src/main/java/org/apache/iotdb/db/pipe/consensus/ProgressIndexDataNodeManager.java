@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -108,7 +108,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex getProgressIndex(ConsensusPipeName consensusPipeName) {
-    return PipeAgent.task()
+    return PipeDataNodeAgent.task()
         .getPipeTaskProgressIndex(
             consensusPipeName.toString(), consensusPipeName.getConsensusGroupId().getId());
   }
@@ -118,7 +118,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
     return groupId2MaxProgressIndex
         .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
         .updateToMinimumEqualOrIsAfterProgressIndex(
-            PipeAgent.runtime().assignProgressIndexForPipeConsensus());
+            PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus());
   }
 
   @Override

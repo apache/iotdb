@@ -91,6 +91,13 @@ public class IoTDBPredicatePushDownIT {
         };
     resultSetEqualTest(
         "select s2 from root.sg1.d1 where s2 - 1 >= 9 and s2 < 30", expectedHeader3, retArray3);
+
+    String expectedHeader4 = "Time,root.sg1.d1.s2,";
+    String[] retArray4 = new String[] {"14,14,", "15,15,"};
+    resultSetEqualTest(
+        "select s2 from root.sg1.d1 where s2 - 1 >= 9 and s2 < 30 offset 3 limit 2",
+        expectedHeader4,
+        retArray4);
   }
 
   @Test
@@ -164,6 +171,11 @@ public class IoTDBPredicatePushDownIT {
           "30,30,",
         };
     resultSetEqualTest("select s3 from root.sg1.d1 where s3 + 1 > 16", expectedHeader3, retArray3);
+
+    String expectedHeader4 = "Time,root.sg1.d1.s3,";
+    String[] retArray4 = new String[] {"3,30000,", "13,130000,", "16,16,"};
+    resultSetEqualTest(
+        "select s3 from root.sg1.d1 where s3 + 1 > 16 limit 3", expectedHeader4, retArray4);
   }
 
   @Test
@@ -203,6 +215,13 @@ public class IoTDBPredicatePushDownIT {
         };
     resultSetEqualTest(
         "select s2 from root.sg1.d2 where s2 - 1 >= 9 and s2 < 30", expectedHeader3, retArray3);
+
+    String expectedHeader4 = "Time,root.sg1.d2.s2,";
+    String[] retArray4 = new String[] {"12,12,", "13,13,", "14,14,"};
+    resultSetEqualTest(
+        "select s2 from root.sg1.d2 where s2 - 1 >= 9 and s2 < 30 limit 3 offset 2",
+        expectedHeader4,
+        retArray4);
   }
 
   @Test
@@ -257,6 +276,14 @@ public class IoTDBPredicatePushDownIT {
           "25,25,", "26,26,", "27,27,", "28,28,", "29,29,", "30,30,",
         };
     resultSetEqualTest("select s3 from root.sg1.d2 where s3 + 1 > 16", expectedHeader3, retArray3);
+
+    String expectedHeader4 = "Time,root.sg1.d2.s3,";
+    String[] retArray4 =
+        new String[] {
+          "26,26,", "27,27,", "28,28,", "29,29,", "30,30,",
+        };
+    resultSetEqualTest(
+        "select s3 from root.sg1.d2 where s3 + 1 > 16 offset 10", expectedHeader4, retArray4);
   }
 
   @Test

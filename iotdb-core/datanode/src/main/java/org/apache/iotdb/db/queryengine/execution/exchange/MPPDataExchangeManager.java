@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
@@ -49,6 +50,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
@@ -282,6 +284,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
         sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
       }
+    }
+
+    @Override
+    public TSStatus testConnectionEmptyRPC() throws TException {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
 
@@ -578,11 +585,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       ExecutorService executorService,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
-    this.executorService = Validate.notNull(executorService);
+    this.localMemoryManager = Validate.notNull(localMemoryManager, "localMemoryManager is null.");
+    this.tsBlockSerdeFactory =
+        Validate.notNull(tsBlockSerdeFactory, "tsBlockSerdeFactory is null.");
+    this.executorService = Validate.notNull(executorService, "executorService is null.");
     this.mppDataExchangeServiceClientManager =
-        Validate.notNull(mppDataExchangeServiceClientManager);
+        Validate.notNull(
+            mppDataExchangeServiceClientManager, "mppDataExchangeServiceClientManager is null.");
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
   }
@@ -594,10 +603,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
-  public void deRegisterFragmentInstanceFromMemoryPool(String queryId, String fragmentInstanceId) {
+  public void deRegisterFragmentInstanceFromMemoryPool(
+      String queryId, String fragmentInstanceId, boolean forceDeregister) {
     localMemoryManager
         .getQueryPool()
-        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
+        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId, forceDeregister);
   }
 
   public LocalMemoryManager getLocalMemoryManager() {

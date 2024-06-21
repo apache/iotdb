@@ -18,6 +18,7 @@
 # under the License.
 #
 
+source "$(dirname "$0")/iotdb-common.sh"
 DATANODE_CONF="`dirname "$0"`/../conf"
 
 if [ -f "${DATANODE_CONF}/iotdb-system.properties" ]; then
@@ -25,6 +26,8 @@ if [ -f "${DATANODE_CONF}/iotdb-system.properties" ]; then
 else
     dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 fi
+
+check_config_unique "dn_rpc_port" "$dn_rpc_port"
 
 force=""
 

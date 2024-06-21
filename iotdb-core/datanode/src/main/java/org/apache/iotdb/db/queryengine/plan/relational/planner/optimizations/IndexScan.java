@@ -122,7 +122,8 @@ public class IndexScan implements RelationalPlanOptimizer {
                 deviceEntries,
                 treeModelDatabase,
                 context.getQueryContext().getGlobalTimeFilter(),
-                context.getMetadata().getPartitionFetcher());
+                context.getMetadata().getPartitionFetcher(),
+                context.getQueryContext());
         context.getAnalysis().setDataPartition(dataPartition);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
@@ -158,9 +159,10 @@ public class IndexScan implements RelationalPlanOptimizer {
       List<DeviceEntry> deviceEntries,
       String database,
       Filter globalTimeFilter,
-      IPartitionFetcher partitionFetcher) {
+      IPartitionFetcher partitionFetcher,
+      MPPQueryContext context) {
     Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(globalTimeFilter);
+        getTimePartitionSlotList(globalTimeFilter, context);
 
     // there is no satisfied time range
     if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {

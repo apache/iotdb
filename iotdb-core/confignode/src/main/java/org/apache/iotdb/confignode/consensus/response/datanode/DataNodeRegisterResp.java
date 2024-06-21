@@ -32,13 +32,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class DataNodeRegisterResp implements DataSet {
 
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
-
   private TRuntimeConfiguration runtimeConfiguration;
 
   public DataNodeRegisterResp() {
@@ -85,8 +85,8 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setConfigNodeList(configNodeList);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataNodeId(dataNodeId);
-      resp.setRuntimeConfiguration(runtimeConfiguration);
+      Optional.ofNullable(dataNodeId).ifPresent(resp::setDataNodeId);
+      Optional.ofNullable(runtimeConfiguration).ifPresent(resp::setRuntimeConfiguration);
     }
 
     return resp;

@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,13 +33,13 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckTimeSeriesExistenceRPCHandler
-    extends AbstractAsyncRPCHandler<TCheckTimeSeriesExistenceResp> {
+    extends DataNodeAsyncRequestRPCHandler<TCheckTimeSeriesExistenceResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CheckTimeSeriesExistenceRPCHandler.class);
 
   public CheckTimeSeriesExistenceRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -53,15 +53,13 @@ public class CheckTimeSeriesExistenceRPCHandler
     TSStatus tsStatus = response.getStatus();
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully check timeseries existence on DataNode: {}", targetDataNode);
+      nodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully check timeseries existence on DataNode: {}", targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.error(
-          "Failed to check timeseries existence on DataNode {}, {}", targetDataNode, tsStatus);
+      nodeLocationMap.remove(requestId);
+      LOGGER.error("Failed to check timeseries existence on DataNode {}, {}", targetNode, tsStatus);
     } else {
-      LOGGER.error(
-          "Failed to check timeseries existence on DataNode {}, {}", targetDataNode, tsStatus);
+      LOGGER.error("Failed to check timeseries existence on DataNode {}, {}", targetNode, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -70,9 +68,9 @@ public class CheckTimeSeriesExistenceRPCHandler
   public void onError(Exception e) {
     String errorMsg =
         "Check timeseries existence error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.error(errorMsg);

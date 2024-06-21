@@ -60,7 +60,13 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern, startTime, endTime);
+    super(
+        event != null ? event.getPipeName() : null,
+        event != null ? event.getCreationTime() : 0,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -125,10 +131,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return event.getProgressIndex();
   }
 
-  /**
-   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
-   * data-region-level.
-   */
   @Override
   public void skipParsingPattern() {
     event.skipParsingPattern();
@@ -140,15 +142,36 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean shouldParseTime() {
+    return event.shouldParseTime();
+  }
+
+  @Override
+  public boolean shouldParsePattern() {
+    return event.shouldParsePattern();
+  }
+
+  @Override
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    return event.mayEventTimeOverlappedWithTimeRange();
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return event.mayEventPathsOverlappedWithPattern();
+  }
+
+  @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, pipeTaskMeta, pattern, startTime, endTime),
+            pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
@@ -160,11 +183,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
-  }
-
-  @Override
-  public boolean mayEventTimeOverlappedWithTimeRange() {
-    return event.mayEventTimeOverlappedWithTimeRange();
   }
 
   @Override

@@ -21,13 +21,14 @@ package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -66,7 +67,7 @@ public class SyncConfigNodeClientPool {
   }
 
   public Object sendSyncRequestToConfigNodeWithRetry(
-      TEndPoint endPoint, Object req, ConfigNodeRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToCnNodeRequestType requestType) {
 
     Throwable lastException = null;
     for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
@@ -91,6 +92,12 @@ public class SyncConfigNodeClientPool {
             return client.stopConfigNode((TConfigNodeLocation) req);
           case SET_CONFIGURATION:
             return client.setConfiguration((TSetConfigurationReq) req);
+          case SHOW_CONFIGURATION:
+            return client.showConfiguration((int) req);
+          case SUBMIT_TEST_CONNECTION_TASK:
+            return client.submitTestConnectionTask((TNodeLocations) req);
+          case TEST_CONNECTION:
+            return client.testConnectionEmptyRPC();
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -145,7 +152,6 @@ public class SyncConfigNodeClientPool {
     }
   }
 
-  // TODO: Is the ClientPool must be a singleton?
   private static class SyncConfigNodeClientPoolHolder {
 
     private static final SyncConfigNodeClientPool INSTANCE = new SyncConfigNodeClientPool();

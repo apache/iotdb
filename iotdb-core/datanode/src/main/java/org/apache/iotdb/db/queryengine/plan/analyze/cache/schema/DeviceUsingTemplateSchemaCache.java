@@ -169,6 +169,11 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
+            public Map<String, String> getAttributeMap() {
+              return null;
+            }
+
+            @Override
             public String getAlias() {
               return null;
             }
