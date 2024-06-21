@@ -374,8 +374,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       }
       // check order by
       List<String> orderList =
-              Arrays.asList(
-                      "root.ln.wf01.wt01,false,null,INF,", "root.ln.wf01.wt02,true,null,8888,");
+          Arrays.asList("root.ln.wf01.wt01,false,null,INF,", "root.ln.wf01.wt02,true,null,8888,");
       checkWithOrder("show devices root.ln.** order by device", orderList, false);
       checkWithOrder("show devices root.ln.** order by device desc", orderList, true);
     }
@@ -886,7 +885,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     }
   }
 
-  private void checkWithOrder(String sql, List<String> expected, boolean reverse) throws SQLException {
+  private void checkWithOrder(String sql, List<String> expected, boolean reverse)
+      throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(sql)) {
@@ -898,7 +898,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           builder.append(resultSet.getString(i)).append(",");
         }
         String string = builder.toString();
-        String expectedString = expected.get(reverse?expected.size()-1-row:row);
+        String expectedString = expected.get(reverse ? expected.size() - 1 - row : row);
         Assert.assertEquals(expectedString, string);
         row++;
       }

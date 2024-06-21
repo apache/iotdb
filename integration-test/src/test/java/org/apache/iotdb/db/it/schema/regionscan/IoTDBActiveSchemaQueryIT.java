@@ -34,10 +34,12 @@ import org.junit.runners.Parameterized;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -197,6 +199,28 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
           statement,
           "count timeseries root.sg.** where time=1",
           new HashSet<>(Collections.singletonList("3,")));
+      // Check order by
+      List<String> expectedOrder =
+          Arrays.asList(
+              "root.sg.d0.s0,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+              "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+              "root.sg.d0.s2,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,",
+              "root.sg.d1.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+              "root.sg.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
+              "root.sg.d2.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+              "root.sg.d2.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+              "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+              "root.sg.d3.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,");
+      checkResultSetWithOrder(
+          statement,
+          "show timeseries root.sg.** where time>0 order by timeseries",
+          expectedOrder,
+          false);
+      checkResultSetWithOrder(
+          statement,
+          "show timeseries root.sg.** where time>0 order by timeseries desc",
+          expectedOrder,
+          true);
       // 3. Check non-root user
       statement.execute("CREATE USER user1 'password'");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
@@ -307,6 +331,20 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
           statement,
           "count devices root.sg.* where time=1",
           new HashSet<>(Collections.singletonList("1,")));
+      // Check order by
+      List<String> expectedOrder =
+          Arrays.asList(
+              "root.sg.d0,false,null,INF,",
+              "root.sg.d1,true,null,INF,",
+              "root.sg.d2,false,t1,INF,",
+              "root.sg.d3,true,t2,60000,");
+      checkResultSetWithOrder(
+          statement, "show devices root.sg.* where time>0 order by device", expectedOrder, false);
+      checkResultSetWithOrder(
+          statement,
+          "show devices root.sg.* where time>0 order by device desc",
+          expectedOrder,
+          true);
       // 3. Check non-root user
       statement.execute("CREATE USER user1 'password'");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
@@ -359,5 +397,23 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       }
     }
     Assert.assertTrue(expected.isEmpty());
+  }
+
+  private void checkResultSetWithOrder(
+      Statement statement, String sql, List<String> expected, boolean reverse) throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int row = 0;
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        String string = builder.toString();
+        String expectedString = expected.get(reverse ? expected.size() - 1 - row : row);
+        Assert.assertEquals(expectedString, string);
+        row++;
+      }
+    }
   }
 }
