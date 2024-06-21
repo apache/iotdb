@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -723,7 +724,8 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
+  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end,
+      TSStatus[] results) {
     checkExpansion();
     int idx = start;
 
@@ -742,7 +744,8 @@ public abstract class AlignedTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
+                || results != null && results[idx + i] != null) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -758,7 +761,8 @@ public abstract class AlignedTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
+                || results != null && results[idx + i] != null) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -1259,7 +1263,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
-    tvList.putAlignedValues(times, values, bitMaps, 0, rowCount);
+    tvList.putAlignedValues(times, values, bitMaps, 0, rowCount, null);
     return tvList;
   }
 

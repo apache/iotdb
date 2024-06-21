@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 public enum TsTableColumnCategory {
   ID((byte) 0),
@@ -72,6 +73,19 @@ public enum TsTableColumnCategory {
         return MEASUREMENT;
       default:
         throw new IllegalArgumentException();
+    }
+  }
+
+  public ColumnType toTsFileColumnType() {
+    switch (this) {
+      case ID:
+        return ColumnType.ID;
+        case ATTRIBUTE:
+          return ColumnType.ATTRIBUTE;
+      case MEASUREMENT:
+        return ColumnType.MEASUREMENT;
+      default:
+        throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
   }
 }

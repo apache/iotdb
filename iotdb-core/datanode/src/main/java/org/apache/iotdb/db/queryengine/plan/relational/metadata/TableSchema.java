@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 public class TableSchema {
 
@@ -38,5 +45,28 @@ public class TableSchema {
 
   public List<ColumnSchema> getColumns() {
     return columns;
+  }
+
+  public static TableSchema of(TsTable tsTable) {
+    String tableName = tsTable.getTableName();
+    List<ColumnSchema> columns = new ArrayList<>();
+    for (TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
+      columns.add(ColumnSchema.ofTsColumnSchema(tsTableColumnSchema));
+    }
+    return new TableSchema(tableName, columns);
+  }
+
+  public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchema() {
+    // TODO-Table: unify redundant definitions
+    String tableName = this.getTableName();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnType> columnTypes = new ArrayList<>();
+    for (ColumnSchema column : columns) {
+      measurementSchemas.add(new MeasurementSchema(column.getName(),
+          InternalTypeManager.getTSDataType(column.getType())));
+      columnTypes.add(column.getColumnCategory().toTsFileColumnType());
+    }
+    return
+        new org.apache.tsfile.file.metadata.TableSchema(tableName, measurementSchemas, columnTypes);
   }
 }

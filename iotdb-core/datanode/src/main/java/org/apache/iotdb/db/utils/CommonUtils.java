@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -413,5 +414,14 @@ public class CommonUtils {
       ret[i] = deviceID.segment(i);
     }
     return ret;
+  }
+
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
+  public static boolean isAlive(long time, long dataTTL) {
+    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
 }

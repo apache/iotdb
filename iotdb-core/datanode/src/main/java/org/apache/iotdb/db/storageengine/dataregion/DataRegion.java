@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.util.function.IntFunction;
 import java.util.function.IntToLongFunction;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -58,10 +57,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -113,6 +115,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -932,7 +935,7 @@ public class DataRegion implements IDataRegionForQuery {
     // reject insertions that are out of ttl
     long deviceTTL =
         DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
-    if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+    if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
     }
@@ -966,21 +969,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * Insert a tablet (rows belonging to the same devices) into this database.
-   *
-   * @throws BatchProcessException if some of the rows failed to be inserted
-   */
-  @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
-  public void insertTreeTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, WriteProcessException {
-    insertTablet(insertTabletNode, false);
-  }
-
-  public void insertRelationalTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, WriteProcessException {
-    insertTablet(insertTabletNode, true);
-  }
 
   private long getLastFlushTime(long timePartitionID, IDeviceID deviceID) {
    return config.isEnableSeparateData()
@@ -1056,8 +1044,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
-  private void insertTablet(InsertTabletNode insertTabletNode,
-      boolean checkAllRowTtl)
+  public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject(null);
     long startTime = System.nanoTime();
@@ -1070,12 +1057,11 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure;
+      int loc = insertTabletNode.checkTTL(results, i -> DataNodeTTLCache.getInstance()
+          .getTTL(insertTabletNode.getDeviceID(i)));
+      noFailure = loc == 0;
 
-      int loc = checkTTL(insertTabletNode, results, i -> DataNodeTTLCache.getInstance()
-          .getTTL(insertTabletNode.getDeviceID(i)), !checkAllRowTtl);
-      noFailure = loc != 0;
-
-      noFailure = noFailure & splitAndInsert(insertTabletNode, loc, results);
+      noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
 
       startTime = System.nanoTime();
       tryToUpdateInsertTabletLastCache(insertTabletNode);
@@ -1117,7 +1103,7 @@ public class DataRegion implements IDataRegionForQuery {
       ttl = rowTTLGetter.applyAsLong(loc);
       long currTime = insertTabletNode.getTimes()[loc];
       // skip points that do not satisfy TTL
-      if (!isAlive(currTime, ttl)) {
+      if (!CommonUtils.isAlive(currTime, ttl)) {
         results[loc] =
             RpcUtils.getStatus(
                 TSStatusCode.OUT_OF_TTL,
@@ -1146,15 +1132,6 @@ public class DataRegion implements IDataRegionForQuery {
     return firstAliveLoc;
   }
 
-
-  /**
-   * Check whether the time falls in TTL.
-   *
-   * @return whether the given time falls in ttl
-   */
-  private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
-  }
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee The rows to be
@@ -1193,6 +1170,9 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
+    // register TableSchema (and maybe more) for table insertion
+    registerToTsFile(insertTabletNode, tsFileProcessor);
+
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results, noFailure);
     } catch (WriteProcessRejectException e) {
@@ -1208,6 +1188,14 @@ public class DataRegion implements IDataRegionForQuery {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
     return true;
+  }
+
+  private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
+    final String tableName = node.getTableName();
+    if (tableName != null) {
+      tsFileProcessor.registerToTsFile(tableName,
+          t -> TableSchema.of(DataNodeTableCache.getInstance().getTable(getDatabaseName(), t)).toTsFileTableSchema());
+    }
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
@@ -3373,7 +3361,7 @@ public class DataRegion implements IDataRegionForQuery {
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
           insertRowsOfOneDeviceNode
@@ -3485,7 +3473,7 @@ public class DataRegion implements IDataRegionForQuery {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
         long deviceTTL =
             DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
-        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()
               .put(
@@ -3538,7 +3526,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
-        insertTreeTablet(insertTabletNode);
+        insertTablet(insertTabletNode);
       } catch (WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()

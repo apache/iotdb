@@ -287,7 +287,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
@@ -309,7 +309,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -365,7 +365,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -386,7 +386,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     Assert.assertTrue(SystemInfo.getInstance().getTotalMemTableSize() > 0);
     dataRegion.syncDeleteDataFiles();
     Assert.assertEquals(0, SystemInfo.getInstance().getTotalMemTableSize());
@@ -440,7 +440,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
@@ -462,7 +462,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -516,7 +516,7 @@ public class DataRegionTest {
             times.length);
     insertTabletNode1.setFailedMeasurementNumber(2);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
@@ -539,7 +539,7 @@ public class DataRegionTest {
             times.length);
     insertTabletNode2.setFailedMeasurementNumber(2);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -708,7 +708,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 149; r >= 50; r--) {
@@ -729,7 +729,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -793,7 +793,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 1249; r >= 50; r--) {
@@ -814,7 +814,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -878,7 +878,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode1);
+    dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 
     for (int r = 1249; r >= 50; r--) {
@@ -899,7 +899,7 @@ public class DataRegionTest {
             columns,
             times.length);
 
-    dataRegion.insertTreeTablet(insertTabletNode2);
+    dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 

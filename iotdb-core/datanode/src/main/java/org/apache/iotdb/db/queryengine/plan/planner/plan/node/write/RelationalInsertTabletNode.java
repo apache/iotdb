@@ -24,8 +24,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntToLongFunction;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -156,6 +159,15 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     result.add(new Pair<>(prevDeviceId, start));
 
     return result;
+  }
+
+  @Override
+  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
+    return checkTTLInternal(results, rowTTLGetter, false);
+  }
+
+  public String getTableName() {
+    return deviceID.getTableName();
   }
 }
 

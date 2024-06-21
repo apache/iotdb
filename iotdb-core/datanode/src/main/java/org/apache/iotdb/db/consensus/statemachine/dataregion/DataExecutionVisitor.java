@@ -76,44 +76,13 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitRelationalInsertTablet(RelationalInsertTabletNode node, DataRegion dataRegion) {
-    try {
-      dataRegion.insertRelationalTablet(node);
-      return StatusUtils.OK;
-    } catch (OutOfTTLException e) {
-      LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (WriteProcessRejectException e) {
-      LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (WriteProcessException e) {
-      LOGGER.error("Error in executing plan node: {}", node, e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (BatchProcessException e) {
-      LOGGER.warn(
-          "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
-          node.getDevicePath(),
-          node.getTimes()[0],
-          node.getMeasurements(),
-          e.getFailingStatus());
-      // For each error
-      TSStatus firstStatus = null;
-      for (TSStatus status : e.getFailingStatus()) {
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          firstStatus = status;
-        }
-        // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
-        if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-          return status;
-        }
-      }
-      return firstStatus;
-    }
+    return visitInsertTablet(node, dataRegion);
   }
 
   @Override
   public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
     try {
-      dataRegion.insertTreeTablet(node);
+      dataRegion.insertTablet(node);
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -66,5 +70,31 @@ public abstract class WrappedInsertStatement extends WrappedStatement implements
     }
 
     return tableSchema;
+  }
+
+  public void validate(TableSchema realSchema) throws QueryProcessException {
+    final List<ColumnSchema> incomingSchemaColumns = getTableSchema().getColumns();
+    Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
+    realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
+
+    for (ColumnSchema incomingSchemaColumn : incomingSchemaColumns) {
+      final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
+      validate(incomingSchemaColumn, realSchemaColumn);
+    }
+  }
+
+  public static void validate(ColumnSchema incoming, ColumnSchema real) {
+    if (real == null) {
+      throw new SemanticException("Column " + incoming.getName() + " does not exists or fails to be "
+          + "created");
+    }
+    if (!incoming.getType().equals(real.getType())) {
+      throw new SemanticException(String.format("Inconsistent data type of column %s: %s/%s",
+          incoming.getName(), incoming.getType(), real.getType()));
+    }
+    if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
+      throw new SemanticException(String.format("Inconsistent column category of column %s: %s/%s",
+          incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
+    }
   }
 }

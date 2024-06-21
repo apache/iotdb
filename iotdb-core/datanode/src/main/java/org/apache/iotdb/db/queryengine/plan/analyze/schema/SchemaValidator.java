@@ -68,7 +68,7 @@ public class SchemaValidator {
       final TableSchema incomingSchema = insertStatement.getTableSchema();
       final TableSchema realSchema = metadata.validateTableHeaderSchema(databaseName,
           incomingSchema, context);
-      validate(incomingSchema, realSchema);
+      insertStatement.validate(realSchema);
       metadata.validateDeviceSchema(insertStatement, context);
       insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {
@@ -76,31 +76,7 @@ public class SchemaValidator {
     }
   }
 
-  public static void validate(TableSchema incomingSchema, TableSchema realSchema) {
-    final List<ColumnSchema> incomingSchemaColumns = incomingSchema.getColumns();
-    Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
-    realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
 
-    for (ColumnSchema incomingSchemaColumn : incomingSchemaColumns) {
-      final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
-      validate(incomingSchemaColumn, realSchemaColumn);
-    }
-  }
-
-  public static void validate(ColumnSchema incoming, ColumnSchema real) {
-    if (real == null) {
-      throw new SemanticException("Column " + incoming.getName() + " does not exists or fails to be "
-          + "created");
-    }
-    if (!incoming.getType().equals(real.getType())) {
-      throw new SemanticException(String.format("Inconsistent data type of column %s: %s/%s",
-          incoming.getName(), incoming.getType(), real.getType()));
-    }
-    if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
-      throw new SemanticException(String.format("Inconsistent column category of column %s: %s/%s",
-          incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
-    }
-  }
 
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher,

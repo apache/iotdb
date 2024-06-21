@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
+
 import java.util.Map.Entry;
 import java.util.function.IntFunction;
+import java.util.function.IntToLongFunction;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -37,8 +43,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -1182,5 +1191,62 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
    */
   public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
     return Collections.singletonList(new Pair<>(deviceID, end));
+  }
+
+
+  /**
+   *
+   * @param results insertion result of each row
+   * @param rowTTLGetter the ttl associated with each row
+   * @return the position of the first alive row
+   * @throws OutOfTTLException if all rows have expired the TTL
+   */
+  public int checkTTL(TSStatus[] results,
+      IntToLongFunction rowTTLGetter)
+      throws OutOfTTLException {
+    return checkTTLInternal(results, rowTTLGetter, true);
+  }
+
+  protected int checkTTLInternal(TSStatus[] results,
+      IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
+      throws OutOfTTLException {
+
+    /*
+     * assume that batch has been sorted by client
+     */
+    int loc = 0;
+    long ttl = 0;
+    int firstAliveLoc = -1;
+    while (loc < getRowCount()) {
+      ttl = rowTTLGetter.applyAsLong(loc);
+      long currTime = getTimes()[loc];
+      // skip points that do not satisfy TTL
+      if (!isAlive(currTime, ttl)) {
+        results[loc] =
+            RpcUtils.getStatus(
+                TSStatusCode.OUT_OF_TTL,
+                String.format(
+                    "Insertion time [%s] is less than ttl time bound [%s]",
+                    DateTimeUtils.convertLongToDate(currTime),
+                    DateTimeUtils.convertLongToDate(
+                        CommonDateTimeUtils.currentTime() - ttl)));
+      } else {
+        if (firstAliveLoc == -1) {
+          firstAliveLoc = loc;
+        }
+        if (breakOnFirstAlive) {
+          break;
+        }
+      }
+      loc++;
+    }
+
+    if (firstAliveLoc == -1) {
+      // no alive data
+      throw new OutOfTTLException(
+          getTimes()[getTimes().length - 1],
+          (CommonDateTimeUtils.currentTime() - ttl));
+    }
+    return firstAliveLoc;
   }
 }

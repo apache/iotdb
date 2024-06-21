@@ -163,7 +163,7 @@ public class MemUtilsTest {
             null,
             columns,
             1);
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1));
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1, null));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */

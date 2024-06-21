@@ -127,16 +127,23 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
+  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end,
+      TSStatus[] results) {
     if (start >= end) {
       return 0L;
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (insertTabletNode.getMeasurements()[i] == null) {
+      if (!insertTabletNode.isValidMeasurement(i)) {
         continue;
       }
-      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      if (results == null) {
+        memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      } else {
+        for (int j = start; j < end; j++) {
+          memSize += insertTabletNode.getDataTypes()[i].getDataTypeSize();
+        }
+      }
     }
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);

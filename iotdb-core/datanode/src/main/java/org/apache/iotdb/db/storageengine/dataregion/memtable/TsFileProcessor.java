@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -88,6 +89,7 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -2200,5 +2202,11 @@ public class TsFileProcessor {
   @TestOnly
   public ConcurrentLinkedDeque<IMemTable> getFlushingMemTable() {
     return flushingMemTables;
+  }
+
+  public void registerToTsFile(String tableName,
+      Function<String, TableSchema> tableSchemaFunction) {
+    getWriter().getKnownSchema().getTableSchemaMap().computeIfAbsent(tableName,
+        tableSchemaFunction);
   }
 }
