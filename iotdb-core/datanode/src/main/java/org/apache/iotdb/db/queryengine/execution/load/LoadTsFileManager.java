@@ -34,6 +34,8 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager.TsFileWriterManager.CleanupTask;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager.TsFileWriterManager.DataPartitionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -439,25 +441,29 @@ public class LoadTsFileManager {
                           Metric.LOAD_POINT_COUNT.toString());
                   // Because we cannot accurately judge who is the leader here,
                   // we directly divide the writePointCount by the replicationNum to ensure the
-                  // correctness of
-                  // this metric, which will be accurate in most cases
-                  MetricService.getInstance()
-                      .count(
-                          writePointCount
-                              / DataRegionConsensusImpl.getInstance()
-                                  .getReplicationNum(
-                                      ConsensusGroupId.Factory.createFromString(
-                                          dataRegion.getDataRegionId())),
-                          Metric.LEADER_QUANTITY.toString(),
-                          MetricLevel.CORE,
-                          Tag.NAME.toString(),
-                          Metric.POINTS_IN.toString(),
-                          Tag.DATABASE.toString(),
-                          databaseName,
-                          Tag.REGION.toString(),
-                          dataRegion.getDataRegionId(),
-                          Tag.TYPE.toString(),
-                          Metric.LOAD_POINT_COUNT.toString());
+                  // correctness of this metric, which will be accurate in most cases
+                  int replicationNum =
+                      DataRegionConsensusImpl.getInstance()
+                          .getReplicationNum(
+                              ConsensusGroupId.Factory.createFromString(
+                                  dataRegion.getDataRegionId()));
+                  // It may happen that the replicationNum is 0 when load and db deletion occurs
+                  // concurrently, so we can just not to count the number of points in this case
+                  if (replicationNum != 0) {
+                    MetricService.getInstance()
+                        .count(
+                            writePointCount / replicationNum,
+                            Metric.LEADER_QUANTITY.toString(),
+                            MetricLevel.CORE,
+                            Tag.NAME.toString(),
+                            Metric.POINTS_IN.toString(),
+                            Tag.DATABASE.toString(),
+                            databaseName,
+                            Tag.REGION.toString(),
+                            dataRegion.getDataRegionId(),
+                            Tag.TYPE.toString(),
+                            Metric.LOAD_POINT_COUNT.toString());
+                  }
                 });
       }
     }
