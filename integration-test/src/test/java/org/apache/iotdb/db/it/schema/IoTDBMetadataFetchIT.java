@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -181,6 +182,19 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           fail(e.getMessage());
         }
       }
+      // check order by
+      List<String> orderList =
+          Arrays.asList(
+              "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
+              "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
+              "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+              "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+              "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
+              "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
+              "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
+              "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,");
+      checkWithOrder("show timeseries order by timeseries", orderList, false);
+      checkWithOrder("show timeseries order by timeseries desc", orderList, true);
     }
   }
 
@@ -358,6 +372,12 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           fail(e.getMessage());
         }
       }
+      // check order by
+      List<String> orderList =
+              Arrays.asList(
+                      "root.ln.wf01.wt01,false,null,INF,", "root.ln.wf01.wt02,true,null,8888,");
+      checkWithOrder("show devices root.ln.** order by device", orderList, false);
+      checkWithOrder("show devices root.ln.** order by device desc", orderList, true);
     }
   }
 
@@ -862,6 +882,25 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         fail(e.getMessage());
       } finally {
         statement.execute("delete timeseries root.sg1.d0.*");
+      }
+    }
+  }
+
+  private void checkWithOrder(String sql, List<String> expected, boolean reverse) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int row = 0;
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        String string = builder.toString();
+        String expectedString = expected.get(reverse?expected.size()-1-row:row);
+        Assert.assertEquals(expectedString, string);
+        row++;
       }
     }
   }

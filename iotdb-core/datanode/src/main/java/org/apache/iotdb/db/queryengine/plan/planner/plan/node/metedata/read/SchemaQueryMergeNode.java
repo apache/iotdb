@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
@@ -49,6 +50,11 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return getChildren().get(0).getOutputColumnNames();
   }
 
   @Override

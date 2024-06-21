@@ -512,6 +512,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowTimeSeries(
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    ColumnHeaderConstant.showTimeSeriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
@@ -521,6 +526,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
               .planLimit(limit)
               .planOffset(offset);
+      if (showTimeSeriesStatement.hasOrderByComponent()) {
+        planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
+      }
       return planBuilder.getRoot();
     }
 
@@ -551,6 +559,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.getAuthorityScope())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
+    boolean hasOrderBy = showTimeSeriesStatement.hasOrderByComponent();
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
         && null != analysis.getDataPartitionInfo()
@@ -558,29 +567,39 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context).planLast(analysis, null).getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
+      hasOrderBy = false;
     }
 
-    if (canPushDownOffsetLimit) {
-      return planBuilder.getRoot();
+    if (!canPushDownOffsetLimit) {
+      planBuilder
+          .planOffset(showTimeSeriesStatement.getOffset())
+          .planLimit(showTimeSeriesStatement.getLimit());
+    }
+    if (hasOrderBy) {
+      planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
     }
 
-    return planBuilder
-        .planOffset(showTimeSeriesStatement.getOffset())
-        .planLimit(showTimeSeriesStatement.getLimit())
-        .getRoot();
+    return planBuilder.getRoot();
   }
 
   @Override
   public PlanNode visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-
+    ColumnHeaderConstant.showDevicesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     if (showDevicesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
               .planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), false)
               .planLimit(showDevicesStatement.getLimit())
               .planOffset(showDevicesStatement.getOffset());
+      if (showDevicesStatement.hasOrderByComponent()) {
+        planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
+      }
       return planBuilder.getRoot();
     }
 
@@ -610,10 +629,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planSchemaQueryMerge(false);
 
     if (!canPushDownOffsetLimit) {
-      return planBuilder
+      planBuilder
           .planOffset(showDevicesStatement.getOffset())
-          .planLimit(showDevicesStatement.getLimit())
-          .getRoot();
+          .planLimit(showDevicesStatement.getLimit());
+    }
+    if (showDevicesStatement.hasOrderByComponent()) {
+      planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
     }
     return planBuilder.getRoot();
   }
