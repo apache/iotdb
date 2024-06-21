@@ -43,6 +43,8 @@ public interface IMeasurementSchemaInfo {
 
   Map<String, String> getTagMap();
 
+  Map<String, String> getAttributeMap();
+
   String getAlias();
 
   boolean isLogicalView();

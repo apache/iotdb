@@ -158,6 +158,8 @@ public class Analysis implements IAnalysis {
 
   private DataPartition dataPartition;
 
+  private SchemaPartition schemaPartition;
+
   private DatasetHeader respDatasetHeader;
 
   private boolean finishQueryAfterAnalyze;
@@ -670,7 +672,12 @@ public class Analysis implements IAnalysis {
 
   @Override
   public SchemaPartition getSchemaPartitionInfo() {
-    throw new UnsupportedOperationException();
+    return schemaPartition;
+  }
+
+  @Override
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
   @Override
@@ -690,7 +697,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public TimePredicate getCovertedTimePredicate() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   public static final class AccessControlInfo {

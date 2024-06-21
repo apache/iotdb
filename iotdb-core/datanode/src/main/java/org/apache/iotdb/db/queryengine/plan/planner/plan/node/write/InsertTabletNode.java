@@ -692,7 +692,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void subDeserialize(ByteBuffer buffer) {
     try {
-      devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+      devicePath =
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -985,7 +987,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private void subDeserializeFromWAL(ByteBuffer buffer) {
     searchIndex = buffer.getLong();
     try {
-      devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+      devicePath =
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }

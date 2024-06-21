@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -139,9 +139,9 @@ public class AddTableColumnProcedure
         new TUpdateTableReq(
             TsTableInternalRPCType.PRE_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
 
-    AsyncClientHandler<TUpdateTableReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
@@ -165,9 +165,9 @@ public class AddTableColumnProcedure
         new TUpdateTableReq(
             TsTableInternalRPCType.COMMIT_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
 
-    AsyncClientHandler<TUpdateTableReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
@@ -230,9 +230,9 @@ public class AddTableColumnProcedure
         new TUpdateTableReq(
             TsTableInternalRPCType.ROLLBACK_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
 
-    AsyncClientHandler<TUpdateTableReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache

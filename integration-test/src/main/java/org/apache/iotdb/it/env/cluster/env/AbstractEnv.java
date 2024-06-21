@@ -640,10 +640,10 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void dumpTestJVMSnapshot() {
     for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-      configNodeWrapper.dumpJVMSnapshot(testMethodName);
+      configNodeWrapper.executeJstack(testMethodName);
     }
     for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
-      dataNodeWrapper.dumpJVMSnapshot(testMethodName);
+      dataNodeWrapper.executeJstack(testMethodName);
     }
   }
 

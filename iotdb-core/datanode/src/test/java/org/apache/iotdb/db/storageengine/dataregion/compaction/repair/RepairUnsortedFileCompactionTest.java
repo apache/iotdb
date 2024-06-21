@@ -996,4 +996,30 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       }
     }
   }
+
+  @Test
+  public void testSplitChunk() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(100000, 300000)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, true, 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
+      List<AlignedChunkMetadata> chunkMetadataList =
+          reader.getAlignedChunkMetadata(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
+      Assert.assertEquals(3, chunkMetadataList.size());
+    }
+  }
 }

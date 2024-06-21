@@ -26,9 +26,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -148,7 +148,7 @@ public class DeleteTimeSeriesProcedure
             "construct schemaengine black list",
             env,
             targetSchemaRegionGroup,
-            DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+            CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
@@ -190,12 +190,12 @@ public class DeleteTimeSeriesProcedure
   private void invalidateCache(ConfigNodeProcedureEnv env) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+    DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaEngine cache
@@ -237,7 +237,7 @@ public class DeleteTimeSeriesProcedure
             env,
             relatedDataRegionGroup,
             true,
-            DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+            CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteDataForDeleteSchemaReq(
                         new ArrayList<>(consensusGroupIdList),
@@ -252,7 +252,7 @@ public class DeleteTimeSeriesProcedure
             "delete timeseries schemaengine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.DELETE_TIMESERIES,
+            CnToDnRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -289,7 +289,7 @@ public class DeleteTimeSeriesProcedure
               "roll back schemaengine black list",
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-              DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+              CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
       rollbackStateTask.execute();
@@ -386,7 +386,7 @@ public class DeleteTimeSeriesProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        DataNodeRequestType dataNodeRequestType,
+        CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
@@ -397,7 +397,7 @@ public class DeleteTimeSeriesProcedure
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
         boolean executeOnAllReplicaset,
-        DataNodeRequestType dataNodeRequestType,
+        CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,

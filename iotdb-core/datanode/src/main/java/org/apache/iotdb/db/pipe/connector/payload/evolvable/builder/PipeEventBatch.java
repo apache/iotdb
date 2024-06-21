@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeExcepti
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class PipeEventBatch implements AutoCloseable {
   private long totalBufferSize = 0;
 
   // Used to rate limit when transferring data
-  private final Map<String, Long> pipeName2BytesAccumulated = new HashMap<>();
+  private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
 
   public PipeEventBatch(int maxDelayInMs, long requestMaxBatchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
@@ -117,8 +118,9 @@ public class PipeEventBatch implements AutoCloseable {
 
         final int bufferSize = buildTabletInsertionBuffer(event);
         totalBufferSize += bufferSize;
-        pipeName2BytesAccumulated.compute(
-            ((EnrichedEvent) event).getPipeName(),
+        pipe2BytesAccumulated.compute(
+            new Pair<>(
+                ((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
             (pipeName, bytesAccumulated) ->
                 bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
 
@@ -146,7 +148,7 @@ public class PipeEventBatch implements AutoCloseable {
     firstEventProcessingTime = Long.MIN_VALUE;
 
     totalBufferSize = 0;
-    pipeName2BytesAccumulated.clear();
+    pipe2BytesAccumulated.clear();
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
@@ -170,12 +172,12 @@ public class PipeEventBatch implements AutoCloseable {
     return new ArrayList<>(requestCommitIds);
   }
 
-  public Map<String, Long> deepCopyPipeName2BytesAccumulated() {
-    return new HashMap<>(pipeName2BytesAccumulated);
+  public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
+    return new HashMap<>(pipe2BytesAccumulated);
   }
 
-  public Map<String, Long> getPipeName2BytesAccumulated() {
-    return pipeName2BytesAccumulated;
+  public Map<Pair<String, Long>, Long> getPipe2BytesAccumulated() {
+    return pipe2BytesAccumulated;
   }
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)

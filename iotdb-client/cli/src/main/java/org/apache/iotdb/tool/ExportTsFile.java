@@ -62,13 +62,13 @@ import java.util.Map;
 
 public class ExportTsFile extends AbstractTsFileTool {
 
-  private static final String TARGET_DIR_ARGS = "td";
+  private static final String TARGET_DIR_ARGS = "t";
   private static final String TARGET_DIR_NAME = "targetDirectory";
-  private static final String TARGET_FILE_ARGS = "f";
-  private static final String TARGET_FILE_NAME = "targetFile";
+  private static final String TARGET_FILE_ARGS = "tfn";
+  private static final String TARGET_FILE_NAME = "targetFileName";
 
   private static final String SQL_FILE_ARGS = "s";
-  private static final String SQL_FILE_NAME = "sqlfile";
+  private static final String SQL_FILE_NAME = "sourceSqlFile";
   private static final String QUERY_COMMAND_ARGS = "q";
   private static final String QUERY_COMMAND_NAME = "queryCommand";
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
@@ -266,7 +266,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
     Option opTimeout =
         Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
+            .argName(TIMEOUT_NAME)
             .hasArg()
             .desc("Timeout for session query")
             .build();

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.wal;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
@@ -54,7 +54,7 @@ public abstract class PipeWALResourceManager {
       memtableIdSegmentLocks[i] = new ReentrantLock();
     }
 
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeWALResourceManager#ttlCheck()",
             this::ttlCheck,

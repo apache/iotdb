@@ -62,6 +62,8 @@ public interface IAnalysis {
 
   SchemaPartition getSchemaPartitionInfo();
 
+  void setSchemaPartitionInfo(SchemaPartition schemaPartition);
+
   DataPartition getDataPartitionInfo();
 
   void setRedirectNodeList(List<TEndPoint> redirectNodeList);

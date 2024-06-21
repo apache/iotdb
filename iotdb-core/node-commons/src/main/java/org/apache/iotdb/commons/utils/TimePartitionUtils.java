@@ -82,4 +82,8 @@ public class TimePartitionUtils {
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
   }
+
+  public static long getEstimateTimePartitionSize(long startTime, long endTime) {
+    return (endTime - startTime) / timePartitionInterval + 1;
+  }
 }

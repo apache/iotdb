@@ -419,7 +419,7 @@ groupBy
     ;
 
 groupingElement
-    : TIME? '(' (timeRange ',')? windowInterval=timeDuration (',' windowStep=timeDuration)?')'     #timenGrouping
+    : TIME '(' (timeRange ',')? windowInterval=timeDuration (',' windowStep=timeDuration)?')'      #timenGrouping
     | VARIATION '(' expression (',' delta=number)? (',' propertyAssignments)? ')'                  #variationGrouping
     | CONDITION '(' expression (',' keepExpression)? (',' propertyAssignments)? ')'                #conditionGrouping
     | SESSION '(' timeInterval=timeDuration ')'                                                    #sessionGrouping
@@ -611,7 +611,7 @@ intervalField
     ;
 
 timeDuration
-    : (INTEGER_VALUE+ (intervalField))+
+    : (INTEGER_VALUE intervalField)+
     ;
 
 type
@@ -693,7 +693,6 @@ identifier
     | QUOTED_IDENTIFIER      #quotedIdentifier
     | nonReserved            #unquotedIdentifier
     | BACKQUOTED_IDENTIFIER  #backQuotedIdentifier
-    | DIGIT_IDENTIFIER       #digitIdentifier
     ;
 
 number
@@ -1133,9 +1132,9 @@ IDENTIFIER
     : (LETTER | '_') (LETTER | DIGIT | '_')*
     ;
 
-DIGIT_IDENTIFIER
-    : DIGIT (LETTER | DIGIT | '_')+
-    ;
+//DIGIT_IDENTIFIER
+//    : DIGIT (LETTER | DIGIT | '_')+
+//    ;
 
 QUOTED_IDENTIFIER
     : '"' ( ~'"' | '""' )* '"'

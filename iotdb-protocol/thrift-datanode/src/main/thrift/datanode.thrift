@@ -1009,6 +1009,11 @@ service IDataNodeRPCService {
   * Update Table Cache
   */
   common.TSStatus updateTable(TUpdateTableReq req)
+
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
 
 service MPPDataExchangeService {
@@ -1021,4 +1026,7 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }

@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.Type;
@@ -196,6 +198,22 @@ public class TestMatadata implements Metadata {
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    return null;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

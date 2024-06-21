@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
@@ -102,21 +104,6 @@ public interface Metadata {
   void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
 
   /**
-   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
-   * schemaComputationWithAutoCreation. The computation defined in given
-   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
-   * target timeseries doesn't exist, they will be auto created.
-   *
-   * @param schemaComputationWithAutoCreationList define the target devices, measurements and
-   *     computation
-   */
-  default void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
-      MPPQueryContext context) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
    * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
    * true and database/series/time slots not exists, then automatically create.
    *
@@ -127,4 +114,34 @@ public interface Metadata {
       List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
     throw new UnsupportedOperationException();
   }
+
+  // ======================== Table Model Schema Partition Interface ========================
+  /**
+   * Get or create schema partition, used in data insertion with enable_auto_create_schema is true.
+   * if schemaPartition does not exist, then automatically create.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName);
+
+  /**
+   * For data query with completed id.
+   *
+   * <p>The database is a user-provided db name.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
+
+  /**
+   * For data query with partial device id conditions.
+   *
+   * <p>The database is a user-provided db name.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getSchemaPartition(String database);
 }

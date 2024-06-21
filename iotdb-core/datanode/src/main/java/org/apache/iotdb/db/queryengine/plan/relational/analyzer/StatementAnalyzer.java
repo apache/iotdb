@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -237,6 +238,9 @@ public class StatementAnalyzer {
     @Override
     public Scope process(Node node, Optional<Scope> scope) {
       Scope returnScope = super.process(node, scope);
+      if (node instanceof CreateDevice) {
+        return returnScope;
+      }
       checkState(
           returnScope.getOuterQueryParent().equals(outerQueryScope),
           "result scope should have outer query scope equal with parameter outer query scope");
@@ -2445,6 +2449,11 @@ public class StatementAnalyzer {
       }
 
       return scopeBuilder;
+    }
+
+    @Override
+    protected Scope visitCreateDevice(CreateDevice node, Optional<Scope> context) {
+      return null;
     }
   }
 

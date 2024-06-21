@@ -313,10 +313,12 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     Object value;
     switch (dataTypes[index]) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) columns[index];
         value = intValues[0];
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) columns[index];
         value = longValues[0];
         break;
@@ -333,6 +335,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         value = boolValues[0];
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) columns[index];
         value = binaryValues[0];
         break;
