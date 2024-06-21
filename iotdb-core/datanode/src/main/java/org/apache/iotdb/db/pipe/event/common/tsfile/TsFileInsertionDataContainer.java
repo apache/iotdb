@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -50,11 +51,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 
 public class TsFileInsertionDataContainer implements AutoCloseable {
 
@@ -77,6 +80,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private boolean shouldParsePattern = false;
 
+  @TestOnly
   public TsFileInsertionDataContainer(
       final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
       throws IOException {
@@ -122,15 +126,20 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         deviceIsAlignedMap = readDeviceIsAlignedMap();
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
-        measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+        // Filter devices that may overlap with pattern first
+        // to avoid reading all time-series of all devices.
+        final Set<IDeviceID> devices = filterDevicesByPattern(deviceIsAlignedMap.keySet());
+
+        measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
-        deviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
+        deviceMeasurementsMap = readFilteredDeviceMeasurementsMap(devices);
         memoryRequiredInBytes +=
             PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 
+      // Filter again to get the final deviceMeasurementsMap that exactly matches the pattern.
       deviceMeasurementsMapIterator =
           filterDeviceMeasurementsMapByPattern(deviceMeasurementsMap).entrySet().iterator();
 
@@ -196,6 +205,67 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       deviceIsAlignedResultMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
     }
     return deviceIsAlignedResultMap;
+  }
+
+  private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
+    if (Objects.isNull(pattern) || pattern.isRoot()) {
+      return devices;
+    }
+
+    final Set<IDeviceID> filteredDevices = new HashSet<>();
+    for (final IDeviceID device : devices) {
+      final String deviceId = ((PlainDeviceID) device).toStringID();
+      if (pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId)) {
+        filteredDevices.add(device);
+      }
+    }
+    return filteredDevices;
+  }
+
+  /**
+   * This method is similar to {@link TsFileSequenceReader#getFullPathDataTypeMap()}, but only reads
+   * the given devices.
+   */
+  private Map<String, TSDataType> readFilteredFullPathDataTypeMap(final Set<IDeviceID> devices)
+      throws IOException {
+    final Map<String, TSDataType> result = new HashMap<>();
+
+    for (IDeviceID device : devices) {
+      tsFileSequenceReader
+          .readDeviceMetadata(device)
+          .values()
+          .forEach(
+              timeseriesMetadata ->
+                  result.put(
+                      ((PlainDeviceID) device).toStringID()
+                          + "."
+                          + timeseriesMetadata.getMeasurementId(),
+                      timeseriesMetadata.getTsDataType()));
+    }
+
+    return result;
+  }
+
+  /**
+   * This method is similar to {@link TsFileSequenceReader#getDeviceMeasurementsMap()}, but only
+   * reads the given devices.
+   */
+  private Map<IDeviceID, List<String>> readFilteredDeviceMeasurementsMap(
+      final Set<IDeviceID> devices) throws IOException {
+    final Map<IDeviceID, List<String>> result = new HashMap<>();
+
+    for (IDeviceID device : devices) {
+      tsFileSequenceReader
+          .readDeviceMetadata(device)
+          .values()
+          .forEach(
+              timeseriesMetadata ->
+                  result
+                      .computeIfAbsent(device, d -> new ArrayList<>())
+                      .add(timeseriesMetadata.getMeasurementId()));
+    }
+
+    return result;
   }
 
   /**

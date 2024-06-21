@@ -17,32 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.consensus;
+package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConsensusPipeDataNodeRuntimeAgentGuardian implements ConsensusPipeGuardian {
+import java.io.File;
+
+public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConsensusPipeDataNodeRuntimeAgentGuardian.class);
-  private boolean registered = false;
+      LoggerFactory.getLogger(ConfigNodeSystemPropertiesHandler.class);
 
-  @Override
-  public synchronized void start(String id, Runnable guardJob, long intervalInSeconds) {
-    if (!registered) {
-      LOGGER.info(
-          "Registering periodical job {} with interval in seconds {}.", id, intervalInSeconds);
+  private static ConfigNodeSystemPropertiesHandler INSTANCE;
 
-      this.registered = true;
-      PipeDataNodeAgent.runtime().registerPeriodicalJob(id, guardJob, intervalInSeconds);
-    }
+  private ConfigNodeSystemPropertiesHandler(String filePath) {
+    super(filePath);
   }
 
-  @Override
-  public synchronized void stop() {
-    // Do nothing because PipePeriodicalJobExecutor currently has no deregister logic
+  public static synchronized SystemPropertiesHandler getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE =
+          new ConfigNodeSystemPropertiesHandler(
+              ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                  + File.separator
+                  + ConfigNodeConstant.SYSTEM_FILE_NAME);
+      INSTANCE.recover();
+    }
+    return INSTANCE;
   }
 }

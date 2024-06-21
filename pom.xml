@@ -166,7 +166,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <tsfile.version>1.0.1-e1207ba-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.0.1-b956d4c-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim

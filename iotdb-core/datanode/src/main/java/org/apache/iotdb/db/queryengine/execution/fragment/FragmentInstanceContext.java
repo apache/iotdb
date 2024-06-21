@@ -265,6 +265,14 @@ public class FragmentInstanceContext extends QueryContext {
       // were a duplicate notification, which shouldn't happen
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
+
+      // release some query resource in FragmentInstanceContext
+      // why not release them in releaseResourceWhenAllDriversAreClosed() together?
+      // because we may have no chane to run the releaseResourceWhenAllDriversAreClosed which is
+      // called in callback of FragmentInstanceExecution
+      // FragmentInstanceExecution won't be created if we meet some errors like MemoryNotEnough
+      releaseDataNodeQueryContext();
+      sourcePaths = null;
     }
   }
 
@@ -596,9 +604,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     dataRegion = null;
     globalTimeFilter = null;
-    sourcePaths = null;
     sharedQueryDataSource = null;
-    releaseDataNodeQueryContext();
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
@@ -659,7 +665,7 @@ public class FragmentInstanceContext extends QueryContext {
         .updatePageReaderMemoryUsage(getQueryStatistics().pageReaderMaxUsedMemorySize.get());
   }
 
-  private void releaseDataNodeQueryContext() {
+  private synchronized void releaseDataNodeQueryContext() {
     if (dataNodeQueryContextMap == null) {
       // this process is in fetch schema, nothing need to release
       return;

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -96,7 +96,7 @@ public class LoadTsFileManager {
   }
 
   private void registerCleanupTaskExecutor() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
@@ -412,6 +412,7 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
+        // Metrics
         dataRegion
             .getNonSystemDatabaseName()
             .ifPresent(
@@ -431,7 +432,9 @@ public class LoadTsFileManager {
                           Tag.DATABASE.toString(),
                           databaseName,
                           Tag.REGION.toString(),
-                          dataRegion.getDataRegionId());
+                          dataRegion.getDataRegionId(),
+                          Tag.TYPE.toString(),
+                          Metric.LOAD_POINT_COUNT.toString());
                 });
       }
     }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
@@ -149,7 +149,7 @@ public class PipeInsertionDataNodeListener {
   /////////////////////////////// singleton ///////////////////////////////
 
   private PipeInsertionDataNodeListener() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeInsertionDataNodeListener#listenToHeartbeat(false)",
             () -> listenToHeartbeat(false),
