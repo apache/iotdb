@@ -282,9 +282,7 @@ public class IoTDBStartCheck {
         parameter + "can't be modified after first startup");
   }
 
-  /** call this method to serialize ClusterName and DataNodeId */
-  public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
-      throws IOException {
+  public void serializeDataNodeId(int dataNodeId) throws IOException {
     systemPropertiesHandler.put(DATA_NODE_ID, String.valueOf(dataNodeId));
   }
 
