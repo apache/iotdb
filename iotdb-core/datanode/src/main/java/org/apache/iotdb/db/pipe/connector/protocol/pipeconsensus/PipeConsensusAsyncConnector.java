@@ -37,7 +37,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTsFileInsertionEventHandler;
@@ -573,7 +573,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public long getConsensusPipeCommitProgress() {
-    long creationTime = PipeAgent.task().getPipeCreationTime(consensusPipeName);
+    long creationTime = PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName);
     String committerKey =
         String.format("%s_%s_%s", consensusPipeName, consensusGroupId, creationTime);
     return PipeEventCommitManager.getInstance().getGivenConsensusPipeCommitId(committerKey);

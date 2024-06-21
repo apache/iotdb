@@ -71,6 +71,11 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
     return true;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
   /////////////////////////// Object ///////////////////////////
 
   @Override

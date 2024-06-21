@@ -24,28 +24,17 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.List;
-import java.util.Map;
 
-public class SchemaFetchStatement extends Statement {
-
+public class DeviceSchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
-  private final Map<Integer, Template> templateMap;
-  private final boolean withTags;
-  private final boolean withTemplate;
+  private final PathPatternTree authorityScope;
 
-  public SchemaFetchStatement(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withTemplate) {
+  public DeviceSchemaFetchStatement(PathPatternTree patternTree, PathPatternTree authorityScope) {
     super();
     this.patternTree = patternTree;
-    this.templateMap = templateMap;
-    this.withTags = withTags;
-    this.withTemplate = withTemplate;
+    this.authorityScope = authorityScope;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -53,13 +42,8 @@ public class SchemaFetchStatement extends Statement {
     return patternTree;
   }
 
-  public Map<Integer, Template> getTemplateMap() {
-    return templateMap;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
   }
 
   @Override
@@ -67,11 +51,8 @@ public class SchemaFetchStatement extends Statement {
     return patternTree.getAllPathPatterns();
   }
 
-  public boolean isWithTags() {
-    return withTags;
-  }
-
-  public boolean isWithTemplate() {
-    return withTemplate;
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitDeviceSchemaFetch(this, context);
   }
 }

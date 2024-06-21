@@ -61,10 +61,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -594,7 +595,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showDevicesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), false)
+              .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
               .planLimit(showDevicesStatement.getLimit())
               .planOffset(showDevicesStatement.getOffset());
       if (showDevicesStatement.hasOrderByComponent()) {
@@ -645,7 +646,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (countDevicesStatement.hasTimeCondition()) {
-      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), true);
+      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToContextMap(), true);
       return planBuilder.getRoot();
     }
 
@@ -797,19 +798,36 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitSchemaFetch(
-      SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+  public PlanNode visitSeriesSchemaFetch(
+      SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     List<String> storageGroupList =
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
         .planSchemaFetchMerge(storageGroupList)
-        .planSchemaFetchSource(
+        .planSeriesSchemaFetchSource(
             storageGroupList,
-            schemaFetchStatement.getPatternTree(),
-            schemaFetchStatement.getTemplateMap(),
-            schemaFetchStatement.isWithTags(),
-            schemaFetchStatement.isWithTemplate())
+            seriesSchemaFetchStatement.getPatternTree(),
+            seriesSchemaFetchStatement.getTemplateMap(),
+            seriesSchemaFetchStatement.isWithTags(),
+            seriesSchemaFetchStatement.isWithAttributes(),
+            seriesSchemaFetchStatement.isWithTemplate(),
+            seriesSchemaFetchStatement.isWithAliasForce())
+        .getRoot();
+  }
+
+  @Override
+  public PlanNode visitDeviceSchemaFetch(
+      DeviceSchemaFetchStatement deviceSchemaFetchStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    List<String> storageGroupList =
+        new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
+    return planBuilder
+        .planSchemaFetchMerge(storageGroupList)
+        .planDeviceSchemaFetchSource(
+            storageGroupList,
+            deviceSchemaFetchStatement.getPatternTree(),
+            deviceSchemaFetchStatement.getAuthorityScope())
         .getRoot();
   }
 

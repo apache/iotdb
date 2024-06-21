@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -113,7 +113,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard tablet event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
@@ -184,7 +184,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard TsFile event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
@@ -360,7 +360,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "the data represented by this event is lost",
                   event.getEvent());
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
           return null;
         }

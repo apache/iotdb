@@ -38,16 +38,13 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
+public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AlignedSeriesScanOperator.class);
 
   private final int valueColumnCount;
-  private boolean finished = false;
   private int maxTsBlockLineNum = -1;
 
   public AlignedSeriesScanOperator(
@@ -79,110 +76,15 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public TsBlock next() throws Exception {
-    if (retainedTsBlock != null) {
-      return getResultFromRetainedTsBlock();
-    }
-    resultTsBlock = resultTsBlockBuilder.build();
-    resultTsBlockBuilder.reset();
-    return checkTsBlockSizeAndGetResult();
-  }
-
-  @SuppressWarnings("squid:S112")
-  @Override
-  public boolean hasNext() throws Exception {
-    if (retainedTsBlock != null) {
-      return true;
-    }
-    try {
-
-      // start stopwatch
-      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-      long start = System.nanoTime();
-
-      // here use do-while to promise doing this at least once
-      do {
-        /*
-         * 1. consume page data firstly
-         * 2. consume chunk data secondly
-         * 3. consume next file finally
-         */
-        if (!readPageData() && !readChunkData() && !readFileData()) {
-          break;
-        }
-
-      } while (System.nanoTime() - start < maxRuntime
-          && !resultTsBlockBuilder.isFull()
-          && retainedTsBlock == null);
-
-      finished = (resultTsBlockBuilder.isEmpty() && retainedTsBlock == null);
-
-      return !finished;
-    } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
-    }
-  }
-
-  @Override
-  public boolean isFinished() throws Exception {
-    return finished;
-  }
-
-  @Override
   public long calculateMaxPeekMemory() {
     return Math.max(
         maxReturnSize,
-        (1L + valueColumnCount)
-            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
-            * 3L);
+        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
-  public long calculateMaxReturnSize() {
-    return maxReturnSize;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return calculateMaxPeekMemoryWithCounter() - calculateMaxReturnSize();
-  }
-
-  private boolean readFileData() throws IOException {
-    while (seriesScanUtil.hasNextFile()) {
-      if (readChunkData()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean readChunkData() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
-      if (readPageData()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean readPageData() throws IOException {
-    while (seriesScanUtil.hasNextPage()) {
-      TsBlock tsBlock = seriesScanUtil.nextPage();
-      if (!isEmpty(tsBlock)) {
-        appendToBuilder(tsBlock);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private void appendToBuilder(TsBlock tsBlock) {
+  protected void buildResult(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
-    if (resultTsBlockBuilder.isEmpty()
-        && tsBlock.getPositionCount() >= resultTsBlockBuilder.getMaxTsBlockLineNumber()) {
-      retainedTsBlock = tsBlock;
-      return;
-    }
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
@@ -212,16 +114,6 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
         columnBuilder.write(column, i);
       }
     }
-  }
-
-  private boolean isEmpty(TsBlock tsBlock) {
-    return tsBlock == null || tsBlock.isEmpty();
-  }
-
-  @Override
-  protected List<TSDataType> getResultDataTypes() {
-    // time + all value columns
-    return seriesScanUtil.getTsDataTypeList();
   }
 
   @Override

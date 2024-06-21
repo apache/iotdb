@@ -116,7 +116,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -1161,7 +1161,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.loadConfiguration();
+        tsStatus = client.submitLoadConfigurationTask();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
@@ -1733,7 +1733,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate pipe plugin before creation
     try {
-      PipeAgent.plugin()
+      PipeDataNodeAgent.plugin()
           .validate(
               createPipeStatement.getPipeName(),
               createPipeStatement.getExtractorAttributes(),
@@ -1791,11 +1791,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllProcessorAttributes()) {
-        PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+        PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
       }
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllConnectorAttributes()) {
-        PipeAgent.plugin().validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+        PipeDataNodeAgent.plugin()
+            .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
       }
     } catch (Exception e) {
       LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
@@ -1993,8 +1994,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
             topicAttributes);
     try {
-      PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
-      PipeAgent.plugin().validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
+      PipeDataNodeAgent.plugin()
+          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
+      PipeDataNodeAgent.plugin()
+          .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
     } catch (Exception e) {
       LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
       future.setException(
