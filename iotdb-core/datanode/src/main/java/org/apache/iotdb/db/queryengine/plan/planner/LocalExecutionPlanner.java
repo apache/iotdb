@@ -244,7 +244,7 @@ public class LocalExecutionPlanner {
     if (memoryInBytes > freeMemoryForOperators) {
       throw new MemoryNotEnoughException(
           String.format(
-              "There is not enough memory for of Query %s, contextHolder is %s,"
+              "There is not enough memory for Query %s, the contextHolder is %s,"
                   + "current remaining free memory is %dB, "
                   + "reserved memory for this context in total is %dB.",
               queryId, contextHolder, freeMemoryForOperators, reservedBytes));
