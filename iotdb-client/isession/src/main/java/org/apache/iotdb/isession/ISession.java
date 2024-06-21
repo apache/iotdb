@@ -336,6 +336,12 @@ public interface ISession extends AutoCloseable {
   void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void insertRelationalTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRelationalTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException;
 
