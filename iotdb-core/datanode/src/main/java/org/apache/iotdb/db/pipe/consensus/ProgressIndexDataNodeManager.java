@@ -74,6 +74,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                     maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                         extractLocalSimpleProgressIndex(progressIndex));
               }
+              // 得拿返回值，否则是旧值
               groupId2MaxProgressIndex
                   .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
                   .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
@@ -115,6 +116,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
+      // TODO：拿的也是旧的，需要 put 下
     return groupId2MaxProgressIndex
         .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
         .updateToMinimumEqualOrIsAfterProgressIndex(

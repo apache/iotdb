@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
@@ -50,6 +51,8 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           Byte,
           TriFunction<PipeConsensus, ConsensusGroupId, ConsensusPipeName, PipeConsensusReceiver>>
       RECEIVER_CONSTRUCTORS = new HashMap<>();
+
+  private static final long WAIT_INITIALIZE_RECEIVER_INTERVAL_IN_MS = 100;
 
   private final int thisNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
@@ -108,9 +111,14 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     // 2. Route to given consensusPipeTask's receiver
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
+    AtomicBoolean isFirstGetReceiver = new AtomicBoolean(false);
     AtomicReference<PipeConsensusReceiver> receiverReference =
         consensusPipe2ReceiverMap.computeIfAbsent(
-            consensusPipeName, key -> new AtomicReference<>(null));
+            consensusPipeName,
+            key -> {
+              new AtomicReference<>(null);
+              isFirstGetReceiver.set(true);
+            });
 
     if (receiverReference.get() == null) {
       return internalSetAndGetReceiver(consensusGroupId, consensusPipeName, reqVersion);
@@ -130,7 +138,10 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   }
 
   private PipeConsensusReceiver internalSetAndGetReceiver(
-      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName, byte reqVersion) {
+      ConsensusGroupId consensusGroupId,
+      ConsensusPipeName consensusPipeName,
+      byte reqVersion,
+      AtomicBoolean isFirstGetReceiver) {
     // 1. Route to given consensusGroup's receiver map
     Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
         replicaReceiverMap.get(consensusGroupId);
@@ -138,16 +149,34 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     AtomicReference<PipeConsensusReceiver> receiverReference =
         consensusPipe2ReciverMap.get(consensusPipeName);
 
-    if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      receiverReference.set(
-          RECEIVER_CONSTRUCTORS
-              .get(reqVersion)
-              .apply(pipeConsensus, consensusGroupId, consensusPipeName));
+    if (isFirstGetReceiver.get()) {
+      if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
+        receiverReference.set(
+            RECEIVER_CONSTRUCTORS
+                .get(reqVersion)
+                .apply(pipeConsensus, consensusGroupId, consensusPipeName));
+      } else {
+        throw new UnsupportedOperationException(
+            String.format("Unsupported pipeConsensus request version %d", reqVersion));
+      }
     } else {
-      throw new UnsupportedOperationException(
-          String.format("Unsupported pipeConsensus request version %d", reqVersion));
+      waitUntilReceiverGetInitiated(receiverReference);
     }
     return receiverReference.get();
+  }
+
+  private void waitUntilReceiverGetInitiated(
+      AtomicReference<PipeConsensusReceiver> receiverReference) {
+    try {
+      while (receiverReference.get() == null) {
+        Thread.sleep(WAIT_INITIALIZE_RECEIVER_INTERVAL_IN_MS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "PipeConsensusReceiver thread is interrupted when waiting for receiver get initiated, may because system exit.",
+          e);
+    }
   }
 
   /** Release receiver of given pipeConsensusTask */

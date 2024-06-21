@@ -885,6 +885,20 @@ public class PipeConsensusReceiver {
     }
     // Create a new receiver file dir
     final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
+    // Check whether systemDir exists in case of system concurrently exit when receiver try to make
+    // new dirs.
+    final File systemDir = new File(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    if (!systemDir.exists()) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. Because parent system dir have been deleted due to system concurrently exit.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+      throw new IOException(
+          String.format(
+              "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. Because parent system dir have been deleted due to system concurrently exit.",
+              consensusPipeName, newReceiverDir.getPath()));
+    }
+    // Remove exists dir
     if (newReceiverDir.exists()) {
       FileUtils.deleteDirectory(newReceiverDir);
       LOGGER.info(
