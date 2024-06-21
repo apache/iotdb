@@ -29,6 +29,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
  */
 public class PipeInsertionDataNodeListener {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInsertionDataNodeListener.class);
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
@@ -99,6 +103,8 @@ public class PipeInsertionDataNodeListener {
       TsFileResource tsFileResource,
       boolean isLoaded,
       boolean isGeneratedByPipe) {
+    LOGGER.info(
+        "PipeConsensusDebug: TsFile's ProgressIndex: {}", tsFileResource.getMaxProgressIndex());
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.

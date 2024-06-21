@@ -34,10 +34,14 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 public class PipeConsensusProcessor implements PipeProcessor {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusProcessor.class);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}
@@ -48,6 +52,7 @@ public class PipeConsensusProcessor implements PipeProcessor {
 
   private boolean isContainLocalData(EnrichedEvent enrichedEvent) {
     final ProgressIndex progressIndex = enrichedEvent.getProgressIndex();
+    LOGGER.info("Progress Index: {}", progressIndex);
     if (progressIndex instanceof RecoverProgressIndex) {
       return ((RecoverProgressIndex) progressIndex)
           .getDataNodeId2LocalIndex()
