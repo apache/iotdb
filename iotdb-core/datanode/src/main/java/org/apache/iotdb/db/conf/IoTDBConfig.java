@@ -61,7 +61,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -1336,9 +1335,13 @@ public class IoTDBConfig {
     formulateDataDirs(tierDataDirs);
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
+      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
-        if (!newDirs.contains(oldDir)) {
+        if (newDirs.stream()
+            .noneMatch(
+                newDir ->
+                    Objects.equals(
+                        new File(newDir).getAbsolutePath(), new File(oldDir).getAbsolutePath()))) {
           String msg =
               String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
           logger.error(msg);

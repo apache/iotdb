@@ -673,9 +673,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus loadConfiguration() throws TException {
+  public TSStatus submitLoadConfigurationTask() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.loadConfiguration(), status -> !updateConfigNodeLeader(status));
+        () -> client.submitLoadConfigurationTask(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus loadConfiguration() throws TException {
+    throw new UnsupportedOperationException("Please call submitLoadConfigurationTask instead");
   }
 
   @Override

@@ -1182,7 +1182,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.loadConfiguration();
+        tsStatus = client.submitLoadConfigurationTask();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }

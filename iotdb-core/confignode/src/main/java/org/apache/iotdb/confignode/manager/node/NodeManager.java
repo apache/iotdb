@@ -500,6 +500,11 @@ public class NodeManager {
     return dataNodeLocations;
   }
 
+  public Map<Integer, TConfigNodeLocation> getRegisteredConfigNodeLocations() {
+    return nodeInfo.getRegisteredConfigNodes().stream()
+        .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+  }
+
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
@@ -789,14 +794,15 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> loadConfiguration() {
+  public List<TSStatus> submitLoadConfigurationTask() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+    DataNodeAsyncRequestContext<Object, TSStatus> dataNodeRequestContext =
         new DataNodeAsyncRequestContext<>(
             CnToDnRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(dataNodeRequestContext);
+    return dataNodeRequestContext.getResponseList();
   }
 
   public TShowConfigurationResp showConfiguration(int nodeId) {

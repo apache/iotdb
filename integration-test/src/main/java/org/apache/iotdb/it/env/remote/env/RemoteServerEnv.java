@@ -30,6 +30,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.env.remote.config.RemoteClusterConfig;
@@ -178,6 +179,11 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public void dumpTestJVMSnapshot() {
     // Do nothing
+  }
+
+  @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    return null;
   }
 
   @Override
