@@ -39,9 +39,12 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(WALInputStream.class);
   private final FileChannel channel;
+
+  /** 1 byte for whether enable compression, 4 byte for compressedSize */
   private final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
       ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
-  private final ByteBuffer compressedSizeHeaderBuffer = ByteBuffer.allocate(Integer.BYTES);
+
+  private final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
   private final long fileSize;
@@ -335,10 +338,10 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         CompressionType.deserialize(segmentHeaderWithoutCompressedSizeBuffer.get());
     info.dataInDiskSize = segmentHeaderWithoutCompressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
-      compressedSizeHeaderBuffer.clear();
-      channel.read(compressedSizeHeaderBuffer);
-      compressedSizeHeaderBuffer.flip();
-      info.uncompressedSize = compressedSizeHeaderBuffer.getInt();
+      compressedSizeBuffer.clear();
+      channel.read(compressedSizeBuffer);
+      compressedSizeBuffer.flip();
+      info.uncompressedSize = compressedSizeBuffer.getInt();
     } else {
       info.uncompressedSize = info.dataInDiskSize;
     }

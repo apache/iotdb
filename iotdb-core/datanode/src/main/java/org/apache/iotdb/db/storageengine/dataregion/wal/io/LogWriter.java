@@ -50,15 +50,22 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileChannel logChannel;
   protected long size = 0;
   protected long originalSize = 0;
+
+  /**
+   * 1 byte for whether enable compression, 4 byte for compressedSize, 4 byte for uncompressedSize
+   */
   private final int COMPRESSED_HEADER_SIZE = Byte.BYTES + Integer.BYTES * 2;
+
+  /** 1 byte for whether enable compression, 4 byte for uncompressedSize */
   private final int UN_COMPRESSED_HEADER_SIZE = Byte.BYTES + Integer.BYTES;
+
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(COMPRESSED_HEADER_SIZE);
   private ICompressor compressor =
       ICompressor.getCompressor(
           IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm());
   private ByteBuffer compressedByteBuffer;
 
-  /** Minimum size to compress, default is 32 KB */
+  /** Minimum size to compress, use magic number 32 KB */
   private static long MIN_COMPRESSION_SIZE = 32 * 1024L;
 
   protected LogWriter(File logFile, WALFileVersion version) throws IOException {
