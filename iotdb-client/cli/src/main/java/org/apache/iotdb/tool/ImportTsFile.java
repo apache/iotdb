@@ -386,6 +386,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
         try {
           sessionPool.executeNonQueryStatement(sql);
+
           loadFileSuccessfulNum.increment();
           ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
 
@@ -401,16 +402,16 @@ public class ImportTsFile extends AbstractTsFileTool {
                     + processSuccessException.getMessage());
           }
         } catch (Exception e) {
-          loadFileFailedNum.increment();
-          ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
-
-          // Reject because of memory controls
+          // Reject because of memory controls, do retry later
           if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
             ioTPrinter.println(
                 "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
             tsfileQueue.put(filePath);
             continue;
           }
+
+          loadFileFailedNum.increment();
+          ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
           try {
             processingFile(filePath, failDir, failOperation);
