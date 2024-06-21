@@ -160,7 +160,7 @@ public class ConfigurationFileUtils {
     try (InputStream inputStream =
             ConfigurationFileUtils.class
                 .getClassLoader()
-                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_NAME);
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
