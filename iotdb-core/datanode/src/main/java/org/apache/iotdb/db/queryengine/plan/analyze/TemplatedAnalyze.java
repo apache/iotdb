@@ -41,7 +41,6 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
@@ -205,7 +204,7 @@ public class TemplatedAnalyze {
 
     context.generateGlobalTimeFilter(analysis);
     // fetch partition information
-    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
+    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context);
     return true;
   }
 
@@ -377,26 +376,26 @@ public class TemplatedAnalyze {
       Analysis analysis,
       ISchemaTree schemaTree,
       IPartitionFetcher partitionFetcher,
-      Filter globalTimeFilter) {
+      MPPQueryContext context) {
     // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
     Set<IDeviceID> deviceSet =
         analysis.getDeviceList().stream()
             .map(PartialPath::getIDeviceIDAsFullDevice)
             .collect(Collectors.toSet());
     DataPartition dataPartition =
-        fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter, partitionFetcher);
+        fetchDataPartitionByDevices(deviceSet, schemaTree, context, partitionFetcher);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
   private static DataPartition fetchDataPartitionByDevices(
       Set<IDeviceID> deviceSet,
       ISchemaTree schemaTree,
-      Filter globalTimeFilter,
+      MPPQueryContext context,
       IPartitionFetcher partitionFetcher) {
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(globalTimeFilter);
+          getTimePartitionSlotList(context.getGlobalTimeFilter(), context);
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(

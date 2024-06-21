@@ -136,4 +136,8 @@ public class PipeEventCommitter {
   public long commitQueueSize() {
     return commitQueue.size();
   }
+
+  public long getCurrentCommitId() {
+    return commitIdGenerator.get();
+  }
 }

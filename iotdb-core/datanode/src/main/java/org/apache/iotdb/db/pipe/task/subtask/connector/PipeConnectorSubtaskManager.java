@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeE
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -119,8 +119,10 @@ public class PipeConnectorSubtaskManager {
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
             isDataRegionConnector
-                ? PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
-                : PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
+                : PipeDataNodeAgent.plugin()
+                    .schemaRegion()
+                    .reflectConnector(pipeConnectorParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {

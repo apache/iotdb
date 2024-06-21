@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
@@ -71,7 +71,7 @@ public class ConfigNodeShutdownHook extends Thread {
                             CONF.getConfigNodeId(),
                             new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                             new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-                        ConfigNodeRequestType.REPORT_CONFIG_NODE_SHUTDOWN);
+                        CnToCnNodeRequestType.REPORT_CONFIG_NODE_SHUTDOWN);
 
         if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // Report success

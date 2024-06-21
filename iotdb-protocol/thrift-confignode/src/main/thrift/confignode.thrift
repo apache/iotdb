@@ -112,6 +112,7 @@ struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional bool preCheck
 }
 
 struct TDataNodeRegisterResp {
@@ -1319,8 +1320,8 @@ service IConfigNodeRPCService {
   // ======================================================
   // TTL
   // ======================================================
-  /** Show all ttl */
-  TShowTTLResp showAllTTL()
+  /** Show ttl */
+  TShowTTLResp showTTL(common.TShowTTLReq req)
 
   /** Update the specific device's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)
@@ -1386,6 +1387,14 @@ service IConfigNodeRPCService {
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
+
+  /** Test connection of every node in the cluster */
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitTestConnectionTaskToLeader()
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 
   /**
    * Show the matched cluster Regions' information

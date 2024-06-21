@@ -219,6 +219,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           new MTreeBelowSGMemoryImpl(
               new PartialPath(storageGroupFullPath),
               tagManager::readTags,
+              tagManager::readAttributes,
               regionStatistics,
               metric);
 
@@ -530,7 +531,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
               },
-              tagManager::readTags);
+              tagManager::readTags,
+              tagManager::readAttributes);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -969,21 +971,32 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ClusterSchemaTree fetchSchema(
+  public ClusterSchemaTree fetchSeriesSchema(
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate)
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
-        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags, withTemplate));
+        schemaTree.mergeSchemaTree(
+            mtree.fetchSchema(
+                path, templateMap, withTags, withAttributes, withTemplate, withAliasForce));
       }
       return schemaTree;
     } else {
-      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
+      return mtree.fetchSchemaWithoutWildcard(
+          patternTree, templateMap, withTags, withAttributes, withTemplate);
     }
+  }
+
+  @Override
+  public ClusterSchemaTree fetchDeviceSchema(
+      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
+    return mtree.fetchDeviceSchema(patternTree, authorityScope);
   }
 
   // endregion
