@@ -1406,6 +1406,10 @@ iot_consensus_throttle_threshold_in_byte=53687091200
 # Datatype: long
 iot_consensus_cache_window_time_in_ms=-1
 
+# Enable Write Ahead Log compression.
+# Option: true, false
+# enable_wal_compression=false
+
 ####################
 ### IoTConsensus Configuration
 ####################
