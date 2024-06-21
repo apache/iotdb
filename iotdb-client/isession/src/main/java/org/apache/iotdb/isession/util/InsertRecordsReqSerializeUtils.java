@@ -46,7 +46,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InsertRecordsReqSerializeUtils {
-  private static final Logger logger = LoggerFactory.getLogger(InsertRecordsReqSerializeUtils.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(InsertRecordsReqSerializeUtils.class);
 
   /**
    * Serialize InsertRecordsRequest to ByteBuffer array.
