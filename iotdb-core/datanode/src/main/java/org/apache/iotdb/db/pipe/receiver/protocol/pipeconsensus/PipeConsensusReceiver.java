@@ -867,41 +867,42 @@ public class PipeConsensusReceiver {
     }
 
     // initiate receiverFileDirWithIdSuffix
+    String receiverFileBaseDir;
     try {
-      final String receiverFileBaseDir = getReceiverFileBaseDir();
-      if (Objects.isNull(receiverFileBaseDir)) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because your folderManager is null. May because the disk is full.",
-            consensusPipeName.toString());
-        throw new DiskSpaceInsufficientException(receiverBaseDirsName);
-      }
-      // Create a new receiver file dir
-      final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
-      if (newReceiverDir.exists()) {
-        FileUtils.deleteDirectory(newReceiverDir);
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
-            consensusPipeName,
-            newReceiverDir.getPath());
-      }
-      if (!newReceiverDir.mkdirs()) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
-            consensusPipeName,
-            newReceiverDir.getPath());
-        throw new IOException(
-            String.format(
-                "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, newReceiverDir.getPath()));
-      }
-      receiverFileDirWithIdSuffix.set(newReceiverDir);
-
+      receiverFileBaseDir = getReceiverFileBaseDir();
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.",
           e);
       throw e;
     }
+
+    if (Objects.isNull(receiverFileBaseDir)) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because your folderManager is null. May because the disk is full.",
+          consensusPipeName.toString());
+      throw new DiskSpaceInsufficientException(receiverBaseDirsName);
+    }
+    // Create a new receiver file dir
+    final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
+    if (newReceiverDir.exists()) {
+      FileUtils.deleteDirectory(newReceiverDir);
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+    }
+    if (!newReceiverDir.mkdirs()) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+      throw new IOException(
+          String.format(
+              "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
+              consensusPipeName, newReceiverDir.getPath()));
+    }
+    receiverFileDirWithIdSuffix.set(newReceiverDir);
   }
 
   public PipeConsensusRequestVersion getVersion() {

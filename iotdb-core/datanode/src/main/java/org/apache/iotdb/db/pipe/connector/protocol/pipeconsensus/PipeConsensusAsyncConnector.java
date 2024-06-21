@@ -122,6 +122,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       throws Exception {
     super.customize(parameters, configuration);
 
+    // initialize metric components
+    pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
+    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
+        .addConsensusPipeConnector(this);
+    MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
+
     // Get consensusGroupId from parameters passed by PipeConsensusImpl
     consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
     // Get consensusPipeName from parameters passed by PipeConsensusImpl
@@ -147,12 +153,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // currently, tablet batch is false by default in PipeConsensus;
     isTabletBatchModeEnabled = false;
-
-    // initialize metric components
-    pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
-    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(this);
-    MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
   }
 
   /**
@@ -229,6 +229,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    LOGGER.info("PipeConsensus: begin to transfer tablet");
     syncTransferQueuedEventsIfNecessary();
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
@@ -316,6 +317,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    LOGGER.info("PipeConsensus: begin to transfer tsfile");
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
