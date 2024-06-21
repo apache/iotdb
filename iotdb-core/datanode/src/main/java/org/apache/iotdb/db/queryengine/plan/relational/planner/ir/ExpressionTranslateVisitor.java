@@ -13,8 +13,8 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -33,64 +33,91 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
 /** Change Identifier to SymbolReference */
-public class ExpressionTranslateVisitor extends RewritingVisitor<PlanBuilder> {
+public class ExpressionTranslateVisitor extends RewritingVisitor<TranslationMap> {
 
   private ExpressionTranslateVisitor() {}
 
   private static final String NOT_SUPPORTED = "%s is not supported expression translate yet.";
 
   public static Expression translateToSymbolReference(
-      Expression expression, PlanBuilder planBuilder) {
-    return new ExpressionTranslateVisitor().process(expression, planBuilder);
+      Expression expression, TranslationMap translations) {
+    return new ExpressionTranslateVisitor().process(expression, translations);
   }
 
   @Override
-  protected Expression visitExpression(Expression node, PlanBuilder context) {
+  protected Expression visitExpression(Expression node, TranslationMap context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
   }
 
   @Override
-  protected Expression visitSymbolReference(SymbolReference node, PlanBuilder context) {
+  protected Expression visitSymbolReference(SymbolReference node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new SymbolReference(context.getSymbolForColumn(node).get().getName());
   }
 
   @Override
-  protected Expression visitIdentifier(Identifier node, PlanBuilder context) {
+  protected Expression visitIdentifier(Identifier node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return context.getSymbolForColumn(node).map(Symbol::toSymbolReference).get();
   }
 
   @Override
-  protected Expression visitArithmeticBinary(ArithmeticBinaryExpression node, PlanBuilder context) {
+  protected Expression visitArithmeticBinary(
+      ArithmeticBinaryExpression node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new ArithmeticBinaryExpression(
         node.getOperator(), process(node.getLeft(), context), process(node.getRight(), context));
   }
 
   @Override
-  protected Expression visitLogicalExpression(LogicalExpression node, PlanBuilder context) {
+  protected Expression visitLogicalExpression(LogicalExpression node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new LogicalExpression(
         node.getOperator(),
         node.getTerms().stream().map(e -> process(e, context)).collect(toImmutableList()));
   }
 
   @Override
-  protected Expression visitLiteral(Literal node, PlanBuilder context) {
+  protected Expression visitLiteral(Literal node, TranslationMap context) {
     return node;
   }
 
   @Override
-  protected Expression visitComparisonExpression(ComparisonExpression node, PlanBuilder context) {
+  protected Expression visitComparisonExpression(
+      ComparisonExpression node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     Expression left = process(node.getLeft(), context);
     Expression right = process(node.getRight(), context);
     return new ComparisonExpression(node.getOperator(), left, right);
   }
 
   @Override
-  protected Expression visitFunctionCall(FunctionCall node, PlanBuilder context) {
+  protected Expression visitFunctionCall(FunctionCall node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     List<Expression> newArguments =
         node.getArguments().stream()
             .map(argument -> process(argument, context))
@@ -99,25 +126,41 @@ public class ExpressionTranslateVisitor extends RewritingVisitor<PlanBuilder> {
   }
 
   @Override
-  protected Expression visitIsNullPredicate(IsNullPredicate node, PlanBuilder context) {
+  protected Expression visitIsNullPredicate(IsNullPredicate node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new IsNullPredicate(process(node.getValue(), context));
   }
 
   @Override
-  protected Expression visitInPredicate(InPredicate node, PlanBuilder context) {
+  protected Expression visitInPredicate(InPredicate node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new InPredicate(
         process(node.getValue(), context), process(node.getValueList(), context));
   }
 
   @Override
-  protected Expression visitInListExpression(InListExpression node, PlanBuilder context) {
+  protected Expression visitInListExpression(InListExpression node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     List<Expression> newValues =
         node.getValues().stream().map(this::process).collect(Collectors.toList());
     return new InListExpression(newValues);
   }
 
   @Override
-  protected Expression visitLikePredicate(LikePredicate node, PlanBuilder context) {
+  protected Expression visitLikePredicate(LikePredicate node, TranslationMap context) {
+    Optional<SymbolReference> mapped = context.tryGetMapping(node);
+    if (mapped.isPresent()) {
+      return mapped.get();
+    }
     return new LikePredicate(
         process(node.getValue(), context),
         process(node.getPattern(), context),
@@ -127,23 +170,24 @@ public class ExpressionTranslateVisitor extends RewritingVisitor<PlanBuilder> {
   // ============================ not implemented =======================================
 
   @Override
-  protected Expression visitSimpleCaseExpression(SimpleCaseExpression node, PlanBuilder context) {
+  protected Expression visitSimpleCaseExpression(
+      SimpleCaseExpression node, TranslationMap context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
   }
 
   @Override
   protected Expression visitSearchedCaseExpression(
-      SearchedCaseExpression node, PlanBuilder context) {
+      SearchedCaseExpression node, TranslationMap context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
   }
 
   @Override
-  protected Expression visitIfExpression(IfExpression node, PlanBuilder context) {
+  protected Expression visitIfExpression(IfExpression node, TranslationMap context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
   }
 
   @Override
-  protected Expression visitNullIfExpression(NullIfExpression node, PlanBuilder context) {
+  protected Expression visitNullIfExpression(NullIfExpression node, TranslationMap context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
   }
 }

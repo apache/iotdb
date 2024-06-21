@@ -99,7 +99,7 @@ public class QueryPlanner {
     if (orderBy.size() > 0) {
       builder =
           builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
@@ -107,7 +107,7 @@ public class QueryPlanner {
     builder = sort(builder, orderingScheme);
     builder = offset(builder, query.getOffset());
     builder = limit(builder, query.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
@@ -128,7 +128,7 @@ public class QueryPlanner {
 
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
       // that might be referenced
-      builder = builder.appendProjections(expressions, analysis, symbolAllocator, queryContext);
+      builder = builder.appendProjections(expressions, symbolAllocator, queryContext);
     }
 
     List<Expression> outputs = outputExpressions(selectExpressions);
@@ -140,14 +140,13 @@ public class QueryPlanner {
         // translated
         // aggregations are visible.
         List<Expression> orderByAggregates = analysis.getOrderByAggregates(node.getOrderBy().get());
-        builder =
-            builder.appendProjections(orderByAggregates, analysis, symbolAllocator, queryContext);
+        builder = builder.appendProjections(orderByAggregates, symbolAllocator, queryContext);
       }
 
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
@@ -167,7 +166,7 @@ public class QueryPlanner {
     if (orderBy.size() > 0) {
       builder =
           builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
@@ -176,7 +175,7 @@ public class QueryPlanner {
     builder = offset(builder, node.getOffset());
     builder = limit(builder, node.getLimit(), orderingScheme);
 
-    builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
@@ -250,7 +249,8 @@ public class QueryPlanner {
     Expression globalTimePredicate = null;
     if (resultPair.left != null) {
       globalTimePredicate =
-          ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
+          ExpressionTranslateVisitor.translateToSymbolReference(
+              resultPair.left, planBuilder.getTranslations());
 
       queryContext.setGlobalTimeFilter(
           globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
