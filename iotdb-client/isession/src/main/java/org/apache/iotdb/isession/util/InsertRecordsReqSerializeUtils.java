@@ -33,8 +33,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,8 +44,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InsertRecordsReqSerializeUtils {
-  private static final Logger logger =
-      LoggerFactory.getLogger(InsertRecordsReqSerializeUtils.class);
 
   /**
    * Serialize InsertRecordsRequest to ByteBuffer array.
@@ -100,13 +96,16 @@ public class InsertRecordsReqSerializeUtils {
 
   private static ByteBuffer serializeSchema(
       List<String> deviceIds, List<List<String>> measurementIdsList) throws IOException {
-    // creating dictionary
+    // scan the device id and measurement ids, creating dictionary
     Map<String, Integer> dictionary = getDictionary(deviceIds, measurementIdsList);
     // serializing dictionary
     PublicBAOS schemaBufferOS = new PublicBAOS();
     serializeDictionary(dictionary, schemaBufferOS);
+    // encode the schema using dictionary
     dictionaryEncoding(dictionary, deviceIds, measurementIdsList, schemaBufferOS);
     ByteBuffer schemaBuffer;
+    // compress the schema if necessary
+    // TODO: Test and see if we need to compress the schema or not
     if (SessionConfig.enableRPCCompression) {
       ICompressor compressor = ICompressor.getCompressor(SessionConfig.rpcCompressionType);
       byte[] compressedData =
@@ -285,6 +284,11 @@ public class InsertRecordsReqSerializeUtils {
   private static void serializeTypesAndValues(
       List<List<TSDataType>> typesList, List<List<Object>> valuesList, PublicBAOS buffer)
       throws IOException {
+    // The most complex part of the serialization.
+    // First, we scan all the value, and divide them into
+    // 6 lists, each list contains values of the same type.
+    // While scanning the value, we also serialize the type
+    // to a type buffer.
     int recordCount = typesList.size();
     ReadWriteIOUtils.write(recordCount, buffer);
     List<Integer> intList = new ArrayList<>();
@@ -298,6 +302,7 @@ public class InsertRecordsReqSerializeUtils {
       List<TSDataType> types = typesList.get(i);
       List<Object> values = valuesList.get(i);
       int size = types.size();
+      // write the size of the list to buffer
       ReadWriteIOUtils.write(size, buffer);
       for (int j = 0; j < size; ++j) {
         switch (types.get(j)) {
@@ -322,9 +327,12 @@ public class InsertRecordsReqSerializeUtils {
           default:
             throw new IOException("Unsupported data type " + types.get(j));
         }
+        // write the type to type buffer
         ReadWriteIOUtils.write(types.get(j), typeBuffer);
       }
     }
+    // Then, we serialize the 6 lists to buffer
+    // TODO: Test and see if we need to encode the value or not
     serializeIntList(intList, buffer);
     serializeLongList(longList, buffer);
     serializeFloatList(floatList, buffer);
