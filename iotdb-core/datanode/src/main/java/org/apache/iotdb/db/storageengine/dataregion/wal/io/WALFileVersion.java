@@ -45,9 +45,15 @@ public enum WALFileVersion {
       if (buffer.remaining() < WALWriter.MAGIC_STRING_V2_BYTES) {
         return UNKNOWN;
       }
-      return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING_V2)
-          ? V2
-          : V1;
+      String version = new String(buffer.array(), StandardCharsets.UTF_8);
+      switch (version) {
+        case WALWriter.MAGIC_STRING_V2:
+          return V2;
+        case WALWriter.MAGIC_STRING_V1:
+          return V1;
+        default:
+          return UNKNOWN;
+      }
     } finally {
       channel.position(originalPosition);
     }
