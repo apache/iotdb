@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -443,8 +444,9 @@ public class LoadTsFileManager {
                   int replicationNum =
                       DataRegionConsensusImpl.getInstance()
                           .getReplicationNum(
-                              ConsensusGroupId.Factory.createFromString(
-                                  dataRegion.getDataRegionId()));
+                              ConsensusGroupId.Factory.create(
+                                  TConsensusGroupType.DataRegion.getValue(),
+                                  Integer.parseInt(dataRegion.getDataRegionId())));
                   // It may happen that the replicationNum is 0 when load and db deletion occurs
                   // concurrently, so we can just not to count the number of points in this case
                   if (replicationNum != 0) {
