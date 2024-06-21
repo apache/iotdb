@@ -93,12 +93,9 @@ public class AggregationPushDown implements PlanOptimizer {
     RewriterContext rewriterContext =
         new RewriterContext(analysis, context, queryStatement.isAlignByDevice());
     PlanNode node;
-    try {
-      node = plan.accept(new Rewriter(), rewriterContext);
-    } finally {
-      // release the last batch of memory
-      rewriterContext.releaseMemoryForFrontEndImmediately();
-    }
+
+    node = plan.accept(new Rewriter(), rewriterContext);
+
     return node;
   }
 
@@ -639,16 +636,12 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private static class RewriterContext {
 
-    private static final long RELEASE_BATCH_SIZE = 1024L * 1024L;
-
     private final Analysis analysis;
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
 
     private IDeviceID curDevice;
     private PartialPath curDevicePath;
-
-    private long bytesToBeReleased = 0;
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
@@ -689,17 +682,7 @@ public class AggregationPushDown implements PlanOptimizer {
     }
 
     public void releaseMemoryForFrontEnd(final long bytes) {
-      bytesToBeReleased += bytes;
-      if (bytesToBeReleased >= RELEASE_BATCH_SIZE) {
-        releaseMemoryForFrontEndImmediately();
-      }
-    }
-
-    public void releaseMemoryForFrontEndImmediately() {
-      if (bytesToBeReleased > 0) {
-        context.releaseMemoryForFrontEnd(bytesToBeReleased);
-        bytesToBeReleased = 0;
-      }
+      this.context.releaseMemoryReservedForFrontEnd(bytes);
     }
   }
 }
