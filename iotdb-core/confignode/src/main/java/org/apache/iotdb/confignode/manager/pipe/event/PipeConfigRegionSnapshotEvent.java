@@ -90,7 +90,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, null, null);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -98,9 +98,15 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final String templateFilePath,
       final CNSnapshotFileType type,
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern) {
-    super(pipeName, pipeTaskMeta, pattern, PipeConfigNodeSnapshotResourceManager.getInstance());
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        pattern,
+        PipeConfigNodeSnapshotResourceManager.getInstance());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
     this.fileType = type;
@@ -157,12 +163,13 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
-        snapshotPath, templateFilePath, fileType, pipeName, pipeTaskMeta, pattern);
+        snapshotPath, templateFilePath, fileType, pipeName, creationTime, pipeTaskMeta, pattern);
   }
 
   @Override

@@ -40,7 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -106,6 +107,9 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
 
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
@@ -176,16 +180,38 @@ public class LoadTsFileScheduler implements IScheduler {
                   partitionFetcher.queryDataPartition(
                       slotList,
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
-            isLoadSingleTsFileSuccess = loadLocally(node);
+            final long startTime = System.nanoTime();
+            try {
+              isLoadSingleTsFileSuccess = loadLocally(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
+            }
+
             node.clean();
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
 
-            boolean isFirstPhaseSuccess = firstPhase(node);
-            boolean isSecondPhaseSuccess =
-                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            long startTime = System.nanoTime();
+            final boolean isFirstPhaseSuccess;
+            try {
+              isFirstPhaseSuccess = firstPhase(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
+            }
+
+            startTime = System.nanoTime();
+            final boolean isSecondPhaseSuccess;
+            try {
+              isSecondPhaseSuccess =
+                  secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
+            }
 
             node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
@@ -367,7 +393,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+    PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -432,7 +458,9 @@ public class LoadTsFileScheduler implements IScheduler {
                       Tag.DATABASE.toString(),
                       databaseName,
                       Tag.REGION.toString(),
-                      dataRegion.getDataRegionId());
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
               if (!node.isGeneratedByRemoteConsensusLeader()) {
                 MetricService.getInstance()
                     .count(
@@ -444,7 +472,9 @@ public class LoadTsFileScheduler implements IScheduler {
                         Tag.DATABASE.toString(),
                         databaseName,
                         Tag.REGION.toString(),
-                        dataRegion.getDataRegionId());
+                        dataRegion.getDataRegionId(),
+                        Tag.TYPE.toString(),
+                        Metric.LOAD_POINT_COUNT.toString());
               }
             });
 

@@ -129,7 +129,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;

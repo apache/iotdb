@@ -65,6 +65,16 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected void thawRate(final String pipeName, final long creationTime) {
+    PipeConfigNodeRemainingTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
+  protected void freezeRate(final String pipeName, final long creationTime) {
+    PipeConfigNodeRemainingTimeMetrics.getInstance().freezeRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return new PipeConfigNodeTaskBuilder(pipeMetaFromConfigNode).build();

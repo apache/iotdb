@@ -31,14 +31,14 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
   private final String consumerGroupId;
 
   public SubscriptionConnectorSubtask(
-      String taskID,
-      long creationTime,
-      String attributeSortedString,
-      int connectorIndex,
-      UnboundedBlockingPendingQueue<Event> inputPendingQueue,
-      PipeConnector outputPipeConnector,
-      String topicName,
-      String consumerGroupId) {
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final int connectorIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector,
+      final String topicName,
+      final String consumerGroupId) {
     super(
         taskID,
         creationTime,
@@ -56,7 +56,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
       return false;
     }
 
-    SubscriptionAgent.broker().executePrefetch(this);
+    SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
     // always return true
     return true;
   }

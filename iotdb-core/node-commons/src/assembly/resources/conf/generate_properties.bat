@@ -62,3 +62,4 @@ for /f "usebackq tokens=*" %%i in ("%target_template_file%") do (
     )
     endlocal
 )
+powershell -Command "(Get-Content '%target_properties_file%') -join \"`n\" | Set-Content -NoNewline '%target_properties_file%'"

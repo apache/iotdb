@@ -229,6 +229,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
+    // TODO: roll back from the last executed procedure to the first executed
     alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
     TSStatus response;
@@ -283,6 +284,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
+    // TODO: roll back from the last executed procedure to the first executed
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
 
     // Push all topic metas to datanode, may be time-consuming

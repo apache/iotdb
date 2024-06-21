@@ -142,6 +142,14 @@ public class RowImpl implements Row {
         return Type.DOUBLE;
       case 5:
         return Type.TEXT;
+      case 8:
+        return Type.TIMESTAMP;
+      case 9:
+        return Type.DATE;
+      case 10:
+        return Type.BLOB;
+      case 11:
+        return Type.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

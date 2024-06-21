@@ -771,14 +771,22 @@ class RatisConsensus implements IConsensus {
             300000,
             force ? 1 : 0);
 
-    final RaftClientReply reply;
-    try {
-      reply = server.get().snapshotManagement(request);
-      if (!reply.isSuccess()) {
-        throw new RatisRequestFailedException(reply.getException());
+    synchronized (raftGroupId) {
+      final RaftClientReply reply;
+      try {
+        reply = server.get().snapshotManagement(request);
+        if (!reply.isSuccess()) {
+          throw new RatisRequestFailedException(reply.getException());
+        }
+        logger.info(
+            "{} group {}: successfully taken snapshot at index {} with force = {}",
+            this,
+            raftGroupId,
+            reply.getLogIndex(),
+            force);
+      } catch (IOException ioException) {
+        throw new RatisRequestFailedException(ioException);
       }
-    } catch (IOException ioException) {
-      throw new RatisRequestFailedException(ioException);
     }
   }
 

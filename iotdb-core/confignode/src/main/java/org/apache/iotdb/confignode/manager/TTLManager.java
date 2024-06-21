@@ -119,7 +119,7 @@ public class TTLManager {
     return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
 
-  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+  public DataSet showTTL(ShowTTLPlan showTTLPlan) {
     try {
       return configManager.getConsensusManager().read(showTTLPlan);
     } catch (ConsensusException e) {
@@ -133,7 +133,7 @@ public class TTLManager {
   }
 
   public Map<String, Long> getAllTTL() {
-    return ((ShowTTLResp) showAllTTL(new ShowTTLPlan())).getPathTTLMap();
+    return ((ShowTTLResp) showTTL(new ShowTTLPlan())).getPathTTLMap();
   }
 
   public int getTTLCount() {
