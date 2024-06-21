@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -50,7 +50,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private Timer secondPhaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer loadLocallyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  private Rate diskIORate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   public void recordPhaseTimeCost(String stage, long costTimeInNanos) {
     switch (stage) {
@@ -72,7 +72,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   }
 
   public void recordDiskIO(long bytes) {
-    diskIORate.mark(bytes);
+    diskIOCounter.inc(bytes);
   }
 
   @Override
@@ -99,8 +99,8 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             Tag.NAME.toString(),
             LOAD_LOCALLY);
 
-    diskIORate =
-        metricService.getOrCreateRate(
+    diskIOCounter =
+        metricService.getOrCreateCounter(
             Metric.LOAD_DISK_IO.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
