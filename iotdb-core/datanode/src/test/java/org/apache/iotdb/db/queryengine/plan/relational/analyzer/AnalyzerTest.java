@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -50,13 +52,21 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.Type;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;
@@ -482,10 +492,42 @@ public class AnalyzerTest {
     assertEquals(2, ((LogicalExpression) tableScanNode.getPushDownPredicate()).getTerms().size());
   }
 
+  @Test
+  public void analyzeTablet() {
+
+    TableSchema tableSchema =
+    Metadata mockMetadata = new TestMatadata() {
+      @Override
+      public TableSchema validateTableHeaderSchema(String database, TableSchema tableSchema,
+          MPPQueryContext context) {
+        return null;
+      }
+
+      @Override
+      public void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation,
+          MPPQueryContext context) {
+
+      }
+    };
+
+    InsertTabletStatement insertTabletStatement = StatementTestUtils.genInsertTabletStatement(true);
+    context = new MPPQueryContext("", queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeStatement(insertTabletStatement.toRelationalStatement(context),
+        mockMetadata, new SqlParser());
+    logicalQueryPlan =
+        new LogicalPlanner(
+            context, mockMetadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+  }
+
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
+    SqlParser sqlParser = new SqlParser();
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    return analyzeStatement(statement, metadata, sqlParser);
+  }
+
+  public static Analysis analyzeStatement(Statement statement, Metadata metadata, SqlParser sqlParser) {
     try {
-      SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
       SessionInfo session =
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
@@ -502,7 +544,7 @@ public class AnalyzerTest {
       return analyzer.analyze(statement);
     } catch (Exception e) {
       e.printStackTrace();
-      fail(sql + ", " + e.getMessage());
+      fail(statement + ", " + e.getMessage());
     }
     fail();
     return null;
