@@ -19,7 +19,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.AstUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -232,7 +232,7 @@ public class TranslationMap {
 
   private static void verifyAstExpression(Expression astExpression) {
     verify(
-        AstUtils.preOrder(astExpression)
+        AstUtil.preOrder(astExpression)
             .noneMatch(expression -> expression instanceof SymbolReference),
         "symbol references are not allowed");
   }
