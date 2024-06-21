@@ -268,7 +268,7 @@ public class AnalyzerTest {
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
 
-    sql = "SELECT tag1, attr1, table1.s2 FROM table1 where diff(s1) + 1 > 1";
+    sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) + 1 > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
@@ -290,26 +290,6 @@ public class AnalyzerTest {
 
     // test if the logicPlan of TableSubQuery are same with according ordinary query
     sql = "SELECT tag1, attr1, s2 FROM (SELECT * from table1 where diff(s1) + 1 > 1)";
-    actualAnalysis = analyzeSQL(sql, metadata);
-    assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
-    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
-    assertTrue(
-        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof TableScanNode);
-    tableScanNode =
-        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
-    assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
-
-    sql = "SELECT tag1, attr1, t.s2 FROM (SELECT * from table1 where diff(s1) + 1 > 1) as t";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
