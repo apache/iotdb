@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.NotSynchronizedMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -85,7 +85,7 @@ public class MPPQueryContext {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
     this.memoryReservationManager =
-        new NotSynchronizedMemoryReservationManager(queryId, this.getClass().getName());
+        new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
   // TODO too many callers just pass a null SessionInfo which should be forbidden

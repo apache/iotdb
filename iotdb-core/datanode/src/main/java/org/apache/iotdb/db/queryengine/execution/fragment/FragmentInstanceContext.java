@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -198,7 +198,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
     this.memoryReservationManager =
-        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -210,7 +210,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
-        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -227,7 +227,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.globalTimeFilter = globalTimeFilter;
     this.dataNodeQueryContextMap = null;
     this.memoryReservationManager =
-        new SynchronizedMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   @TestOnly

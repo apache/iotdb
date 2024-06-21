@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.SynchronizedMemoryReservationManagerWrapper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -144,8 +143,7 @@ public class SeriesScanUtil implements Accountable {
       this.orderUtils = new DescTimeOrderUtils();
       this.mergeReader = getDescPriorityMergeReader();
     }
-    this.mergeReader.setMemoryReservationManagerWrapper(
-        new SynchronizedMemoryReservationManagerWrapper(context.getMemoryReservationContext()));
+    this.mergeReader.setMemoryReservationManager(context.getMemoryReservationContext());
 
     // init TimeSeriesMetadata materializer
     this.seqTimeSeriesMetadata = new LinkedList<>();

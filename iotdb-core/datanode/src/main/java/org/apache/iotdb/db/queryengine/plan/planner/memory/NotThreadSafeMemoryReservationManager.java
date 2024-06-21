@@ -22,7 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
-public class NotSynchronizedMemoryReservationManager implements MemoryReservationManager {
+import javax.annotation.concurrent.NotThreadSafe;
+
+@NotThreadSafe
+public class NotThreadSafeMemoryReservationManager implements MemoryReservationManager {
   // To avoid reserving memory too frequently, we choose to do it in batches. This is the lower
   // bound for each batch.
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
@@ -39,8 +42,7 @@ public class NotSynchronizedMemoryReservationManager implements MemoryReservatio
 
   private long bytesToBeReleased = 0;
 
-  public NotSynchronizedMemoryReservationManager(
-      final QueryId queryId, final String contextHolder) {
+  public NotThreadSafeMemoryReservationManager(final QueryId queryId, final String contextHolder) {
     this.queryId = queryId;
     this.contextHolder = contextHolder;
   }

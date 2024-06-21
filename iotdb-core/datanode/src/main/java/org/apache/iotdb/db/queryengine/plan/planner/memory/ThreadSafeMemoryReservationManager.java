@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
-public class SynchronizedMemoryReservationManager extends NotSynchronizedMemoryReservationManager {
-  public SynchronizedMemoryReservationManager(QueryId queryId, String contextHolder) {
+public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReservationManager {
+  public ThreadSafeMemoryReservationManager(QueryId queryId, String contextHolder) {
     super(queryId, contextHolder);
   }
 
