@@ -134,8 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties, true);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(), NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
+            .updateRpcInstance(NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
