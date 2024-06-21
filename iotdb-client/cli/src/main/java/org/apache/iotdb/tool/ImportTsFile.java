@@ -402,6 +402,14 @@ public class ImportTsFile extends AbstractTsFileTool {
           loadFileFailedNum.increment();
           ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
+          // Reject because of memory controls
+          if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
+            ioTPrinter.println(
+                "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
+            tsfileQueue.put(filePath);
+            continue;
+          }
+
           try {
             processingFile(filePath, failDir, failOperation);
             processingLoadFailedFileSuccessfulNum.increment();
