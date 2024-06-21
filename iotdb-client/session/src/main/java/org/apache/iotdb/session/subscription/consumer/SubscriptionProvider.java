@@ -40,6 +40,8 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
@@ -215,7 +217,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  Set<String> subscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeSubscribeReq req;
     try {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -241,9 +243,12 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeSubscribeResp subscribeResp =
+        PipeSubscribeSubscribeResp.fromTPipeSubscribeResp(resp);
+    return subscribeResp.getTopicNames();
   }
 
-  void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  Set<String> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeUnsubscribeReq req;
     try {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -269,6 +274,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeUnsubscribeResp unsubscribeResp =
+        PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
+    return unsubscribeResp.getTopicNames();
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

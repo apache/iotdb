@@ -27,10 +27,12 @@ import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -86,6 +88,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
     }
   }
 
@@ -148,8 +151,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               outputEventCollector);
         }
       }
+
       final boolean shouldReport =
-          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset();
+          !isClosed.get()
+              && outputEventCollector.hasNoCollectInvocationAfterReset()
+              // Events generated from consensusPipe's transferred data should never be reported.
+              && !(pipeProcessor instanceof PipeConsensusProcessor);
       if (shouldReport && event instanceof EnrichedEvent) {
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
@@ -244,6 +251,15 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
+  public int getEventCount(final boolean ignoreHeartbeat) {
+    // Avoid potential NPE in "getPipeName"
+    final EnrichedEvent event =
+        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
+    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
+        ? 1
+        : 0;
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override
@@ -253,6 +269,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
-    PipeAgent.runtime().report(event, exception);
+    PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

@@ -313,4 +313,21 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    return this;
+  }
 }

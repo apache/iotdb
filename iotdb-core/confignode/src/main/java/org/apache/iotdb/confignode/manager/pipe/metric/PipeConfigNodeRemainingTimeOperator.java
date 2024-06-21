@@ -19,77 +19,72 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
 
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
-class PipeConfigNodeRemainingTimeOperator {
+class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
-  private static final long CONFIG_NODE_REMAINING_MAX_SECONDS = 365 * 24 * 60 * 60L; // 1 year
+  private final Set<IoTDBConfigRegionExtractor> configRegionExtractors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final AtomicReference<Meter> configRegionCommitMeter = new AtomicReference<>(null);
 
-  private String pipeName;
-  private long creationTime = 0;
-
-  private final ConcurrentMap<IoTDBConfigRegionExtractor, IoTDBConfigRegionExtractor>
-      configRegionExtractors = new ConcurrentHashMap<>();
-  private final Meter configRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
-
-  private double lastConfigRegionCommitSmoothingValue = Long.MIN_VALUE;
-
-  //////////////////////////// Tags ////////////////////////////
-
-  String getPipeName() {
-    return pipeName;
-  }
-
-  long getCreationTime() {
-    return creationTime;
-  }
+  private double lastConfigRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining time calculation ////////////////////////////
 
   /**
-   * This will calculate the estimated remaining time of the given pipe's config region subTask.
+   * This will calculate the estimated remaining time of the given pipe's {@link
+   * PipeConfigNodeSubtask}.
    *
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final double pipeRemainingTimeCommitRateSmoothingFactor =
-        PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
+    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     // Do not calculate heartbeat event
     final long totalConfigRegionWriteEventCount =
-        configRegionExtractors.keySet().stream()
+        configRegionExtractors.stream()
             .map(IoTDBConfigRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
-    lastConfigRegionCommitSmoothingValue =
-        lastConfigRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? configRegionCommitMeter.getOneMinuteRate()
-            : pipeRemainingTimeCommitRateSmoothingFactor
-                    * configRegionCommitMeter.getOneMinuteRate()
-                + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
-                    * lastConfigRegionCommitSmoothingValue;
+    configRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            lastConfigRegionCommitSmoothingValue =
+                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
+          }
+          return meter;
+        });
+
     final double configRegionRemainingTime;
     if (totalConfigRegionWriteEventCount <= 0) {
+      notifyEmpty();
       configRegionRemainingTime = 0;
     } else {
+      notifyNonEmpty();
       configRegionRemainingTime =
           lastConfigRegionCommitSmoothingValue <= 0
               ? Double.MAX_VALUE
               : totalConfigRegionWriteEventCount / lastConfigRegionCommitSmoothingValue;
     }
 
-    return configRegionRemainingTime >= CONFIG_NODE_REMAINING_MAX_SECONDS
-        ? CONFIG_NODE_REMAINING_MAX_SECONDS
+    return configRegionRemainingTime >= REMAINING_MAX_SECONDS
+        ? REMAINING_MAX_SECONDS
         : configRegionRemainingTime;
   }
 
@@ -97,17 +92,37 @@ class PipeConfigNodeRemainingTimeOperator {
 
   void register(final IoTDBConfigRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
-    configRegionExtractors.put(extractor, extractor);
-  }
-
-  private void setNameAndCreationTime(final String pipeName, final long creationTime) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
+    configRegionExtractors.add(extractor);
   }
 
   //////////////////////////// Rate ////////////////////////////
 
   void markConfigRegionCommit() {
-    configRegionCommitMeter.mark();
+    configRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            meter.mark();
+          }
+          return meter;
+        });
+  }
+
+  //////////////////////////// Switch ////////////////////////////
+
+  @Override
+  public synchronized void thawRate(final boolean isStartPipe) {
+    super.thawRate(isStartPipe);
+    // The stopped pipe's rate should only be thawed by "startPipe" command
+    if (isStopped) {
+      return;
+    }
+    configRegionCommitMeter.compareAndSet(
+        null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+  }
+
+  @Override
+  public synchronized void freezeRate(final boolean isStopPipe) {
+    super.freezeRate(isStopPipe);
+    configRegionCommitMeter.set(null);
   }
 }

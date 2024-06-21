@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 
 import org.apache.iotdb.pipe.api.type.Binary;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 public class SwingingDoorTrendingFilter<T> {
@@ -56,12 +57,14 @@ public class SwingingDoorTrendingFilter<T> {
   private T lastStoredValue;
 
   public SwingingDoorTrendingFilter(
-      SwingingDoorTrendingSamplingProcessor processor, long firstTimestamp, T firstValue) {
+      final SwingingDoorTrendingSamplingProcessor processor,
+      final long firstTimestamp,
+      final T firstValue) {
     this.processor = processor;
     init(firstTimestamp, firstValue);
   }
 
-  private void init(long firstTimestamp, T firstValue) {
+  private void init(final long firstTimestamp, final T firstValue) {
     upperDoor = Double.MIN_VALUE;
     lowerDoor = Double.MAX_VALUE;
 
@@ -72,16 +75,16 @@ public class SwingingDoorTrendingFilter<T> {
     lastStoredValue = firstValue;
   }
 
-  public boolean filter(long timestamp, T value) {
+  public boolean filter(final long timestamp, final T value) {
     try {
       return tryFilter(timestamp, value);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       init(timestamp, value);
       return true;
     }
   }
 
-  private boolean tryFilter(long timestamp, T value) {
+  private boolean tryFilter(final long timestamp, final T value) {
     final long timeDiff = timestamp - lastStoredTimestamp;
     final long absTimeDiff = Math.abs(timeDiff);
 
@@ -95,7 +98,10 @@ public class SwingingDoorTrendingFilter<T> {
     }
 
     // For boolean and string type, we only compare the value
-    if (value instanceof Boolean || value instanceof String || value instanceof Binary) {
+    if (value instanceof Boolean
+        || value instanceof String
+        || value instanceof Binary
+        || value instanceof LocalDate) {
       if (Objects.equals(lastStoredValue, value)) {
         return false;
       }
@@ -138,7 +144,7 @@ public class SwingingDoorTrendingFilter<T> {
     return false;
   }
 
-  private void reset(long timestamp, T value) {
+  private void reset(final long timestamp, final T value) {
     upperDoor = Double.MIN_VALUE;
     lowerDoor = Double.MAX_VALUE;
 

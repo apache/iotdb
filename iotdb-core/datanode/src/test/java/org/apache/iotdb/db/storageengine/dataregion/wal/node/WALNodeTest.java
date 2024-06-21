@@ -80,9 +80,12 @@ public class WALNodeTest {
   private WALMode prevMode;
   private String prevConsensus;
   private WALNode walNode;
+  private long originWALThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte();
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(2 * 1024 * 1024);
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
     prevConsensus = config.getDataRegionConsensusProtocolClass();
@@ -93,6 +96,7 @@ public class WALNodeTest {
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(originWALThreshold);
     walNode.close();
     config.setWalMode(prevMode);
     config.setDataRegionConsensusProtocolClass(prevConsensus);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
@@ -31,9 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Node
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -141,7 +142,7 @@ public enum PlanNodeType {
   ALTER_TIME_SERIES((short) 21),
   CREATE_ALIGNED_TIME_SERIES((short) 22),
   TIME_SERIES_SCHEMA_SCAN((short) 23),
-  SCHEMA_FETCH_SCAN((short) 24),
+  SERIES_SCHEMA_FETCH_SCAN((short) 24),
   SCHEMA_QUERY_MERGE((short) 25),
   SCHEMA_QUERY_ORDER_BY_HEAT((short) 26),
   DEVICES_COUNT((short) 27),
@@ -219,6 +220,7 @@ public enum PlanNodeType {
   DEVICE_REGION_SCAN((short) 93),
   TIMESERIES_REGION_SCAN((short) 94),
   REGION_MERGE((short) 95),
+  DEVICE_SCHEMA_FETCH_SCAN((short) 96),
 
   CREATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_SCAN((short) 903),
@@ -339,7 +341,7 @@ public enum PlanNodeType {
       case 23:
         return TimeSeriesSchemaScanNode.deserialize(buffer);
       case 24:
-        return SchemaFetchScanNode.deserialize(buffer);
+        return SeriesSchemaFetchScanNode.deserialize(buffer);
       case 25:
         return SchemaQueryMergeNode.deserialize(buffer);
       case 26:
@@ -477,6 +479,8 @@ public enum PlanNodeType {
         return TimeseriesRegionScanNode.deserialize(buffer);
       case 95:
         return ActiveRegionScanMergeNode.deserialize(buffer);
+      case 96:
+        return DeviceSchemaFetchScanNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

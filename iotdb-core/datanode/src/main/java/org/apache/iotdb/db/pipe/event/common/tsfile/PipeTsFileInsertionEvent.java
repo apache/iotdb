@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -33,12 +34,16 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -59,7 +64,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(
-      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
+      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
@@ -67,6 +72,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         isLoaded,
         isGeneratedByPipe,
         null,
+        0,
         null,
         null,
         Long.MIN_VALUE,
@@ -74,16 +80,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   public PipeTsFileInsertionEvent(
-      TsFileResource resource,
-      boolean isWithMod,
-      boolean isLoaded,
-      boolean isGeneratedByPipe,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
-    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
+      final TsFileResource resource,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
+    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -135,12 +142,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
    */
   public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
+      isClosed.set(resource.isClosed());
+
       synchronized (isClosed) {
         while (!isClosed.get()) {
-          isClosed.wait();
+          isClosed.wait(100);
+
+          final boolean isClosedNow = resource.isClosed();
+          if (isClosedNow) {
+            isClosed.set(true);
+            isClosed.notifyAll();
+            break;
+          }
         }
       }
     }
+
     // From illustrations above we know If the status is "closed", then the tsFile is flushed
     // And here we guarantee that the isEmpty() is set before flushing if tsFile is empty
     // Then we know: "isClosed" --> tsFile flushed --> (isEmpty() <--> tsFile is empty)
@@ -176,14 +193,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
         modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
@@ -194,14 +211,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeResourceManager.tsfile().decreaseFileReference(tsFile);
       if (isWithMod) {
         PipeResourceManager.tsfile().decreaseFileReference(modFile);
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Decrease reference count for TsFile %s error. Holder Message: %s",
@@ -221,7 +238,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         return MinimumProgressIndex.INSTANCE;
       }
       return resource.getMaxProgressIndexAfterClose();
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.warn(
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
@@ -232,17 +249,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
         isWithMod,
         isLoaded,
         isGeneratedByPipe,
         pipeName,
+        creationTime,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -263,28 +282,31 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         : resource.getFileStartTime() <= endTime;
   }
 
-  /////////////////////////// TsFileInsertionEvent ///////////////////////////
-
   @Override
-  public boolean shouldParseTimeOrPattern() {
-    boolean shouldParseTimeOrPattern = false;
+  public boolean mayEventPathsOverlappedWithPattern() {
+    if (!resource.isClosed()) {
+      return true;
+    }
+
     try {
-      shouldParseTimeOrPattern = super.shouldParseTimeOrPattern();
-      return shouldParseTimeOrPattern;
-    } finally {
-      // Super method will call shouldParsePattern() and then init dataContainer at
-      // shouldParsePattern(). If shouldParsePattern() returns false, dataContainer will
-      // not be used, so we need to close the resource here.
-      if (!shouldParseTimeOrPattern) {
-        close();
-      }
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+          PipeResourceManager.tsfile()
+              .getDeviceIsAlignedMapFromCache(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+      final Set<IDeviceID> deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
+      return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
+          pipeName,
+          resource.getTsFilePath(),
+          e);
+      return true;
     }
   }
 
-  @Override
-  public boolean shouldParsePattern() {
-    return super.shouldParsePattern() && initDataContainer().shouldParsePattern();
-  }
+  /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
@@ -295,7 +317,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         return Collections.emptyList();
       }
       return initDataContainer().toTabletInsertionEvents();
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
 
@@ -315,7 +337,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
                 tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       close();
 
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
@@ -324,7 +346,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  public long count(boolean skipReportOnCommit) throws IOException {
+  public long count(final boolean skipReportOnCommit) throws IOException {
     long count = 0;
 
     if (shouldParseTime()) {

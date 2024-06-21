@@ -29,9 +29,10 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
@@ -170,6 +171,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
@@ -180,10 +182,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Node
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
@@ -348,8 +350,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDeviceId(), seriesPath.getMeasurement()));
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
     Expression pushDownPredicate = node.getPushDownPredicate();
     boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
@@ -361,6 +361,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider(),
               context.getZoneId()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+      scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
 
     OperatorContext operatorContext =
@@ -385,17 +389,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     if (!predicateCanPushIntoScan) {
       checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
-      return constructFilterOperator(
-          pushDownPredicate,
-          seriesScanOperator,
-          Collections.singletonList(ExpressionFactory.timeSeries(node.getSeriesPath()))
-              .toArray(new Expression[0]),
-          Collections.singletonList(node.getSeriesPath().getSeriesType()),
-          makeLayout(Collections.singletonList(node)),
-          false,
-          node.getPlanNodeId(),
-          node.getScanOrder(),
-          context);
+      Operator rootOperator =
+          constructFilterOperator(
+              pushDownPredicate,
+              seriesScanOperator,
+              Collections.singletonList(ExpressionFactory.timeSeries(node.getSeriesPath()))
+                  .toArray(new Expression[0]),
+              Collections.singletonList(node.getSeriesPath().getSeriesType()),
+              makeLayout(Collections.singletonList(node)),
+              false,
+              node.getPlanNodeId(),
+              node.getScanOrder(),
+              context);
+      if (node.getPushDownOffset() > 0) {
+        rootOperator =
+            new OffsetOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        OffsetOperator.class.getSimpleName()),
+                node.getPushDownOffset(),
+                rootOperator);
+      }
+      if (node.getPushDownLimit() > 0) {
+        rootOperator =
+            new LimitOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        LimitOperator.class.getSimpleName()),
+                node.getPushDownLimit(),
+                rootOperator);
+      }
+      return rootOperator;
     }
     return seriesScanOperator;
   }
@@ -407,8 +437,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         (AlignedFullPath) IFullPath.convertToIFullPath(node.getAlignedPath());
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withAllSensors(
         new HashSet<>(
             context.isBuildPlanUseTemplate()
@@ -425,6 +453,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider(),
               context.getZoneId()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+      scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
 
     OperatorContext operatorContext =
@@ -483,16 +515,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes.add(alignedPath.getSubMeasurementDataType(i));
       }
 
-      return constructFilterOperator(
-          pushDownPredicate,
-          seriesScanOperator,
-          expressions.toArray(new Expression[0]),
-          dataTypes,
-          makeLayout(Collections.singletonList(node)),
-          false,
-          node.getPlanNodeId(),
-          node.getScanOrder(),
-          context);
+      Operator rootOperator =
+          constructFilterOperator(
+              pushDownPredicate,
+              seriesScanOperator,
+              expressions.toArray(new Expression[0]),
+              dataTypes,
+              makeLayout(Collections.singletonList(node)),
+              false,
+              node.getPlanNodeId(),
+              node.getScanOrder(),
+              context);
+
+      if (node.getPushDownOffset() > 0) {
+        rootOperator =
+            new OffsetOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        OffsetOperator.class.getSimpleName()),
+                node.getPushDownOffset(),
+                rootOperator);
+      }
+      if (node.getPushDownLimit() > 0) {
+        rootOperator =
+            new LimitOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        LimitOperator.class.getSimpleName()),
+                node.getPushDownLimit(),
+                rootOperator);
+      }
+      return rootOperator;
     }
     return seriesScanOperator;
   }
@@ -2605,8 +2664,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitSchemaFetchScan(
-      SchemaFetchScanNode node, LocalExecutionPlanContext context) {
+  public Operator visitSeriesSchemaFetchScan(
+      SeriesSchemaFetchScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2614,14 +2673,34 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SchemaFetchScanOperator.class.getSimpleName());
-    return new SchemaFetchScanOperator(
+    return SchemaFetchScanOperator.ofSeries(
         node.getPlanNodeId(),
         operatorContext,
         node.getPatternTree(),
         node.getTemplateMap(),
         ((SchemaDriverContext) (context.getDriverContext())).getSchemaRegion(),
         node.isWithTags(),
-        node.isWithTemplate());
+        node.isWithAttributes(),
+        node.isWithTemplate(),
+        node.isWithAliasForce());
+  }
+
+  @Override
+  public Operator visitDeviceSchemaFetchScan(
+      DeviceSchemaFetchScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaFetchScanOperator.class.getSimpleName());
+    return SchemaFetchScanOperator.ofDevice(
+        node.getPlanNodeId(),
+        operatorContext,
+        node.getPatternTree(),
+        node.getAuthorityScope(),
+        ((SchemaDriverContext) (context.getDriverContext())).getSchemaRegion());
   }
 
   @Override
@@ -3550,18 +3629,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 ActiveDeviceRegionScanOperator.class.getSimpleName());
     Filter filter = context.getGlobalTimeFilter();
-    Map<IDeviceID, Boolean> deviceIDToAligned = new HashMap<>();
-    for (Map.Entry<PartialPath, Boolean> entry : node.getDevicePathsToAligned().entrySet()) {
-      deviceIDToAligned.put(
+
+    Map<IDeviceID, DeviceContext> deviceIDToContext = new HashMap<>();
+    for (Map.Entry<PartialPath, DeviceContext> entry :
+        node.getDevicePathToContextMap().entrySet()) {
+      deviceIDToContext.put(
           IDeviceID.Factory.DEFAULT_FACTORY.create(entry.getKey().getFullPath()), entry.getValue());
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
-            operatorContext, node.getPlanNodeId(), deviceIDToAligned, filter, node.isOutputCount());
+            operatorContext, node.getPlanNodeId(), deviceIDToContext, filter, node.isOutputCount());
 
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
     dataDriverContext.addSourceOperator(regionScanOperator);
-    dataDriverContext.setDeviceIDToAligned(deviceIDToAligned);
+    dataDriverContext.setDeviceIDToContext(deviceIDToContext);
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.DEVICE_REGION_SCAN);
 
     return regionScanOperator;
@@ -3580,10 +3661,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Filter filter = context.getGlobalTimeFilter();
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
 
-    Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeseriesToSchemaInfo = new HashMap<>();
-    for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> entryMap :
+    Map<IDeviceID, Map<String, TimeseriesContext>> timeseriesToSchemaInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap :
         node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
-      Map<String, TimeseriesSchemaInfo> timeseriesSchemaInfoMap =
+      Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(
           entryMap.getValue().keySet().iterator().next().getIDeviceID(), timeseriesSchemaInfoMap);
@@ -3602,12 +3683,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return regionScanOperator;
   }
 
-  private static Map<String, TimeseriesSchemaInfo> getTimeseriesSchemaInfoMap(
-      Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> entryMap,
+  private static Map<String, TimeseriesContext> getTimeseriesSchemaInfoMap(
+      Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap,
       DataDriverContext context) {
-    Map<String, TimeseriesSchemaInfo> timeseriesSchemaInfoMap = new HashMap<>();
-    for (Map.Entry<PartialPath, List<TimeseriesSchemaInfo>> entry :
-        entryMap.getValue().entrySet()) {
+    Map<String, TimeseriesContext> timeseriesSchemaInfoMap = new HashMap<>();
+    for (Map.Entry<PartialPath, List<TimeseriesContext>> entry : entryMap.getValue().entrySet()) {
       PartialPath path = entry.getKey();
       if (path instanceof MeasurementPath) {
         timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));

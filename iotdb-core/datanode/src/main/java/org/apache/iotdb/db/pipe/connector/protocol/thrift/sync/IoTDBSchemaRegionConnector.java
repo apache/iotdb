@@ -89,15 +89,16 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(final PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final String pipeName = snapshotEvent.getPipeName();
+    final long creationTime = snapshotEvent.getCreationTime();
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(pipeName, mTreeSnapshotFile, clientAndStatus, true);
+    transferFilePieces(pipeName, creationTime, mTreeSnapshotFile, clientAndStatus, true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(pipeName, tagLogSnapshotFile, clientAndStatus, true);
+      transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, clientAndStatus, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
@@ -114,6 +115,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                   snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
+          snapshotEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);

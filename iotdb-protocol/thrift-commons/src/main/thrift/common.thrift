@@ -121,15 +121,20 @@ struct TSchemaNode {
   2: required byte nodeType
 }
 
+struct TSetConfigurationReq {
+  1: required map<string,string> configs
+  2: required i32 nodeId
+}
+
+// for TTL
 struct TSetTTLReq {
   1: required list<string> pathPattern
   2: required i64 TTL
   3: required bool isDataBase
 }
 
-struct TSetConfigurationReq {
-  1: required map<string,string> configs
-  2: required i32 nodeId
+struct TShowTTLReq {
+  1: required list<string> pathPattern
 }
 
 // for File
@@ -189,6 +194,40 @@ struct TLicense {
     7: required i64 sensorNumLimit
     8: required i64 disconnectionFromActiveNodeTimeLimit
     9: required i16 mlNodeNumLimit
+}
+
+enum TServiceType {
+  ConfigNodeInternalService,
+  DataNodeInternalService,
+  DataNodeMPPService,
+  DataNodeExternalService,
+}
+
+struct TServiceProvider {
+  1: required TEndPoint endPoint
+  2: required TServiceType serviceType
+}
+
+struct TSender {
+  1: optional TDataNodeLocation dataNodeLocation
+  2: optional TConfigNodeLocation configNodeLocation
+}
+
+struct TTestConnectionResult {
+  1: required TServiceProvider serviceProvider
+  2: required TSender sender
+  3: required bool success
+  4: optional string reason
+}
+
+struct TTestConnectionResp {
+  1: required TSStatus status
+  2: required list<TTestConnectionResult> resultList
+}
+
+struct TNodeLocations {
+  1: optional list<TConfigNodeLocation> configNodeLocations
+  2: optional list<TDataNodeLocation> dataNodeLocations
 }
 
 enum TAggregationType {
