@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -2428,6 +2429,11 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitCreateDevice(CreateDevice node, Optional<Scope> context) {
       return null;
+    }
+
+    @Override
+    protected Scope visitFetchDevice(FetchDevice node, Optional<Scope> context) {
+      return Scope.builder().build();
     }
   }
 

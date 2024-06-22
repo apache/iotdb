@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.common.header;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -69,7 +71,15 @@ public class ColumnHeader {
     if (hasAlias()) {
       ReadWriteIOUtils.write(alias, byteBuffer);
     }
-    dataType.serializeTo(byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(columnName, stream);
+    ReadWriteIOUtils.write(dataType.ordinal(), stream);
+    ReadWriteIOUtils.write(hasAlias(), stream);
+    if (hasAlias()) {
+      ReadWriteIOUtils.write(alias, stream);
+    }
   }
 
   public static ColumnHeader deserialize(ByteBuffer byteBuffer) {
