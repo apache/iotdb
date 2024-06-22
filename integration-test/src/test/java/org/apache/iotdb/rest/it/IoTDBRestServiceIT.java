@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.rest.it;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -59,6 +59,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
+@SuppressWarnings("unchecked")
 public class IoTDBRestServiceIT {
 
   private int port = 18080;
@@ -83,7 +84,7 @@ public class IoTDBRestServiceIT {
   }
 
   @Test
-  public void ping() {
+  public void testPing() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/ping");
     CloseableHttpResponse response = null;
@@ -110,7 +111,6 @@ public class IoTDBRestServiceIT {
       assertEquals(200, response.getStatusLine().getStatusCode());
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -121,7 +121,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -155,7 +154,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -163,7 +161,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -179,7 +176,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(700, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -187,7 +183,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -203,7 +198,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -211,7 +205,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -227,7 +220,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(509, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -235,7 +227,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -251,7 +242,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -259,7 +249,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -290,7 +279,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -298,13 +286,12 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
   }
 
-  public void errorInsertTablet(String json, HttpPost httpPost) {
+  public void errorInsertTablet(String json, HttpPost httpPost, int expectedCode) {
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
@@ -313,9 +300,8 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(606, Integer.parseInt(result.get("code").toString()));
+      assertEquals(expectedCode, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -323,14 +309,13 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
   }
 
   @Test
-  public void errorInsertTablet() {
+  public void testErroredInsertTablet() {
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
@@ -357,9 +342,8 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(606, Integer.parseInt(result.get("code").toString()));
+      assertEquals(507, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -367,7 +351,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -382,7 +365,7 @@ public class IoTDBRestServiceIT {
   }
 
   @Test
-  public void insertAndQuery() {
+  public void testInsertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     //
     rightInsertTablet(httpClient);
@@ -401,7 +384,7 @@ public class IoTDBRestServiceIT {
     countNodes(httpClient);
     showDevices(httpClient);
 
-    showDevicesWithStroage(httpClient);
+    showDevicesWithStorage(httpClient);
     listUser(httpClient);
     selectCount(httpClient);
     selectLast(httpClient);
@@ -421,7 +404,7 @@ public class IoTDBRestServiceIT {
     countNodesV2(httpClient);
     showDevicesV2(httpClient);
 
-    showDevicesWithStroageV2(httpClient);
+    showDevicesWithStorageV2(httpClient);
     listUserV2(httpClient);
     selectCountV2(httpClient);
     selectLastV2(httpClient);
@@ -429,14 +412,13 @@ public class IoTDBRestServiceIT {
     List<String> insertTablet_right_json_list = new ArrayList<>();
     List<String> insertTablet_error_json_list = new ArrayList<>();
 
-    List<String> insertRecords_right_json_list = new ArrayList<>();
-    List<String> insertRecords_error_json_list = new ArrayList<>();
-
     List<String> nonQuery_right_json_list = new ArrayList<>();
     List<String> nonQuery_error_json_list = new ArrayList<>();
 
     List<String> insertTablet_right_json_list_v2 = new ArrayList<>();
     List<String> insertTablet_error_json_list_v2 = new ArrayList<>();
+
+    List<String> insertTablet_dup_measurements_json_list_v2 = new ArrayList<>();
 
     List<String> insertRecords_right_json_list_v2 = new ArrayList<>();
     List<String> insertRecords_error_json_list_v2 = new ArrayList<>();
@@ -444,91 +426,43 @@ public class IoTDBRestServiceIT {
     List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
     List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
     for (int i = 0; i <= 1; i++) {
-      boolean isAligned = false;
-      if (i == 0) {
-        isAligned = true;
-      }
+      boolean isAligned = i == 0;
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg22"
+              + "\",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg24"
+              + "\",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.sg25"
+              + ",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,2],[16.2,15],[1.41,null],[null,false],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.sg36"
+              + ",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,2],[16,15],[1.41,null],[null,333],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.`sg46"
+              + ",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,1635232153960],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.`3333a"
+              + ",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
 
       nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
       nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
@@ -590,6 +524,13 @@ public class IoTDBRestServiceIT {
               + ",\"device\":\"root.`3333a"
               + i
               + "`\"}");
+      insertTablet_dup_measurements_json_list_v2.add(
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s7\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"BOOLEAN\"],\"values\":[[\"2aa\",\"\"],[1,2],[16,15],[1.41,null],[null,false],[null,false]],\"is_aligned\":"
+              + isAligned
+              + ",\"device\":\"root.`3333a"
+              + i
+              + "`\"}");
+
       insertRecords_right_json_list_v2.add(
           "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
               + isAligned
@@ -623,6 +564,10 @@ public class IoTDBRestServiceIT {
           "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
               + isAligned
               + "}");
+      insertRecords_error_json_list_v2.add(
+          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s55\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
+              + isAligned
+              + "}");
 
       nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
       nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
@@ -649,7 +594,7 @@ public class IoTDBRestServiceIT {
         rightInsertTablet(httpClient, json, hp);
       }
       for (String json : insertTablet_error_json_list) {
-        errorInsertTablet(json, hp);
+        errorInsertTablet(json, hp, 507);
       }
     }
 
@@ -685,8 +630,9 @@ public class IoTDBRestServiceIT {
         rightInsertTablet(httpClient, json, hp);
       }
       for (String json : insertTablet_error_json_list_v2) {
-        errorInsertTablet(json, hp);
+        errorInsertTablet(json, hp, 507);
       }
+      errorInsertTablet(insertTablet_dup_measurements_json_list_v2.get(0), hp, 701);
     }
 
     HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
@@ -720,13 +666,12 @@ public class IoTDBRestServiceIT {
     try {
       httpClient.close();
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   @Test
-  public void queryWithUnsetAuthorization() {
+  public void testQueryWithUnsetAuthorization() {
     CloseableHttpResponse response = null;
     try {
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
@@ -756,7 +701,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(800, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -764,14 +708,13 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
   }
 
   @Test
-  public void queryWithWrongAuthorization() {
+  public void testQueryWithWrongAuthorization() {
     CloseableHttpResponse response = null;
     try {
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
@@ -803,7 +746,6 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(801, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -811,7 +753,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -827,11 +768,11 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
-      Map map = mapper.readValue(message, Map.class);
-      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
-      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
+      Map<String, Object> map = mapper.readValue(message, Map.class);
+      Object timestampsResult = map.get("timestamps");
+      Object expressionsResult = map.get("expressions");
+      List<Object> valuesResult = (List<Object>) map.get("values");
+      Assert.assertFalse(map.isEmpty());
       List<Object> expressions =
           new ArrayList<Object>() {
             {
@@ -848,8 +789,8 @@ public class IoTDBRestServiceIT {
       List<Object> timestamps =
           new ArrayList<Object>() {
             {
-              add(1635232143960l);
-              add(1635232153960l);
+              add(1635232143960L);
+              add(1635232153960L);
             }
           };
       List<Object> values1 =
@@ -869,8 +810,8 @@ public class IoTDBRestServiceIT {
       List<Object> values3 =
           new ArrayList<Object>() {
             {
-              add(1635000012345555l);
-              add(1635000012345556l);
+              add(1635000012345555L);
+              add(1635000012345556L);
             }
           };
 
@@ -905,7 +846,6 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values5, valuesResult.get(4));
       Assert.assertEquals(values6, valuesResult.get(5));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -913,7 +853,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -932,14 +871,13 @@ public class IoTDBRestServiceIT {
       ObjectMapper mapper = new ObjectMapper();
       Map map = mapper.readValue(message, Map.class);
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<String> expressionsResult = (List<String>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
-      Assert.assertTrue(timestampsResult.size() == 10);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertFalse(map.isEmpty());
+      assertEquals(10, timestampsResult.size());
+      assertEquals(1, valuesResult.size());
+      assertEquals("count(root.sg25.s4)", expressionsResult.get(0));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -947,7 +885,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -964,7 +901,6 @@ public class IoTDBRestServiceIT {
       String message = EntityUtils.toString(responseEntity, "utf-8");
       assertTrue(message.contains("row size exceeded the given max row size"));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -972,7 +908,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -991,7 +926,6 @@ public class IoTDBRestServiceIT {
       return map;
 
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -999,7 +933,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -1011,7 +944,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1035,7 +968,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1058,7 +991,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1088,7 +1021,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1123,7 +1056,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1185,7 +1118,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1247,7 +1180,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1278,7 +1211,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1300,7 +1233,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1332,12 +1265,12 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
-  public void showDevicesWithStroage(CloseableHttpClient httpClient) {
+  public void showDevicesWithStorage(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show devices with database\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1384,7 +1317,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1406,7 +1339,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1429,7 +1362,7 @@ public class IoTDBRestServiceIT {
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1441,7 +1374,7 @@ public class IoTDBRestServiceIT {
     List<Long> timestamps =
         new ArrayList<Long>() {
           {
-            add(1635232153960l);
+            add(1635232153960L);
           }
         };
     List<Object> values1 =
@@ -1483,7 +1416,7 @@ public class IoTDBRestServiceIT {
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
       List<Long> expressionsResult = (List<Long>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
+      Assert.assertFalse(map.isEmpty());
       List<Object> expressions =
           new ArrayList<Object>() {
             {
@@ -1500,8 +1433,8 @@ public class IoTDBRestServiceIT {
       List<Object> timestamps =
           new ArrayList<Object>() {
             {
-              add(1635232143960l);
-              add(1635232153960l);
+              add(1635232143960L);
+              add(1635232153960L);
             }
           };
       List<Object> values1 =
@@ -1521,8 +1454,8 @@ public class IoTDBRestServiceIT {
       List<Object> values3 =
           new ArrayList<Object>() {
             {
-              add(1635000012345555l);
-              add(1635000012345556l);
+              add(1635000012345555L);
+              add(1635000012345556L);
             }
           };
 
@@ -1557,7 +1490,6 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values5, valuesResult.get(4));
       Assert.assertEquals(values6, valuesResult.get(5));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -1565,7 +1497,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -1584,14 +1515,13 @@ public class IoTDBRestServiceIT {
       ObjectMapper mapper = new ObjectMapper();
       Map map = mapper.readValue(message, Map.class);
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<String> expressionsResult = (List<String>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
-      Assert.assertTrue(timestampsResult.size() == 10);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertFalse(map.isEmpty());
+      assertEquals(10, timestampsResult.size());
+      assertEquals(1, valuesResult.size());
+      assertEquals("count(root.sg25.s4)", expressionsResult.get(0));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -1599,7 +1529,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -1616,7 +1545,6 @@ public class IoTDBRestServiceIT {
       String message = EntityUtils.toString(responseEntity, "utf-8");
       assertTrue(message.contains("row size exceeded the given max row size"));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -1624,7 +1552,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -1643,7 +1570,6 @@ public class IoTDBRestServiceIT {
       return map;
 
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -1651,7 +1577,6 @@ public class IoTDBRestServiceIT {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
         fail(e.getMessage());
       }
     }
@@ -1663,7 +1588,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1687,7 +1612,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1710,7 +1635,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1740,7 +1665,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1775,7 +1700,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1827,9 +1752,9 @@ public class IoTDBRestServiceIT {
         };
 
     Assert.assertEquals(columnNames, columnNamesResult);
-    //    Assert.assertEquals(values1, valuesResult.get(0));
-    //    Assert.assertEquals(values2, valuesResult.get(1));
-    //    Assert.assertEquals(values3, valuesResult.get(2));
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+    Assert.assertEquals(values3, valuesResult.get(2));
   }
 
   public void showLastTimeseriesV2(CloseableHttpClient httpClient) {
@@ -1837,7 +1762,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1899,7 +1824,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1930,7 +1855,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1952,7 +1877,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -1985,12 +1910,12 @@ public class IoTDBRestServiceIT {
     // Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showDevicesWithStroageV2(CloseableHttpClient httpClient) {
+  public void showDevicesWithStorageV2(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show devices with database\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -2037,7 +1962,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -2059,7 +1984,7 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -2082,7 +2007,7 @@ public class IoTDBRestServiceIT {
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-    Assert.assertTrue(map.size() > 0);
+    Assert.assertFalse(map.isEmpty());
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
@@ -2094,7 +2019,7 @@ public class IoTDBRestServiceIT {
     List<Long> timestamps =
         new ArrayList<Long>() {
           {
-            add(1635232153960l);
+            add(1635232153960L);
           }
         };
     List<Object> values1 =
