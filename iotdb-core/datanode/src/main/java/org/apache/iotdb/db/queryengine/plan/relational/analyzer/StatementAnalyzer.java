@@ -233,7 +233,7 @@ public class StatementAnalyzer {
     @Override
     public Scope process(Node node, Optional<Scope> scope) {
       Scope returnScope = super.process(node, scope);
-      if (node instanceof CreateDevice) {
+      if (node instanceof CreateDevice || node instanceof FetchDevice) {
         return returnScope;
       }
       checkState(
@@ -2433,7 +2433,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitFetchDevice(FetchDevice node, Optional<Scope> context) {
-      return Scope.builder().build();
+      return null;
     }
   }
 
