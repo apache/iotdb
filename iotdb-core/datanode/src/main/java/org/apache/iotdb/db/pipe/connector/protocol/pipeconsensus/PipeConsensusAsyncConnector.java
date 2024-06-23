@@ -229,7 +229,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    LOGGER.info("PipeConsensus: begin to transfer tablet");
     syncTransferQueuedEventsIfNecessary();
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
@@ -317,7 +316,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    LOGGER.info("PipeConsensus: begin to transfer tsfile");
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
