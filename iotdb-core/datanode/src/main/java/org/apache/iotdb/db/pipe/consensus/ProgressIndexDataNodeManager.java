@@ -74,10 +74,13 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                     maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                         extractLocalSimpleProgressIndex(progressIndex));
               }
-              // 得拿返回值，否则是旧值
-              groupId2MaxProgressIndex
-                  .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
-                  .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
+              ProgressIndex correspondingProgressIndex =
+                  groupId2MaxProgressIndex
+                      .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
+                      .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
+              // Need to update map by hand due to the syntax of
+              // updateToMinimumEqualOrIsAfterProgressIndex
+              groupId2MaxProgressIndex.put(dataRegionId, correspondingProgressIndex);
             });
 
     // TODO: update deletion progress index
@@ -116,11 +119,14 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
-      // TODO：拿的也是旧的，需要 put 下
-    return groupId2MaxProgressIndex
-        .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
-        .updateToMinimumEqualOrIsAfterProgressIndex(
-            PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus());
+    ProgressIndex correspondingProgressIndex =
+        groupId2MaxProgressIndex
+            .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
+            .updateToMinimumEqualOrIsAfterProgressIndex(
+                PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus());
+    // Need to update map by hand due to the syntax of updateToMinimumEqualOrIsAfterProgressIndex
+    groupId2MaxProgressIndex.put(consensusGroupId, correspondingProgressIndex);
+    return correspondingProgressIndex;
   }
 
   @Override
