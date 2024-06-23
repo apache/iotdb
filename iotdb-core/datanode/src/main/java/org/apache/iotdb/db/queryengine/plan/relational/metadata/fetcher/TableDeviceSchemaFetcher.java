@@ -291,15 +291,16 @@ public class TableDeviceSchemaFetcher {
       String database,
       TsTable tableInstance,
       List<String> attributeColumns,
-      List<List<Expression>> idPatternList,
-      Expression attributeFilter,
+      List<List<Expression>> idDeterminedPredicateList,
+      Expression idFuzzyPredicate,
       List<DeviceEntry> deviceEntryList,
       boolean cacheFetchedDevice) {
 
     String table = tableInstance.getTableName();
 
     long queryId = SessionManager.getInstance().requestQueryId();
-    ShowDevice statement = new ShowDevice(database, table, idPatternList, attributeFilter);
+    ShowDevice statement =
+        new ShowDevice(database, table, idDeterminedPredicateList, idFuzzyPredicate);
     ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
