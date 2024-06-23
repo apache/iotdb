@@ -268,8 +268,8 @@ public class LogicalPlanner {
             context.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedFilterList(),
-            statement.getIdFuzzyFilter(),
+            statement.getIdDeterminedPredicateList(),
+            statement.getIdFuzzyPredicate(),
             columnHeaderList,
             null);
     mergeNode.addChild(queryNode);

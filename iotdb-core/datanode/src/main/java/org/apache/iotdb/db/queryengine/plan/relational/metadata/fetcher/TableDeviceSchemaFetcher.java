@@ -87,7 +87,7 @@ public class TableDeviceSchemaFetcher {
     return cache;
   }
 
-  Map<TableDeviceId, Map<String, String>> fetchMissingDeviceSchema(
+  Map<TableDeviceId, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
       FetchDevice statement, MPPQueryContext context) {
     long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -165,7 +165,7 @@ public class TableDeviceSchemaFetcher {
     return fetchedDeviceSchema;
   }
 
-  public List<DeviceEntry> fetchDeviceSchema(
+  public List<DeviceEntry> fetchDeviceSchemaForDataQuery(
       String database,
       String table,
       List<Expression> expressionList,
@@ -175,16 +175,18 @@ public class TableDeviceSchemaFetcher {
     TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(expressionList, tableInstance);
-    List<Expression> idDeterminedExpressionList = separatedExpression.left;
-    List<Expression> idFuzzyExpressionList = separatedExpression.right;
-    Expression compactedIdFuzzyExpression =
-        SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyExpressionList);
+    List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
+    List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
+    Expression compactedIdFuzzyPredicate =
+        SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyPredicateList);
 
-    List<List<Expression>> idPatternList =
-        SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(idDeterminedExpressionList);
+    // each element represents one batch of possible devices
+    // expressions inner each element are and-concat representing conditions of different column
+    List<List<Expression>> idPredicateList =
+        SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(idDeterminedPredicateList);
     List<Integer> idSingleMatchIndexList =
-        SchemaPredicateUtil.extractIdSingleMatchExpressionCases(idPatternList, tableInstance);
-    List<Integer> deviceIdPredicateForFetch = new ArrayList<>();
+        SchemaPredicateUtil.extractIdSingleMatchExpressionCases(idPredicateList, tableInstance);
+    List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
 
     if (!idSingleMatchIndexList.isEmpty()) {
       // try get from cache
@@ -193,38 +195,38 @@ public class TableDeviceSchemaFetcher {
           new ConvertSchemaPredicateToFilterVisitor.Context(tableInstance);
       DeviceInCacheFilterVisitor filterVisitor = new DeviceInCacheFilterVisitor(attributeColumns);
       SchemaFilter attributeFilter =
-          compactedIdFuzzyExpression == null
+          compactedIdFuzzyPredicate == null
               ? null
-              : compactedIdFuzzyExpression.accept(visitor, context);
+              : compactedIdFuzzyPredicate.accept(visitor, context);
       for (int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
             database,
             tableInstance,
-            idPatternList.get(index).stream()
+            idPredicateList.get(index).stream()
                 .map(o -> o.accept(visitor, context))
                 .collect(Collectors.toList()),
             o -> attributeFilter == null || filterVisitor.process(attributeFilter, o),
             attributeColumns)) {
-          deviceIdPredicateForFetch.add(index);
+          idSingleMatchPredicateNotInCache.add(index);
         }
       }
     }
 
-    if (idSingleMatchIndexList.size() < idPatternList.size()
-        || deviceIdPredicateForFetch.size() > 0) {
+    if (idSingleMatchIndexList.size() < idPredicateList.size()
+        || idSingleMatchPredicateNotInCache.size() > 0) {
       List<List<Expression>> idPredicateForFetch =
           new ArrayList<>(
-              idPatternList.size()
+              idPredicateList.size()
                   - idSingleMatchIndexList.size()
-                  + deviceIdPredicateForFetch.size());
-      for (int i = 0, idx1 = 0, idx2 = 0; i < idPatternList.size(); i++) {
+                  + idSingleMatchPredicateNotInCache.size());
+      for (int i = 0, idx1 = 0, idx2 = 0; i < idPredicateList.size(); i++) {
         if (i != idSingleMatchIndexList.get(idx1)) {
-          idPredicateForFetch.add(idPatternList.get(i));
+          idPredicateForFetch.add(idPredicateList.get(i));
         } else {
           idx1++;
-          if (i == deviceIdPredicateForFetch.get(idx2)) {
-            idPredicateForFetch.add(idPatternList.get(i));
+          if (i == idSingleMatchPredicateNotInCache.get(idx2)) {
+            idPredicateForFetch.add(idPredicateList.get(i));
             idx2++;
           }
         }
@@ -234,11 +236,13 @@ public class TableDeviceSchemaFetcher {
           tableInstance,
           attributeColumns,
           idPredicateForFetch,
-          compactedIdFuzzyExpression,
+          compactedIdFuzzyPredicate,
           deviceEntryList,
-          idSingleMatchIndexList.size() == idPatternList.size());
+          idSingleMatchIndexList.size() == idPredicateList.size());
     }
 
+    // todo implement deduplicate during schemaRegion execution
+    // todo need further process on input predicates and transform them into disjoint sets
     Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
     return new ArrayList<>(set);
   }
@@ -281,16 +285,6 @@ public class TableDeviceSchemaFetcher {
       deviceEntryList.add(deviceEntry);
     }
     return true;
-  }
-
-  private static class SchemaFilterCheckResult {
-    boolean needFetch;
-    boolean isIdDetermined;
-
-    SchemaFilterCheckResult(boolean needFetch, boolean isIdDetermined) {
-      this.needFetch = needFetch;
-      this.isIdDetermined = isIdDetermined;
-    }
   }
 
   private void fetchMissingDeviceSchemaForQuery(

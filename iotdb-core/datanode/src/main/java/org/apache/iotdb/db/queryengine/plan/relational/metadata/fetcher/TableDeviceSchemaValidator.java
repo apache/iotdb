@@ -143,7 +143,7 @@ public class TableDeviceSchemaValidator {
     }
 
     Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema =
-        fetcher.fetchMissingDeviceSchema(
+        fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(), schemaValidation.getTableName(), targetDeviceList),
             context);

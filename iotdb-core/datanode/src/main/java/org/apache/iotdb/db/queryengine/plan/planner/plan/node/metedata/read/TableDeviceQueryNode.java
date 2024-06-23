@@ -46,30 +46,30 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<Expression>> idDeterminedFilterList;
+  private List<List<Expression>> idDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyFilter;
+  private Expression idFuzzyPredicate;
 
   public TableDeviceQueryNode(
       PlanNodeId planNodeId,
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedFilterList,
-      Expression idFuzzyFilter,
+      List<List<Expression>> idDeterminedPredicateList,
+      Expression idFuzzyPredicate,
       List<ColumnHeader> columnHeaderList,
       TRegionReplicaSet schemaRegionReplicaSet) {
     super(planNodeId, database, tableName, columnHeaderList, schemaRegionReplicaSet);
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilter = idFuzzyFilter;
+    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idFuzzyPredicate = idFuzzyPredicate;
   }
 
-  public List<List<Expression>> getIdDeterminedFilterList() {
-    return idDeterminedFilterList;
+  public List<List<Expression>> getIdDeterminedPredicateList() {
+    return idDeterminedPredicateList;
   }
 
-  public Expression getIdFuzzyFilter() {
-    return idFuzzyFilter;
+  public Expression getIdFuzzyPredicate() {
+    return idFuzzyPredicate;
   }
 
   @Override
@@ -88,8 +88,8 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
         getPlanNodeId(),
         database,
         tableName,
-        idDeterminedFilterList,
-        idFuzzyFilter,
+        idDeterminedPredicateList,
+        idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
@@ -100,15 +100,15 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
-    ReadWriteIOUtils.write(idDeterminedFilterList.size(), byteBuffer);
-    for (List<Expression> filterList : idDeterminedFilterList) {
+    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
+    for (List<Expression> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), byteBuffer);
       for (Expression expression : filterList) {
         Expression.serialize(expression, byteBuffer);
       }
     }
 
-    Expression.serialize(idFuzzyFilter, byteBuffer);
+    Expression.serialize(idFuzzyPredicate, byteBuffer);
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -122,15 +122,15 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
 
-    ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
-    for (List<Expression> filterList : idDeterminedFilterList) {
+    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
+    for (List<Expression> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
       for (Expression expression : filterList) {
         Expression.serialize(expression, stream);
       }
     }
 
-    Expression.serialize(idFuzzyFilter, stream);
+    Expression.serialize(idFuzzyPredicate, stream);
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -179,8 +179,8 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     TableDeviceQueryNode that = (TableDeviceQueryNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyFilter, that.idFuzzyFilter)
+        && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
+        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate)
         && Objects.equals(columnHeaderList, that.columnHeaderList)
         && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);
   }
@@ -191,8 +191,8 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
         super.hashCode(),
         database,
         tableName,
-        idDeterminedFilterList,
-        idFuzzyFilter,
+        idDeterminedPredicateList,
+        idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
@@ -207,9 +207,9 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
         + tableName
         + '\''
         + ", idDeterminedFilterList="
-        + idDeterminedFilterList
+        + idDeterminedPredicateList
         + ", idFuzzyFilter="
-        + idFuzzyFilter
+        + idFuzzyPredicate
         + ", columnHeaderList="
         + columnHeaderList
         + ", schemaRegionReplicaSet="

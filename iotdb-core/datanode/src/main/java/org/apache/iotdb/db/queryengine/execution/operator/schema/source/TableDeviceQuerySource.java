@@ -50,9 +50,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private String tableName;
 
-  private List<List<Expression>> idDeterminedFilterList;
+  private List<List<Expression>> idDeterminedPredicateList;
 
-  private Expression idFuzzyFilter;
+  private Expression idFuzzyPredicate;
 
   private List<ColumnHeader> columnHeaderList;
 
@@ -61,13 +61,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   public TableDeviceQuerySource(
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedFilterList,
-      Expression idFuzzyFilter,
+      List<List<Expression>> idDeterminedPredicateList,
+      Expression idFuzzyPredicate,
       List<ColumnHeader> columnHeaderList) {
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilter = idFuzzyFilter;
+    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idFuzzyPredicate = idFuzzyPredicate;
     this.columnHeaderList = columnHeaderList;
 
     this.table = DataNodeTableCache.getInstance().getTable(database, tableName);
@@ -124,7 +124,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
             deviceReader =
                 schemaRegion.getTableDeviceReader(
                     new ShowTableDevicesPlan(
-                        devicePatternList.get(index), getExecutableIdFuzzyFilter(idFuzzyFilter)));
+                        devicePatternList.get(index),
+                        getExecutableIdFuzzyFilter(idFuzzyPredicate)));
             index++;
             if (deviceReader.hasNext()) {
               return true;
@@ -160,7 +161,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         database,
         tableName,
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
-        getExecutableIdDeterminedFilter(idDeterminedFilterList));
+        getExecutableIdDeterminedFilter(idDeterminedPredicateList));
   }
 
   private List<List<SchemaFilter>> getExecutableIdDeterminedFilter(

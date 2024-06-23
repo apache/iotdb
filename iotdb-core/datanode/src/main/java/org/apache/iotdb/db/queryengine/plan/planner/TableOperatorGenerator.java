@@ -824,8 +824,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
-            node.getIdDeterminedFilterList(),
-            node.getIdFuzzyFilter(),
+            node.getIdDeterminedPredicateList(),
+            node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
   }
 }

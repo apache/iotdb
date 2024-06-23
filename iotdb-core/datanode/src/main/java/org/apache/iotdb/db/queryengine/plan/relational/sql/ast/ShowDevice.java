@@ -40,10 +40,10 @@ public class ShowDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<Expression>> idDeterminedFilterList;
+  private List<List<Expression>> idDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyFilter;
+  private Expression idFuzzyPredicate;
 
   private boolean isIdDetermined = false;
 
@@ -61,13 +61,13 @@ public class ShowDevice extends Statement {
   public ShowDevice(
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedFilterList,
+      List<List<Expression>> idDeterminedPredicateList,
       Expression idFuzzyFilterList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilter = idFuzzyFilterList;
+    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idFuzzyPredicate = idFuzzyFilterList;
   }
 
   public String getDatabase() {
@@ -82,18 +82,18 @@ public class ShowDevice extends Statement {
     return rawExpression;
   }
 
-  public List<List<Expression>> getIdDeterminedFilterList() {
-    if (idDeterminedFilterList == null) {
+  public List<List<Expression>> getIdDeterminedPredicateList() {
+    if (idDeterminedPredicateList == null) {
       // todo process raw expression input by show device sql
     }
-    return idDeterminedFilterList;
+    return idDeterminedPredicateList;
   }
 
-  public Expression getIdFuzzyFilter() {
-    if (idFuzzyFilter == null) {
+  public Expression getIdFuzzyPredicate() {
+    if (idFuzzyPredicate == null) {
       // todo process raw expression input by show device sql
     }
-    return idFuzzyFilter;
+    return idFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -129,13 +129,14 @@ public class ShowDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyFilter, that.idFuzzyFilter);
+        && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
+        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, rawExpression, idDeterminedFilterList, idFuzzyFilter);
+    return Objects.hash(
+        database, tableName, rawExpression, idDeterminedPredicateList, idFuzzyPredicate);
   }
 
   @Override
@@ -150,9 +151,9 @@ public class ShowDevice extends Statement {
         + ", rawExpression="
         + rawExpression
         + ", idDeterminedFilterList="
-        + idDeterminedFilterList
+        + idDeterminedPredicateList
         + ", idFuzzyFilter="
-        + idFuzzyFilter
+        + idFuzzyPredicate
         + '}';
   }
 }

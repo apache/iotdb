@@ -295,7 +295,7 @@ public class TableMetadataImpl implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns) {
     return TableDeviceSchemaFetcher.getInstance()
-        .fetchDeviceSchema(
+        .fetchDeviceSchemaForDataQuery(
             tableName.getDatabaseName(),
             tableName.getObjectName(),
             expressionList,
