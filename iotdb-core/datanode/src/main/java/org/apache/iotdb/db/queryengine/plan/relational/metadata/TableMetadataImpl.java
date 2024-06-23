@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -41,12 +42,9 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -296,13 +294,12 @@ public class TableMetadataImpl implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    // fixme, perfect the real metadata impl
-    List<DeviceEntry> result = new ArrayList<>();
-    IDeviceID deviceID1 = new StringArrayDeviceID("db.table1", "beijing", "a_1");
-    IDeviceID deviceID2 = new StringArrayDeviceID("db.table1", "beijing", "b_1");
-    result.add(new DeviceEntry(deviceID1, Arrays.asList("old", "low")));
-    result.add(new DeviceEntry(deviceID2, Arrays.asList("new", "high")));
-    return result;
+    return TableDeviceSchemaFetcher.getInstance()
+        .fetchDeviceSchema(
+            tableName.getDatabaseName(),
+            tableName.getObjectName(),
+            expressionList,
+            attributeColumns);
   }
 
   @Override

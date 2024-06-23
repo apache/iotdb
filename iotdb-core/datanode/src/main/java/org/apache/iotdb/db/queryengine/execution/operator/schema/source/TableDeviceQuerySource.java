@@ -173,7 +173,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       List<SchemaFilter> filterList = new ArrayList<>(expressionList.size());
       for (Expression expression : expressionList) {
         filterList.add(visitor.process(expression, context));
-        context.reset();
       }
       result.add(filterList);
     }
