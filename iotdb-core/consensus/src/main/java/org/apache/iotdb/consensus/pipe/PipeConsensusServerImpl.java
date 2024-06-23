@@ -300,9 +300,6 @@ public class PipeConsensusServerImpl {
         ((ComparableConsensusRequest) request)
             .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
       }
-      LOGGER.info(
-          "PipeConsensusDebug: user write statemachine progressIndex: {}",
-          ((ComparableConsensusRequest) request).getProgressIndex());
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
       PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
