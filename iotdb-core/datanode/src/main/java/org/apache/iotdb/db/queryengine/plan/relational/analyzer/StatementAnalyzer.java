@@ -83,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -233,7 +234,9 @@ public class StatementAnalyzer {
     @Override
     public Scope process(Node node, Optional<Scope> scope) {
       Scope returnScope = super.process(node, scope);
-      if (node instanceof CreateDevice || node instanceof FetchDevice) {
+      if (node instanceof CreateDevice
+          || node instanceof FetchDevice
+          || node instanceof ShowDevice) {
         return returnScope;
       }
       checkState(
@@ -2433,6 +2436,11 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitFetchDevice(FetchDevice node, Optional<Scope> context) {
+      return null;
+    }
+
+    @Override
+    protected Scope visitShowDevice(ShowDevice node, Optional<Scope> context) {
       return null;
     }
   }

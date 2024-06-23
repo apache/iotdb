@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -111,6 +113,9 @@ public class LogicalPlanner {
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
+    }
+    if (statement instanceof ShowDevice) {
+      return planShowDevice((ShowDevice) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -242,6 +247,37 @@ public class LogicalPlanner {
 
     SchemaPartition schemaPartition =
         metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze();
+    }
+
+    return mergeNode;
+  }
+
+  private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.READ);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
+    TableDeviceQueryNode queryNode =
+        new TableDeviceQueryNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTableName(),
+            statement.getIdDeterminedFilterList(),
+            statement.getIdFuzzyFilter(),
+            columnHeaderList,
+            null);
+    mergeNode.addChild(queryNode);
+
+    SchemaPartition schemaPartition =
+        statement.isIdDetermined()
+            ? metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList())
+            : metadata.getSchemaPartition(statement.getDatabase());
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {

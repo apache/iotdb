@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -54,6 +55,18 @@ public class FetchDevice extends Statement {
   }
 
   public List<IDeviceID> getPartitionKeyList() {
+    if (partitionKeyList == null) {
+      List<IDeviceID> partitionKeyList = new ArrayList<>();
+      for (Object[] rawId : deviceIdList) {
+        String[] partitionKey = new String[rawId.length + 1];
+        partitionKey[0] = tableName;
+        for (int i = 0; i < rawId.length; i++) {
+          partitionKey[i + 1] = Objects.toString(rawId[i].toString());
+        }
+        partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
+      }
+      this.partitionKeyList = partitionKeyList;
+    }
     return partitionKeyList;
   }
 

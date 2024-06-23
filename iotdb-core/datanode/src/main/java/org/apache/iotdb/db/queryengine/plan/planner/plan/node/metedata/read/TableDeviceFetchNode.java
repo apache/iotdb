@@ -36,17 +36,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TableDeviceFetchNode extends SchemaQueryScanNode {
-
-  private String database;
-
-  private String tableName;
+public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
   private List<Object[]> deviceIdList;
-
-  private List<ColumnHeader> columnHeaderList;
-
-  private TRegionReplicaSet schemaRegionReplicaSet;
 
   public TableDeviceFetchNode(
       PlanNodeId id,
@@ -55,44 +47,17 @@ public class TableDeviceFetchNode extends SchemaQueryScanNode {
       List<Object[]> deviceIdList,
       List<ColumnHeader> columnHeaderList,
       TRegionReplicaSet regionReplicaSet) {
-    super(id);
-    this.database = database;
-    this.tableName = tableName;
+    super(id, database, tableName, columnHeaderList, regionReplicaSet);
     this.deviceIdList = deviceIdList;
-    this.columnHeaderList = columnHeaderList;
-    this.schemaRegionReplicaSet = regionReplicaSet;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
   }
 
   public List<Object[]> getDeviceIdList() {
     return deviceIdList;
   }
 
-  public List<ColumnHeader> getColumnHeaderList() {
-    return columnHeaderList;
-  }
-
   @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.schemaRegionReplicaSet = regionReplicaSet;
-  }
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return schemaRegionReplicaSet;
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_FETCH;
   }
 
   @Override

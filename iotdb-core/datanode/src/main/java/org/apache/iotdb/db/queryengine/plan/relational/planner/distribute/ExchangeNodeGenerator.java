@@ -21,7 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -96,7 +96,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
       SchemaQueryMergeNode node, PlanContext context) {
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
 
-    String database = ((TableDeviceFetchNode) node.getChildren().get(0)).getDatabase();
+    String database = ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     context
         .analysis

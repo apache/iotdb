@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -804,6 +805,27 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getDatabase(),
             node.getTableName(),
             node.getDeviceIdList(),
+            node.getColumnHeaderList()));
+  }
+
+  @Override
+  public Operator visitTableDeviceQuery(
+      TableDeviceQueryNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaQueryScanOperator.class.getSimpleName());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getTableDeviceQuerySource(
+            node.getDatabase(),
+            node.getTableName(),
+            node.getIdDeterminedFilterList(),
+            node.getIdFuzzyFilter(),
             node.getColumnHeaderList()));
   }
 }
