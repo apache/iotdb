@@ -116,12 +116,13 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         consensusPipe2ReceiverMap.computeIfAbsent(
             consensusPipeName,
             key -> {
-              new AtomicReference<>(null);
               isFirstGetReceiver.set(true);
+              return new AtomicReference<>(null);
             });
 
     if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(consensusGroupId, consensusPipeName, reqVersion);
+      return internalSetAndGetReceiver(
+          consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
     }
 
     final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
@@ -132,7 +133,8 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           receiverThreadLocalVersion,
           reqVersion);
       receiverReference.set(null);
-      return internalSetAndGetReceiver(consensusGroupId, consensusPipeName, reqVersion);
+      return internalSetAndGetReceiver(
+          consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
     }
     return receiverReference.get();
   }
