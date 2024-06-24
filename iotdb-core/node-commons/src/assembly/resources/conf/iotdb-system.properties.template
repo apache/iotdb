@@ -22,7 +22,9 @@
 ####################
 
 # Used for indicate cluster name and distinguish different cluster.
-# effectiveMode: first_start
+# If you need to modify the cluster name, it's recommended to use 'set configuration "cluster_name=xxx"' sql.
+# Manually modifying configuration file is not recommended, which may cause node restart fail.
+# effectiveMode: restart
 # Datatype: string
 cluster_name=defaultCluster
 
