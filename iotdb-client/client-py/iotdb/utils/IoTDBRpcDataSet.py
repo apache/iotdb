@@ -348,7 +348,7 @@ class IoTDBRpcDataSet(object):
                     elif data_type == 2:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
                     elif data_type == 0:
-                        tmp_array = pd.Series(tmp_array).astype(">?")
+                        tmp_array = pd.Series(tmp_array).astype("boolean")
 
                     data_array = tmp_array
 
@@ -361,7 +361,7 @@ class IoTDBRpcDataSet(object):
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
             elif v[0].dtype == "Int64":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
-            elif v[0].dtype == ">?":
+            elif v[0].dtype == bool:
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
             else:
                 result[k] = np.concatenate(v, axis=0)
