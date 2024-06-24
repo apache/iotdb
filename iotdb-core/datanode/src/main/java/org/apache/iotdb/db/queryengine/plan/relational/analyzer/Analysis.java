@@ -167,6 +167,9 @@ public class Analysis implements IAnalysis {
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
+  // if emptyDataSource, there is no need to execute the query in BE
+  private boolean emptyDataSource = false;
+
   public DataPartition getDataPartition() {
     return dataPartition;
   }
@@ -580,6 +583,14 @@ public class Analysis implements IAnalysis {
     this.hasValueFilter = hasValueFilter;
   }
 
+  public boolean isEmptyDataSource() {
+    return emptyDataSource;
+  }
+
+  public void setEmptyDataSource(boolean emptyDataSource) {
+    this.emptyDataSource = emptyDataSource;
+  }
+
   @Override
   public boolean isFailed() {
     return false;
@@ -601,14 +612,6 @@ public class Analysis implements IAnalysis {
 
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
-  }
-
-  private boolean hasDataSource() {
-    return (dataPartition != null && !dataPartition.isEmpty());
-    //            || (schemaPartition != null && !schemaPartition.isEmpty())
-    //            || statement instanceof ShowQueriesStatement
-    //            || (statement instanceof QueryStatement
-    //            && ((QueryStatement) statement).isAggregationQuery());
   }
 
   @Override

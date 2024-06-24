@@ -58,23 +58,17 @@ public class IndexScan implements RelationalPlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
-    return planNode.accept(new Rewriter(metadata, sessionInfo, analysis, queryContext), null);
+    return planNode.accept(new Rewriter(metadata, analysis, queryContext), null);
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Void> {
 
     private final Metadata metadata;
-    private final SessionInfo sessionInfo;
     private final Analysis analysis;
     private final MPPQueryContext queryContext;
 
-    Rewriter(
-        Metadata metadata,
-        SessionInfo sessionInfo,
-        Analysis analysis,
-        MPPQueryContext queryContext) {
+    Rewriter(Metadata metadata, Analysis analysis, MPPQueryContext queryContext) {
       this.metadata = metadata;
-      this.sessionInfo = sessionInfo;
       this.analysis = analysis;
       this.queryContext = queryContext;
     }
@@ -105,12 +99,12 @@ public class IndexScan implements RelationalPlanOptimizer {
       node.setDeviceEntries(deviceEntries);
       if (deviceEntries.isEmpty()) {
         analysis.setFinishQueryAfterAnalyze();
+        analysis.setEmptyDataSource(true);
       } else {
         String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
         DataPartition dataPartition =
             fetchDataPartitionByDevices(
                 deviceEntries, treeModelDatabase, queryContext.getGlobalTimeFilter());
-        analysis.setDataPartition(dataPartition);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
@@ -119,6 +113,7 @@ public class IndexScan implements RelationalPlanOptimizer {
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
           analysis.setFinishQueryAfterAnalyze();
+          analysis.setEmptyDataSource(true);
         } else {
           Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
           for (Map.Entry<
