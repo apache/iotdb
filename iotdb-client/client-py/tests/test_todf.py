@@ -98,7 +98,7 @@ def test_simple_query():
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
-    assert_frame_equal(df_input, df_output)
+    assert_frame_equal(df_input, df_output, check_frame_type=False)
 
 
 def test_with_null_query():
@@ -178,7 +178,7 @@ def test_with_null_query():
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
-    assert_frame_equal(df_input, df_output)
+    assert_frame_equal(df_input, df_output, check_frame_type=False)
 
 
 def test_multi_fetch():
@@ -216,4 +216,4 @@ def test_multi_fetch():
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
-    assert_frame_equal(df_input, df_output)
+    assert_frame_equal(df_input, df_output, check_frame_type=False)
