@@ -241,11 +241,15 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
               event ->
                   event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
 
-          LOGGER.info(
-              "Successfully transferred file {} (committer key={}, commit id={}).",
-              tsFile,
-              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
+          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+            LOGGER.info(
+                "Successfully transferred file {} (committer key={}, commit id={}).",
+                tsFile,
+                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+                events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
+          } else {
+            LOGGER.info("Successfully transferred file {} (batched TableInsertionEvents).", tsFile);
+          }
         }
 
         if (client != null) {
@@ -289,12 +293,19 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   @Override
   public void onError(final Exception exception) {
     try {
-      LOGGER.warn(
-          "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
-          tsFile,
-          events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-          events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
-          exception);
+      if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+        LOGGER.warn(
+            "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+            tsFile,
+            events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+            exception);
+      } else {
+        LOGGER.warn(
+            "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents)",
+            tsFile,
+            exception);
+      }
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);
     }
