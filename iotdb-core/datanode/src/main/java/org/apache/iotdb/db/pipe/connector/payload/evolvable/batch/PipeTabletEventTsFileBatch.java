@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -70,9 +71,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private final long maxSizeInBytes;
 
-  private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
+  private final Map<Pair<String, Long>, Double> pipe2WeightMap = new HashMap<>();
 
-  private final List<Tablet> tabletList = new ArrayList<>();
+  private final List<Pair<EnrichedEvent, Tablet>> eventTabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
   private volatile TsFileWriter fileWriter;
@@ -137,6 +138,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           continue;
         }
         bufferTablet(
+            insertNodeTabletInsertionEvent,
             insertNodeTabletInsertionEvent.getPipeName(),
             insertNodeTabletInsertionEvent.getCreationTime(),
             tablet,
@@ -150,6 +152,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         return true;
       }
       bufferTablet(
+          rawTabletInsertionEvent,
           rawTabletInsertionEvent.getPipeName(),
           rawTabletInsertionEvent.getCreationTime(),
           tablet,
@@ -165,58 +168,68 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void bufferTablet(
-      final String pipeName, long creationTime, Tablet tablet, boolean isAligned) {
+      final EnrichedEvent enrichedEvent,
+      final String pipeName,
+      long creationTime,
+      Tablet tablet,
+      boolean isAligned) {
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
-    pipeName2WeightMap.compute(
+    pipe2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
         (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
-    tabletList.add(tablet);
+    eventTabletList.add(new Pair<>(enrichedEvent, tablet));
     isTabletAlignedList.add(isAligned);
   }
 
-  public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {
-    final double sum = pipeName2WeightMap.values().stream().reduce(Double::sum).orElse(0.0);
+  public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap(double divisor) {
+    if (divisor == 0.0) {
+      return Collections.emptyMap();
+    }
+    final double sum = pipe2WeightMap.values().stream().reduce(Double::sum).orElse(0.0);
     if (sum == 0.0) {
       return Collections.emptyMap();
     }
-    pipeName2WeightMap.entrySet().forEach(entry -> entry.setValue(entry.getValue() / sum));
-    return new HashMap<>(pipeName2WeightMap);
+    pipe2WeightMap.entrySet().forEach(entry -> entry.setValue(entry.getValue() / sum / divisor));
+    return new HashMap<>(pipe2WeightMap);
   }
 
-  public synchronized List<File> sealTsFiles() throws IOException, WriteProcessException {
+  public synchronized List<Pair<File, List<EnrichedEvent>>> sealTsFiles()
+      throws IOException, WriteProcessException {
     return isClosed ? Collections.emptyList() : writeTabletsToTsFiles();
   }
 
-  private List<File> writeTabletsToTsFiles() throws IOException, WriteProcessException {
-    final Map<String, List<Tablet>> device2Tablets = new HashMap<>();
+  private List<Pair<File, List<EnrichedEvent>>> writeTabletsToTsFiles()
+      throws IOException, WriteProcessException {
+    final Map<String, List<Pair<EnrichedEvent, Tablet>>> device2EventAndTablets = new HashMap<>();
     final Map<String, Boolean> device2Aligned = new HashMap<>();
 
     // Sort the tablets by device id
-    for (int i = 0, size = tabletList.size(); i < size; ++i) {
-      final Tablet tablet = tabletList.get(i);
-      final boolean isAligned = isTabletAlignedList.get(i);
-
-      final String deviceId = tablet.deviceId;
-      device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
-      device2Aligned.put(deviceId, isAligned);
+    for (int i = 0, size = eventTabletList.size(); i < size; ++i) {
+      final Pair<EnrichedEvent, Tablet> eventAndTablet = eventTabletList.get(i);
+      final String deviceId = eventAndTablet.getRight().deviceId;
+      device2EventAndTablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(eventAndTablet);
+      device2Aligned.put(deviceId, isTabletAlignedList.get(i));
     }
 
     // Sort the tablets by start time in each device
-    for (final List<Tablet> tablets : device2Tablets.values()) {
-      tablets.sort(
+    for (final List<Pair<EnrichedEvent, Tablet>> eventAndTablets :
+        device2EventAndTablets.values()) {
+      eventAndTablets.sort(
           // Each tablet has at least one timestamp
-          Comparator.comparingLong(tablet -> tablet.timestamps[0]));
+          Comparator.comparingLong(eventAndTablet -> eventAndTablet.getRight().timestamps[0]));
     }
 
     // Replace ArrayList with LinkedList to improve performance
-    final Map<String, LinkedList<Tablet>> device2TabletsLinkedList = new HashMap<>();
-    for (final Map.Entry<String, List<Tablet>> entry : device2Tablets.entrySet()) {
+    final Map<String, LinkedList<Pair<EnrichedEvent, Tablet>>> device2TabletsLinkedList =
+        new HashMap<>();
+    for (final Map.Entry<String, List<Pair<EnrichedEvent, Tablet>>> entry :
+        device2EventAndTablets.entrySet()) {
       device2TabletsLinkedList.put(entry.getKey(), new LinkedList<>(entry.getValue()));
     }
-    // Clear the original device2Tablets to release memory
-    device2Tablets.clear();
+    // Clear the original device2EventAndTablets to release memory
+    device2EventAndTablets.clear();
 
     // Write the tablets to the tsfile device by device, and the tablets
     // in the same device are written in order of start time. Tablets in
@@ -224,7 +237,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // If overlapped, we try to write the tablets whose device id is not
     // the same as the previous one. For the tablets not written in the
     // previous round, we write them in a new tsfile.
-    final List<File> sealedFiles = new ArrayList<>();
+    final List<Pair<File, List<EnrichedEvent>>> sealedFile2EventsList = new ArrayList<>();
 
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
@@ -242,32 +255,35 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                         + tsFileIdGenerator.getAndIncrement()
                         + TsFileConstant.TSFILE_SUFFIX));
       }
+      final List<EnrichedEvent> eventsInFile = new ArrayList<>();
 
-      final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
+      final Iterator<Map.Entry<String, LinkedList<Pair<EnrichedEvent, Tablet>>>> iterator =
           device2TabletsLinkedList.entrySet().iterator();
-
       while (iterator.hasNext()) {
-        final Map.Entry<String, LinkedList<Tablet>> entry = iterator.next();
+        final Map.Entry<String, LinkedList<Pair<EnrichedEvent, Tablet>>> entry = iterator.next();
         final String deviceId = entry.getKey();
-        final LinkedList<Tablet> tablets = entry.getValue();
+        final LinkedList<Pair<EnrichedEvent, Tablet>> eventAndTablets = entry.getValue();
 
         final List<Tablet> tabletsToWrite = new ArrayList<>();
 
         Tablet lastTablet = null;
-        while (!tablets.isEmpty()) {
-          final Tablet tablet = tablets.peekFirst();
+        while (!eventAndTablets.isEmpty()) {
+          final Pair<EnrichedEvent, Tablet> eventAndTablet = eventAndTablets.peekFirst();
+          final Tablet tablet = eventAndTablet.getRight();
           if (Objects.isNull(lastTablet)
               // lastTablet.rowSize is not 0
               || lastTablet.timestamps[lastTablet.rowSize - 1] < tablet.timestamps[0]) {
+            eventsInFile.add(eventAndTablet.getLeft());
             tabletsToWrite.add(tablet);
+
             lastTablet = tablet;
-            tablets.pollFirst();
+            eventAndTablets.pollFirst();
           } else {
             break;
           }
         }
 
-        if (tablets.isEmpty()) {
+        if (eventAndTablets.isEmpty()) {
           iterator.remove();
         }
 
@@ -303,11 +319,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             currentBatchId.get(),
             sealedFile.getPath());
       }
-      sealedFiles.add(sealedFile);
+      sealedFile2EventsList.add(new Pair<>(sealedFile, eventsInFile));
       fileWriter = null;
     }
 
-    return sealedFiles;
+    return sealedFile2EventsList;
   }
 
   @Override
@@ -319,9 +335,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   public synchronized void onSuccess() {
     super.onSuccess();
 
-    pipeName2WeightMap.clear();
+    pipe2WeightMap.clear();
 
-    tabletList.clear();
+    eventTabletList.clear();
     isTabletAlignedList.clear();
 
     // We don't need to delete the tsFile here, because the tsFile
@@ -333,9 +349,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   public synchronized void close() {
     super.close();
 
-    pipeName2WeightMap.clear();
+    pipe2WeightMap.clear();
 
-    tabletList.clear();
+    eventTabletList.clear();
     isTabletAlignedList.clear();
 
     if (Objects.nonNull(fileWriter)) {
