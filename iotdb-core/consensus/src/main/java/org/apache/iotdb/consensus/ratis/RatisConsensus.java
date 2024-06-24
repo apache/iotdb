@@ -709,6 +709,16 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.get().getDivision(raftGroupId).getGroup().getPeers().size();
+    } catch (IOException e) {
+      return 0;
+    }
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     List<ConsensusGroupId> ids = new ArrayList<>();
     try {

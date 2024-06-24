@@ -212,6 +212,14 @@ public interface IConsensus {
   Peer getLeader(ConsensusGroupId groupId);
 
   /**
+   * Return the replicationNum of the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return return 0 if group doesn't exist, or return replicationNum
+   */
+  int getReplicationNum(ConsensusGroupId groupId);
+
+  /**
    * Return all consensus group ids.
    *
    * @return consensusGroupId list

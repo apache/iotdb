@@ -462,21 +462,19 @@ public class LoadTsFileScheduler implements IScheduler {
                       dataRegion.getDataRegionId(),
                       Tag.TYPE.toString(),
                       Metric.LOAD_POINT_COUNT.toString());
-              if (!node.isGeneratedByRemoteConsensusLeader()) {
-                MetricService.getInstance()
-                    .count(
-                        node.getWritePointCount(),
-                        Metric.LEADER_QUANTITY.toString(),
-                        MetricLevel.CORE,
-                        Tag.NAME.toString(),
-                        Metric.POINTS_IN.toString(),
-                        Tag.DATABASE.toString(),
-                        databaseName,
-                        Tag.REGION.toString(),
-                        dataRegion.getDataRegionId(),
-                        Tag.TYPE.toString(),
-                        Metric.LOAD_POINT_COUNT.toString());
-              }
+              MetricService.getInstance()
+                  .count(
+                      node.getWritePointCount(),
+                      Metric.LEADER_QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
             });
 
     return true;

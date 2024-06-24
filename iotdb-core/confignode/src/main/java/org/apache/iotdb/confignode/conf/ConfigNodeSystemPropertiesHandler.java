@@ -36,14 +36,18 @@ public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
     super(filePath);
   }
 
-  public static synchronized SystemPropertiesHandler getInstance() {
+  public static SystemPropertiesHandler getInstance() {
     if (INSTANCE == null) {
-      INSTANCE =
-          new ConfigNodeSystemPropertiesHandler(
-              ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-                  + File.separator
-                  + ConfigNodeConstant.SYSTEM_FILE_NAME);
-      INSTANCE.recover();
+      synchronized (ConfigNodeSystemPropertiesHandler.class) {
+        if (INSTANCE == null) {
+          INSTANCE =
+              new ConfigNodeSystemPropertiesHandler(
+                  ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                      + File.separator
+                      + ConfigNodeConstant.SYSTEM_FILE_NAME);
+          INSTANCE.init();
+        }
+      }
     }
     return INSTANCE;
   }

@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.schema.ttl;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -47,12 +46,9 @@ public class TTLCache {
 
   public TTLCache() {
     ttlCacheTree = new CacheNode(IoTDBConstant.PATH_ROOT);
-    long defaultTTL =
-        CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    defaultTTL = defaultTTL <= 0 ? Long.MAX_VALUE : defaultTTL;
-    ttlCacheTree.addChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, defaultTTL);
+    ttlCacheTree.addChild(
+        IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     ttlCount = 1;
   }
 
@@ -93,9 +89,7 @@ public class TTLCache {
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
           && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl =
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
         return;
       }
     }
@@ -231,9 +225,7 @@ public class TTLCache {
     ttlCacheTree.removeAllChildren();
     ttlCacheTree.addChild(
         IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
-        CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
   }
 
   static class CacheNode {
