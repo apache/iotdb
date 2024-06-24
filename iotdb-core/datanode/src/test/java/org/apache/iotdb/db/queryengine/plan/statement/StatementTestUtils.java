@@ -19,18 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.tsfile.utils.Binary;
+
 public class StatementTestUtils {
+
   private StatementTestUtils() {
     // util class
   }
@@ -48,8 +51,9 @@ public class StatementTestUtils {
   }
 
   public static TsTableColumnCategory[] genColumnCategories() {
-    return new TsTableColumnCategory[]{TsTableColumnCategory.ID,
-        TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.MEASUREMENT};
+    return new TsTableColumnCategory[]{
+        TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.MEASUREMENT
+    };
   }
 
   public static List<ColumnSchema> genColumnSchema() {
@@ -59,8 +63,9 @@ public class StatementTestUtils {
 
     List<ColumnSchema> result = new ArrayList<>();
     for (int i = 0; i < columnNames.length; i++) {
-      result.add(new ColumnSchema(columnNames[i], TypeFactory.getType(dataTypes[i]), false,
-          columnCategories[i]));
+      result.add(
+          new ColumnSchema(
+              columnNames[i], TypeFactory.getType(dataTypes[i]), false, columnCategories[i]));
     }
     return result;
   }
@@ -69,14 +74,25 @@ public class StatementTestUtils {
     return new TableSchema(tableName(), genColumnSchema());
   }
 
+  public static Object[] genColumns() {
+    return new Object[]{
+        new String[]{"a", "b", "c"},
+        new String[]{"x", "y", "z"},
+        new Double[]{1.0, 2.0, 3.0}
+    };
+  }
+
+  public static long[] genTimestamps() {
+    return new long[]{1L, 2L, 3L};
+  }
+
   public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable) {
     String[] measurements = genColumnNames();
     TSDataType[] dataTypes = genDataTypes();
     TsTableColumnCategory[] columnCategories = genColumnCategories();
 
-    Object[] columns = new Object[]{new String[]{"a", "b", "c"}, new String[]{"x", "y", "z"},
-        new Double[]{1.0, 2.0, 3.0}};
-    long[] timestamps = new long[]{1L, 2L, 3L};
+    Object[] columns = genColumns();
+    long[] timestamps = genTimestamps();
 
     InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
     insertTabletStatement.setDevicePath(new PartialPath(new String[]{tableName()}));
@@ -86,6 +102,7 @@ public class StatementTestUtils {
     insertTabletStatement.setColumns(columns);
     insertTabletStatement.setTimes(timestamps);
     insertTabletStatement.setWriteToTable(writeToTable);
+    insertTabletStatement.setRowCount(timestamps.length);
 
     return insertTabletStatement;
   }

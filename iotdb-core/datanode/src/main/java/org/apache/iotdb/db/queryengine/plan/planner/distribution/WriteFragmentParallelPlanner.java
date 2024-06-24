@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
-import java.util.function.BiFunction;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
 
@@ -49,7 +49,9 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   public WriteFragmentParallelPlanner(
-      SubPlan subPlan, IAnalysis analysis, MPPQueryContext queryContext,
+      SubPlan subPlan,
+      IAnalysis analysis,
+      MPPQueryContext queryContext,
       BiFunction<WritePlanNode, IAnalysis, List<WritePlanNode>> nodeSplitter) {
     this.subPlan = subPlan;
     this.analysis = analysis;

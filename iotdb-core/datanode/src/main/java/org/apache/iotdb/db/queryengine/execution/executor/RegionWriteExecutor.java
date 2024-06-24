@@ -210,8 +210,8 @@ public class RegionWriteExecutor {
     }
 
     @Override
-    public RegionExecutionResult visitRelationalInsertTablet(RelationalInsertTabletNode node,
-        WritePlanNodeExecutionContext context) {
+    public RegionExecutionResult visitRelationalInsertTablet(
+        RelationalInsertTabletNode node, WritePlanNodeExecutionContext context) {
       return executeDataInsert(node, context);
     }
 

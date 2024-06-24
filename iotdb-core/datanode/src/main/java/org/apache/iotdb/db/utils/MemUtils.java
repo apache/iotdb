@@ -127,8 +127,8 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end,
-      TSStatus[] results) {
+  public static long getAlignedTabletSize(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
     if (start >= end) {
       return 0L;
     }

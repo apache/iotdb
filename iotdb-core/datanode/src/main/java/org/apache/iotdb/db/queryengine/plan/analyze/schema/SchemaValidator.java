@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -66,8 +63,8 @@ public class SchemaValidator {
     try {
       String databaseName = context.getSession().getDatabaseName().get();
       final TableSchema incomingSchema = insertStatement.getTableSchema();
-      final TableSchema realSchema = metadata.validateTableHeaderSchema(databaseName,
-          incomingSchema, context);
+      final TableSchema realSchema =
+          metadata.validateTableHeaderSchema(databaseName, incomingSchema, context);
       insertStatement.validate(realSchema);
       metadata.validateDeviceSchema(insertStatement, context);
       insertStatement.updateAfterSchemaValidation(context);
@@ -75,8 +72,6 @@ public class SchemaValidator {
       throw new SemanticException(e.getMessage());
     }
   }
-
-
 
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher,

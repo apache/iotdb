@@ -132,8 +132,7 @@ public class AlignedTVListTest {
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000,
-        null);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000, null);
     for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
@@ -165,8 +164,7 @@ public class AlignedTVListTest {
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000,
-        null);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000, null);
 
     AlignedTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.rowCount; i++) {

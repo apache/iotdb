@@ -22,13 +22,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.apache.iotdb.db.utils.CommonUtils;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
 
 public class DataNodeTTLCache {
   private final TTLCache ttlCache;

@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -33,10 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public abstract class WrappedInsertStatement extends WrappedStatement implements
-    ITableDeviceSchemaValidation {
+public abstract class WrappedInsertStatement extends WrappedStatement
+    implements ITableDeviceSchemaValidation {
 
   protected TableSchema tableSchema;
 
@@ -85,16 +84,20 @@ public abstract class WrappedInsertStatement extends WrappedStatement implements
 
   public static void validate(ColumnSchema incoming, ColumnSchema real) {
     if (real == null) {
-      throw new SemanticException("Column " + incoming.getName() + " does not exists or fails to be "
-          + "created");
+      throw new SemanticException(
+          "Column " + incoming.getName() + " does not exists or fails to be " + "created");
     }
     if (!incoming.getType().equals(real.getType())) {
-      throw new SemanticException(String.format("Inconsistent data type of column %s: %s/%s",
-          incoming.getName(), incoming.getType(), real.getType()));
+      throw new SemanticException(
+          String.format(
+              "Inconsistent data type of column %s: %s/%s",
+              incoming.getName(), incoming.getType(), real.getType()));
     }
     if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
-      throw new SemanticException(String.format("Inconsistent column category of column %s: %s/%s",
-          incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
+      throw new SemanticException(
+          String.format(
+              "Inconsistent column category of column %s: %s/%s",
+              incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
     }
   }
 }

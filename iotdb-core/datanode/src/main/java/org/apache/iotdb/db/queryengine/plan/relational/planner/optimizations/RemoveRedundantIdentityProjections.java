@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -45,6 +46,9 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+      if (node instanceof WritePlanNode) {
+        return node;
+      }
       PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
         context.setParent(node);

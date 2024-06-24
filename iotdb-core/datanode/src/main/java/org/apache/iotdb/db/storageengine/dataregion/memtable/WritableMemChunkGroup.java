@@ -52,7 +52,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end, TSStatus[] results) {
+      int end,
+      TSStatus[] results) {
     boolean flushFlag = false;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {

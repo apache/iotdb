@@ -135,8 +135,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   }
 
   @Override
-  public TriggerFireResult visitRelationalInsertTablet(RelationalInsertTabletNode node,
-      TriggerEvent context) {
+  public TriggerFireResult visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, TriggerEvent context) {
     // TODO-Table: add support
     return visitInsertTablet(node, context);
   }

@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.StringJoiner;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -147,8 +146,11 @@ public class ColumnSchema {
   }
 
   public static ColumnSchema ofTsColumnSchema(TsTableColumnSchema schema) {
-    return new ColumnSchema(schema.getColumnName(), TypeFactory.getType(schema.getDataType()),
-        false, schema.getColumnCategory());
+    return new ColumnSchema(
+        schema.getColumnName(),
+        TypeFactory.getType(schema.getDataType()),
+        false,
+        schema.getColumnCategory());
   }
 
   public static Builder builder() {

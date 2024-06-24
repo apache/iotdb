@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -448,7 +449,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
-    return super.toRelationalStatement(context);
+    return new InsertTablet(this, context);
   }
 
   public IDeviceID getTableDeviceID(int rowIdx) {
@@ -460,7 +461,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIdSegments[0] = this.devicePath.getFullPath();
       for (int i = 0; i < idColumnIndices.size(); i++) {
         final Integer columnIndex = idColumnIndices.get(i);
-        deviceIdSegments[i + 1] = ((Binary[]) columns[columnIndex])[rowIdx].toString();
+        deviceIdSegments[i + 1] = ((Object[]) columns[columnIndex])[rowIdx].toString();
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }

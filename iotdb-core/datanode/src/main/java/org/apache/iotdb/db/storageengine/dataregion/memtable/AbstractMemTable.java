@@ -351,15 +351,16 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end,
-      TSStatus[] results)
+  public void insertAlignedTablet(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
       writeAlignedTablet(insertTabletNode, start, end, results);
-      //TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
+      // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
-          (insertTabletNode.getMeasurementColumnCnt() - insertTabletNode.getFailedMeasurementNumber())
+          (insertTabletNode.getMeasurementColumnCnt()
+                  - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
       MetricService.getInstance()
@@ -434,18 +435,20 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletNode.getBitMaps(),
         schemaList,
         start,
-        end, null)) {
+        end,
+        null)) {
       shouldFlush = true;
     }
   }
 
-  public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end,
-      TSStatus[] results) {
+  public void writeAlignedTablet(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-      if (insertTabletNode.getColumns()[i] == null ||
-          (insertTabletNode.getColumnCategories() != null && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+      if (insertTabletNode.getColumns()[i] == null
+          || (insertTabletNode.getColumnCategories() != null
+              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
@@ -454,7 +457,8 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPair = insertTabletNode.splitByDevice(start, end);
+    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPair =
+        insertTabletNode.splitByDevice(start, end);
     int splitStart = start;
     for (Pair<IDeviceID, Integer> pair : deviceEndOffsetPair) {
       final IDeviceID deviceID = pair.left;

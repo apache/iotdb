@@ -373,7 +373,6 @@ public class MPPQueryContext {
 
   // endregion
 
-
   public boolean isTableQuery() {
     return isTableQuery;
   }

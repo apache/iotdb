@@ -724,8 +724,8 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end,
-      TSStatus[] results) {
+  public void putAlignedValues(
+      long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     checkExpansion();
     int idx = start;
 
@@ -856,22 +856,23 @@ public abstract class AlignedTVList extends TVList {
     return TSDataType.VECTOR;
   }
 
-
-
   /**
    * Get the single alignedTVList array mem cost by give types.
    *
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemCost(TSDataType[] types, TsTableColumnCategory[] columnCategories) {
+  public static long alignedTvListArrayMemCost(
+      TSDataType[] types, TsTableColumnCategory[] columnCategories) {
 
     int measurementColumnNum = 0;
     long size = 0;
     // value array mem size
     for (int i = 0; i < types.length; i++) {
       TSDataType type = types[i];
-      if (type != null || columnCategories != null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT) {
+      if (type != null
+          || columnCategories != null
+          || columnCategories[i] == TsTableColumnCategory.MEASUREMENT) {
         size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
         measurementColumnNum++;
       }

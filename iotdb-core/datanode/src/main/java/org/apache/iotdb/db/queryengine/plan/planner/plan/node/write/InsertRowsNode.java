@@ -121,11 +121,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public void addChild(PlanNode child) {
     // Do nothing
   }

@@ -378,6 +378,7 @@ public class StatementAnalyzer {
               analysis,
               false);
       insert.setInnerTreeStatement(insertTabletStatement);
+      analysis.setScope(insert, ret);
 
       return ret;
     }

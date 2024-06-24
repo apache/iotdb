@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
-
-import java.util.Map.Entry;
-import java.util.function.IntFunction;
-import java.util.function.IntToLongFunction;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -45,13 +40,12 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -72,7 +66,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.function.IntToLongFunction;
+
+import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
@@ -178,11 +176,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
   public void addChild(PlanNode child) {}
 
   @Override
@@ -213,8 +206,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges();
-    final Map<TRegionReplicaSet, List<Integer>> splitMap = splitByReplicaSet(
-        deviceIDSplitInfoMap, analysis);
+    final Map<TRegionReplicaSet, List<Integer>> splitMap =
+        splitByReplicaSet(deviceIDSplitInfoMap, analysis);
 
     return doSplit(splitMap);
   }
@@ -230,8 +223,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = getDeviceID(i);
       if (times[i] >= upperBoundOfTimePartition || !currDeviceId.equals(nextDeviceId)) {
-        final PartitionSplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
-            deviceID1 -> new PartitionSplitInfo());
+        final PartitionSplitInfo splitInfo =
+            deviceIDSplitInfoMap.computeIfAbsent(
+                currDeviceId, deviceID1 -> new PartitionSplitInfo());
         // a new range.
         splitInfo.ranges.add(startLoc); // included
         splitInfo.ranges.add(i); // excluded
@@ -244,8 +238,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
 
-    PartitionSplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
-        deviceID1 -> new PartitionSplitInfo());
+    PartitionSplitInfo splitInfo =
+        deviceIDSplitInfoMap.computeIfAbsent(currDeviceId, deviceID1 -> new PartitionSplitInfo());
     // the final range
     splitInfo.ranges.add(startLoc); // included
     splitInfo.ranges.add(times.length); // excluded
@@ -254,16 +248,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceIDSplitInfoMap;
   }
 
-  private Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
+  private Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
+      Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
 
     for (Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
       final IDeviceID deviceID = entry.getKey();
       final PartitionSplitInfo splitInfo = entry.getValue();
-      final List<TRegionReplicaSet> replicaSets = analysis
-          .getDataPartitionInfo()
-          .getDataRegionReplicaSetForWriting(
-              deviceID, splitInfo.timePartitionSlots);
+      final List<TRegionReplicaSet> replicaSets =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(deviceID, splitInfo.timePartitionSlots);
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       analysis.addEndPointToRedirectNodeList(
@@ -354,7 +349,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     subNode.setDataRegionReplicaSet(entry.getKey());
     return subNode;
   }
-
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
@@ -459,7 +453,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeValues(stream);
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
-
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
@@ -1185,6 +1178,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /**
    * Split the tablet of the given range according to Table deviceID.
+   *
    * @param start inclusive
    * @param end exclusive
    * @return each the number in the pair is the end offset of a device
@@ -1193,22 +1187,18 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return Collections.singletonList(new Pair<>(deviceID, end));
   }
 
-
   /**
-   *
    * @param results insertion result of each row
    * @param rowTTLGetter the ttl associated with each row
    * @return the position of the first alive row
    * @throws OutOfTTLException if all rows have expired the TTL
    */
-  public int checkTTL(TSStatus[] results,
-      IntToLongFunction rowTTLGetter)
-      throws OutOfTTLException {
+  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
     return checkTTLInternal(results, rowTTLGetter, true);
   }
 
-  protected int checkTTLInternal(TSStatus[] results,
-      IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
+  protected int checkTTLInternal(
+      TSStatus[] results, IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
       throws OutOfTTLException {
 
     /*
@@ -1228,8 +1218,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 String.format(
                     "Insertion time [%s] is less than ttl time bound [%s]",
                     DateTimeUtils.convertLongToDate(currTime),
-                    DateTimeUtils.convertLongToDate(
-                        CommonDateTimeUtils.currentTime() - ttl)));
+                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
       } else {
         if (firstAliveLoc == -1) {
           firstAliveLoc = loc;
@@ -1244,8 +1233,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (firstAliveLoc == -1) {
       // no alive data
       throw new OutOfTTLException(
-          getTimes()[getTimes().length - 1],
-          (CommonDateTimeUtils.currentTime() - ttl));
+          getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
     }
     return firstAliveLoc;
   }

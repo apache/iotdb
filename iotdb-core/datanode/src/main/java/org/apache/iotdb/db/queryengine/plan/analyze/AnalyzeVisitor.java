@@ -190,9 +190,9 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
-import static org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
@@ -2690,7 +2690,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       AnalyzeUtils.analyzeDataPartition(
           analysis,
-          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement),
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     }
@@ -2716,7 +2716,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     AnalyzeUtils.analyzeDataPartition(
         analysis,
-        AnalyzeUtils.computeTreeDataPartitionParams(realInsertRowsStatement),
+        AnalyzeUtils.computeTreeDataPartitionParams(realInsertRowsStatement, context),
         context.getSession().getUserName(),
         partitionFetcher::getOrCreateDataPartition);
     return analysis;
@@ -2741,7 +2741,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     AnalyzeUtils.analyzeDataPartition(
         analysis,
-        AnalyzeUtils.computeTreeDataPartitionParams(realStatement),
+        AnalyzeUtils.computeTreeDataPartitionParams(realStatement, context),
         context.getSession().getUserName(),
         partitionFetcher::getOrCreateDataPartition);
     return analysis;
@@ -2779,7 +2779,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       AnalyzeUtils.analyzeDataPartition(
           analysis,
-          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement),
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     }

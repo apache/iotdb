@@ -81,9 +81,9 @@ public class TableDistributionPlanner {
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
             ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
-            :
-                new WriteFragmentParallelPlanner(subPlan, analysis, mppQueryContext,
-                    WritePlanNode::splitByPartition).parallelPlan();
+            : new WriteFragmentParallelPlanner(
+                    subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
+                .parallelPlan();
 
     // Only execute this step for READ operation
     if (mppQueryContext.getQueryType() == QueryType.READ) {

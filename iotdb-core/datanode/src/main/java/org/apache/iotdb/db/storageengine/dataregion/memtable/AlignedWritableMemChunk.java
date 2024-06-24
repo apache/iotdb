@@ -188,7 +188,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end, TSStatus[] results) {
+      int end,
+      TSStatus[] results) {
     Pair<Object[], BitMap[]> pair =
         checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
     Object[] reorderedColumnValues = pair.left;

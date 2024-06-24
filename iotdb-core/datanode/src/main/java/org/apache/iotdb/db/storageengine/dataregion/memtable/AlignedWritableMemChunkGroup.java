@@ -56,7 +56,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end, TSStatus[] results) {
+      int end,
+      TSStatus[] results) {
     return memChunk.writeAlignedValuesWithFlushCheck(
         times, columns, bitMaps, schemaList, start, end, results);
   }

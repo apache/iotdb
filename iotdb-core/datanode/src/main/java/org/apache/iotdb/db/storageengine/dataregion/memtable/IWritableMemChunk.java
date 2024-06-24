@@ -79,7 +79,8 @@ public interface IWritableMemChunk extends WALEntryValue {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end, TSStatus[] results);
+      int end,
+      TSStatus[] results);
 
   long count();
 

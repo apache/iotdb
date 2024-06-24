@@ -75,7 +75,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitRelationalInsertTablet(RelationalInsertTabletNode node, DataRegion dataRegion) {
+  public TSStatus visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, DataRegion dataRegion) {
     return visitInsertTablet(node, dataRegion);
   }
 

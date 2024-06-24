@@ -116,8 +116,8 @@ public interface IMemTable extends WALEntryValue {
   void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end,
-      TSStatus[] results)
+  void insertAlignedTablet(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(

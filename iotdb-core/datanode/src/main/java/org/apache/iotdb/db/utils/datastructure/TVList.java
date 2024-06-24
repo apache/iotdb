@@ -190,8 +190,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end,
-      TSStatus[] results) {
+  public void putAlignedValues(
+      long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

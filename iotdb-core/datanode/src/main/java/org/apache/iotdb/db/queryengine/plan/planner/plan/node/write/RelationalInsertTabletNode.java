@@ -19,21 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.IntToLongFunction;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -42,6 +36,13 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.IntToLongFunction;
+
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
   // deviceId cache for Table-view insertion
@@ -49,13 +50,27 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public RelationalInsertTabletNode(
       PlanNodeId id,
-      PartialPath devicePath, boolean isAligned, String[] measurements,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
       TSDataType[] dataTypes,
-      MeasurementSchema[] measurementSchemas, long[] times,
-      BitMap[] bitMaps, Object[] columns, int rowCount,
+      MeasurementSchema[] measurementSchemas,
+      long[] times,
+      BitMap[] bitMaps,
+      Object[] columns,
+      int rowCount,
       TsTableColumnCategory[] columnCategories) {
-    super(id, devicePath, isAligned, measurements, dataTypes, measurementSchemas, times, bitMaps,
-        columns, rowCount);
+    super(
+        id,
+        devicePath,
+        isAligned,
+        measurements,
+        dataTypes,
+        measurementSchemas,
+        times,
+        bitMaps,
+        columns,
+        rowCount);
     setColumnCategories(columnCategories);
   }
 
@@ -69,10 +84,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     }
     if (deviceIDs[rowIdx] == null) {
       String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
-      deviceIdSegments[0] = this.devicePath.getFullPath();
+      deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < idColumnIndices.size(); i++) {
         final Integer columnIndex = idColumnIndices.get(i);
-        deviceIdSegments[i + 1] = ((Binary[]) columns[columnIndex])[rowIdx].toString();
+        deviceIdSegments[i + 1] = ((Object[]) columns[columnIndex])[rowIdx].toString();
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -167,7 +182,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   public String getTableName() {
-    return deviceID.getTableName();
+    return devicePath.getFullPath();
   }
-}
 
+
+}

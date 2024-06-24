@@ -342,19 +342,23 @@ public class TsFileProcessorTest {
     processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10], true);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10], true);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10], true);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10], true);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10], true);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
