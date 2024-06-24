@@ -170,7 +170,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
-        (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+        (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
     tabletList.add(tablet);
     isTabletAlignedList.add(isAligned);
@@ -196,11 +196,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // Sort the tablets by device id
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
-      final boolean isAligned = isTabletAlignedList.get(i);
-
       final String deviceId = tablet.deviceId;
       device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
-      device2Aligned.put(deviceId, isAligned);
+      device2Aligned.put(deviceId, isTabletAlignedList.get(i));
     }
 
     // Sort the tablets by start time in each device
