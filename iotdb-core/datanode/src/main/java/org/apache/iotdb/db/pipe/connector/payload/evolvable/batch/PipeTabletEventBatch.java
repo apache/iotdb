@@ -111,7 +111,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   public synchronized void close() {
     isClosed = true;
 
-    clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+    clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
     events.clear();
   }
 
