@@ -110,8 +110,8 @@ jobs:
         python: ['3.x']
         os: [ubuntu-latest]
         include:
-          - os: ubuntu-20.04
-            python: '3.6'
+          - python: '3.6'
+            os: ubuntu-20.04
     runs-on: ${{ matrix.os }}
 
     steps:
