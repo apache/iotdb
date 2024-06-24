@@ -160,8 +160,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                     Factory.DEFAULT_FACTORY.create(device), context.getPartitionTimeFilter()))
             : new ArrayList<>(
                 analysis.getPartitionInfo(
-                    Factory.DEFAULT_FACTORY.create(
-                        analysis.getOutputDeviceToQueriedDevicesMap().get(device)),
+                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
                     context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
@@ -206,8 +205,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(
-                      Factory.DEFAULT_FACTORY.create(
-                          analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice)),
+                      analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice),
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(

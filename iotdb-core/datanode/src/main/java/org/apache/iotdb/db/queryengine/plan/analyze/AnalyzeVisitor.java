@@ -155,7 +155,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -1340,16 +1339,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Map<String, String> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
+    Map<String, IDeviceID> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
       String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
-      Set<String> queriedDevices = new HashSet<>();
-      // TODO: Change outputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
+      Set<IDeviceID> queriedDevices = new HashSet<>();
       // conversion
       for (Expression expression : sourceExpressionsUnderDevice) {
-        queriedDevices.add(
-            ExpressionAnalyzer.getDeviceNameInSourceExpression(expression).toString());
+        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
       }
       if (queriedDevices.size() > 1) {
         throw new SemanticException(
@@ -1990,12 +1987,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context) {
     Set<IDeviceID> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      // TODO: change OutputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
       // conversion
-      deviceSet =
-          analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
-              .map(Factory.DEFAULT_FACTORY::create)
-              .collect(Collectors.toSet());
+      deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));

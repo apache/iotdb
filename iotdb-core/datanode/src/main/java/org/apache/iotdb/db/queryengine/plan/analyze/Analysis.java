@@ -181,7 +181,7 @@ public class Analysis implements IAnalysis {
   private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
 
   // map from output device name to queried devices
-  private Map<String, String> outputDeviceToQueriedDevicesMap;
+  private Map<String, IDeviceID> outputDeviceToQueriedDevicesMap;
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
@@ -892,12 +892,12 @@ public class Analysis implements IAnalysis {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
-  public Map<String, String> getOutputDeviceToQueriedDevicesMap() {
+  public Map<String, IDeviceID> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
 
   public void setOutputDeviceToQueriedDevicesMap(
-      Map<String, String> outputDeviceToQueriedDevicesMap) {
+      Map<String, IDeviceID> outputDeviceToQueriedDevicesMap) {
     this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
   }
 
