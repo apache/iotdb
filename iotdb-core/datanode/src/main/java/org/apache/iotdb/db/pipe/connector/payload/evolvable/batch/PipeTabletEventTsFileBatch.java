@@ -203,31 +203,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       device2Aligned.put(deviceId, isAligned);
     }
 
-    // Register time series in the tsfile
-    for (final Map.Entry<String, List<Tablet>> entry : device2Tablets.entrySet()) {
-      final String deviceId = entry.getKey();
-      final List<Tablet> tablets = entry.getValue();
-      final boolean isAligned = device2Aligned.get(deviceId);
-
-      for (final Tablet tablet : tablets) {
-        if (isAligned) {
-          try {
-            fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
-          } catch (final WriteProcessException ignore) {
-            // Do nothing if the timeSeries has been registered
-          }
-        } else {
-          for (final MeasurementSchema schema : tablet.getSchemas()) {
-            try {
-              fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
-            } catch (final WriteProcessException ignore) {
-              // Do nothing if the timeSeries has been registered
-            }
-          }
-        }
-      }
-    }
-
     // Sort the tablets by start time in each device
     for (final List<Tablet> tablets : device2Tablets.values()) {
       tablets.sort(
@@ -299,8 +274,22 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         final boolean isAligned = device2Aligned.get(deviceId);
         for (final Tablet tablet : tabletsToWrite) {
           if (isAligned) {
+            try {
+              fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+            } catch (final WriteProcessException ignore) {
+              // Do nothing if the timeSeries has been registered
+            }
+
             fileWriter.writeAligned(tablet);
           } else {
+            for (final MeasurementSchema schema : tablet.getSchemas()) {
+              try {
+                fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+              } catch (final WriteProcessException ignore) {
+                // Do nothing if the timeSeries has been registered
+              }
+            }
+
             fileWriter.write(tablet);
           }
         }
