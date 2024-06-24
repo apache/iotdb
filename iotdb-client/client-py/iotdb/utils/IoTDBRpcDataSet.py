@@ -344,11 +344,11 @@ class IoTDBRpcDataSet(object):
                     tmp_array[bit_mask] = data_array
 
                     if data_type == 1:
-                        tmp_array = pd.Series(tmp_array).astype("Int32")
+                        tmp_array = pd.Series(tmp_array).astype("int32")
                     elif data_type == 2:
-                        tmp_array = pd.Series(tmp_array).astype("Int64")
+                        tmp_array = pd.Series(tmp_array).astype("int64")
                     elif data_type == 0:
-                        tmp_array = pd.Series(tmp_array).astype("boolean")
+                        tmp_array = pd.Series(tmp_array).astype("bool")
 
                     data_array = tmp_array
 
@@ -357,9 +357,9 @@ class IoTDBRpcDataSet(object):
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
-            elif v[0].dtype == "Int32":
+            elif v[0].dtype == "int32":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
-            elif v[0].dtype == "Int64":
+            elif v[0].dtype == "int64":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
             elif v[0].dtype == "bool":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
