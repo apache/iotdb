@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -124,6 +125,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
+    // data regions & schema regions
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -142,6 +144,21 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
               }
             });
+
+    final PipeTaskMeta configRegionTaskMeta =
+        currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
+    if (Objects.nonNull(configRegionTaskMeta)) {
+      // config region
+      updatedConsensusGroupIdToTaskMetaMap.put(
+          // 0 is the consensus group id of the config region, but data region id and schema region
+          // id
+          // also start from 0, so we use Integer.MIN_VALUE to represent the config region
+          Integer.MIN_VALUE,
+          new PipeTaskMeta(
+              configRegionTaskMeta.getProgressIndex(),
+              // The leader of the config region is the config node itself
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+    }
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
     // If the pipe's previous status was user stopped, then after the alter operation, the pipe's
     // status remains user stopped; otherwise, it becomes running.
