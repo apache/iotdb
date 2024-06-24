@@ -32,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -491,6 +493,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitCreateTableDevice(CreateTableDeviceNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableDeviceFetch(TableDeviceFetchNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableDeviceQuery(TableDeviceQueryNode node, C context) {
     return visitPlan(node, context);
   }
 
