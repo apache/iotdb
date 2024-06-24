@@ -19,8 +19,6 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -39,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +49,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -240,36 +236,17 @@ public class QueryPlanner {
     }
   }
 
-  private PlanBuilder filter(PlanBuilder planBuilder, Expression predicate) {
+  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate) {
     if (predicate == null) {
-      return planBuilder;
+      return subPlan;
     }
 
-    Pair<Expression, Boolean> resultPair = extractGlobalTimeFilter(predicate);
-    Expression globalTimePredicate = null;
-    if (resultPair.left != null) {
-      globalTimePredicate =
-          ExpressionTranslateVisitor.translateToSymbolReference(
-              resultPair.left, planBuilder.getTranslations());
-
-      queryContext.setGlobalTimeFilter(
-          globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
-    }
-    analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
-    boolean hasValueFilter = resultPair.right;
-    if (!hasValueFilter) {
-      return planBuilder;
-    }
+    // planBuilder = subqueryPlanner.handleSubqueries(subPlan, predicate,
+    // analysis.getSubqueries(node));
     analysis.setHasValueFilter(true);
-    // TODO if predicate equals TrueConstant, no need filter
-
-    return planBuilder.withNewRoot(
+    return subPlan.withNewRoot(
         new FilterNode(
-            queryIdAllocator.genPlanNodeId(),
-            planBuilder.getRoot(),
-            planBuilder.rewrite(predicate)));
-
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
+            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
   }
 
   public static Expression coerceIfNecessary(

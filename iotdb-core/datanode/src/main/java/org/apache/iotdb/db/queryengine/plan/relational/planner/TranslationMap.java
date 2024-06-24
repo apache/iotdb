@@ -17,16 +17,28 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 
 import com.google.common.collect.ImmutableMap;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Verify.verify;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 
@@ -196,7 +208,105 @@ public class TranslationMap {
         expression.getClass().getName(),
         expression);
 
-    return ExpressionTranslateVisitor.translateToSymbolReference(expression, this);
+    return ExpressionTreeRewriter.rewriteWith(
+        new ExpressionRewriter<Void>() {
+          @Override
+          protected Expression rewriteExpression(
+              Expression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            return treeRewriter.defaultRewrite(node, context);
+          }
+
+          @Override
+          public Expression rewriteFieldReference(
+              FieldReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            return getSymbolForColumn(node)
+                .map(Symbol::toSymbolReference)
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            format(
+                                "No symbol mapping for node '%s' (%s)",
+                                node, node.getFieldIndex())));
+          }
+
+          @Override
+          public Expression rewriteIdentifier(
+              Identifier node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            return getSymbolForColumn(node)
+                .map(symbol -> (Expression) symbol.toSymbolReference())
+                .orElseGet(() -> node);
+          }
+
+          @Override
+          public Expression rewriteFunctionCall(
+              FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            // ResolvedFunction resolvedFunction = analysis.getResolvedFunction(node);
+            // checkArgument(resolvedFunction != null, "Function has not been analyzed: %s", node);
+
+            List<Expression> newArguments =
+                node.getArguments().stream()
+                    .map(argument -> rewrite(argument))
+                    .collect(Collectors.toList());
+            return new FunctionCall(node.getName(), node.isDistinct(), newArguments);
+          }
+
+          /* @Override
+          public Expression rewriteLikePredicate(LikePredicate node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+          {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            Expression value = treeRewriter.rewrite(node.getValue(), context);
+            Expression pattern = treeRewriter.rewrite(node.getPattern(), context);
+            Optional<Expression> escape = node.getEscape().map(e -> treeRewriter.rewrite(e, context));
+
+            FunctionCall patternCall;
+            if (escape.isPresent()) {
+              patternCall = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
+                      .setName(LIKE_PATTERN_FUNCTION_NAME)
+                      .addArgument(analysis.getType(node.getPattern()), pattern)
+                      .addArgument(analysis.getType(node.getEscape().get()), escape.get())
+                      .build();
+            }
+            else {
+              patternCall = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
+                      .setName(LIKE_PATTERN_FUNCTION_NAME)
+                      .addArgument(analysis.getType(node.getPattern()), pattern)
+                      .build();
+            }
+
+            FunctionCall call = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
+                    .setName(LIKE_FUNCTION_NAME)
+                    .addArgument(analysis.getType(node.getValue()), value)
+                    .addArgument(LIKE_PATTERN, patternCall)
+                    .build();
+
+            return coerceIfNecessary(node, call);
+          }*/
+        },
+        expression);
   }
 
   public Optional<SymbolReference> tryGetMapping(Expression expression) {

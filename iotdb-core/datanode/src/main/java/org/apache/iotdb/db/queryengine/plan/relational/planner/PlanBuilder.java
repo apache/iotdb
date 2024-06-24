@@ -99,11 +99,7 @@ public class PlanBuilder {
         "Expression is not analyzed (%s): %s",
         root.getClass().getName(),
         root);
-    return translate(root);
-  }
-
-  private Expression translate(Expression expression) {
-    return ExpressionTranslateVisitor.translateToSymbolReference(expression, translations);
+    return ExpressionTranslateVisitor.translateToSymbolReference(root, translations);
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
