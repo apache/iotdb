@@ -248,7 +248,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         case MetaMarker.TIME_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
-          if (Objects.nonNull(timeChunk)) {
+          if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
             chunkReader =
                 isMultiPage
                     ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
@@ -262,6 +262,12 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
           chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
+          if (Objects.isNull(currentDevice)) {
+            tsFileSequenceReader.position(
+                tsFileSequenceReader.position() + chunkHeader.getDataSize());
+            break;
+          }
+
           if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
               == TsFileConstant.TIME_COLUMN_MASK) {
             timeChunk =
@@ -270,8 +276,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             break;
           }
 
-          if (Objects.isNull(currentDevice)
-              || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+          if (!pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
