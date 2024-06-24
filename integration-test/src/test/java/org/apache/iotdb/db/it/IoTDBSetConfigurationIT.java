@@ -88,13 +88,14 @@ public class IoTDBSetConfigurationIT {
 
   @Test
   public void testSetClusterName() throws Exception {
-    Connection connection = EnvFactory.getEnv().getConnection();
-    Statement statement = connection.createStatement();
     // set cluster name on cn and dn
-    statement.execute("set configuration \"cluster_name\"=\"xx\"");
-    ResultSet variables = statement.executeQuery("show variables");
-    variables.next();
-    Assert.assertEquals("xx", variables.getString(2));
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"cluster_name\"=\"xx\"");
+      ResultSet variables = statement.executeQuery("show variables");
+      variables.next();
+      Assert.assertEquals("xx", variables.getString(2));
+    }
     Assert.assertTrue(
         EnvFactory.getEnv().getNodeWrapperList().stream()
             .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, "cluster_name=xx")));
@@ -110,8 +111,12 @@ public class IoTDBSetConfigurationIT {
               TShowClusterResp resp = configNodeClient.showCluster();
               return NodeStatus.Running.toString().equals(resp.getNodeStatus().get(1));
             });
-    // set cluster name on datanode, cannot restart
-    statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
+    // set cluster name on datanode
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
+    }
+    // cannot restart
     EnvFactory.getEnv().getDataNodeWrapper(0).stop();
     EnvFactory.getEnv().getDataNodeWrapper(0).start();
     Awaitility.await()
