@@ -52,7 +52,7 @@ public class ColumnHeaderConstant {
   public static final String TEMPLATE = "Template";
 
   public static final String COUNT = "Count";
-  public static final String COLUMN_TTL = "TTL";
+  public static final String COLUMN_TTL = "TTL(ms)";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
@@ -252,7 +252,6 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
