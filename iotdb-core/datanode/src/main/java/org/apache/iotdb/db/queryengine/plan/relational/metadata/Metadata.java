@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -33,6 +34,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface Metadata {
@@ -58,8 +60,6 @@ public interface Metadata {
   Type getType(TypeSignature signature) throws TypeNotFoundException;
 
   boolean canCoerce(Type from, Type to);
-
-  IPartitionFetcher getPartitionFetcher();
 
   /**
    * get all device ids and corresponding attributes from schema region
@@ -132,4 +132,21 @@ public interface Metadata {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getSchemaPartition(String database);
+
+  // ======================== Table Model Data Partition Interface ========================
+  /**
+   * Get data partition, used in query scenarios.
+   *
+   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  /**
+   * Get data partition, used in query scenarios which contains time filter like: time < XX or time
+   * > XX
+   *
+   * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 }

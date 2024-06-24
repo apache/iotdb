@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
@@ -44,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -270,11 +273,6 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return ClusterPartitionFetcher.getInstance();
-  }
-
-  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
@@ -315,6 +313,18 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public SchemaPartition getSchemaPartition(String database) {
     return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
+  }
+
+  @Override
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

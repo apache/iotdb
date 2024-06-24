@@ -165,7 +165,7 @@ public class AnalyzerTest {
   @Test
   public void singleTableNoFilterTest() {
     // wildcard
-    sql = "SELECT * FROM table1";
+    sql = "SELECT * FROM testdb.table1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
@@ -177,7 +177,7 @@ public class AnalyzerTest {
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
     tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
-    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
@@ -206,7 +206,7 @@ public class AnalyzerTest {
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
     tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
-    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());

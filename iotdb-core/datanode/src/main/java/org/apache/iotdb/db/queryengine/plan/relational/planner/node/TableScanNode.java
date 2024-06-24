@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -43,8 +44,7 @@ import java.util.stream.Collectors;
 
 public class TableScanNode extends SourceNode {
 
-  // db.tablename
-  private final String qualifiedTableName;
+  private final QualifiedObjectName qualifiedObjectName;
   private List<Symbol> outputSymbols;
   private Map<Symbol, ColumnSchema> assignments;
 
@@ -74,18 +74,18 @@ public class TableScanNode extends SourceNode {
 
   public TableScanNode(
       PlanNodeId id,
-      String qualifiedTableName,
+      QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments) {
     super(id);
-    this.qualifiedTableName = qualifiedTableName;
+    this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
   }
 
   public TableScanNode(
       PlanNodeId id,
-      String qualifiedTableName,
+      QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
@@ -93,7 +93,7 @@ public class TableScanNode extends SourceNode {
       Ordering scanOrder,
       Expression pushDownPredicate) {
     super(id);
-    this.qualifiedTableName = qualifiedTableName;
+    this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
     this.deviceEntries = deviceEntries;
@@ -119,7 +119,7 @@ public class TableScanNode extends SourceNode {
   public TableScanNode clone() {
     return new TableScanNode(
         getPlanNodeId(),
-        qualifiedTableName,
+        qualifiedObjectName,
         outputSymbols,
         assignments,
         deviceEntries,
@@ -141,7 +141,14 @@ public class TableScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_SCAN_NODE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(qualifiedTableName, byteBuffer);
+
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
 
     ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
     outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
@@ -176,7 +183,13 @@ public class TableScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_SCAN_NODE.serialize(stream);
-    ReadWriteIOUtils.write(qualifiedTableName, stream);
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
 
     ReadWriteIOUtils.write(outputSymbols.size(), stream);
     for (Symbol symbol : outputSymbols) {
@@ -211,9 +224,15 @@ public class TableScanNode extends SourceNode {
   }
 
   public static TableScanNode deserialize(ByteBuffer byteBuffer) {
-    String qualifiedTableName = ReadWriteIOUtils.readString(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
+    String databaseName = null;
+    if (hasDatabaseName) {
+      databaseName = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    String tableName = ReadWriteIOUtils.readString(byteBuffer);
+    QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
 
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> outputSymbols = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       outputSymbols.add(Symbol.deserialize(byteBuffer));
@@ -250,7 +269,7 @@ public class TableScanNode extends SourceNode {
 
     return new TableScanNode(
         planNodeId,
-        qualifiedTableName,
+        qualifiedObjectName,
         outputSymbols,
         assignments,
         deviceEntries,
@@ -282,18 +301,18 @@ public class TableScanNode extends SourceNode {
       return false;
     }
     TableScanNode that = (TableScanNode) o;
-    return Objects.equals(qualifiedTableName, that.qualifiedTableName)
+    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
         && Objects.equals(outputSymbols, that.outputSymbols)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), qualifiedTableName, outputSymbols, regionReplicaSet);
+    return Objects.hash(super.hashCode(), qualifiedObjectName, outputSymbols, regionReplicaSet);
   }
 
-  public String getQualifiedTableName() {
-    return this.qualifiedTableName;
+  public QualifiedObjectName getQualifiedObjectName() {
+    return this.qualifiedObjectName;
   }
 
   public void setOutputSymbols(List<Symbol> outputSymbols) {

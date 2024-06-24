@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -107,10 +109,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
+    QualifiedName qualifiedName = analysis.getRelationName(table);
     TableScanNode tableScanNode =
         new TableScanNode(
             idAllocator.genPlanNodeId(),
-            table.getName().toString(),
+            new QualifiedObjectName(
+                qualifiedName.getPrefix().isPresent()
+                    ? qualifiedName.getPrefix().get().toString()
+                    : null,
+                qualifiedName.getSuffix()),
             outputSymbols,
             symbolToColumnSchema.build());
 

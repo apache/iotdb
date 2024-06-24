@@ -23,15 +23,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
@@ -40,7 +37,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +49,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 /** Extract IDeviceID */
 public class IndexScan implements RelationalPlanOptimizer {
 
-  static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   @Override
   public PlanNode optimize(
@@ -62,15 +58,29 @@ public class IndexScan implements RelationalPlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
-
-    return planNode.accept(
-        new Rewriter(), new RewriterContext(null, metadata, sessionInfo, analysis, queryContext));
+    return planNode.accept(new Rewriter(metadata, sessionInfo, analysis, queryContext), null);
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter extends PlanVisitor<PlanNode, Void> {
+
+    private final Metadata metadata;
+    private final SessionInfo sessionInfo;
+    private final Analysis analysis;
+    private final MPPQueryContext queryContext;
+
+    Rewriter(
+        Metadata metadata,
+        SessionInfo sessionInfo,
+        Analysis analysis,
+        MPPQueryContext queryContext) {
+      this.metadata = metadata;
+      this.sessionInfo = sessionInfo;
+      this.analysis = analysis;
+      this.queryContext = queryContext;
+    }
 
     @Override
-    public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+    public PlanNode visitPlan(PlanNode node, Void context) {
       for (PlanNode child : node.getChildren()) {
         child.accept(this, context);
       }
@@ -78,27 +88,12 @@ public class IndexScan implements RelationalPlanOptimizer {
     }
 
     @Override
-    public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      context.setPredicate(node.getPredicate());
-      context.setFilterNode(node);
-      node.getChild().accept(this, context);
-      return node;
-    }
-
-    @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
-
-      // only when exist diff predicate in FilterNode, context.predicate will not equal null
-      if (context.predicate == null) {
-        context.predicate = node.getPushDownPredicate();
-      }
-
+    public PlanNode visitTableScan(TableScanNode node, Void context) {
       List<Expression> metadataExpressions =
-          context.queryContext.getTableModelPredicateExpressions() == null
-                  || context.queryContext.getTableModelPredicateExpressions().get(0).isEmpty()
+          queryContext.getTableModelPredicateExpressions() == null
+                  || queryContext.getTableModelPredicateExpressions().get(0).isEmpty()
               ? Collections.emptyList()
-              : context.queryContext.getTableModelPredicateExpressions().get(0);
-      String dbName = context.getSessionInfo().getDatabaseName().get();
+              : queryContext.getTableModelPredicateExpressions().get(0);
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
               .filter(
@@ -106,25 +101,16 @@ public class IndexScan implements RelationalPlanOptimizer {
               .map(Symbol::getName)
               .collect(Collectors.toList());
       List<DeviceEntry> deviceEntries =
-          context
-              .getMetadata()
-              .indexScan(
-                  new QualifiedObjectName(dbName, node.getQualifiedTableName()),
-                  metadataExpressions,
-                  attributeColumns);
+          metadata.indexScan(node.getQualifiedObjectName(), metadataExpressions, attributeColumns);
       node.setDeviceEntries(deviceEntries);
       if (deviceEntries.isEmpty()) {
-        context.getAnalysis().setFinishQueryAfterAnalyze();
+        analysis.setFinishQueryAfterAnalyze();
       } else {
-        String treeModelDatabase = "root." + dbName;
+        String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
         DataPartition dataPartition =
             fetchDataPartitionByDevices(
-                deviceEntries,
-                treeModelDatabase,
-                context.getQueryContext().getGlobalTimeFilter(),
-                context.getMetadata().getPartitionFetcher(),
-                context.getQueryContext());
-        context.getAnalysis().setDataPartition(dataPartition);
+                deviceEntries, treeModelDatabase, queryContext.getGlobalTimeFilter());
+        analysis.setDataPartition(dataPartition);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
@@ -132,7 +118,7 @@ public class IndexScan implements RelationalPlanOptimizer {
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
-          context.getAnalysis().setFinishQueryAfterAnalyze();
+          analysis.setFinishQueryAfterAnalyze();
         } else {
           Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
           for (Map.Entry<
@@ -153,95 +139,35 @@ public class IndexScan implements RelationalPlanOptimizer {
 
       return node;
     }
-  }
 
-  private static DataPartition fetchDataPartitionByDevices(
-      List<DeviceEntry> deviceEntries,
-      String database,
-      Filter globalTimeFilter,
-      IPartitionFetcher partitionFetcher,
-      MPPQueryContext context) {
-    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(globalTimeFilter, context);
+    private DataPartition fetchDataPartitionByDevices(
+        List<DeviceEntry> deviceEntries, String database, Filter globalTimeFilter) {
+      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+          getTimePartitionSlotList(globalTimeFilter, queryContext);
 
-    // there is no satisfied time range
-    if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
-      return new DataPartition(
-          Collections.emptyMap(),
-          CONFIG.getSeriesPartitionExecutorClass(),
-          CONFIG.getSeriesPartitionSlotNum());
-    }
+      // there is no satisfied time range
+      if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
+        return new DataPartition(
+            Collections.emptyMap(),
+            CONFIG.getSeriesPartitionExecutorClass(),
+            CONFIG.getSeriesPartitionSlotNum());
+      }
 
-    Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-    for (DeviceEntry deviceEntry : deviceEntries) {
-      DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(
-              deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right);
-      sgNameToQueryParamsMap.computeIfAbsent(database, key -> new ArrayList<>()).add(queryParam);
-    }
+      List<DataPartitionQueryParam> dataPartitionQueryParams =
+          deviceEntries.stream()
+              .map(
+                  deviceEntry ->
+                      new DataPartitionQueryParam(
+                          deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right))
+              .collect(Collectors.toList());
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap =
+          Collections.singletonMap(database, dataPartitionQueryParams);
 
-    if (res.right.left || res.right.right) {
-      return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
-    } else {
-      return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-    }
-  }
-
-  private static class RewriterContext {
-    private Expression predicate;
-    private Metadata metadata;
-    private final SessionInfo sessionInfo;
-    private final Analysis analysis;
-    private final MPPQueryContext queryContext;
-    private FilterNode filterNode;
-
-    RewriterContext(
-        Expression predicate,
-        Metadata metadata,
-        SessionInfo sessionInfo,
-        Analysis analysis,
-        MPPQueryContext queryContext) {
-      this.predicate = predicate;
-      this.metadata = metadata;
-      this.sessionInfo = sessionInfo;
-      this.analysis = analysis;
-      this.queryContext = queryContext;
-    }
-
-    public Expression getPredicate() {
-      return this.predicate;
-    }
-
-    public void setPredicate(Expression predicate) {
-      this.predicate = predicate;
-    }
-
-    public Metadata getMetadata() {
-      return this.metadata;
-    }
-
-    public void setMetadata(Metadata metadata) {
-      this.metadata = metadata;
-    }
-
-    public SessionInfo getSessionInfo() {
-      return this.sessionInfo;
-    }
-
-    public Analysis getAnalysis() {
-      return this.analysis;
-    }
-
-    public MPPQueryContext getQueryContext() {
-      return queryContext;
-    }
-
-    public FilterNode getFilterNode() {
-      return filterNode;
-    }
-
-    public void setFilterNode(FilterNode filterNode) {
-      this.filterNode = filterNode;
+      if (res.right.left || res.right.right) {
+        return metadata.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+      } else {
+        return metadata.getDataPartition(sgNameToQueryParamsMap);
+      }
     }
   }
 }

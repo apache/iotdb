@@ -148,52 +148,54 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
       return node;
     }
-  }
 
-  private static List<List<Expression>> splitConjunctionExpressions(
-      RewriterContext context, TableScanNode node) {
-    Expression predicate = context.pushDownPredicate;
+    private List<List<Expression>> splitConjunctionExpressions(
+        RewriterContext context, TableScanNode node) {
+      Expression predicate = context.pushDownPredicate;
 
-    Set<String> idOrAttributeColumnNames =
-        node.getIdAndAttributeIndexMap().keySet().stream()
-            .map(Symbol::getName)
-            .collect(Collectors.toSet());
+      Set<String> idOrAttributeColumnNames =
+          node.getIdAndAttributeIndexMap().keySet().stream()
+              .map(Symbol::getName)
+              .collect(Collectors.toSet());
 
-    Set<String> measurementColumnNames =
-        node.getAssignments().entrySet().stream()
-            .filter(e -> MEASUREMENT.equals(e.getValue().getColumnCategory()))
-            .map(e -> e.getKey().getName())
-            .collect(Collectors.toSet());
+      Set<String> measurementColumnNames =
+          node.getAssignments().entrySet().stream()
+              .filter(e -> MEASUREMENT.equals(e.getValue().getColumnCategory()))
+              .map(e -> e.getKey().getName())
+              .collect(Collectors.toSet());
 
-    List<Expression> metadataExpressions = new ArrayList<>();
-    List<Expression> expressionsCanPushDown = new ArrayList<>();
-    List<Expression> expressionsCannotPushDown = new ArrayList<>();
+      List<Expression> metadataExpressions = new ArrayList<>();
+      List<Expression> expressionsCanPushDown = new ArrayList<>();
+      List<Expression> expressionsCannotPushDown = new ArrayList<>();
 
-    if (predicate instanceof LogicalExpression
-        && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
+      if (predicate instanceof LogicalExpression
+          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
 
-      for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
-        if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
-          metadataExpressions.add(expression);
-        } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, expression)) {
-          expressionsCanPushDown.add(expression);
-        } else {
-          expressionsCannotPushDown.add(expression);
+        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
+          if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
+            metadataExpressions.add(expression);
+          } else if (PredicateCombineIntoTableScanChecker.check(
+              measurementColumnNames, expression)) {
+            expressionsCanPushDown.add(expression);
+          } else {
+            expressionsCannotPushDown.add(expression);
+          }
         }
+
+        return Arrays.asList(
+            metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
+      }
+
+      if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
+        metadataExpressions.add(predicate);
+      } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
+        expressionsCanPushDown.add(predicate);
+      } else {
+        expressionsCannotPushDown.add(predicate);
       }
 
       return Arrays.asList(metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
     }
-
-    if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
-      metadataExpressions.add(predicate);
-    } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
-      expressionsCanPushDown.add(predicate);
-    } else {
-      expressionsCannotPushDown.add(predicate);
-    }
-
-    return Arrays.asList(metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
   }
 
   static boolean containsDiffFunction(Expression expression) {
