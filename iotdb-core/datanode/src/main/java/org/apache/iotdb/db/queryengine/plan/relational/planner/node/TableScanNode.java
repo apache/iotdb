@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class TableScanNode extends SourceNode {
@@ -55,6 +56,13 @@ public class TableScanNode extends SourceNode {
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private Ordering scanOrder = Ordering.ASC;
+
+  // extracted time filter expression in where clause
+  // case 1: where s1 > 1 and time >= 0 and time <= 10, time predicate will be time >= 0 and time <=
+  // 10, pushDownPredicate will be s1 > 1
+  // case 2: where s1 > 1 or time < 10, time predicate will be null, pushDownPredicate will be s1 >
+  // 1 or time < 10
+  @Nullable private Expression timePredicate;
 
   // push down predicate for current series, could be null if it doesn't exist
   @Nullable private Expression pushDownPredicate;
@@ -362,5 +370,9 @@ public class TableScanNode extends SourceNode {
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  public Optional<Expression> getTimePredicate() {
+    return Optional.ofNullable(timePredicate);
   }
 }

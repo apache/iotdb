@@ -255,7 +255,6 @@ public class QueryPlanner {
       queryContext.setGlobalTimeFilter(
           globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
     }
-    analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
     boolean hasValueFilter = resultPair.right;
     if (!hasValueFilter) {
       return planBuilder;
