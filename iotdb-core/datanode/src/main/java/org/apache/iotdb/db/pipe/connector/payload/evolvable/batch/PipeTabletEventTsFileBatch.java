@@ -177,9 +177,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {
-    if (divisor == 0.0) {
-      return Collections.emptyMap();
-    }
     final double sum = pipeName2WeightMap.values().stream().reduce(Double::sum).orElse(0.0);
     if (sum == 0.0) {
       return Collections.emptyMap();
