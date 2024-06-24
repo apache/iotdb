@@ -303,11 +303,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             break;
           }
 
-          valueChunkList.add(
-              new Chunk(
-                  chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
-          currentMeasurements.add(
-              new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+          // Do not record empty chunk
+          if (chunkHeader.getDataSize() > 0) {
+            valueChunkList.add(
+                new Chunk(
+                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+            currentMeasurements.add(
+                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+          }
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
           // TODO: Replace it by IDeviceID
