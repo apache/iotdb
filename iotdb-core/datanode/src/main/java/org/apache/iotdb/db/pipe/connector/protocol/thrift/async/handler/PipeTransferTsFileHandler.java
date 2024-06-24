@@ -236,22 +236,25 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         LOGGER.warn(
             "Failed to close file reader or delete tsFile when successfully transferred file.", e);
       } finally {
-        if (eventsReferenceCount.decrementAndGet() <= 0) {
+        final int referenceCount = eventsReferenceCount.decrementAndGet();
+        if (referenceCount <= 0) {
           events.forEach(
               event ->
                   event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+        }
 
-          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-            LOGGER.info(
-                "Successfully transferred file {} (committer key={}, commit id={}).",
-                tsFile,
-                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-                events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
-          } else {
-            LOGGER.info("Successfully transferred file {} (batched TableInsertionEvents).", tsFile);
-          }
+        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+          LOGGER.info(
+              "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
+              tsFile,
+              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+              referenceCount);
         } else {
-          LOGGER.info("Successfully transferred file {} (batched TableInsertionEvents).", tsFile);
+          LOGGER.info(
+              "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
+              tsFile,
+              referenceCount);
         }
 
         if (client != null) {
