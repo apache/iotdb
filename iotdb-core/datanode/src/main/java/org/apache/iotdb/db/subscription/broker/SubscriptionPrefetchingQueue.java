@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionEmptyPipeEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -34,11 +35,14 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public abstract class SubscriptionPrefetchingQueue {
 
@@ -47,6 +51,7 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final String brokerId; // consumer group id
   protected final String topicName;
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
@@ -62,19 +67,61 @@ public abstract class SubscriptionPrefetchingQueue {
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
 
+    this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(final String consumerId);
+  public SubscriptionEvent poll(final String consumerId) {
+    if (prefetchingQueue.isEmpty()) {
+      prefetchOnce();
+    }
+
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    try {
+      while (count++ < size // limit control
+          && Objects.nonNull(
+              event =
+                  prefetchingQueue.poll(
+                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                      TimeUnit.MILLISECONDS))) {
+        if (event.isCommitted()) {
+          event.cleanup();
+          continue;
+        }
+        if (!event.pollable()) {
+          // Re-enqueue the uncommitted event at the end of the queue.
+          prefetchingQueue.add(event);
+          continue;
+        }
+        event.recordLastPolledConsumerId(consumerId);
+        event.recordLastPolledTimestamp();
+        // Re-enqueue the uncommitted event at the end of the queue.
+        // This operation should be performed after recordLastPolledTimestamp to prevent multiple
+        // consumers from consuming the same event.
+        prefetchingQueue.add(event);
+        return event;
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingQueue {} interrupted while polling events.",
+          this,
+          e);
+    }
+
+    return null;
+  }
+
+  abstract void prefetchOnce();
 
   public abstract void executePrefetch();
 
   public void cleanup() {
     // clean up uncommitted events
-    for (final SubscriptionEvent event : uncommittedEvents.values()) {
-      event.clearReferenceCount();
-      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
-    }
+    uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
     uncommittedEvents.clear();
 
     // no need to clean up events in inputPendingQueue, see
@@ -90,14 +137,34 @@ public abstract class SubscriptionPrefetchingQueue {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
-          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+          "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
       return false;
     }
-    event.decreaseReferenceCount();
+
+    if (event.isCommitted()) {
+      LOGGER.warn(
+          "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
+          event,
+          commitContext,
+          this);
+      return false;
+    }
+
+    if (!event.isCommittable()) {
+      LOGGER.warn(
+          "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
+          event,
+          commitContext,
+          this);
+      return false;
+    }
+
+    event.ack();
+    event.cleanup();
+
     event.recordCommittedTimestamp();
-    SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     uncommittedEvents.remove(commitContext);
     return true;
   }
@@ -135,7 +202,7 @@ public abstract class SubscriptionPrefetchingQueue {
         PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
-        -1);
+        INVALID_COMMIT_ID);
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -184,7 +251,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
     return new SubscriptionEvent(
-        Collections.emptyList(),
+        new SubscriptionEmptyPipeEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.TERMINATION.getType(),
             new TerminationPayload(),
@@ -194,7 +261,7 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent generateSubscriptionPollErrorResponse(
       final String errorMessage, final boolean critical) {
     return new SubscriptionEvent(
-        Collections.emptyList(),
+        new SubscriptionEmptyPipeEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.ERROR.getType(),
             new ErrorPayload(errorMessage, critical),

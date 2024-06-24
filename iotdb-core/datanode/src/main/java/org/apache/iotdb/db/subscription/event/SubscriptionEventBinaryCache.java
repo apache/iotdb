@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.event;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -37,19 +38,21 @@ public class SubscriptionEventBinaryCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionEventBinaryCache.class);
 
-  private final PipeMemoryBlock allocatedMemoryBlock;
-
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
-  private final LoadingCache<SubscriptionEvent, ByteBuffer> cache;
+  private final LoadingCache<SubscriptionPollResponse, ByteBuffer> cache;
 
   public ByteBuffer serialize(final SubscriptionEvent event) throws IOException {
+    return serialize(event.getCurrentResponse());
+  }
+
+  public ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
     try {
-      return this.cache.get(event);
+      return this.cache.get(response);
     } catch (final Exception e) {
       LOGGER.warn(
-          "SubscriptionEventBinaryCache raised an exception while serializing SubscriptionEvent: {}",
-          event,
+          "SubscriptionEventBinaryCache raised an exception while serializing SubscriptionPollResponse: {}",
+          response,
           e);
       throw new IOException(e);
     }
@@ -59,21 +62,31 @@ public class SubscriptionEventBinaryCache {
    * @return true -> byte buffer is not null
    */
   public boolean trySerialize(final SubscriptionEvent event) {
+    return trySerialize(event.getCurrentResponse());
+  }
+
+  /**
+   * @return true -> byte buffer is not null
+   */
+  public boolean trySerialize(final SubscriptionPollResponse response) {
     try {
-      serialize(event);
+      serialize(response);
       return true;
     } catch (final IOException e) {
       LOGGER.warn(
-          "Subscription: something unexpected happened when serializing SubscriptionEvent: {}",
-          event,
+          "Subscription: something unexpected happened when serializing SubscriptionPollResponse: {}",
+          response,
           e);
       return false;
     }
   }
 
-  public void resetByteBuffer(final SubscriptionEvent message, final boolean recursive) {
-    message.resetByteBuffer(recursive);
-    this.cache.invalidate(message);
+  public void resetByteBuffer(final SubscriptionEvent event, final boolean resetAll) {
+    event.resetByteBuffer(resetAll);
+  }
+
+  public void invalidate(final SubscriptionPollResponse response) {
+    this.cache.invalidate(response);
   }
 
   //////////////////////////// singleton ////////////////////////////
@@ -100,7 +113,7 @@ public class SubscriptionEventBinaryCache {
                 * PipeConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework
-    this.allocatedMemoryBlock =
+    final PipeMemoryBlock allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(initMemorySizeInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
@@ -127,14 +140,15 @@ public class SubscriptionEventBinaryCache {
 
     this.cache =
         Caffeine.newBuilder()
-            .maximumWeight(this.allocatedMemoryBlock.getMemoryUsageInBytes())
+            .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                (Weigher<SubscriptionEvent, ByteBuffer>)
+                (Weigher<SubscriptionPollResponse, ByteBuffer>)
                     (message, buffer) -> {
                       // TODO: overflow
                       return (int) (buffer.limit() * memoryUsageCheatFactor.get());
                     })
             .recordStats() // TODO: metrics
-            .build(SubscriptionEvent::serialize);
+            // NOTE: lambda CAN NOT be replaced with method reference
+            .build(response -> SubscriptionPollResponse.serialize(response));
   }
 }

@@ -357,7 +357,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           events.parallelStream()
               .map(
                   (event) -> {
-                    final SubscriptionPollResponse response = event.getResponse();
+                    final SubscriptionPollResponse response = event.getCurrentResponse();
+                    if (Objects.isNull(response)) {
+                      throw new SubscriptionException("null response");
+                    }
                     final SubscriptionCommitContext commitContext = response.getCommitContext();
                     try {
                       final ByteBuffer byteBuffer =

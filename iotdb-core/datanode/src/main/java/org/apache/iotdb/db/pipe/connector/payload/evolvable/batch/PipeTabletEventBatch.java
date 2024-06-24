@@ -52,7 +52,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * @param event the given {@link Event}
    * @return {@code true} if the batch can be transferred
    */
-  synchronized boolean onEvent(final TabletInsertionEvent event)
+  public synchronized boolean onEvent(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException {
     if (isClosed || !(event instanceof EnrichedEvent)) {
       return false;
@@ -92,7 +92,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
 
-  private boolean shouldEmit() {
+  public boolean shouldEmit() {
     return totalBufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
@@ -111,7 +111,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   public synchronized void close() {
     isClosed = true;
 
-    clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
+    clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
     events.clear();
   }
 
@@ -119,7 +119,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 
-  private void clearEventsReferenceCount(final String holderMessage) {
+  public void clearEventsReferenceCount(final String holderMessage) {
     events.forEach(event -> event.clearReferenceCount(holderMessage));
   }
 

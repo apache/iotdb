@@ -829,11 +829,13 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       {
         final Properties config = new Properties();
         config.put(TopicConstant.END_TIME_KEY, currentTime - 1);
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
         session.createTopic("topic1", config);
       }
       {
         final Properties config = new Properties();
         config.put(TopicConstant.START_TIME_KEY, currentTime);
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
         session.createTopic("topic2", config);
       }
       {
