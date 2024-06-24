@@ -262,7 +262,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean dropPipe(final String pipeName) {
+    // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
     if (!super.dropPipe(pipeName)) {
       return false;
     }
