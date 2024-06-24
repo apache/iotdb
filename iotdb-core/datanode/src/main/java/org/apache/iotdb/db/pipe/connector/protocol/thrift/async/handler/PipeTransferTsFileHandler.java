@@ -69,6 +69,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   // the file is batched with other events
   private final List<EnrichedEvent> events;
   private final AtomicInteger eventsReferenceCount;
+  private final AtomicBoolean eventsHadBeenAddedToRetryQueue;
 
   private final File tsFile;
   private final File modFile;
@@ -92,14 +93,18 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
       final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
       final boolean transferMod)
       throws FileNotFoundException {
     this.connector = connector;
+
     this.pipeName2WeightMap = pipeName2WeightMap;
+
     this.events = events;
     this.eventsReferenceCount = eventsReferenceCount;
+    this.eventsHadBeenAddedToRetryQueue = eventsHadBeenAddedToRetryQueue;
 
     this.tsFile = tsFile;
     this.modFile = modFile;
@@ -320,7 +325,9 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
           client.returnSelf();
         }
       } finally {
-        connector.addFailureEventsToRetryQueue(events);
+        if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
+          connector.addFailureEventsToRetryQueue(events);
+        }
       }
     }
   }

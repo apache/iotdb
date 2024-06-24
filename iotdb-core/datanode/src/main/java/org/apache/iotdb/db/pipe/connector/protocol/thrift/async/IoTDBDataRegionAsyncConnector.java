@@ -179,20 +179,22 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<File, List<EnrichedEvent>>> sealedFile2EventsList = tsFileBatch.sealTsFiles();
+      final List<File> sealedFiles = tsFileBatch.sealTsFiles();
       final Map<Pair<String, Long>, Double> pipe2WeightMap =
-          tsFileBatch.deepCopyPipe2WeightMap(
-              sealedFile2EventsList.isEmpty() ? 1 : sealedFile2EventsList.size());
-      final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFile2EventsList.size());
+          tsFileBatch.deepCopyPipe2WeightMap(sealedFiles.isEmpty() ? 1 : sealedFiles.size());
+      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+      final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
-      for (final Pair<File, List<EnrichedEvent>> sealedFile2Events : sealedFile2EventsList) {
+      for (final File sealedFile : sealedFiles) {
         transfer(
             new PipeTransferTsFileHandler(
                 this,
                 pipe2WeightMap,
-                sealedFile2Events.getRight(),
+                events,
                 eventsReferenceCount,
-                sealedFile2Events.getLeft(),
+                eventsHadBeenAddedToRetryQueue,
+                sealedFile,
                 null,
                 false));
       }
@@ -338,6 +340,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   1.0),
               Collections.singletonList(pipeTsFileInsertionEvent),
               new AtomicInteger(1),
+              new AtomicBoolean(false),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()
