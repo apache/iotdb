@@ -52,6 +52,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,7 +167,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void transferInBatchWithoutCheck(
-      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch) throws IOException {
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
+      throws IOException, WriteProcessException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
@@ -175,19 +177,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final File tsFile = tsFileBatch.sealTsFile();
-      // tsFile is null when the batch is already closed
-      if (Objects.isNull(tsFile)) {
-        return;
+      for (final File tsFile : tsFileBatch.sealTsFiles()) {
+        transfer(
+            new PipeTransferTsFileHandler(
+                this,
+                tsFileBatch.deepCopyPipe2WeightMap(),
+                tsFileBatch.deepCopyEvents(),
+                tsFile,
+                null,
+                false));
       }
-      transfer(
-          new PipeTransferTsFileHandler(
-              this,
-              tsFileBatch.deepCopyPipe2WeightMap(),
-              tsFileBatch.deepCopyEvents(),
-              tsFile,
-              null,
-              false));
     } else {
       LOGGER.warn(
           "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
@@ -442,7 +441,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary() throws IOException {
+  private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }

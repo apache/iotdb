@@ -54,6 +54,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,7 +177,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransferWrapper() throws IOException {
+  private void doTransferWrapper() throws IOException, WriteProcessException {
     for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
         tabletBatchBuilder.getAllNonEmptyBatches()) {
       doTransferWrapper(nonEmptyBatch);
@@ -184,7 +185,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransferWrapper(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws IOException {
+      throws IOException, WriteProcessException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
     if (batch instanceof PipeTabletEventPlainBatch) {
       doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
@@ -244,20 +245,18 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer) throws IOException {
-    final File tsFile = batchToTransfer.sealTsFile();
-    // tsFile is null when the batch is already closed
-    if (Objects.isNull(tsFile)) {
-      return;
-    }
-    doTransfer(batchToTransfer.deepCopyPipe2WeightMap(), tsFile, null);
-    try {
-      FileUtils.delete(tsFile);
-    } catch (final NoSuchFileException e) {
-      LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+  private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
+      throws IOException, WriteProcessException {
+    for (final File tsFile : batchToTransfer.sealTsFiles()) {
+      doTransfer(batchToTransfer.deepCopyPipe2WeightMap(), tsFile, null);
+      try {
+        FileUtils.delete(tsFile);
+      } catch (final NoSuchFileException e) {
+        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+      }
     }
   }
 
