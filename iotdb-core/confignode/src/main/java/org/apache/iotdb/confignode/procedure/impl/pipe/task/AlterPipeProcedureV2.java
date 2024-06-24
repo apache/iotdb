@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -130,21 +129,17 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getRegionLeaderMap()
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    env.getConfigManager()
-                        .getPartitionManager()
-                        .getRegionStorageGroup(regionGroupId);
-                final PipeTaskMeta currentPipeTaskMeta =
-                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
-                if (databaseName != null
-                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
-                  // Pipe only collect user's data, filter metric database here.
-                  updatedConsensusGroupIdToTaskMetaMap.put(
-                      regionGroupId.getId(),
-                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
-                }
+              final String databaseName =
+                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+              final PipeTaskMeta currentPipeTaskMeta =
+                  currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
+              if (databaseName != null
+                  && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                // Pipe only collect user's data, filter metric database here.
+                updatedConsensusGroupIdToTaskMetaMap.put(
+                    regionGroupId.getId(),
+                    new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
               }
             });
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
