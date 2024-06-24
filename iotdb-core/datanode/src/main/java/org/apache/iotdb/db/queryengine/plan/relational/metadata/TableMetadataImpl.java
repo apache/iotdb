@@ -290,6 +290,11 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return ClusterPartitionFetcher.getInstance();
+  }
+
+  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,

@@ -60,13 +60,11 @@ public class IndexScan implements RelationalPlanOptimizer {
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
-      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
 
     return planNode.accept(
-        new Rewriter(),
-        new RewriterContext(null, metadata, sessionInfo, analysis, partitionFetcher, queryContext));
+        new Rewriter(), new RewriterContext(null, metadata, sessionInfo, analysis, queryContext));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -124,7 +122,7 @@ public class IndexScan implements RelationalPlanOptimizer {
                 deviceEntries,
                 treeModelDatabase,
                 context.getQueryContext().getGlobalTimeFilter(),
-                context.getPartitionFetcher(),
+                context.getMetadata().getPartitionFetcher(),
                 context.getQueryContext());
         context.getAnalysis().setDataPartition(dataPartition);
 
@@ -194,7 +192,6 @@ public class IndexScan implements RelationalPlanOptimizer {
     private Metadata metadata;
     private final SessionInfo sessionInfo;
     private final Analysis analysis;
-    private final IPartitionFetcher partitionFetcher;
     private final MPPQueryContext queryContext;
     private FilterNode filterNode;
 
@@ -203,13 +200,11 @@ public class IndexScan implements RelationalPlanOptimizer {
         Metadata metadata,
         SessionInfo sessionInfo,
         Analysis analysis,
-        IPartitionFetcher partitionFetcher,
         MPPQueryContext queryContext) {
       this.predicate = predicate;
       this.metadata = metadata;
       this.sessionInfo = sessionInfo;
       this.analysis = analysis;
-      this.partitionFetcher = partitionFetcher;
       this.queryContext = queryContext;
     }
 
@@ -235,10 +230,6 @@ public class IndexScan implements RelationalPlanOptimizer {
 
     public Analysis getAnalysis() {
       return this.analysis;
-    }
-
-    public IPartitionFetcher getPartitionFetcher() {
-      return partitionFetcher;
     }
 
     public MPPQueryContext getQueryContext() {

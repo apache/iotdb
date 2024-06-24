@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
@@ -116,7 +117,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
@@ -312,9 +312,7 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitMergeSort(
-      org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode node,
-      C context) {
+  public R visitMergeSort(MergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
@@ -556,7 +554,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  // =============================== Used for Relation Model ====================================
+  // =============================== Used for Table Model ====================================
   public R visitFilter(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node, C context) {
     return visitSingleChildProcess(node, context);
@@ -573,16 +571,17 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitLimit(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitOffset(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
-  public R visitMergeSort(MergeSortNode node, C context) {
-    return visitPlan(node, context);
+  public R visitMergeSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitOutput(
@@ -592,16 +591,16 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitStreamSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 }
