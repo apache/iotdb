@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -85,9 +86,10 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -245,15 +247,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
     }
 
-    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
+    SeriesScanOptions.Builder scanOptionsBuilder =
+        node.getTimePredicate()
+            .map(timePredicate -> getSeriesScanOptionsBuilder(context, timePredicate))
+            .orElse(new SeriesScanOptions.Builder());
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
     scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
 
     Expression pushDownPredicate = node.getPushDownPredicate();
-    boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
-    if (pushDownPredicate != null && predicateCanPushIntoScan) {
+    if (pushDownPredicate != null) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
@@ -299,20 +303,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    if (!predicateCanPushIntoScan) {
-
-      return constructFilterAndProjectOperator(
-          Optional.of(pushDownPredicate),
-          tableScanOperator,
-          node.getOutputSymbols().stream()
-              .filter(symbol -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName()))
-              .map(Symbol::toSymbolReference)
-              .toArray(Expression[]::new),
-          tableScanOperator.getResultDataTypes(),
-          makeLayout(Collections.singletonList(node)),
-          node.getPlanNodeId(),
-          context);
-    }
     return tableScanOperator;
   }
 
@@ -339,14 +329,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return outputMappings;
   }
 
-  private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(LocalExecutionPlanContext context) {
+  private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
+      LocalExecutionPlanContext context, @NotNull Expression timePredicate) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    if (globalTimeFilter != null) {
-      // time filter may be stateful, so we need to copy it
-      scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
-    }
+    Filter timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+    context.getDriverContext().getFragmentInstanceContext().setTimeFilterForTableModel(timeFilter);
+    // time filter may be stateful, so we need to copy it
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
 
     return scanOptionsBuilder;
   }

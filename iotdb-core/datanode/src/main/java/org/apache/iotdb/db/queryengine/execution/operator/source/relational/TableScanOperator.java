@@ -38,7 +38,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -375,16 +374,8 @@ public class TableScanOperator extends AbstractDataSourceOperator {
       DeviceEntry deviceEntry,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas) {
-    String[] devicePath = new String[1 + deviceEntry.getDeviceID().segmentNum()];
-    devicePath[0] = "root";
-    for (int i = 1; i < devicePath.length; i++) {
-      devicePath[i] = (String) deviceEntry.getDeviceID().segment(i - 1);
-    }
-
     return new AlignedFullPath(
-        IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath),
-        measurementColumnNames,
-        measurementSchemas);
+        deviceEntry.getDeviceID(), measurementColumnNames, measurementSchemas);
   }
 
   @Override
