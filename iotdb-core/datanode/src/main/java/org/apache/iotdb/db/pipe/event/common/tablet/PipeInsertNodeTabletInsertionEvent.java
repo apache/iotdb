@@ -303,8 +303,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// convertToTablet ///////////////////////////
 
-  public boolean isAligned() {
-    return isAligned;
+  public boolean isAligned(final int i) {
+    return initDataContainers().get(i).isAligned();
   }
 
   public List<Tablet> convertToTablets() {
@@ -345,7 +345,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       return dataContainers;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
   }
@@ -362,11 +362,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
     final List<PipeRawTabletInsertionEvent> events =
-        convertToTablets().stream()
+        initDataContainers().stream()
             .map(
-                tablet ->
+                container ->
                     new PipeRawTabletInsertionEvent(
-                        tablet, isAligned, pipeName, creationTime, pipeTaskMeta, this, false))
+                        container.convertToTablet(),
+                        container.isAligned(),
+                        pipeName,
+                        creationTime,
+                        pipeTaskMeta,
+                        this,
+                        false))
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
 

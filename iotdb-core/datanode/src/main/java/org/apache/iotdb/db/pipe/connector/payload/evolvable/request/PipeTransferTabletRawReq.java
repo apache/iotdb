@@ -91,7 +91,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     }
   }
 
-  private static boolean checkSorted(final Tablet tablet) {
+  public static boolean checkSorted(final Tablet tablet) {
     for (int i = 1; i < tablet.rowSize; i++) {
       if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
         return false;
@@ -100,7 +100,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return true;
   }
 
-  private static void sortTablet(final Tablet tablet) {
+  public static void sortTablet(final Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
