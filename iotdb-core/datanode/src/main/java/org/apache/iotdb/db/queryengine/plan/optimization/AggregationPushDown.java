@@ -62,6 +62,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -227,7 +228,12 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSingleDeviceView(SingleDeviceViewNode node, RewriterContext context) {
       context.setCurDevice(node.getDevice());
-      context.setCurDevicePath(new PartialPath(node.getDevice().split(",")));
+      try {
+        context.setCurDevicePath(new PartialPath(node.getDevice()));
+      } catch (IllegalPathException e) {
+        throw new IllegalStateException(
+            "Should always legal here. Illegal Path is " + node.getDevice());
+      }
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;
@@ -639,7 +645,7 @@ public class AggregationPushDown implements PlanOptimizer {
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
 
-    private String curDevice;
+    private IDeviceID curDevice;
     private PartialPath curDevicePath;
 
     private long bytesToBeReleased = 0;
@@ -659,7 +665,7 @@ public class AggregationPushDown implements PlanOptimizer {
       return isAlignByDevice;
     }
 
-    public void setCurDevice(String curDevice) {
+    public void setCurDevice(IDeviceID curDevice) {
       this.curDevice = curDevice;
     }
 

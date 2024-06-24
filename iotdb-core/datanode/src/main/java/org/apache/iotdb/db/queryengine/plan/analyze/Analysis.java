@@ -149,39 +149,39 @@ public class Analysis implements IAnalysis {
   private List<PartialPath> deviceList;
 
   // map from device name to series/aggregation under this device
-  private Map<String, Set<Expression>> deviceToSourceExpressions;
+  private Map<IDeviceID, Set<Expression>> deviceToSourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Map<String, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
+  private Map<IDeviceID, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
 
   // map from device name to query filter under this device
-  private Map<String, Expression> deviceToWhereExpression;
+  private Map<IDeviceID, Expression> deviceToWhereExpression;
 
   // all aggregations that need to be calculated
-  private Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
+  private Map<IDeviceID, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
 
   // expression of output column to be calculated
-  private Map<String, Set<Expression>> deviceToSelectExpressions;
+  private Map<IDeviceID, Set<Expression>> deviceToSelectExpressions;
 
   // expression of group by that need to be calculated
-  private Map<String, Expression> deviceToGroupByExpression;
+  private Map<IDeviceID, Expression> deviceToGroupByExpression;
 
   // expression of order by that need to be calculated
-  private Map<String, Set<Expression>> deviceToOrderByExpressions;
+  private Map<IDeviceID, Set<Expression>> deviceToOrderByExpressions;
 
   // the sortItems used in order by push down of align by device
-  private Map<String, List<SortItem>> deviceToSortItems;
+  private Map<IDeviceID, List<SortItem>> deviceToSortItems;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceViewInputIndexesMap;
+  private Map<IDeviceID, List<Integer>> deviceViewInputIndexesMap;
 
   private Set<Expression> deviceViewOutputExpressions;
 
-  private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
+  private Map<IDeviceID, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
 
   // map from output device name to queried devices
-  private Map<String, IDeviceID> outputDeviceToQueriedDevicesMap;
+  private Map<IDeviceID, IDeviceID> outputDeviceToQueriedDevicesMap;
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
@@ -536,11 +536,11 @@ public class Analysis implements IAnalysis {
     this.whereExpression = whereExpression;
   }
 
-  public Map<String, Expression> getDeviceToWhereExpression() {
+  public Map<IDeviceID, Expression> getDeviceToWhereExpression() {
     return deviceToWhereExpression;
   }
 
-  public void setDeviceToWhereExpression(Map<String, Expression> deviceToWhereExpression) {
+  public void setDeviceToWhereExpression(Map<IDeviceID, Expression> deviceToWhereExpression) {
     this.deviceToWhereExpression = deviceToWhereExpression;
   }
 
@@ -594,11 +594,12 @@ public class Analysis implements IAnalysis {
     this.failStatus = status;
   }
 
-  public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {
+  public void setDeviceViewInputIndexesMap(
+      Map<IDeviceID, List<Integer>> deviceViewInputIndexesMap) {
     this.deviceViewInputIndexesMap = deviceViewInputIndexesMap;
   }
 
-  public Map<String, List<Integer>> getDeviceViewInputIndexesMap() {
+  public Map<IDeviceID, List<Integer>> getDeviceViewInputIndexesMap() {
     return deviceViewInputIndexesMap;
   }
 
@@ -634,37 +635,39 @@ public class Analysis implements IAnalysis {
     this.selectExpressions = selectExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToSourceExpressions() {
     return deviceToSourceExpressions;
   }
 
-  public void setDeviceToSourceExpressions(Map<String, Set<Expression>> deviceToSourceExpressions) {
+  public void setDeviceToSourceExpressions(
+      Map<IDeviceID, Set<Expression>> deviceToSourceExpressions) {
     this.deviceToSourceExpressions = deviceToSourceExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToSourceTransformExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToSourceTransformExpressions() {
     return deviceToSourceTransformExpressions;
   }
 
   public void setDeviceToSourceTransformExpressions(
-      Map<String, Set<Expression>> deviceToSourceTransformExpressions) {
+      Map<IDeviceID, Set<Expression>> deviceToSourceTransformExpressions) {
     this.deviceToSourceTransformExpressions = deviceToSourceTransformExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToAggregationExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToAggregationExpressions() {
     return deviceToAggregationExpressions;
   }
 
   public void setDeviceToAggregationExpressions(
-      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+      Map<IDeviceID, Set<Expression>> deviceToAggregationExpressions) {
     this.deviceToAggregationExpressions = deviceToAggregationExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToSelectExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToSelectExpressions() {
     return deviceToSelectExpressions;
   }
 
-  public void setDeviceToSelectExpressions(Map<String, Set<Expression>> deviceToSelectExpressions) {
+  public void setDeviceToSelectExpressions(
+      Map<IDeviceID, Set<Expression>> deviceToSelectExpressions) {
     this.deviceToSelectExpressions = deviceToSelectExpressions;
   }
 
@@ -676,11 +679,11 @@ public class Analysis implements IAnalysis {
     this.groupByExpression = groupByExpression;
   }
 
-  public Map<String, Expression> getDeviceToGroupByExpression() {
+  public Map<IDeviceID, Expression> getDeviceToGroupByExpression() {
     return deviceToGroupByExpression;
   }
 
-  public void setDeviceToGroupByExpression(Map<String, Expression> deviceToGroupByExpression) {
+  public void setDeviceToGroupByExpression(Map<IDeviceID, Expression> deviceToGroupByExpression) {
     this.deviceToGroupByExpression = deviceToGroupByExpression;
   }
 
@@ -822,12 +825,12 @@ public class Analysis implements IAnalysis {
     return orderByExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToOrderByExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToOrderByExpressions() {
     return deviceToOrderByExpressions;
   }
 
   public void setDeviceToOrderByExpressions(
-      Map<String, Set<Expression>> deviceToOrderByExpressions) {
+      Map<IDeviceID, Set<Expression>> deviceToOrderByExpressions) {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
   }
 
@@ -839,11 +842,11 @@ public class Analysis implements IAnalysis {
     return hasSortNode;
   }
 
-  public Map<String, List<SortItem>> getDeviceToSortItems() {
+  public Map<IDeviceID, List<SortItem>> getDeviceToSortItems() {
     return deviceToSortItems;
   }
 
-  public void setDeviceToSortItems(Map<String, List<SortItem>> deviceToSortItems) {
+  public void setDeviceToSortItems(Map<IDeviceID, List<SortItem>> deviceToSortItems) {
     this.deviceToSortItems = deviceToSortItems;
   }
 
@@ -892,20 +895,21 @@ public class Analysis implements IAnalysis {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
-  public Map<String, IDeviceID> getOutputDeviceToQueriedDevicesMap() {
+  public Map<IDeviceID, IDeviceID> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
 
   public void setOutputDeviceToQueriedDevicesMap(
-      Map<String, IDeviceID> outputDeviceToQueriedDevicesMap) {
+      Map<IDeviceID, IDeviceID> outputDeviceToQueriedDevicesMap) {
     this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
   }
 
-  public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
+  public Map<IDeviceID, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
   }
 
-  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
+  public void setDeviceToOutputExpressions(
+      Map<IDeviceID, Set<Expression>> deviceToOutputExpressions) {
     this.deviceToOutputExpressions = deviceToOutputExpressions;
   }
 
