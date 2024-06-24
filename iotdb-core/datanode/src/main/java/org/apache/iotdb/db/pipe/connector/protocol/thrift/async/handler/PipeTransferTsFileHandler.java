@@ -250,6 +250,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
           } else {
             LOGGER.info("Successfully transferred file {} (batched TableInsertionEvents).", tsFile);
           }
+        } else {
+          LOGGER.info("Successfully transferred file {} (batched TableInsertionEvents).", tsFile);
         }
 
         if (client != null) {
