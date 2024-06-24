@@ -410,10 +410,15 @@ public final class ExpressionTreeRewriter<C> {
         }
       }
 
+      Expression escape = null;
+      if (node.getEscape().isPresent()) {
+        escape = node.getEscape().get();
+      }
+
       return new LikePredicate(
           process(node.getValue(), context),
           process(node.getPattern(), context),
-          process(node.getPattern(), context));
+          process(escape, context));
     }
 
     @Override

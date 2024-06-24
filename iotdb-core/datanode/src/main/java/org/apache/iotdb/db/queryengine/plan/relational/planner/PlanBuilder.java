@@ -92,6 +92,10 @@ public class PlanBuilder {
     return translations.getFieldSymbols();
   }
 
+  public Symbol translate(Expression expression) {
+    return Symbol.from(translations.rewrite(expression));
+  }
+
   public Expression rewrite(Expression root) {
     verify(
         translations.getAnalysis().isAnalyzed(root),

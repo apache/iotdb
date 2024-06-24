@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 
@@ -270,41 +271,21 @@ public class TranslationMap {
             return new FunctionCall(node.getName(), node.isDistinct(), newArguments);
           }
 
-          /* @Override
-          public Expression rewriteLikePredicate(LikePredicate node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
-          {
+          @Override
+          public Expression rewriteLikePredicate(
+              LikePredicate node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
             Optional<SymbolReference> mapped = tryGetMapping(node);
             if (mapped.isPresent()) {
               return mapped.get();
             }
-
             Expression value = treeRewriter.rewrite(node.getValue(), context);
             Expression pattern = treeRewriter.rewrite(node.getPattern(), context);
-            Optional<Expression> escape = node.getEscape().map(e -> treeRewriter.rewrite(e, context));
-
-            FunctionCall patternCall;
-            if (escape.isPresent()) {
-              patternCall = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
-                      .setName(LIKE_PATTERN_FUNCTION_NAME)
-                      .addArgument(analysis.getType(node.getPattern()), pattern)
-                      .addArgument(analysis.getType(node.getEscape().get()), escape.get())
-                      .build();
-            }
-            else {
-              patternCall = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
-                      .setName(LIKE_PATTERN_FUNCTION_NAME)
-                      .addArgument(analysis.getType(node.getPattern()), pattern)
-                      .build();
-            }
-
-            FunctionCall call = BuiltinFunctionCallBuilder.resolve(plannerContext.getMetadata())
-                    .setName(LIKE_FUNCTION_NAME)
-                    .addArgument(analysis.getType(node.getValue()), value)
-                    .addArgument(LIKE_PATTERN, patternCall)
-                    .build();
-
-            return coerceIfNecessary(node, call);
-          }*/
+            Optional<Expression> escape =
+                node.getEscape().map(e -> treeRewriter.rewrite(e, context));
+            return escape.isPresent()
+                ? new LikePredicate(value, pattern, escape.get())
+                : new LikePredicate(value, pattern, null);
+          }
         },
         expression);
   }

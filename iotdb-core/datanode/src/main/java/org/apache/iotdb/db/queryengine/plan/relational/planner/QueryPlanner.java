@@ -148,17 +148,14 @@ public class QueryPlanner {
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
       List<Symbol> newFields = new ArrayList<>();
-      // newFields.addAll(builder.getTranslations().getFieldSymbols());
+      newFields.addAll(builder.getTranslations().getFieldSymbolsList());
 
-      //            outputs.stream()
-      //                    .map(builder::translate)
-      //                    .forEach(newFields::add);
+      outputs.stream().map(builder::translate).forEach(newFields::add);
 
       builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    // TODO this appendProjections may be removed
     if (orderBy.size() > 0) {
       builder =
           builder.appendProjections(
@@ -243,7 +240,6 @@ public class QueryPlanner {
 
     // planBuilder = subqueryPlanner.handleSubqueries(subPlan, predicate,
     // analysis.getSubqueries(node));
-    analysis.setHasValueFilter(true);
     return subPlan.withNewRoot(
         new FilterNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
