@@ -103,6 +103,11 @@ jobs:
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        python: ['3.6', '3.x']
     runs-on: ubuntu-latest
 
     steps:
@@ -119,6 +124,9 @@ jobs:
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
       - name: Check code style
