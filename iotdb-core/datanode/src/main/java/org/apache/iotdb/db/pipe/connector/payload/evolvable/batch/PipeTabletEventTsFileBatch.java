@@ -170,7 +170,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
-        (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+        (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
     tabletList.add(tablet);
     isTabletAlignedList.add(isAligned);
