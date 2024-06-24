@@ -111,10 +111,10 @@ public class WALManager implements IService {
   /** WAL node will be deleted only when using iot series consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || !config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
       return;
     }
 
