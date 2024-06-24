@@ -3304,7 +3304,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
-        && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size() == 0) {
+        && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
     }
     analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
@@ -3357,7 +3357,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
-        && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size() == 0) {
+        && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
     }
     analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());

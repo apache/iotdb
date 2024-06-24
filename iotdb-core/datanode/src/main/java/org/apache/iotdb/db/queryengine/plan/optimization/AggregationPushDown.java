@@ -110,7 +110,7 @@ public class AggregationPushDown implements PlanOptimizer {
       }
 
       // check any of the devices
-      String device = analysis.getDeviceList().get(0).toString();
+      IDeviceID device = analysis.getDeviceList().get(0).getIDeviceIDAsFullDevice();
       return cannotUseStatistics(
           analysis.getDeviceToAggregationExpressions().get(device),
           analysis.getDeviceToSourceTransformExpressions().get(device));
