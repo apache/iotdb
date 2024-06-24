@@ -167,7 +167,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           currentBatchId.get(),
           event,
           event.getClass());
-      return false;
+      return true;
     }
   }
 
