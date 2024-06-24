@@ -78,7 +78,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                   groupId2MaxProgressIndex
                       .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
                       .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
-              // Need to update map by hand due to the syntax of
+              // Need to update map manually due to the syntax of
               // updateToMinimumEqualOrIsAfterProgressIndex
               groupId2MaxProgressIndex.put(dataRegionId, correspondingProgressIndex);
             });
@@ -124,7 +124,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
             .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
             .updateToMinimumEqualOrIsAfterProgressIndex(
                 PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus());
-    // Need to update map by hand due to the syntax of updateToMinimumEqualOrIsAfterProgressIndex
+    // Need to update map manually due to the syntax of updateToMinimumEqualOrIsAfterProgressIndex
     groupId2MaxProgressIndex.put(consensusGroupId, correspondingProgressIndex);
     return correspondingProgressIndex;
   }
