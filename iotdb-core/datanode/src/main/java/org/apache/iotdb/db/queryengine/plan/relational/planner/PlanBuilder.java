@@ -133,6 +133,10 @@ public class PlanBuilder {
       }
     }
 
+    if (mappings.isEmpty()) {
+      return this;
+    }
+
     return new PlanBuilder(
         new ProjectNode(queryContext.getQueryId().genPlanNodeId(), this.root, projections.build()),
         this.analysis,

@@ -154,10 +154,10 @@ public class Analysis implements IAnalysis {
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
 
-  private Expression globalTableModelTimePredicate;
-
+  // only be used in write plan and won't be used in query
   private DataPartition dataPartition;
 
+  // only be used in write plan and won't be used in query
   private SchemaPartition schemaPartition;
 
   private DatasetHeader respDatasetHeader;
@@ -166,14 +166,6 @@ public class Analysis implements IAnalysis {
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
-
-  public Expression getGlobalTableModelTimePredicate() {
-    return this.globalTableModelTimePredicate;
-  }
-
-  public void setGlobalTableModelTimePredicate(Expression globalTableModelTimePredicate) {
-    this.globalTableModelTimePredicate = globalTableModelTimePredicate;
-  }
 
   public DataPartition getDataPartition() {
     return dataPartition;
