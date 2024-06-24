@@ -111,7 +111,7 @@ jobs:
         os: [ubuntu-latest]
         include:
           - os: ubuntu-20.04
-            version: '3.6'
+            python: '3.6'
     runs-on: ${{ matrix.os }}
 
     steps:
