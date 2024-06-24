@@ -82,6 +82,6 @@ public abstract class SchemaFilterVisitor<C> {
   }
 
   public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, C context) {
-    return visitDeviceAttributeFilter(filter, context);
+    return visitFilter(filter, context);
   }
 }

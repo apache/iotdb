@@ -75,7 +75,7 @@ public class TableModelStatementMemorySourceVisitor
 
     // TODO(beyyes) adapt this logic after optimize ExchangeNodeAdder
     ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(context.getQueryContext());
+        new ExchangeNodeGenerator.PlanContext(context.getQueryContext(), context.getAnalysis());
     List<PlanNode> distributedPlanNodeResult =
         new ExchangeNodeGenerator().visitPlan(logicalPlan.getRootNode(), exchangeContext);
 

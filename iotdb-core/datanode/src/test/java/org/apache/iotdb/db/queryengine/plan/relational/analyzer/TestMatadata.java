@@ -186,6 +186,11 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return getFakePartitionFetcher();
+  }
+
+  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,

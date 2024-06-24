@@ -359,6 +359,15 @@ public class FragmentInstanceContext extends QueryContext {
     return globalTimeFilter;
   }
 
+  public void setTimeFilterForTableModel(Filter timeFilter) {
+    if (globalTimeFilter == null) {
+      globalTimeFilter = timeFilter;
+    } else {
+      throw new IllegalStateException(
+          "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
+    }
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }

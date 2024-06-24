@@ -15,6 +15,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -23,6 +25,9 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -37,9 +42,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Rem
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -96,6 +104,12 @@ public class LogicalPlanner {
   private PlanNode planStatement(Analysis analysis, Statement statement) {
     if (statement instanceof CreateDevice) {
       return planCreateDevice((CreateDevice) statement, analysis);
+    }
+    if (statement instanceof FetchDevice) {
+      return planFetchDevice((FetchDevice) statement, analysis);
+    }
+    if (statement instanceof ShowDevice) {
+      return planShowDevice((ShowDevice) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -204,5 +218,81 @@ public class LogicalPlanner {
     analysis.setSchemaPartitionInfo(partition);
 
     return node;
+  }
+
+  private PlanNode planFetchDevice(FetchDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.READ);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
+    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
+    TableDeviceFetchNode fetchNode =
+        new TableDeviceFetchNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTableName(),
+            statement.getDeviceIdList(),
+            columnHeaderList,
+            null);
+    mergeNode.addChild(fetchNode);
+
+    SchemaPartition schemaPartition =
+        metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze();
+    }
+
+    return mergeNode;
+  }
+
+  private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.READ);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
+    TableDeviceQueryNode queryNode =
+        new TableDeviceQueryNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTableName(),
+            statement.getIdDeterminedPredicateList(),
+            statement.getIdFuzzyPredicate(),
+            columnHeaderList,
+            null);
+    mergeNode.addChild(queryNode);
+
+    SchemaPartition schemaPartition =
+        statement.isIdDetermined()
+            ? metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList())
+            : metadata.getSchemaPartition(statement.getDatabase());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze();
+    }
+
+    return mergeNode;
+  }
+
+  private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {
+    List<TsTableColumnSchema> columnSchemaList =
+        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
+
+    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnHeaderList.add(
+            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
+      }
+    }
+    return columnHeaderList;
   }
 }

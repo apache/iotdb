@@ -39,6 +39,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.StreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryMergeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -49,10 +52,14 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -79,9 +86,10 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -239,15 +247,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
     }
 
-    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
+    SeriesScanOptions.Builder scanOptionsBuilder =
+        node.getTimePredicate()
+            .map(timePredicate -> getSeriesScanOptionsBuilder(context, timePredicate))
+            .orElse(new SeriesScanOptions.Builder());
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
     scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
 
     Expression pushDownPredicate = node.getPushDownPredicate();
-    boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
-    if (pushDownPredicate != null && predicateCanPushIntoScan) {
+    if (pushDownPredicate != null) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
@@ -293,20 +303,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    if (!predicateCanPushIntoScan) {
-
-      return constructFilterAndProjectOperator(
-          Optional.of(pushDownPredicate),
-          tableScanOperator,
-          node.getOutputSymbols().stream()
-              .filter(symbol -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName()))
-              .map(Symbol::toSymbolReference)
-              .toArray(Expression[]::new),
-          tableScanOperator.getResultDataTypes(),
-          makeLayout(Collections.singletonList(node)),
-          node.getPlanNodeId(),
-          context);
-    }
     return tableScanOperator;
   }
 
@@ -333,14 +329,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return outputMappings;
   }
 
-  private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(LocalExecutionPlanContext context) {
+  private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
+      LocalExecutionPlanContext context, @NotNull Expression timePredicate) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    if (globalTimeFilter != null) {
-      // time filter may be stateful, so we need to copy it
-      scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
-    }
+    Filter timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+    context.getDriverContext().getFragmentInstanceContext().setTimeFilterForTableModel(timeFilter);
+    // time filter may be stateful, so we need to copy it
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
 
     return scanOptionsBuilder;
   }
@@ -763,5 +759,63 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             sortItemIndexList.subList(0, node.getStreamCompareKeyEndIndex() + 1),
             sortItemDataTypeList.subList(0, node.getStreamCompareKeyEndIndex() + 1)),
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
+  }
+
+  @Override
+  public Operator visitSchemaQueryMerge(
+      SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
+    List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (PlanNode child : node.getChildren()) {
+      children.add(child.accept(this, context));
+    }
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaQueryMergeOperator.class.getSimpleName());
+    return new SchemaQueryMergeOperator(operatorContext, children);
+  }
+
+  @Override
+  public Operator visitTableDeviceFetch(
+      TableDeviceFetchNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaQueryScanOperator.class.getSimpleName());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getTableDeviceFetchSource(
+            node.getDatabase(),
+            node.getTableName(),
+            node.getDeviceIdList(),
+            node.getColumnHeaderList()));
+  }
+
+  @Override
+  public Operator visitTableDeviceQuery(
+      TableDeviceQueryNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaQueryScanOperator.class.getSimpleName());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getTableDeviceQuerySource(
+            node.getDatabase(),
+            node.getTableName(),
+            node.getIdDeterminedPredicateList(),
+            node.getIdFuzzyPredicate(),
+            node.getColumnHeaderList()));
   }
 }

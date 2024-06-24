@@ -84,6 +84,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,6 +99,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -1134,10 +1137,12 @@ public class MTreeBelowSGMemoryImpl {
 
   // used for device fetch with explicit device id/path during table insertion
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      List<PartialPath> devicePathList, BiFunction<Integer, String, String> attributeProvider) {
+      String table,
+      List<Object[]> devicePathList,
+      BiFunction<Integer, String, String> attributeProvider) {
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
-      Iterator<PartialPath> devicePathIterator = devicePathList.listIterator();
+      Iterator<Object[]> deviceIdIterator = devicePathList.listIterator();
 
       IDeviceSchemaInfo next = null;
 
@@ -1177,9 +1182,9 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       private void tryGetNext() {
-        while (devicePathIterator.hasNext()) {
+        while (deviceIdIterator.hasNext()) {
           try {
-            IMemMNode node = getNodeByPath(devicePathIterator.next());
+            IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
             if (!node.isDevice()) {
               continue;
             }
@@ -1210,6 +1215,43 @@ public class MTreeBelowSGMemoryImpl {
       @Override
       public void close() throws Exception {}
     };
+  }
+
+  private IMemMNode getTableDeviceNode(String table, Object[] deviceId)
+      throws PathNotExistException {
+    IMemMNode cur = storageGroupMNode;
+    IMemMNode next;
+
+    next = cur.getChild(table);
+    if (next == null) {
+      throw new PathNotExistException(
+          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+          true);
+    } else if (next.isMeasurement()) {
+      throw new PathNotExistException(
+          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+          true);
+    }
+    cur = next;
+
+    for (int i = 0; i < deviceId.length; i++) {
+      next = cur.getChild(deviceId[i] == null ? null : String.valueOf(deviceId[i]));
+      if (next == null) {
+        throw new PathNotExistException(
+            storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+            true);
+      } else if (next.isMeasurement()) {
+        if (i == deviceId.length - 1) {
+          return next;
+        } else {
+          throw new PathNotExistException(
+              storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+              true);
+        }
+      }
+      cur = next;
+    }
+    return cur;
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
