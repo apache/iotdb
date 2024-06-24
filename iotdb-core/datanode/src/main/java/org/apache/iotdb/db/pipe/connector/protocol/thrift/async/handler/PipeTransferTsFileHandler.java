@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTransferResp> {
@@ -67,6 +68,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   // The original events to be transferred, can be multiple events if
   // the file is batched with other events
   private final List<EnrichedEvent> events;
+  private final AtomicInteger eventsReferenceCount;
 
   private final File tsFile;
   private final File modFile;
@@ -89,6 +91,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final IoTDBDataRegionAsyncConnector connector,
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
       final File tsFile,
       final File modFile,
       final boolean transferMod)
@@ -96,6 +99,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     this.connector = connector;
     this.pipeName2WeightMap = pipeName2WeightMap;
     this.events = events;
+    this.eventsReferenceCount = eventsReferenceCount;
 
     this.tsFile = tsFile;
     this.modFile = modFile;
@@ -227,14 +231,17 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         LOGGER.warn(
             "Failed to close file reader or delete tsFile when successfully transferred file.", e);
       } finally {
-        events.forEach(
-            event -> event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+        if (eventsReferenceCount.decrementAndGet() <= 0) {
+          events.forEach(
+              event ->
+                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
 
-        LOGGER.info(
-            "Successfully transferred file {} (committer key={}, commit id={}).",
-            tsFile,
-            events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
+          LOGGER.info(
+              "Successfully transferred file {} (committer key={}, commit id={}).",
+              tsFile,
+              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
+        }
 
         if (client != null) {
           client.setShouldReturnSelf(true);

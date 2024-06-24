@@ -62,6 +62,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -177,13 +179,20 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      for (final File tsFile : tsFileBatch.sealTsFiles()) {
+      final List<Pair<File, List<EnrichedEvent>>> sealedFile2EventsList = tsFileBatch.sealTsFiles();
+      final Map<Pair<String, Long>, Double> pipe2WeightMap =
+          tsFileBatch.deepCopyPipe2WeightMap(
+              sealedFile2EventsList.isEmpty() ? 1 : sealedFile2EventsList.size());
+      final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFile2EventsList.size());
+
+      for (final Pair<File, List<EnrichedEvent>> sealedFile2Events : sealedFile2EventsList) {
         transfer(
             new PipeTransferTsFileHandler(
                 this,
-                tsFileBatch.deepCopyPipe2WeightMap(),
-                tsFileBatch.deepCopyEvents(),
-                tsFile,
+                pipe2WeightMap,
+                sealedFile2Events.getRight(),
+                eventsReferenceCount,
+                sealedFile2Events.getLeft(),
                 null,
                 false));
       }
@@ -328,6 +337,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                       pipeTsFileInsertionEvent.getCreationTime()),
                   1.0),
               Collections.singletonList(pipeTsFileInsertionEvent),
+              new AtomicInteger(1),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()

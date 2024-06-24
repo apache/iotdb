@@ -63,6 +63,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -247,8 +248,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
-    for (final File tsFile : batchToTransfer.sealTsFiles()) {
-      doTransfer(batchToTransfer.deepCopyPipe2WeightMap(), tsFile, null);
+    final List<Pair<File, List<EnrichedEvent>>> sealedFile2EventsList =
+        batchToTransfer.sealTsFiles();
+    final Map<Pair<String, Long>, Double> pipe2WeightMap =
+        batchToTransfer.deepCopyPipe2WeightMap(
+            sealedFile2EventsList.isEmpty() ? 1 : sealedFile2EventsList.size());
+
+    for (final Pair<File, List<EnrichedEvent>> sealedFile2Events : sealedFile2EventsList) {
+      final File tsFile = sealedFile2Events.getLeft();
+      doTransfer(pipe2WeightMap, tsFile, null);
       try {
         FileUtils.delete(tsFile);
       } catch (final NoSuchFileException e) {
