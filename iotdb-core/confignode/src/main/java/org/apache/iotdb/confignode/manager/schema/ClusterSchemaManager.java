@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
@@ -397,10 +396,6 @@ public class ClusterSchemaManager {
         if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
           continue;
         }
-        ttl =
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-        ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
         infoMap.put(database, ttl);
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);
