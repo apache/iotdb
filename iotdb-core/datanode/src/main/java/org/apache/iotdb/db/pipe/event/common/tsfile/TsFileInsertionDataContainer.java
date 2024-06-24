@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -124,18 +124,19 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       } else {
         // We need to create these objects here and remove them later.
         deviceIsAlignedMap = readDeviceIsAlignedMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
+        memoryRequiredInBytes += PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
         // Filter devices that may overlap with pattern first
         // to avoid reading all time-series of all devices.
         final Set<IDeviceID> devices = filterDevicesByPattern(deviceIsAlignedMap.keySet());
 
         measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
         deviceMeasurementsMap = readFilteredDeviceMeasurementsMap(devices);
         memoryRequiredInBytes +=
-            PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
+            PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 
