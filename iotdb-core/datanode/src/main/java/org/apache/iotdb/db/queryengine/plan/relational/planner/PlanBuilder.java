@@ -18,7 +18,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -99,7 +98,7 @@ public class PlanBuilder {
         "Expression is not analyzed (%s): %s",
         root.getClass().getName(),
         root);
-    return ExpressionTranslateVisitor.translateToSymbolReference(root, translations);
+    return translations.rewrite(root);
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
