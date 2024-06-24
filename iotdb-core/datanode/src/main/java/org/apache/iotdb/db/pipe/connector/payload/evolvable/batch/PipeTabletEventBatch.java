@@ -87,7 +87,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * @param event the {@link TabletInsertionEvent} in batch
    * @return {@code true} if the event is calculated into batch, {@code false} if the event is
    *     cached and not emitted in this batch. If there are failure encountered, just throw
-   *     exceptions and do not return {@code false} heere.
+   *     exceptions and do not return {@code false} here.
    */
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
