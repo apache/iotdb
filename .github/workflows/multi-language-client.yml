@@ -107,8 +107,12 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: ['3.6', '3.x']
-    runs-on: ubuntu-latest
+        python: ['3.x']
+        os: [ubuntu-latest]
+        include:
+          - os: ubuntu-20.04
+            version: '3.6'
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
