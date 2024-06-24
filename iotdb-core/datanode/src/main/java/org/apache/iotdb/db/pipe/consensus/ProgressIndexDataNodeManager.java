@@ -74,13 +74,13 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                     maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                         extractLocalSimpleProgressIndex(progressIndex));
               }
-              ProgressIndex correspondingProgressIndex =
-                  groupId2MaxProgressIndex
-                      .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
-                      .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
-              // Need to update map manually due to the syntax of
-              // updateToMinimumEqualOrIsAfterProgressIndex
-              groupId2MaxProgressIndex.put(dataRegionId, correspondingProgressIndex);
+              // Renew a variable to pass the examination of compiler
+              final ProgressIndex finalMaxProgressIndex = maxProgressIndex;
+              groupId2MaxProgressIndex.compute(
+                  dataRegionId,
+                  (key, value) ->
+                      (value == null ? MinimumProgressIndex.INSTANCE : value)
+                          .updateToMinimumEqualOrIsAfterProgressIndex(finalMaxProgressIndex));
             });
 
     // TODO: update deletion progress index
@@ -119,14 +119,12 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
-    ProgressIndex correspondingProgressIndex =
-        groupId2MaxProgressIndex
-            .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
-            .updateToMinimumEqualOrIsAfterProgressIndex(
-                PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus());
-    // Need to update map manually due to the syntax of updateToMinimumEqualOrIsAfterProgressIndex
-    groupId2MaxProgressIndex.put(consensusGroupId, correspondingProgressIndex);
-    return correspondingProgressIndex;
+    return groupId2MaxProgressIndex.compute(
+        consensusGroupId,
+        (key, value) ->
+            ((value == null ? MinimumProgressIndex.INSTANCE : value)
+                .updateToMinimumEqualOrIsAfterProgressIndex(
+                    PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus())));
   }
 
   @Override
