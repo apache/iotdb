@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -232,7 +234,9 @@ public class StatementAnalyzer {
     @Override
     public Scope process(Node node, Optional<Scope> scope) {
       Scope returnScope = super.process(node, scope);
-      if (node instanceof CreateDevice) {
+      if (node instanceof CreateDevice
+          || node instanceof FetchDevice
+          || node instanceof ShowDevice) {
         return returnScope;
       }
       checkState(
@@ -2427,6 +2431,16 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCreateDevice(CreateDevice node, Optional<Scope> context) {
+      return null;
+    }
+
+    @Override
+    protected Scope visitFetchDevice(FetchDevice node, Optional<Scope> context) {
+      return null;
+    }
+
+    @Override
+    protected Scope visitShowDevice(ShowDevice node, Optional<Scope> context) {
       return null;
     }
   }

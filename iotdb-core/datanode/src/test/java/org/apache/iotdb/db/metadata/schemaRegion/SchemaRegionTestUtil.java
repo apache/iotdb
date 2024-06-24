@@ -399,17 +399,9 @@ public class SchemaRegionTestUtil {
   public static List<IDeviceSchemaInfo> getTableDevice(
       ISchemaRegion schemaRegion, String table, List<String[]> deviceIdList)
       throws MetadataException {
-    List<PartialPath> pathList = new ArrayList<>();
-    for (String[] deviceId : deviceIdList) {
-      String[] fullId = new String[deviceId.length + 3];
-      fullId[0] = ROOT;
-      fullId[1] = schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1);
-      fullId[2] = table;
-      System.arraycopy(deviceId, 0, fullId, 3, deviceId.length);
-      pathList.add(new PartialPath(fullId));
-    }
     List<IDeviceSchemaInfo> result = new ArrayList<>();
-    try (ISchemaReader<IDeviceSchemaInfo> reader = schemaRegion.getTableDeviceReader(pathList)) {
+    try (ISchemaReader<IDeviceSchemaInfo> reader =
+        schemaRegion.getTableDeviceReader(table, new ArrayList<>(deviceIdList))) {
       while (reader.hasNext()) {
         result.add(reader.next());
       }

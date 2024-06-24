@@ -17,7 +17,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -27,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -57,7 +57,6 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
-      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
     return planNode.accept(new Rewriter(), new RewriterContext());
@@ -75,6 +74,13 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitOutput(OutputNode node, RewriterContext context) {
+      context.allUsedSymbolSet.addAll(node.getOutputSymbols());
+      node.getChild().accept(this, context);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitSort(SortNode node, RewriterContext context) {
       context.allUsedSymbolSet.addAll(node.getOutputSymbols());
       node.getChild().accept(this, context);
       return node;

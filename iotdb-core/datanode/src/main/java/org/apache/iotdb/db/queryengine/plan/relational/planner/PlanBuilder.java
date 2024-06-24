@@ -137,6 +137,10 @@ public class PlanBuilder {
       }
     }
 
+    if (mappings.isEmpty()) {
+      return this;
+    }
+
     return new PlanBuilder(
         getTranslations().withAdditionalMappings(mappings),
         new ProjectNode(queryContext.getQueryId().genPlanNodeId(), root, projections.build()));
