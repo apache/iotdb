@@ -261,18 +261,13 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
-    if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
-      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
-    }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
-
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
       config.setSchemaRegionConsensusProtocolClass(
           properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
     }
-
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
       config.setDataRegionConsensusProtocolClass(
           properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL));
@@ -287,11 +282,8 @@ public class IoTDBStartCheck {
         parameter + "can't be modified after first startup");
   }
 
-  /** call this method to serialize ClusterName and DataNodeId */
-  public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
-      throws IOException {
-    systemPropertiesHandler.put(
-        IoTDBConstant.CLUSTER_NAME, clusterName, DATA_NODE_ID, String.valueOf(dataNodeId));
+  public void serializeDataNodeId(int dataNodeId) throws IOException {
+    systemPropertiesHandler.put(DATA_NODE_ID, String.valueOf(dataNodeId));
   }
 
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {

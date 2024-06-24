@@ -215,8 +215,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties, false);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(), NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
+            .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -1729,6 +1728,9 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
+      // update cluster name
+      conf.setClusterName(
+          properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(

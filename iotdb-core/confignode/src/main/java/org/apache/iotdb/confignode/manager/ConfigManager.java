@@ -1509,6 +1509,7 @@ public class ConfigManager implements IManager {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
       if (CONF.getConfigNodeId() == req.getNodeId()) {
         return tsStatus;
       }
@@ -1536,11 +1537,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus loadConfiguration() {
+  public TSStatus submitLoadConfigurationTask() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
+        ? RpcUtils.squashResponseStatusList(nodeManager.submitLoadConfigurationTask())
         : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    throw new UnsupportedOperationException("not implement yet");
   }
 
   @Override
