@@ -224,7 +224,13 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSingleDeviceView(SingleDeviceViewNode node, RewriterContext context) {
       context.setCurDevice(node.getDevice());
-      context.setCurDevicePath(new PartialPath(node.getDevice().split(",")));
+      try {
+        context.setCurDevicePath(new PartialPath(node.getDevice()));
+      } catch (IllegalPathException e) {
+        throw new IllegalStateException(
+            String.format(
+                "Illegal device path: %s in AggregationPushDown rule.", node.getDevice()));
+      }
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;
