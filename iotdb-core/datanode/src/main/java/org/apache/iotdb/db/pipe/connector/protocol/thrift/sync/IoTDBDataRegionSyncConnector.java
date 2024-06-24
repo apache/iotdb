@@ -249,8 +249,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
-    final Map<Pair<String, Long>, Double> pipe2WeightMap =
-        batchToTransfer.deepCopyPipe2WeightMap(sealedFiles.isEmpty() ? 1 : sealedFiles.size());
+    final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final File tsFile : sealedFiles) {
       doTransfer(pipe2WeightMap, tsFile, null);

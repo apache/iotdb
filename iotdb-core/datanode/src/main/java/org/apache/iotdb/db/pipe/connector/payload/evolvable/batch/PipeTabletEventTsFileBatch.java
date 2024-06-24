@@ -176,7 +176,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     isTabletAlignedList.add(isAligned);
   }
 
-  public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap(final double divisor) {
+  public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {
     if (divisor == 0.0) {
       return Collections.emptyMap();
     }
@@ -184,9 +184,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     if (sum == 0.0) {
       return Collections.emptyMap();
     }
-    pipeName2WeightMap
-        .entrySet()
-        .forEach(entry -> entry.setValue(entry.getValue() / sum / divisor));
+    pipeName2WeightMap.entrySet().forEach(entry -> entry.setValue(entry.getValue() / sum));
     return new HashMap<>(pipeName2WeightMap);
   }
 
