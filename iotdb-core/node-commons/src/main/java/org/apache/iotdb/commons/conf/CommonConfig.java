@@ -240,6 +240,7 @@ public class CommonConfig {
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
+  private double pipeTsFileScanParsingThreshold = 0.05;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1041,6 +1042,14 @@ public class CommonConfig {
   public void setPipeRemainingTimeCommitRateAverageTime(
       PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
     this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return pipeTsFileScanParsingThreshold;
+  }
+
+  public void setPipeTsFileScanParsingThreshold(double pipeTsFileScanParsingThreshold) {
+    this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

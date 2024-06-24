@@ -278,13 +278,13 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(final File hardlinkOrCopiedTsFile)
-      throws IOException {
+  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(
+      final File hardlinkOrCopiedTsFile, final boolean cacheOtherMetadata) throws IOException {
     lock.lock();
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetDeviceIsAlignedMap();
+      return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
     } finally {
       lock.unlock();
     }

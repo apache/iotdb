@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -65,7 +65,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionScanDataContainer dataContainer;
+  private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
@@ -296,7 +296,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                  false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
@@ -341,8 +342,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TsFileInsertionScanDataContainer(
-                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+            new TsFileInsertionDataContainerProvider(
+                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+                .getTsFileInsertionDataContainer();
       }
       return dataContainer;
     } catch (final IOException e) {

@@ -83,6 +83,18 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent)
       throws IOException {
+    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
+  }
+
+  public TsFileInsertionQueryDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap)
+      throws IOException {
     super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
@@ -97,17 +109,27 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
       if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
         // These read-only objects can be found in cache.
-        deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
+        this.deviceIsAlignedMap =
+            Objects.nonNull(deviceIsAlignedMap)
+                ? deviceIsAlignedMap
+                : tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile, true);
         measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
         deviceMeasurementsMap = tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile);
       } else {
         // We need to create these objects here and remove them later.
-        deviceIsAlignedMap = readDeviceIsAlignedMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
+        final Set<IDeviceID> devices;
+        if (Objects.isNull(deviceIsAlignedMap)) {
+          this.deviceIsAlignedMap = readDeviceIsAlignedMap();
+          memoryRequiredInBytes +=
+              PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(this.deviceIsAlignedMap);
 
-        // Filter devices that may overlap with pattern first
-        // to avoid reading all time-series of all devices.
-        final Set<IDeviceID> devices = filterDevicesByPattern(deviceIsAlignedMap.keySet());
+          // Filter devices that may overlap with pattern first
+          // to avoid reading all time-series of all devices.
+          devices = filterDevicesByPattern(this.deviceIsAlignedMap.keySet());
+        } else {
+          this.deviceIsAlignedMap = deviceIsAlignedMap;
+          devices = deviceIsAlignedMap.keySet();
+        }
 
         measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
