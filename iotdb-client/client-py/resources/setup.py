@@ -53,7 +53,7 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     license="Apache License, Version 2.0",
     website="https://iotdb.apache.org",
     entry_points={
