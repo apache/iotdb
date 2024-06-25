@@ -240,8 +240,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         // Do not clear last event's reference count because it may be on transferring
         lastEvent = null;
         // Submit self to avoid that the lastEvent has been retried "max times" times and has
-        // stopped
-        // executing.
+        // stopped executing.
         // 1. If the last event is still on execution, the "submitSelf" cause nothing.
         // 2. If the last event is on success, then the callback method will skip this turn of
         //    submission.
