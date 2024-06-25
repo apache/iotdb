@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.conf;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
-
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -36,6 +34,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class CommonConfig {
 
@@ -1124,7 +1124,8 @@ public class CommonConfig {
     return subscriptionPrefetchBatchMaxSizeInBytes;
   }
 
-  public void setSubscriptionPrefetchBatchMaxSizeInBytes(long subscriptionPrefetchBatchMaxSizeInBytes) {
+  public void setSubscriptionPrefetchBatchMaxSizeInBytes(
+      long subscriptionPrefetchBatchMaxSizeInBytes) {
     this.subscriptionPrefetchBatchMaxSizeInBytes = subscriptionPrefetchBatchMaxSizeInBytes;
   }
 

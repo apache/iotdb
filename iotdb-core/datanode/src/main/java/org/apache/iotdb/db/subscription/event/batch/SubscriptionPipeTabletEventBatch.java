@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -36,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBatch {
 

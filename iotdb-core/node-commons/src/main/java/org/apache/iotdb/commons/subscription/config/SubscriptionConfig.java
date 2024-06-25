@@ -74,7 +74,8 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionPrefetchBatchMaxDelayInMs: {}", getSubscriptionPrefetchBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionPrefetchBatchMaxSizeInBytes: {}", getSubscriptionPrefetchBatchMaxSizeInBytes());
+        "SubscriptionPrefetchBatchMaxSizeInBytes: {}",
+        getSubscriptionPrefetchBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());

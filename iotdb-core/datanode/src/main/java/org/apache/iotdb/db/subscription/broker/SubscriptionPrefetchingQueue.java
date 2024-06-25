@@ -49,7 +49,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public abstract class SubscriptionPrefetchingQueue {
@@ -67,8 +66,10 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
-  protected final int maxDelayInMs = SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxDelayInMs();
-  protected final long maxBatchSizeInBytes = SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxSizeInBytes();
+  protected final int maxDelayInMs =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxDelayInMs();
+  protected final long maxBatchSizeInBytes =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxSizeInBytes();
   protected final AtomicReference<SubscriptionPipeEventBatch> currentBatchRef =
       new AtomicReference<>();
 

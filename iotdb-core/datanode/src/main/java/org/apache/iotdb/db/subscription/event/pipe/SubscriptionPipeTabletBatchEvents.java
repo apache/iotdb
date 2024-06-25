@@ -48,8 +48,6 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTabletBatchEvents{batch="
-        + batch
-        + "}";
+    return "SubscriptionPipeTabletBatchEvents{batch=" + batch + "}";
   }
 }

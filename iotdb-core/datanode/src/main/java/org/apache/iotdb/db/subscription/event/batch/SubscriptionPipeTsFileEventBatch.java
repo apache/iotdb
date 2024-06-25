@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.write.record.Tablet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBatch {
 
@@ -85,8 +84,6 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBa
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch="
-        + batch
-        + "}";
+    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + "}";
   }
 }
