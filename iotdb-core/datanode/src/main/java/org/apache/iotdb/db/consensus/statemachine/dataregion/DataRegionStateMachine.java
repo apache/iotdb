@@ -22,6 +22,8 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -185,6 +187,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     InsertNode result;
     List<Integer> index = new ArrayList<>();
     int i = 0;
+    ProgressIndex maxProgressIndex = MinimumProgressIndex.INSTANCE;
     switch (insertNodes.get(0).getType()) {
       case INSERT_TABLET:
         // merge to InsertMultiTabletsNode
@@ -202,23 +205,31 @@ public class DataRegionStateMachine extends BaseStateMachine {
         // merge to InsertRowsNode
         List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
         for (InsertNode insertNode : insertNodes) {
+          maxProgressIndex =
+              maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                  insertNode.getProgressIndex());
           insertRowNodes.add((InsertRowNode) insertNode);
           index.add(i);
           i++;
         }
         result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+        result.setProgressIndex(maxProgressIndex);
         break;
       case INSERT_ROWS:
         // merge to InsertRowsNode
         List<InsertRowNode> list = new ArrayList<>();
         for (InsertNode insertNode : insertNodes) {
           for (InsertRowNode insertRowNode : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+            maxProgressIndex =
+                maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                    insertNode.getProgressIndex());
             list.add(insertRowNode);
             index.add(i);
             i++;
           }
         }
         result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, list);
+        result.setProgressIndex(maxProgressIndex);
         break;
       default:
         throw new UnSupportedDataTypeException(
