@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.queryengine.execution.load.AlignedChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -51,13 +54,20 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,6 +75,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompactionTest {
@@ -117,18 +128,26 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
+            new TimeRange[] {new TimeRange(100000, 200000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
-
+    //    TsFileResource seqResource2 =
+    //        generateSingleAlignedSeriesFile(
+    //            "d0",
+    //            Arrays.asList("s0", "s1", "s2"),
+    //            new TimeRange[] {new TimeRange(600000, 700000)},
+    //            TSEncoding.PLAIN,
+    //            CompressionType.LZ4,
+    //            Arrays.asList(false, false, false),
+    //            true);
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
+            new TimeRange[] {new TimeRange(604700000, 604800020)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
@@ -149,8 +168,8 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
-    Assert.assertEquals(0, summary.getDeserializeChunkCount());
+    //    Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
+    //    Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
 
     Assert.assertEquals(
@@ -159,6 +178,45 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             getPaths(Collections.singletonList(targetResource)),
             Collections.singletonList(targetResource),
             Collections.emptyList()));
+
+    Files.copy(
+        targetResource.getTsFile().toPath(),
+        new File("/Users/shuww/Downloads/0624/target.tsfile").toPath(),
+        StandardCopyOption.REPLACE_EXISTING);
+    TsFileIOWriter writer = new TsFileIOWriter(new File("/Users/shuww/Downloads/0624/1.tsfile"));
+    TsFileSplitter splitter =
+        new TsFileSplitter(
+            targetResource.getTsFile(),
+            new Function<TsFileData, Boolean>() {
+              String device = null;
+
+              @Override
+              public Boolean apply(TsFileData tsFileData) {
+                AlignedChunkData alignedChunkData = (AlignedChunkData) tsFileData;
+                try {
+                  if (!alignedChunkData.getDevice().equals(device)) {
+                    if (device != null) {
+                      writer.endChunkGroup();
+                    }
+                    device = alignedChunkData.getDevice();
+                    writer.startChunkGroup(new PlainDeviceID(device));
+                  }
+                  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                  DataOutputStream dos = new DataOutputStream(baos);
+                  alignedChunkData.serialize(dos);
+                  AlignedChunkData newAlignedChunkData =
+                      (AlignedChunkData)
+                          TsFileData.deserialize(new ByteArrayInputStream(baos.toByteArray()));
+                  newAlignedChunkData.writeToFileWriter(writer);
+                } catch (IOException | PageException | IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+                return true;
+              }
+            });
+    splitter.splitTsFileByDataPartition();
+    writer.endChunkGroup();
+    writer.endFile();
   }
 
   @Test

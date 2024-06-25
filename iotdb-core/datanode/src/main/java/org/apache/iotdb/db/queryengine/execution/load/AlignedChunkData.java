@@ -52,32 +52,46 @@ import java.util.List;
 import java.util.Queue;
 
 public class AlignedChunkData implements ChunkData {
-  private static final int DEFAULT_INT32 = 0;
-  private static final long DEFAULT_INT64 = 0L;
-  private static final float DEFAULT_FLOAT = 0;
-  private static final double DEFAULT_DOUBLE = 0.0;
-  private static final boolean DEFAULT_BOOLEAN = false;
-  private static final Binary DEFAULT_BINARY = null;
+  protected static final int DEFAULT_INT32 = 0;
+  protected static final long DEFAULT_INT64 = 0L;
+  protected static final float DEFAULT_FLOAT = 0;
+  protected static final double DEFAULT_DOUBLE = 0.0;
+  protected static final boolean DEFAULT_BOOLEAN = false;
+  protected static final Binary DEFAULT_BINARY = null;
 
-  private final TTimePartitionSlot timePartitionSlot;
-  private final String device;
-  private List<ChunkHeader> chunkHeaderList;
+  protected final TTimePartitionSlot timePartitionSlot;
+  protected final String device;
+  protected List<ChunkHeader> chunkHeaderList;
 
-  private final PublicBAOS byteStream;
-  private final DataOutputStream stream;
-  private List<long[]> timeBatch;
-  private long dataSize;
-  private boolean needDecodeChunk;
-  private List<Integer> pageNumbers;
-  private final Queue<Integer> satisfiedLengthQueue;
+  protected final PublicBAOS byteStream;
+  protected final DataOutputStream stream;
+  protected List<long[]> timeBatch;
+  protected long dataSize;
+  protected boolean needDecodeChunk;
+  protected List<Integer> pageNumbers;
+  protected Queue<Integer> satisfiedLengthQueue;
 
   private AlignedChunkWriterImpl chunkWriter;
-  private List<Chunk> chunkList;
+  protected List<Chunk> chunkList;
 
   public AlignedChunkData(
       final String device,
       final ChunkHeader chunkHeader,
       final TTimePartitionSlot timePartitionSlot) {
+    this(device, timePartitionSlot);
+    chunkHeaderList.add(chunkHeader);
+    pageNumbers.add(0);
+    addAttrDataSize();
+  }
+
+  protected AlignedChunkData(AlignedChunkData alignedChunkData) {
+    this(alignedChunkData.device, alignedChunkData.timePartitionSlot);
+    this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
+    this.needDecodeChunk = alignedChunkData.needDecodeChunk;
+    addAttrDataSize();
+  }
+
+  protected AlignedChunkData(String device, TTimePartitionSlot timePartitionSlot) {
     this.dataSize = 0;
     this.device = device;
     this.chunkHeaderList = new ArrayList<>();
@@ -87,10 +101,6 @@ public class AlignedChunkData implements ChunkData {
     this.satisfiedLengthQueue = new LinkedList<>();
     this.byteStream = new PublicBAOS();
     this.stream = new DataOutputStream(byteStream);
-
-    chunkHeaderList.add(chunkHeader);
-    pageNumbers.add(0);
-    addAttrDataSize();
   }
 
   private void addAttrDataSize() { // Should be init before serialize, corresponding serializeAttr
@@ -100,7 +110,9 @@ public class AlignedChunkData implements ChunkData {
     dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
     dataSize += deviceLength; // device
     dataSize += Integer.BYTES; // chunkHeaderListSize
-    dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
+    if (!chunkHeaderList.isEmpty()) {
+      dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
+    }
   }
 
   @Override
@@ -266,7 +278,7 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  private void deserializeTsFileData(final InputStream stream) throws IOException, PageException {
+  protected void deserializeTsFileData(final InputStream stream) throws IOException, PageException {
     if (needDecodeChunk) {
       buildChunkWriter(stream);
     } else {
@@ -285,7 +297,7 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  private void buildChunkWriter(final InputStream stream) throws IOException, PageException {
+  protected void buildChunkWriter(final InputStream stream) throws IOException, PageException {
     final List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     IMeasurementSchema timeSchema = null;
     for (final ChunkHeader chunkHeader : chunkHeaderList) {
@@ -425,8 +437,12 @@ public class AlignedChunkData implements ChunkData {
       }
     }
 
-    final AlignedChunkData chunkData =
-        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot);
+    final AlignedChunkData chunkData;
+    if (chunkHeaderList.get(0).getMeasurementID().equals("")) {
+      chunkData = new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot);
+    } else {
+      chunkData = new BatchedAlignedValueChunkData(device, timePartitionSlot);
+    }
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.chunkHeaderList = chunkHeaderList;
     chunkData.pageNumbers = pageNumbers;
