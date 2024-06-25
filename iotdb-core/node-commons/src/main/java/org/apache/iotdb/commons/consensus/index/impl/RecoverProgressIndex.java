@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -52,7 +53,9 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
-    return dataNodeId2LocalIndex;
+    return ImmutableMap.<Integer, SimpleProgressIndex>builder()
+        .putAll(dataNodeId2LocalIndex)
+        .build();
   }
 
   @Override
