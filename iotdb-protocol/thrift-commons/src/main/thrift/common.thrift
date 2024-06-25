@@ -121,15 +121,20 @@ struct TSchemaNode {
   2: required byte nodeType
 }
 
+struct TSetConfigurationReq {
+  1: required map<string,string> configs
+  2: required i32 nodeId
+}
+
+// for TTL
 struct TSetTTLReq {
   1: required list<string> pathPattern
   2: required i64 TTL
   3: required bool isDataBase
 }
 
-struct TSetConfigurationReq {
-  1: required map<string,string> configs
-  2: required i32 nodeId
+struct TShowTTLReq {
+  1: required list<string> pathPattern
 }
 
 // for File

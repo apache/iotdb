@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -78,7 +77,7 @@ public class CheckpointManager implements AutoCloseable {
 
   // endregion
 
-  public CheckpointManager(String identifier, String logDirectory) throws FileNotFoundException {
+  public CheckpointManager(String identifier, String logDirectory) throws IOException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
@@ -345,12 +344,13 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** Update wal disk cost of active memTables. */
-  public void updateCostOfActiveMemTables(Map<Long, Long> memTableId2WalDiskUsage) {
+  public void updateCostOfActiveMemTables(
+      Map<Long, Long> memTableId2WalDiskUsage, double compressionRate) {
     for (Map.Entry<Long, Long> memTableWalUsage : memTableId2WalDiskUsage.entrySet()) {
       memTableId2Info.computeIfPresent(
           memTableWalUsage.getKey(),
           (k, v) -> {
-            v.addWalDiskUsage(memTableWalUsage.getValue());
+            v.addWalDiskUsage((long) (memTableWalUsage.getValue() * compressionRate));
             return v;
           });
     }

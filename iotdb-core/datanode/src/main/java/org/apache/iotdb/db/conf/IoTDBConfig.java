@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -49,6 +50,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -60,7 +62,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -1137,6 +1138,8 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  private CompressionType WALCompressionAlgorithm = CompressionType.UNCOMPRESSED;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -1333,9 +1336,13 @@ public class IoTDBConfig {
     formulateDataDirs(tierDataDirs);
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
+      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
-        if (!newDirs.contains(oldDir)) {
+        if (newDirs.stream()
+            .noneMatch(
+                newDir ->
+                    Objects.equals(
+                        new File(newDir).getAbsolutePath(), new File(oldDir).getAbsolutePath()))) {
           String msg =
               String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
           logger.error(msg);
@@ -1881,7 +1888,7 @@ public class IoTDBConfig {
     return walFileSizeThresholdInByte;
   }
 
-  void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
+  public void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
@@ -3147,6 +3154,7 @@ public class IoTDBConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+    MetricConfigDescriptor.getInstance().getMetricConfig().updateClusterName(clusterName);
   }
 
   public String getClusterId() {
@@ -3983,5 +3991,13 @@ public class IoTDBConfig {
     result.setSchemaRegionConsensusEndPoint(
         new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
     return result;
+  }
+
+  public CompressionType getWALCompressionAlgorithm() {
+    return WALCompressionAlgorithm;
+  }
+
+  public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
+    this.WALCompressionAlgorithm = WALCompressionAlgorithm;
   }
 }

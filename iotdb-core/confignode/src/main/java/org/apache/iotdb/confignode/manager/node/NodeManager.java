@@ -265,17 +265,6 @@ public class NodeManager {
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
-    final String clusterId =
-        configManager
-            .getClusterManager()
-            .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
-    if (clusterId == null) {
-      resp.setStatus(
-          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
-              .setMessage("clusterId has not generated, please try again later"));
-      return resp;
-    }
 
     // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
@@ -311,6 +300,7 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
+    String clusterId = configManager.getClusterManager().getClusterId();
     resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }
@@ -506,6 +496,11 @@ public class NodeManager {
                     dataNodeConfiguration.getLocation().getDataNodeId(),
                     dataNodeConfiguration.getLocation()));
     return dataNodeLocations;
+  }
+
+  public Map<Integer, TConfigNodeLocation> getRegisteredConfigNodeLocations() {
+    return nodeInfo.getRegisteredConfigNodes().stream()
+        .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
   }
 
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
@@ -797,14 +792,15 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> loadConfiguration() {
+  public List<TSStatus> submitLoadConfigurationTask() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+    DataNodeAsyncRequestContext<Object, TSStatus> dataNodeRequestContext =
         new DataNodeAsyncRequestContext<>(
             CnToDnRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(dataNodeRequestContext);
+    return dataNodeRequestContext.getResponseList();
   }
 
   public TShowConfigurationResp showConfiguration(int nodeId) {

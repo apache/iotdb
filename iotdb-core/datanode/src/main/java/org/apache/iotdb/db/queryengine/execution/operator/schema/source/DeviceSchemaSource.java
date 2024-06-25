@@ -101,7 +101,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     int templateId = device.getTemplateId();
-    long ttl = DataNodeTTLCache.getInstance().getTTL(device.getPartialPath().getNodes());
+    long ttl = DataNodeTTLCache.getInstance().getTTLInMS(device.getPartialPath().getNodes());
     // TODO: make it more readable, like "30 days" or "10 hours"
     String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
     if (hasSgCol) {
@@ -109,7 +109,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder
           .getColumnBuilder(2)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
-      if (templateId != -1) {
+      if (templateId != SchemaConstant.NON_TEMPLATE) {
         builder
             .getColumnBuilder(3)
             .writeBinary(
@@ -125,7 +125,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
-      if (templateId != -1) {
+      if (templateId != SchemaConstant.NON_TEMPLATE) {
         builder
             .getColumnBuilder(2)
             .writeBinary(

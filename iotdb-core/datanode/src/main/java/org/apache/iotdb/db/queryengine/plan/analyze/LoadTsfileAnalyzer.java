@@ -136,9 +136,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
   }
 
   public Analysis analyzeFileByFile() {
-    context.setQueryType(QueryType.WRITE);
-
-    Analysis analysis = new Analysis();
+    final Analysis analysis = new Analysis();
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {

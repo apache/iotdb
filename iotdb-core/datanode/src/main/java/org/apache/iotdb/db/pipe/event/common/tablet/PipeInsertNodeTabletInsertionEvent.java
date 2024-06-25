@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -205,29 +204,72 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      final InsertNode insertNode = getInsertNode();
+      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
       if (insertNode instanceof InsertRowNode) {
         final long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
-      } else if (insertNode instanceof InsertTabletNode) {
+      }
+
+      if (insertNode instanceof InsertTabletNode) {
         final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
         if (Objects.isNull(timestamps) || timestamps.length == 0) {
           return false;
         }
         // We assume that `timestamps` is ordered.
         return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
-      } else if (insertNode instanceof InsertRowsNode) {
-        for (final InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
-          final long timestamp = node.getTime();
-          if (startTime <= timestamp && timestamp <= endTime) {
-            return true;
-          }
-        }
-        return false;
-      } else {
-        throw new UnSupportedDataTypeException(
-            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
+
+      if (insertNode instanceof InsertRowsNode) {
+        return ((InsertRowsNode) insertNode)
+            .getInsertRowNodeList().stream()
+                .anyMatch(
+                    insertRowNode -> {
+                      final long timestamp = insertRowNode.getTime();
+                      return startTime <= timestamp && timestamp <= endTime;
+                    });
+      }
+
+      return true;
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
+          this,
+          startTime,
+          endTime,
+          e);
+      return true;
+    }
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    try {
+      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
+      if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
+        final PartialPath devicePartialPath = insertNode.getDevicePath();
+        return Objects.isNull(devicePartialPath)
+            || pipePattern.mayOverlapWithDevice(devicePartialPath.getFullPath());
+      }
+
+      if (insertNode instanceof InsertRowsNode) {
+        return ((InsertRowsNode) insertNode)
+            .getInsertRowNodeList().stream()
+                .anyMatch(
+                    insertRowNode ->
+                        Objects.isNull(insertRowNode.getDevicePath())
+                            || pipePattern.mayOverlapWithDevice(
+                                insertRowNode.getDevicePath().getFullPath()));
+      }
+
+      return true;
     } catch (final Exception e) {
       LOGGER.warn(
           "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
@@ -261,8 +303,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// convertToTablet ///////////////////////////
 
-  public boolean isAligned() {
-    return isAligned;
+  public boolean isAligned(final int i) {
+    return initDataContainers().get(i).isAligned();
   }
 
   public List<Tablet> convertToTablets() {
@@ -303,7 +345,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       return dataContainers;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
   }
@@ -318,29 +360,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  @Override
-  public boolean shouldParsePattern() {
-    final InsertNode node = getInsertNodeViaCacheIfPossible();
-    return super.shouldParsePattern()
-        && Objects.nonNull(pipePattern)
-        && (Objects.isNull(node)
-            || (node.getType() == PlanNodeType.INSERT_ROWS
-                ? ((InsertRowsNode) node)
-                    .getInsertRowNodeList().stream()
-                        .anyMatch(
-                            insertRowNode ->
-                                !pipePattern.coversDevice(
-                                    insertRowNode.getDevicePath().getFullPath()))
-                : !pipePattern.coversDevice(node.getDevicePath().getFullPath())));
-  }
-
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
     final List<PipeRawTabletInsertionEvent> events =
-        convertToTablets().stream()
+        initDataContainers().stream()
             .map(
-                tablet ->
+                container ->
                     new PipeRawTabletInsertionEvent(
-                        tablet, isAligned, pipeName, creationTime, pipeTaskMeta, this, false))
+                        container.convertToTablet(),
+                        container.isAligned(),
+                        pipeName,
+                        creationTime,
+                        pipeTaskMeta,
+                        this,
+                        false))
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
 

@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -1871,7 +1872,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   @Override
   public IQueryDataSource queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathToAligned,
       QueryContext queryContext,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -1906,7 +1907,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private List<IFileScanHandle> getFileHandleListForQuery(
       Collection<TsFileResource> tsFileResources,
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -1924,7 +1925,7 @@ public class DataRegion implements IDataRegionForQuery {
         } else {
           tsFileResource
               .getProcessor()
-              .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
+              .queryForDeviceRegionScan(devicePathsToContext, context, fileScanHandles);
         }
       } finally {
         closeQueryLock.readLock().unlock();

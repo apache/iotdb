@@ -62,6 +62,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -214,8 +215,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties, false);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(), NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
+            .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -416,6 +416,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
+    boolean enableWALCompression =
+        Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "false"));
+    conf.setWALCompressionAlgorithm(
+        enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(
@@ -1724,6 +1728,9 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
+      // update cluster name
+      conf.setClusterName(
+          properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(
@@ -1793,6 +1800,10 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
+      boolean enableWALCompression =
+          Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "false"));
+      conf.setWALCompressionAlgorithm(
+          enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
       // update Consensus config
       reloadConsensusProps(properties);

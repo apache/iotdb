@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -541,7 +541,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitPipeOperateSchemaQueueNode(
       final PipeOperateSchemaQueueNode node, final ISchemaRegion schemaRegion) {
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
-    final SchemaRegionListeningQueue queue = PipeAgent.runtime().schemaListener(id);
+    final SchemaRegionListeningQueue queue = PipeDataNodeAgent.runtime().schemaListener(id);
     if (node.isOpen() && !queue.isOpened()) {
       logger.info("Opened pipe listening queue on schema region {}", id);
       queue.open();
