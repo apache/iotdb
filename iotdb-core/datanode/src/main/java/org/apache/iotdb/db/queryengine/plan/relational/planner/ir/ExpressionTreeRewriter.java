@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -471,6 +472,19 @@ public final class ExpressionTreeRewriter<C> {
 
       if (node.getExpression() != expression) {
         return new Cast(expression, node.getType(), node.isSafe());
+      }
+
+      return node;
+    }
+
+    @Override
+    protected Expression visitFieldReference(FieldReference node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteFieldReference(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
       }
 
       return node;
