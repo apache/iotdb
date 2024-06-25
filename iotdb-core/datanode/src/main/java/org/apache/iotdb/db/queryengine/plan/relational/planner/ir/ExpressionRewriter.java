@@ -25,9 +25,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
@@ -44,6 +48,16 @@ public class ExpressionRewriter<C> {
     //    throw new IllegalStateException(
     //        String.format("%s is not supported in ExpressionRewriter yet",
     // node.getClass().getName()));
+  }
+
+  public Expression rewriteFieldReference(
+      FieldReference node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteIdentifier(
+      Identifier node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
   }
 
   public Expression rewriteRow(Row node, C context, ExpressionTreeRewriter<C> treeRewriter) {
@@ -77,6 +91,11 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteNotExpression(
       NotExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteIsNotNullPredicate(
+      IsNotNullPredicate node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 
@@ -114,6 +133,10 @@ public class ExpressionRewriter<C> {
   // ExpressionTreeRewriter<C> treeRewriter) {
   //        return rewriteExpression(node, context, treeRewriter);
   //    }
+  public Expression rewriteLikePredicate(
+      LikePredicate node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
 
   public Expression rewriteInPredicate(
       InPredicate node, C context, ExpressionTreeRewriter<C> treeRewriter) {

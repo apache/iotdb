@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
@@ -86,6 +87,10 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   }
 
   protected R visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitIsNotNullPredicate(IsNotNullPredicate node, C context) {
     return visitExpression(node, context);
   }
 

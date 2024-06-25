@@ -138,7 +138,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   // ================================ Implemented later =====================================
   @Override
   protected RelationPlan visitTableSubquery(TableSubquery node, Void context) {
-    throw new IllegalStateException("TableSubquery is not supported in current version.");
+    RelationPlan plan = process(node.getQuery(), context);
+    // TODO transmit outerContext
+    return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
   }
 
   @Override

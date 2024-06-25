@@ -16,52 +16,72 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 
 public class PlanBuilder {
 
+  private final TranslationMap translations;
   private final PlanNode root;
 
-  private final Analysis analysis;
-
-  // current mappings of underlying field -> symbol for translating direct field references
-  private final Symbol[] fieldSymbols;
-
-  public PlanBuilder(PlanNode root, Analysis analysis, Symbol[] fieldSymbols) {
+  public PlanBuilder(TranslationMap translations, PlanNode root) {
+    requireNonNull(translations, "translations is null");
     requireNonNull(root, "root is null");
 
+    this.translations = translations;
     this.root = root;
-    this.analysis = analysis;
-    this.fieldSymbols = fieldSymbols;
   }
 
   public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis) {
+    return newPlanBuilder(
+        plan,
+        analysis,
+        ImmutableMap.of(),
+        new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()));
+  }
+
+  public static PlanBuilder newPlanBuilder(
+      RelationPlan plan,
+      Analysis analysis,
+      Map<ScopeAware<Expression>, Symbol> mappings,
+      PlannerContext plannerContext) {
     return new PlanBuilder(
-        plan.getRoot(), analysis, plan.getFieldMappings().toArray(new Symbol[0]));
+        new TranslationMap(
+            Optional.empty(),
+            plan.getScope(),
+            analysis,
+            plan.getFieldMappings(),
+            mappings,
+            plannerContext),
+        plan.getRoot());
   }
 
   public PlanBuilder withNewRoot(PlanNode root) {
-    return new PlanBuilder(root, this.analysis, this.fieldSymbols);
+    return new PlanBuilder(translations, root);
   }
 
   public PlanBuilder withScope(Scope scope, List<Symbol> fields) {
-    return new PlanBuilder(root, this.analysis, fields.toArray(new Symbol[0]));
+    return new PlanBuilder(translations.withScope(scope, fields), root);
+  }
+
+  public TranslationMap getTranslations() {
+    return translations;
   }
 
   public PlanNode getRoot() {
@@ -69,67 +89,54 @@ public class PlanBuilder {
   }
 
   public Symbol[] getFieldSymbols() {
-    return this.fieldSymbols;
+    return translations.getFieldSymbols();
+  }
+
+  public Symbol translate(Expression expression) {
+    return Symbol.from(translations.rewrite(expression));
   }
 
   public Expression rewrite(Expression root) {
     verify(
-        analysis.isAnalyzed(root),
+        translations.getAnalysis().isAnalyzed(root),
         "Expression is not analyzed (%s): %s",
         root.getClass().getName(),
         root);
-    return translate(root);
+    return translations.rewrite(root);
   }
 
-  private Expression translate(Expression expression) {
-    return ExpressionTranslateVisitor.translateToSymbolReference(expression, this);
-  }
-
-  public Optional<Symbol> getSymbolForColumn(Expression expression) {
-    if (!analysis.isColumnReference(expression)) {
-      // Expression can be a reference to lambda argument (or DereferenceExpression based on lambda
-      // argument reference).
-      // In such case, the expression might still be resolvable with plan.getScope() but we should
-      // not resolve it.
-      return Optional.empty();
-    }
-
-    ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(expression));
-
-    if (field != null) {
-      return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
-    }
-
-    return Optional.empty();
+  public <T extends Expression> PlanBuilder appendProjections(
+      Iterable<T> expressions, SymbolAllocator symbolAllocator, MPPQueryContext queryContext) {
+    return appendProjections(
+        expressions,
+        symbolAllocator,
+        queryContext,
+        TranslationMap::rewrite,
+        TranslationMap::canTranslate);
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
       Iterable<T> expressions,
-      Analysis analysis,
       SymbolAllocator symbolAllocator,
-      MPPQueryContext queryContext) {
+      MPPQueryContext queryContext,
+      BiFunction<TranslationMap, T, Expression> rewriter,
+      BiPredicate<TranslationMap, T> alreadyHasTranslation) {
     Assignments.Builder projections = Assignments.builder();
 
     // add an identity projection for underlying plan
     projections.putIdentities(root.getOutputSymbols());
-
-    Set<String> symbolSet =
-        root.getOutputSymbols().stream().map(Symbol::getName).collect(Collectors.toSet());
-
-    Map<Expression, Symbol> mappings = new HashMap<>();
+    Analysis analysis = translations.getAnalysis();
+    Map<ScopeAware<Expression>, Symbol> mappings = new HashMap<>();
     for (T expression : expressions) {
-      // Skip any expressions that have already been translated and recorded in the
-      // translation map, or that are duplicated in the list of exp
-      if (!mappings.containsKey(expression)
-          && !symbolSet.contains(expression.toString().toLowerCase())
-          && !(expression instanceof FieldReference)) {
-        symbolSet.add(expression.toString());
-        // Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
+      // Skip any expressions that have already been translated and recorded in the translation map,
+      // or that are duplicated in the list of exp
+      if (!mappings.containsKey(scopeAwareKey(expression, analysis, translations.getScope()))
+          && !alreadyHasTranslation.test(translations, expression)) {
         Symbol symbol =
             symbolAllocator.newSymbol(expression.toString(), analysis.getType(expression));
         queryContext.getTypeProvider().putTableModelType(symbol, analysis.getType(expression));
-        projections.put(symbol, translate(expression));
-        mappings.put(expression, symbol);
+        projections.put(symbol, rewriter.apply(translations, expression));
+        mappings.put(scopeAwareKey(expression, analysis, translations.getScope()), symbol);
       }
     }
 
@@ -138,8 +145,7 @@ public class PlanBuilder {
     }
 
     return new PlanBuilder(
-        new ProjectNode(queryContext.getQueryId().genPlanNodeId(), this.root, projections.build()),
-        this.analysis,
-        this.fieldSymbols);
+        getTranslations().withAdditionalMappings(mappings),
+        new ProjectNode(queryContext.getQueryId().genPlanNodeId(), root, projections.build()));
   }
 }
