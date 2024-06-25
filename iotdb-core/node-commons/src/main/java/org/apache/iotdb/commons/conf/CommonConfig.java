@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -250,13 +252,13 @@ public class CommonConfig {
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 64;
-  private int subscriptionMaxTabletsSizeInBytesPerPrefetching = 8388608; // 8MB
+  private int subscriptionPrefetchBatchMaxDelayInMs = 5000; // 5s
+  private long subscriptionPrefetchBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
-  private int subscriptionReadFileBufferSize = 8388608; // 8MB
+  private long subscriptionReadFileBufferSize = 8 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1110,22 +1112,20 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return subscriptionMaxTabletsPerPrefetching;
+  public int getSubscriptionPrefetchBatchMaxDelayInMs() {
+    return subscriptionPrefetchBatchMaxDelayInMs;
   }
 
-  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
-    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  public void setSubscriptionPrefetchBatchMaxDelayInMs(int subscriptionPrefetchBatchMaxDelayInMs) {
+    this.subscriptionPrefetchBatchMaxDelayInMs = subscriptionPrefetchBatchMaxDelayInMs;
   }
 
-  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
-    return subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public long getSubscriptionPrefetchBatchMaxSizeInBytes() {
+    return subscriptionPrefetchBatchMaxSizeInBytes;
   }
 
-  public void setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
-      int subscriptionMaxTabletsSizeInBytesPerPrefetching) {
-    this.subscriptionMaxTabletsSizeInBytesPerPrefetching =
-        subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public void setSubscriptionPrefetchBatchMaxSizeInBytes(long subscriptionPrefetchBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchBatchMaxSizeInBytes = subscriptionPrefetchBatchMaxSizeInBytes;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -1163,11 +1163,11 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public int getSubscriptionReadFileBufferSize() {
+  public long getSubscriptionReadFileBufferSize() {
     return subscriptionReadFileBufferSize;
   }
 
-  public void setSubscriptionReadFileBufferSize(int subscriptionReadFileBufferSize) {
+  public void setSubscriptionReadFileBufferSize(long subscriptionReadFileBufferSize) {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 

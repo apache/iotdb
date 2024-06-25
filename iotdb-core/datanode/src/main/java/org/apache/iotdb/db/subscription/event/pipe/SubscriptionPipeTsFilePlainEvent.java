@@ -49,6 +49,8 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
 
   @Override
   public String toString() {
-    return tsFileInsertionEvent.coreReportMessage();
+    return "SubscriptionPipeTsFilePlainEvent{tsFileInsertionEvent="
+        + tsFileInsertionEvent.coreReportMessage()
+        + "}";
   }
 }

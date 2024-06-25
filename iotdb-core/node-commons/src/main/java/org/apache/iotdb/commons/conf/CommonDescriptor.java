@@ -591,16 +591,16 @@ public class CommonDescriptor {
     if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
       config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
     }
-    config.setSubscriptionMaxTabletsPerPrefetching(
+    config.setSubscriptionPrefetchBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_tablets_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
-    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
-        Integer.parseInt(
+                "subscription_prefetch_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchBatchMaxSizeInBytes(
+        Long.parseLong(
             properties.getProperty(
-                "subscription_max_tablets_size_in_bytes_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
+                "subscription_prefetch_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchBatchMaxSizeInBytes()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
@@ -622,7 +622,7 @@ public class CommonDescriptor {
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
     config.setSubscriptionReadFileBufferSize(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));

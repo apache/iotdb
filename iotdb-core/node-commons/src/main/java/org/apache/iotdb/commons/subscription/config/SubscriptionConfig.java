@@ -35,12 +35,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
+  public int getSubscriptionPrefetchBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionPrefetchBatchMaxDelayInMs();
   }
 
-  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
-    return COMMON_CONFIG.getSubscriptionMaxTabletsSizeInBytesPerPrefetching();
+  public long getSubscriptionPrefetchBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionPrefetchBatchMaxSizeInBytes();
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -59,7 +59,7 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public int getSubscriptionReadFileBufferSize() {
+  public long getSubscriptionReadFileBufferSize() {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
@@ -72,10 +72,9 @@ public class SubscriptionConfig {
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
-        "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+        "SubscriptionPrefetchBatchMaxDelayInMs: {}", getSubscriptionPrefetchBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionMaxTabletsSizeInBytesPerPrefetching: {}",
-        getSubscriptionMaxTabletsSizeInBytesPerPrefetching());
+        "SubscriptionPrefetchBatchMaxSizeInBytes: {}", getSubscriptionPrefetchBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());

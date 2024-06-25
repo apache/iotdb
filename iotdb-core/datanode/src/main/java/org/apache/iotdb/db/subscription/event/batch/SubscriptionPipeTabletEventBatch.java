@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -135,9 +136,26 @@ public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBa
     }
 
     LOGGER.warn(
-        "Subscription: SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+        "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         this,
         tabletInsertionEvent);
     return Collections.emptyList();
+  }
+
+  @Override
+  public String toString() {
+    return "SubscriptionPipeTabletEventBatch{enrichedEvents="
+        + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
+        + ", size of tablets="
+        + tablets.size()
+        + ", maxDelayInMs="
+        + maxDelayInMs
+        + ", firstEventProcessingTime="
+        + firstEventProcessingTime
+        + ", maxBatchSizeInBytes="
+        + maxBatchSizeInBytes
+        + ", totalBufferSize="
+        + totalBufferSize
+        + "}";
   }
 }

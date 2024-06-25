@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -28,8 +29,13 @@ import org.apache.tsfile.write.record.Tablet;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBatch {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
 
   private final PipeTabletEventTsFileBatch batch;
 
@@ -59,7 +65,10 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBa
       return batch.onEvent((TabletInsertionEvent) event);
     }
 
-    // TODO: log
+    LOGGER.warn(
+        "SubscriptionPipeTsFileEventBatch {} only support convert TabletInsertionEvent to tsfile. Ignore {}.",
+        this,
+        event);
     return false;
   }
 
@@ -72,5 +81,12 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBa
   public void cleanup() {
     // close batch, it includes clearing the reference count of events
     batch.close();
+  }
+
+  @Override
+  public String toString() {
+    return "SubscriptionPipeTsFileEventBatch{batch="
+        + batch
+        + "}";
   }
 }

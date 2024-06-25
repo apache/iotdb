@@ -67,7 +67,9 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionEvent{tsFile="
+    return "SubscriptionPipeTsFileBatchEvents{batch="
+        + batch
+        + ", tsFile="
         + tsFile
         + ", referenceCount="
         + referenceCount

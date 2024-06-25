@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -92,14 +91,10 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             if (batch.onEvent(event)) {
               consumeBatch((SubscriptionPipeTabletEventBatch) batch);
               result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+              return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
             }
             return batch;
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing tablets from batch",
-                this,
-                e);
+          } catch (final Exception ignored) {
             return batch;
           }
         });
@@ -115,14 +110,10 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             if (batch.shouldEmit()) {
               consumeBatch((SubscriptionPipeTabletEventBatch) batch);
               result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+              return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
             }
             return batch;
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing tablets from batch",
-                this,
-                e);
+          } catch (final Exception ignored) {
             return batch;
           }
         });

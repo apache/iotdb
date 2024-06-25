@@ -81,7 +81,8 @@ public class TabletsPayload implements SubscriptionPollPayload {
 
   @Override
   public String toString() {
-    // TODO
-    return "TabletsPayload";
+    return "TabletsPayload{size of tablets="
+        + tablets.size()
+        + "}";
   }
 }

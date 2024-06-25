@@ -67,9 +67,8 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
-  // TODO: config
-  protected final int maxDelayInMs = 5000;
-  protected final long maxBatchSizeInBytes = 80 * MB;
+  protected final int maxDelayInMs = SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxDelayInMs();
+  protected final long maxBatchSizeInBytes = SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxSizeInBytes();
   protected final AtomicReference<SubscriptionPipeEventBatch> currentBatchRef =
       new AtomicReference<>();
 

@@ -86,7 +86,7 @@ public class SubscriptionEvent {
     switch (SubscriptionPollResponseType.valueOf(responseType)) {
       case FILE_INIT:
         final long tsFileLength = pipeEvents.getTsFile().length();
-        final int readFileBufferSize =
+        final long readFileBufferSize =
             SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
         final int length = (int) (tsFileLength / readFileBufferSize);
         // add for init, last piece and seal
@@ -208,9 +208,9 @@ public class SubscriptionEvent {
       final long writingOffset) throws IOException {
     final File tsFile = pipeEvents.getTsFile();
 
-    final int readFileBufferSize =
+    final long readFileBufferSize =
         SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
+    final byte[] readBuffer = new byte[(int) readFileBufferSize];
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       while (true) {
         reader.seek(writingOffset);
