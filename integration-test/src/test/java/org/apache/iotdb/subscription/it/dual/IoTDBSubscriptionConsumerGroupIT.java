@@ -80,6 +80,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
+  private static final String TOPIC_1 = "topic1";
+  private static final String TOPIC_2 = "topic2";
+  private static final String TOPIC_ALL = "topic_all";
+
   private static Map<String, String> ASYNC_CONNECTOR_ATTRIBUTES;
   private static Map<String, String> SYNC_CONNECTOR_ATTRIBUTES;
   private static Map<String, String> LEGACY_CONNECTOR_ATTRIBUTES;
@@ -91,8 +95,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __3C_3CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __4C_2CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>>
-      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE;
-  private static Pair<List<SubscriptionInfo>, Map<String, String>> __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC;
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL;
+  private static Pair<List<SubscriptionInfo>, Map<String, String>>
+      __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL;
 
   static final class SubscriptionInfo {
     final String consumerId;
@@ -152,9 +157,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     // Setup subscription info list with expected results
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_1)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -165,9 +170,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg2", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg2", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton(TOPIC_1)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -180,10 +185,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg1", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg1", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -195,10 +200,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -212,11 +217,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -229,41 +234,42 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_ALL)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
-      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "200");
       expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
       expectedHeaderWithResult.put("count(root.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.topic2.s)", "100");
 
-      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE =
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL =
           new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c5", "cg2", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c6", "cg2", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg1", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c5", "cg2", Collections.singleton(TOPIC_ALL)));
+      subscriptionInfoList.add(new SubscriptionInfo("c6", "cg2", Collections.singleton(TOPIC_ALL)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
-      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "200");
       expectedHeaderWithResult.put("count(root.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.topic2.s)", "100");
 
-      __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC = new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
+      __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL =
+          new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
   }
 
@@ -675,147 +681,144 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
-  // ------------------------------------------------------ //
-  // 4 consumers, 2 consumer groups, 2 topics (with tsfile) //
-  // ------------------------------------------------------ //
+  // --------------------------------------------------------- //
+  // 4 consumers, 2 consumer groups, 2 topics (with topic all) //
+  // --------------------------------------------------------- //
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAsyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithSyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithLegacyConnector()
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithLegacyConnector()
       throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAirGapConnector()
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithAirGapConnector()
       throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAsyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithSyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithLegacyConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAirGapConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
-  // ------------------------------------------------ //
-  // 6 consumers, 2 consumer groups, 1 topic (tsfile) //
-  // ------------------------------------------------ //
+  // --------------------------------------------------- //
+  // 6 consumers, 2 consumer groups, 1 topic (topic all) //
+  // --------------------------------------------------- //
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAsyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithSyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithLegacyConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithLegacyConnector()
+      throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAirGapConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithAirGapConnector()
+      throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAsyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithSyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithLegacyConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAirGapConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -831,20 +834,20 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         config.put(TopicConstant.PATH_KEY, "root.topic1.s");
         config.put(TopicConstant.END_TIME_KEY, currentTime - 1);
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
-        session.createTopic("topic1", config);
+        session.createTopic(TOPIC_1, config);
       }
       {
         final Properties config = new Properties();
         config.put(TopicConstant.PATH_KEY, "root.topic2.s");
         config.put(TopicConstant.START_TIME_KEY, currentTime);
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-        session.createTopic("topic2", config);
+        session.createTopic(TOPIC_2, config);
       }
       {
         final Properties config = new Properties();
         config.put(TopicConstant.PATH_KEY, "root.*.s");
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-        session.createTopic("all", config);
+        session.createTopic(TOPIC_ALL, config);
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -857,11 +860,17 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
-            String.format("insert into root.topic1(time, s, t) values (%s, 1, 2)", i)); // topic1
+            String.format("insert into root.topic1(time, s, t) values (%s, 1, 2)", i));
         session.executeNonQueryStatement(
             String.format(
-                "insert into root.topic2(time, s, t) values (%s, 3, 4)",
-                currentTime + i)); // topic2
+                "insert into root.topic1(time, s, t) values (%s, 1, 2)", currentTime + i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic2(time, s, t) values (%s, 3, 4)", i));
+        session.executeNonQueryStatement(
+            String.format(
+                "insert into root.topic2(time, s, t) values (%s, 3, 4)", currentTime + i));
       }
       session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
