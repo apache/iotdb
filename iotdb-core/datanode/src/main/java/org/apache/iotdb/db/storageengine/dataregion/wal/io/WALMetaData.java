@@ -22,10 +22,14 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.utils.SerializedSize;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +40,7 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+  private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 
@@ -45,6 +50,7 @@ public class WALMetaData implements SerializedSize {
   private final List<Integer> buffersSize;
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
+  private long truncateOffSet = 0;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -79,7 +85,7 @@ public class WALMetaData implements SerializedSize {
         + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
   }
 
-  public void serialize(ByteBuffer buffer) {
+  public void serialize(File file, ByteBuffer buffer) {
     buffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
@@ -123,8 +129,7 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic(channel).equals(WALWriter.MAGIC_STRING)) {
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES || !isValidMagicString(channel)) {
       throw new IOException(String.format("Broken wal file %s", logFile));
     }
     // load metadata size
@@ -153,10 +158,20 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static String readTailMagic(FileChannel channel) throws IOException {
+  private static boolean isValidMagicString(FileChannel channel) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
     magicStringBytes.flip();
-    return new String(magicStringBytes.array());
+    String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
+    return magicString.equals(WALWriter.MAGIC_STRING)
+        || magicString.contains(WALWriter.MAGIC_STRING_V1);
+  }
+
+  public void setTruncateOffSet(long offset) {
+    this.truncateOffSet = offset;
+  }
+
+  public long getTruncateOffSet() {
+    return truncateOffSet;
   }
 }

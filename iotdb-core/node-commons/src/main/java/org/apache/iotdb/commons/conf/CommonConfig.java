@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 
@@ -40,6 +41,7 @@ public class CommonConfig {
   public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
   public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
   public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
+  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -201,6 +203,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
+  private int pipeEndPointRateLimiterDropCheckIntervalMs = 1000;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
@@ -235,7 +238,9 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
-  private double pipeRemainingTimeCommitRateSmoothingFactor = 0.5;
+  private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
+  private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+      PipeRemainingTimeRateAverageTime.MEAN;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1020,13 +1025,23 @@ public class CommonConfig {
     this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
   }
 
-  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
-    return pipeRemainingTimeCommitRateSmoothingFactor;
+  public long getPipeRemainingTimeCommitRateAutoSwitchSeconds() {
+    return pipeRemainingTimeCommitRateAutoSwitchSeconds;
   }
 
-  public void setPipeRemainingTimeCommitRateSmoothingFactor(
-      double pipeRemainingTimeCommitRateSmoothingFactor) {
-    this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
+  public void setPipeRemainingTimeCommitRateAutoSwitchSeconds(
+      long pipeRemainingTimeCommitRateAutoSwitchSeconds) {
+    this.pipeRemainingTimeCommitRateAutoSwitchSeconds =
+        pipeRemainingTimeCommitRateAutoSwitchSeconds;
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public void setPipeRemainingTimeCommitRateAverageTime(
+      PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
+    this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
@@ -1035,6 +1050,15 @@ public class CommonConfig {
 
   public void setPipeAllSinksRateLimitBytesPerSecond(double pipeAllSinksRateLimitBytesPerSecond) {
     this.pipeAllSinksRateLimitBytesPerSecond = pipeAllSinksRateLimitBytesPerSecond;
+  }
+
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return pipeEndPointRateLimiterDropCheckIntervalMs;
+  }
+
+  public void setPipeEndPointRateLimiterDropCheckIntervalMs(
+      int pipeEndPointRateLimiterDropCheckIntervalMs) {
+    this.pipeEndPointRateLimiterDropCheckIntervalMs = pipeEndPointRateLimiterDropCheckIntervalMs;
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {

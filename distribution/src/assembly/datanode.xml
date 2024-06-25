@@ -45,15 +45,6 @@
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf</directory>
-            <excludes>
-                <exclude>**/*.sh</exclude>
-                <exclude>**/*.bat</exclude>
-                <exclude>**/iotdb-system.properties</exclude>
-            </excludes>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/target/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>

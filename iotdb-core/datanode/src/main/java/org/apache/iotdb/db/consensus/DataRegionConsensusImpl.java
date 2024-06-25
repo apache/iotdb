@@ -36,7 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
 import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
@@ -80,7 +80,7 @@ public class DataRegionConsensusImpl {
     // Make sure both statics are initialized.
     static {
       reinitializeStatics();
-      PipeAgent.receiver().pipeConsensus().initConsensusInRuntime();
+      PipeDataNodeAgent.receiver().pipeConsensus().initConsensusInRuntime();
     }
 
     private static void reinitializeStatics() {
@@ -164,8 +164,9 @@ public class DataRegionConsensusImpl {
                           // name
                           .setConsensusPipeDispatcher(new ConsensusPipeDataNodeDispatcher())
                           .setConsensusPipeGuardian(new ConsensusPipeDataNodeRuntimeAgentGuardian())
-                          .setConsensusPipeSelector(() -> PipeAgent.task().getAllConsensusPipe())
-                          .setConsensusPipeReceiver(PipeAgent.receiver().pipeConsensus())
+                          .setConsensusPipeSelector(
+                              () -> PipeDataNodeAgent.task().getAllConsensusPipe())
+                          .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
                           .setProgressIndexManager(new ProgressIndexDataNodeManager())
                           .setConsensusPipeGuardJobIntervalInSeconds(300) // TODO: move to config
                           .build())

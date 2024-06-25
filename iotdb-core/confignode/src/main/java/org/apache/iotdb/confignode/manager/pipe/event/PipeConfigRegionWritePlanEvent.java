@@ -41,16 +41,17 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
   public PipeConfigRegionWritePlanEvent(
       final ConfigPhysicalPlan configPhysicalPlan, final boolean isGeneratedByPipe) {
-    this(configPhysicalPlan, null, null, null, isGeneratedByPipe);
+    this(configPhysicalPlan, null, 0, null, null, isGeneratedByPipe);
   }
 
   public PipeConfigRegionWritePlanEvent(
       final ConfigPhysicalPlan configPhysicalPlan,
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
+    super(pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.configPhysicalPlan = configPhysicalPlan;
   }
 
@@ -61,12 +62,13 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionWritePlanEvent(
-        configPhysicalPlan, pipeName, pipeTaskMeta, pattern, false);
+        configPhysicalPlan, pipeName, creationTime, pipeTaskMeta, pattern, false);
   }
 
   @Override

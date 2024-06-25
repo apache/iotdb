@@ -34,7 +34,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
@@ -356,7 +356,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       configReceiverId.set(
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
               + "_"
-              + PipeAgent.runtime().getRebootTimes()
+              + PipeDataNodeAgent.runtime().getRebootTimes()
               + "_"
               + CONFIG_RECEIVER_ID_GENERATOR.incrementAndGet());
     }

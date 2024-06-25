@@ -55,6 +55,11 @@ public enum Metric {
   IOT_CONSENSUS("iot_consensus"),
   IOT_SEND_LOG("iot_send_log"),
   IOT_RECEIVE_LOG("iot_receive_log"),
+  PIPE_CONSENSUS("pipe_consensus"),
+  PIPE_CONSENSUS_MODE("pipe_consensus_mode"),
+  PIPE_SEND_EVENT("pipe_send_event"),
+  PIPE_RETRY_SEND_EVENT("pipe_retry_send_event"),
+  PIPE_RECEIVE_EVENT("pipe_receive_event"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
@@ -171,7 +176,12 @@ public enum Metric {
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
-  LOAD_MEM("load_mem");
+  LOAD_MEM("load_mem"),
+  LOAD_DISK_IO("load_disk_io"),
+  LOAD_TIME_COST("load_time_cost"),
+  LOAD_POINT_COUNT("load_point_count"),
+  MEMTABLE_POINT_COUNT("memtable_point_count"),
+  ;
 
   final String value;
 

@@ -26,8 +26,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -38,8 +42,7 @@ import java.util.Set;
 /** Startup check utils before register/restart a ConfigNode/DataNode. */
 public class ClusterNodeStartUtils {
 
-  private static final String CLUSTER_NAME =
-      ConfigNodeDescriptor.getInstance().getConf().getClusterName();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final String POSSIBLE_SOLUTIONS = " Possible solutions are as follows:\r\n";
 
@@ -53,12 +56,9 @@ public class ClusterNodeStartUtils {
     // Empty constructor
   }
 
-  public static TSStatus confirmNodeRegistration(
-      NodeType nodeType, String clusterName, Object nodeLocation, ConfigManager configManager) {
+  private static TSStatus confirmClusterName(NodeType nodeType, String clusterName) {
     TSStatus status = new TSStatus();
-
-    /* Reject start if the cluster name is error */
-    if (!CLUSTER_NAME.equals(clusterName)) {
+    if (!CONF.getClusterName().equals(clusterName)) {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
@@ -70,52 +70,93 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterName,
-              CLUSTER_NAME,
+              CONF.getClusterName(),
               CommonConfig.SYSTEM_CONFIG_NAME,
               CommonConfig.SYSTEM_CONFIG_NAME));
       return status;
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
-    /* Check if there exist conflict TEndPoints */
-    List<TEndPoint> conflictEndPoints = null;
-    switch (nodeType) {
-      case ConfigNode:
-        if (nodeLocation instanceof TConfigNodeLocation) {
-          conflictEndPoints =
-              checkConflictTEndPointForNewConfigNode(
-                  (TConfigNodeLocation) nodeLocation,
-                  configManager.getNodeManager().getRegisteredConfigNodes());
-        }
-        break;
-      case DataNode:
-      default:
-        if (nodeLocation instanceof TDataNodeLocation) {
-          conflictEndPoints =
-              checkConflictTEndPointForNewDataNode(
-                  (TDataNodeLocation) nodeLocation,
-                  configManager.getNodeManager().getRegisteredDataNodes());
-        }
-        break;
-    }
+  private static TSStatus rejectRegistrationBecauseConflictEndPoints(
+      NodeType nodeType, List<TEndPoint> conflictEndPoints) {
+    TSStatus status = new TSStatus();
+    status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
+    status.setMessage(
+        String.format(
+            "Reject %s registration. Because the following ip:port: %s of the current %s is conflicted with other registered Nodes in the cluster."
+                + POSSIBLE_SOLUTIONS
+                + "\t1. Use SQL: \"show cluster details\" to find out the conflict Nodes. Remove them and retry start."
+                + "\n\t2. Change the conflict ip:port configurations in %s file and retry start.",
+            nodeType.getNodeType(),
+            conflictEndPoints,
+            nodeType.getNodeType(),
+            CommonConfig.SYSTEM_CONFIG_NAME));
+    return status;
+  }
 
-    if (conflictEndPoints != null && !conflictEndPoints.isEmpty()) {
-      /* Reject Node registration because there exist conflict TEndPoints */
-      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
-      status.setMessage(
-          String.format(
-              "Reject %s registration. Because the following ip:port: %s of the current %s is conflicted with other registered Nodes in the cluster."
-                  + POSSIBLE_SOLUTIONS
-                  + "\t1. Use SQL: \"show cluster details\" to find out the conflict Nodes. Remove them and retry start."
-                  + "\n\t2. Change the conflict ip:port configurations in %s file and retry start.",
-              nodeType.getNodeType(),
-              conflictEndPoints,
-              nodeType.getNodeType(),
-              CommonConfig.SYSTEM_CONFIG_NAME));
+  public static TSStatus confirmClusterId(ConfigManager configManager) {
+    TSStatus status = new TSStatus();
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    if (clusterId == null) {
+      status
+          .setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+          .setMessage("cluster id has not generated, please try again later");
       return status;
-    } else {
-      /* Accept registration if all TEndPoints aren't conflict */
-      return ACCEPT_NODE_REGISTRATION;
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public static TSStatus confirmDataNodeRegistration(
+      TDataNodeRegisterReq req, ConfigManager configManager) {
+    // Confirm cluster name
+    TSStatus status = confirmClusterName(NodeType.DataNode, req.getClusterName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Confirm end point conflicts
+    List<TEndPoint> conflictEndPoints =
+        checkConflictTEndPointForNewDataNode(
+            req.getDataNodeConfiguration().getLocation(),
+            configManager.getNodeManager().getRegisteredDataNodes());
+    if (!conflictEndPoints.isEmpty()) {
+      return rejectRegistrationBecauseConflictEndPoints(NodeType.DataNode, conflictEndPoints);
+    }
+    // Confirm whether cluster id has been generated
+    status = confirmClusterId(configManager);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Success
+    return ACCEPT_NODE_REGISTRATION;
+  }
+
+  public static TSStatus confirmConfigNodeRegistration(
+      TConfigNodeRegisterReq req, ConfigManager configManager) {
+    // Confirm cluster name
+    TSStatus status =
+        confirmClusterName(NodeType.ConfigNode, req.getClusterParameters().getClusterName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Confirm end point conflicts
+    List<TEndPoint> conflictEndPoints =
+        checkConflictTEndPointForNewConfigNode(
+            req.getConfigNodeLocation(), configManager.getNodeManager().getRegisteredConfigNodes());
+    if (!conflictEndPoints.isEmpty()) {
+      return rejectRegistrationBecauseConflictEndPoints(NodeType.ConfigNode, conflictEndPoints);
+    }
+    // Confirm whether cluster id has been generated
+    status = confirmClusterId(configManager);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Success
+    return ACCEPT_NODE_REGISTRATION;
   }
 
   public static TSStatus confirmNodeRestart(
@@ -127,7 +168,7 @@ public class ClusterNodeStartUtils {
     TSStatus status = new TSStatus();
 
     /* Reject restart if the cluster name is error */
-    if (!CLUSTER_NAME.equals(clusterName)) {
+    if (!CONF.getClusterName().equals(clusterName)) {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
@@ -139,7 +180,7 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterName,
-              CLUSTER_NAME,
+              CONF.getClusterName(),
               CommonConfig.SYSTEM_CONFIG_NAME,
               CommonConfig.SYSTEM_CONFIG_NAME));
       return status;

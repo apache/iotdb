@@ -612,11 +612,18 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void dumpTestJVMSnapshot() {
     for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-      configNodeWrapper.dumpJVMSnapshot(testMethodName);
+      configNodeWrapper.executeJstack(testMethodName);
     }
     for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
-      dataNodeWrapper.dumpJVMSnapshot(testMethodName);
+      dataNodeWrapper.executeJstack(testMethodName);
     }
+  }
+
+  @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
   }
 
   @Override
@@ -627,12 +634,6 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
-  }
-
-  public List<AbstractNodeWrapper> getNodeWrapperList() {
-    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
-    result.addAll(dataNodeWrapperList);
-    return result;
   }
 
   /**

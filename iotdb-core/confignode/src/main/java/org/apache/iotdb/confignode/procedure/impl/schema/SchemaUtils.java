@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -76,7 +76,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+                CnToDnRequestType.COUNT_PATHS_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCountPathsUsingTemplateReq(
                         template.getId(), patternTreeBytes, consensusGroupIdList))) {
@@ -155,7 +155,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+                CnToDnRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckSchemaRegionUsingTemplateReq(consensusGroupIdList))) {
 

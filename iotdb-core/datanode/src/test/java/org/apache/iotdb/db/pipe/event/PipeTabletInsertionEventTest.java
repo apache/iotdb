@@ -38,6 +38,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 
 public class PipeTabletInsertionEventTest {
@@ -49,7 +50,8 @@ public class PipeTabletInsertionEventTest {
 
   final String deviceId = "root.sg.d1";
   final long[] times = new long[] {110L, 111L, 112L, 113L, 114L};
-  final String[] measurementIds = new String[] {"s1", "s2", "s3", "s4", "s5", "s6"};
+  final String[] measurementIds =
+      new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"};
   final TSDataType[] dataTypes =
       new TSDataType[] {
         TSDataType.INT32,
@@ -57,10 +59,14 @@ public class PipeTabletInsertionEventTest {
         TSDataType.FLOAT,
         TSDataType.DOUBLE,
         TSDataType.BOOLEAN,
-        TSDataType.TEXT
+        TSDataType.TEXT,
+        TSDataType.TIMESTAMP,
+        TSDataType.DATE,
+        TSDataType.BLOB,
+        TSDataType.STRING,
       };
 
-  final MeasurementSchema[] schemas = new MeasurementSchema[6];
+  final MeasurementSchema[] schemas = new MeasurementSchema[10];
 
   final String pattern = "root.sg.d1";
 
@@ -90,6 +96,10 @@ public class PipeTabletInsertionEventTest {
     values[3] = 1D;
     values[4] = false;
     values[5] = BytesUtils.valueOf("text");
+    values[6] = 20000L;
+    values[7] = LocalDate.of(2024, 1, 1);
+    values[8] = BytesUtils.valueOf("blob");
+    values[9] = BytesUtils.valueOf("string");
 
     insertRowNode =
         new InsertRowNode(
@@ -125,6 +135,10 @@ public class PipeTabletInsertionEventTest {
     values[3] = new double[times.length];
     values[4] = new boolean[times.length];
     values[5] = new Binary[times.length];
+    values[6] = new long[times.length];
+    values[7] = new LocalDate[times.length];
+    values[8] = new Binary[times.length];
+    values[9] = new Binary[times.length];
 
     for (int r = 0; r < times.length; r++) {
       ((int[]) values[0])[r] = 100;
@@ -133,6 +147,10 @@ public class PipeTabletInsertionEventTest {
       ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
+      ((long[]) values[6])[r] = 20000L;
+      ((LocalDate[]) values[7])[r] = LocalDate.of(2024, 1, 1);
+      ((Binary[]) values[8])[r] = BytesUtils.valueOf("blob");
+      ((Binary[]) values[9])[r] = BytesUtils.valueOf("string");
     }
 
     this.insertTabletNode =
@@ -177,6 +195,10 @@ public class PipeTabletInsertionEventTest {
     values[3] = new double[1];
     values[4] = new boolean[1];
     values[5] = new Binary[1];
+    values[6] = new long[times.length];
+    values[7] = new LocalDate[times.length];
+    values[8] = new Binary[times.length];
+    values[9] = new Binary[times.length];
 
     for (int r = 0; r < 1; r++) {
       ((int[]) values[0])[r] = 100;
@@ -185,6 +207,10 @@ public class PipeTabletInsertionEventTest {
       ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
+      ((long[]) values[6])[r] = 20000L;
+      ((LocalDate[]) values[7])[r] = LocalDate.of(2024, 1, 1);
+      ((Binary[]) values[8])[r] = BytesUtils.valueOf("blob");
+      ((Binary[]) values[9])[r] = BytesUtils.valueOf("string");
     }
 
     tabletForInsertRowNode = new Tablet(deviceId, Arrays.asList(schemas), 1);
@@ -205,6 +231,10 @@ public class PipeTabletInsertionEventTest {
     values[3] = new double[times.length];
     values[4] = new boolean[times.length];
     values[5] = new Binary[times.length];
+    values[6] = new long[times.length];
+    values[7] = new LocalDate[times.length];
+    values[8] = new Binary[times.length];
+    values[9] = new Binary[times.length];
 
     for (int r = 0; r < times.length; r++) {
       ((int[]) values[0])[r] = 100;
@@ -213,6 +243,10 @@ public class PipeTabletInsertionEventTest {
       ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
+      ((long[]) values[6])[r] = 20000L;
+      ((LocalDate[]) values[7])[r] = LocalDate.of(2024, 1, 1);
+      ((Binary[]) values[8])[r] = BytesUtils.valueOf("blob");
+      ((Binary[]) values[9])[r] = BytesUtils.valueOf("string");
     }
 
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);

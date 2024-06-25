@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -44,6 +44,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
@@ -61,7 +62,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
-  private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
+  public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
   private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;
@@ -233,15 +234,18 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   }
 
   public int getTsFileInsertionEventCount() {
-    return inputPendingQueue.getTsFileInsertionEventCount();
+    return inputPendingQueue.getTsFileInsertionEventCount()
+        + (lastEvent instanceof TsFileInsertionEvent ? 1 : 0);
   }
 
   public int getTabletInsertionEventCount() {
-    return inputPendingQueue.getTabletInsertionEventCount();
+    return inputPendingQueue.getTabletInsertionEventCount()
+        + (lastEvent instanceof TabletInsertionEvent ? 1 : 0);
   }
 
   public int getPipeHeartbeatEventCount() {
-    return inputPendingQueue.getPipeHeartbeatEventCount();
+    return inputPendingQueue.getPipeHeartbeatEventCount()
+        + (lastEvent instanceof PipeHeartbeatEvent ? 1 : 0);
   }
 
   public int getAsyncConnectorRetryEventQueueSize() {
@@ -262,7 +266,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
               count.incrementAndGet();
             }
           });
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Exception occurred when counting event of pipe {}, root cause: {}",
@@ -271,10 +275,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             e);
       }
     }
+    // Avoid potential NPE in "getPipeName"
+    final EnrichedEvent event =
+        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
     return count.get()
         + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
             ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
-            : 0);
+            : 0)
+        + (Objects.nonNull(event) && pipeName.equals(event.getPipeName()) ? 1 : 0);
   }
 
   //////////////////////////// Error report ////////////////////////////
@@ -286,6 +294,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
-    PipeAgent.runtime().report(event, exception);
+    PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

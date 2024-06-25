@@ -52,7 +52,7 @@ public class ColumnHeaderConstant {
   public static final String TEMPLATE = "Template";
 
   public static final String COUNT = "Count";
-  public static final String COLUMN_TTL = "TTL";
+  public static final String COLUMN_TTL = "TTL(ms)";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
@@ -93,6 +93,11 @@ public class ColumnHeaderConstant {
 
   // column names for show clusterId statement
   public static final String CLUSTER_ID = "ClusterId";
+
+  // column names for verify connection statement
+  public static final String SERVICE_PROVIDER = "ServiceProvider";
+  public static final String SENDER = "Sender";
+  public static final String CONNECTION = "Connection";
 
   // column names for show functions statement
   public static final String FUNCTION_NAME = "FunctionName";
@@ -247,7 +252,6 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
@@ -369,6 +373,12 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showClusterIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(CLUSTER_ID, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> testConnectionColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_PROVIDER, TSDataType.TEXT),
+          new ColumnHeader(SENDER, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(

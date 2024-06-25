@@ -21,15 +21,20 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -118,16 +123,16 @@ public abstract class SubscriptionPrefetchingQueue {
     // leader transfers or restarts.
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeAgent.runtime().getRebootTimes(),
+        PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
         subscriptionCommitIdGenerator.getAndIncrement());
   }
 
-  protected SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
+  private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeAgent.runtime().getRebootTimes(),
+        PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
         -1);
@@ -175,5 +180,24 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public void markCompleted() {
     isCompleted = true;
+  }
+
+  public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
+    return new SubscriptionEvent(
+        Collections.emptyList(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.TERMINATION.getType(),
+            new TerminationPayload(),
+            generateInvalidSubscriptionCommitContext()));
+  }
+
+  public SubscriptionEvent generateSubscriptionPollErrorResponse(
+      final String errorMessage, final boolean critical) {
+    return new SubscriptionEvent(
+        Collections.emptyList(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, critical),
+            generateInvalidSubscriptionCommitContext()));
   }
 }

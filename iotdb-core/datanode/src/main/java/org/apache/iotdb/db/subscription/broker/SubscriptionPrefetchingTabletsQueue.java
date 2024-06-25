@@ -25,8 +25,9 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -138,6 +139,17 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         continue;
       }
 
+      if (event instanceof PipeTerminateEvent) {
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingTabletsQueue {} commit PipeTerminateEvent {}",
+            this,
+            event);
+        // commit directly
+        ((PipeTerminateEvent) event)
+            .decreaseReferenceCount(SubscriptionPrefetchingTsFileQueue.class.getName(), true);
+        continue;
+      }
+
       if (event instanceof TabletInsertionEvent) {
         final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
         if (currentTablets.isEmpty()) {
@@ -146,7 +158,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         tablets.addAll(currentTablets);
         calculatedTabletsSizeInBytes +=
             currentTablets.stream()
-                .map((PipeMemoryManager::calculateTabletSizeInBytes))
+                .map((PipeMemoryWeightUtil::calculateTabletSizeInBytes))
                 .reduce(Long::sum)
                 .orElse(0L);
         enrichedEvents.add((EnrichedEvent) event);
@@ -160,7 +172,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
           tablets.addAll(currentTablets);
           calculatedTabletsSizeInBytes +=
               currentTablets.stream()
-                  .map((PipeMemoryManager::calculateTabletSizeInBytes))
+                  .map((PipeMemoryWeightUtil::calculateTabletSizeInBytes))
                   .reduce(Long::sum)
                   .orElse(0L);
         }
