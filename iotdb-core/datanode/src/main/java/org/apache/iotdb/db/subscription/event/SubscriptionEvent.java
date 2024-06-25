@@ -191,30 +191,6 @@ public class SubscriptionEvent {
     }
   }
 
-  /////////////////////////////// object ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionEvent{pipeEvents="
-        + pipeEvents.toString()
-        + ", responses="
-        + Arrays.toString(responses)
-        + ", currentResponseIndex="
-        + currentResponseIndex
-        + ", lastPolledConsumerId="
-        + lastPolledConsumerId
-        + ", lastPolledTimestamp="
-        + lastPolledTimestamp
-        + ", committedTimestamp="
-        + committedTimestamp
-        + "}"
-        + "(responses' byte buffer size: "
-        + Arrays.stream(byteBuffers)
-            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "null" : byteBuffer.limit())
-            .collect(Collectors.toList())
-        + ")";
-  }
-
   /////////////////////////////// tsfile ///////////////////////////////
 
   public static @NonNull SubscriptionEvent generateSubscriptionEventWithInitPayload(
@@ -342,5 +318,29 @@ public class SubscriptionEvent {
 
   public File getTsFile() {
     return pipeEvents.getTsFile();
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEvent{pipeEvents="
+        + pipeEvents.toString()
+        + ", responses="
+        + Arrays.toString(responses)
+        + ", currentResponseIndex="
+        + currentResponseIndex
+        + ", lastPolledConsumerId="
+        + lastPolledConsumerId
+        + ", lastPolledTimestamp="
+        + lastPolledTimestamp
+        + ", committedTimestamp="
+        + committedTimestamp
+        + "}"
+        + "(responses' byte buffer size: "
+        + Arrays.stream(byteBuffers)
+            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "null" : byteBuffer.limit())
+            .collect(Collectors.toList())
+        + ")";
   }
 }

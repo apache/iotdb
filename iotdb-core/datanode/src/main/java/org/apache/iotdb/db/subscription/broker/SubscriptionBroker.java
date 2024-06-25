@@ -186,18 +186,21 @@ public class SubscriptionBroker {
     // mark prefetching queue closed first
     prefetchingQueue.markClosed();
 
-    // clean up events in prefetching queue, this operation is idempotent
-    prefetchingQueue.cleanup();
-
     // mark prefetching queue completed only for topic of query mode
     if (SubscriptionAgent.topic().getTopicMode(topicName).equals(TopicConstant.MODE_QUERY_VALUE)) {
       prefetchingQueue.markCompleted();
     }
 
     if (doRemove) {
-      topicNameToPrefetchingQueue.remove(topicName);
+      // clean up events in prefetching queue
+      prefetchingQueue.cleanup();
+
+      // deregister metrics
       SubscriptionPrefetchingQueueMetrics.getInstance()
           .deregister(prefetchingQueue.getPrefetchingQueueId());
+
+      // remove prefetching queue
+      topicNameToPrefetchingQueue.remove(topicName);
     }
   }
 

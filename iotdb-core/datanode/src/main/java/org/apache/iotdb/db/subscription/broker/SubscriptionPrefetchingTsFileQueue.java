@@ -87,7 +87,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     // clean up batch
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          batch.close();
+          if (Objects.nonNull(batch)) {
+            batch.close();
+          }
           return null;
         });
   }

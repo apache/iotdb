@@ -30,6 +30,7 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -60,8 +61,9 @@ public class SubscriptionSessionExample {
 
   private static final long SLEEP_NS = 1_000_000_000L;
   private static final long POLL_TIMEOUT_MS = 10_000L;
-  private static final int MAX_RETRY_TIMES = 100;
+  private static final int MAX_RETRY_TIMES = 3;
   private static final int PARALLELISM = 8;
+  private static final long CURRENT_TIME = System.currentTimeMillis();
 
   private static void prepareData() throws Exception {
     // Open session
@@ -76,14 +78,14 @@ public class SubscriptionSessionExample {
     session.open(false);
 
     // Insert some historical data
-    final long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", currentTime + i));
+          String.format(
+              "insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", CURRENT_TIME + i));
       session.executeNonQueryStatement(
-          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", currentTime + 2 * i));
+          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", CURRENT_TIME + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
@@ -124,7 +126,6 @@ public class SubscriptionSessionExample {
       config.put(TopicConstant.PATH_KEY, "root.db.d1.s1");
       config.put(TopicConstant.START_TIME_KEY, 25);
       config.put(TopicConstant.END_TIME_KEY, 75);
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       subscriptionSession.createTopic(TOPIC_1, config);
     }
 
@@ -145,22 +146,10 @@ public class SubscriptionSessionExample {
           break;
         }
       }
-      //      for (final SubscriptionMessage message : messages) {
-      //        for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler())
-      // {
-      //          System.out.println(dataSet.getColumnNames());
-      //          System.out.println(dataSet.getColumnTypes());
-      //          while (dataSet.hasNext()) {
-      //            System.out.println(dataSet.next());
-      //          }
-      //        }
-      //      }
       for (final SubscriptionMessage message : messages) {
-        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
-          final QueryDataSet dataSet =
-              reader.query(
-                  QueryExpression.create(
-                      Collections.singletonList(new Path("root.db.d1", "s1", true)), null));
+        for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
           while (dataSet.hasNext()) {
             System.out.println(dataSet.next());
           }
@@ -185,6 +174,8 @@ public class SubscriptionSessionExample {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.START_TIME_KEY, CURRENT_TIME + 33);
+      config.put(TopicConstant.END_TIME_KEY, CURRENT_TIME + 66);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       subscriptionSession.createTopic(TOPIC_2, config);
     }
@@ -222,7 +213,7 @@ public class SubscriptionSessionExample {
                                 QueryExpression.create(
                                     Arrays.asList(
                                         new Path("root.db.d2", "s2", true),
-                                        new Path("root.db.d3", "s1", true)),
+                                        new Path("root.sg.d3", "s1", true)),
                                     null));
                         while (dataSet.hasNext()) {
                           System.out.println(dataSet.next());
@@ -345,8 +336,8 @@ public class SubscriptionSessionExample {
   public static void main(final String[] args) throws Exception {
     prepareData();
     // dataQuery();
-    dataSubscription1();
-    // dataSubscription2();
+    // dataSubscription1();
+    dataSubscription2();
     // dataSubscription3();
     // dataSubscription4();
   }
