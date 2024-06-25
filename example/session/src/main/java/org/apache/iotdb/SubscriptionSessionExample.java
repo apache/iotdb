@@ -336,8 +336,8 @@ public class SubscriptionSessionExample {
   public static void main(final String[] args) throws Exception {
     prepareData();
     // dataQuery();
-    // dataSubscription1();
-    dataSubscription2();
+    dataSubscription1();
+    // dataSubscription2();
     // dataSubscription3();
     // dataSubscription4();
   }

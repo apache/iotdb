@@ -19,23 +19,23 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEvents {
+public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 
-  private final PipeTabletEventTsFileBatch batch;
+  private final SubscriptionPipeTsFileEventBatch batch;
   private final File tsFile;
 
   private final AtomicInteger referenceCount; // shared between the same batch
   private final AtomicBoolean isAcked = new AtomicBoolean(false);
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  public SubscriptionPipeTsFileEventBatch(
-      final PipeTabletEventTsFileBatch batch,
+  public SubscriptionPipeTsFileBatchEvents(
+      final SubscriptionPipeTsFileEventBatch batch,
       final File tsFile,
       final AtomicInteger referenceCount) {
     this.batch = batch;
@@ -52,7 +52,7 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEvents 
   public void ack() {
     if (!isAcked.get() && referenceCount.decrementAndGet() == 0) {
       isAcked.set(true);
-      batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+      batch.ack();
     }
   }
 
@@ -61,7 +61,7 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEvents 
     if (!isClosed.get() && referenceCount.decrementAndGet() == 0) {
       isClosed.set(true);
       // close batch, it includes clearing the reference count of events
-      batch.close();
+      batch.cleanup();
     }
   }
 

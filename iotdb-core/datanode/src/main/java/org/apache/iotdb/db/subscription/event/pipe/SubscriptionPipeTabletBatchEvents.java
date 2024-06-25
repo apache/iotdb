@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
 import java.io.File;
-import java.util.List;
-import java.util.stream.Collectors;
 
-public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEvents {
+public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
-  private final List<EnrichedEvent> enrichedEvents;
+  private final SubscriptionPipeTabletEventBatch batch;
 
-  public SubscriptionPipeTabletEventBatch(final List<EnrichedEvent> enrichedEvents) {
-    this.enrichedEvents = enrichedEvents;
+  public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
+    this.batch = batch;
   }
 
   @Override
@@ -40,24 +38,17 @@ public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEvents 
 
   @Override
   public void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
+    batch.ack();
   }
 
   @Override
   public void cleanup() {
-    // clear the reference count of events
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.clearReferenceCount(this.getClass().getName());
-    }
+    batch.cleanup();
   }
 
   @Override
   public String toString() {
-    return enrichedEvents.stream()
-        .map(EnrichedEvent::coreReportMessage)
-        .collect(Collectors.toList())
-        .toString();
+    // TODO
+    return "";
   }
 }

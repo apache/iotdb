@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionEmptyPipeEvent;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatch;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -41,7 +47,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public abstract class SubscriptionPrefetchingQueue {
@@ -58,6 +66,12 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
+
+  // TODO: config
+  protected final int maxDelayInMs = 5000;
+  protected final long maxBatchSizeInBytes = 80 * MB;
+  protected final AtomicReference<SubscriptionPipeEventBatch> currentBatchRef =
+      new AtomicReference<>();
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -115,7 +129,58 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
-  abstract void prefetchOnce();
+  protected abstract boolean prefetchTabletInsertionEvent(final TabletInsertionEvent event);
+
+  protected abstract boolean prefetchTsFileInsertionEvent(final PipeTsFileInsertionEvent event);
+
+  protected abstract boolean prefetchEnrichedEvent();
+
+  protected void prefetchOnce() {
+    Event event;
+    while (Objects.nonNull(
+        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+      if (!(event instanceof EnrichedEvent)) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+            this,
+            event);
+        continue;
+      }
+
+      if (event instanceof PipeTerminateEvent) {
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+            this,
+            event);
+        // commit directly
+        ((PipeTerminateEvent) event)
+            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+        continue;
+      }
+
+      if (event instanceof TabletInsertionEvent) {
+        if (prefetchTabletInsertionEvent((TabletInsertionEvent) event)) {
+          break;
+        }
+      } else if (event instanceof PipeTsFileInsertionEvent) {
+        if (prefetchTsFileInsertionEvent((PipeTsFileInsertionEvent) event)) {
+          break;
+        }
+      } else {
+        // TODO:
+        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+        //  - UserDefinedEnrichedEvent: ignored?
+        //  - Others: events related to meta sync, safe to ignore
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+            this,
+            event);
+        if (prefetchEnrichedEvent()) {
+          break;
+        }
+      }
+    }
+  }
 
   public abstract void executePrefetch();
 
@@ -123,6 +188,15 @@ public abstract class SubscriptionPrefetchingQueue {
     // clean up uncommitted events
     uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
     uncommittedEvents.clear();
+
+    // clean up batch
+    currentBatchRef.getAndUpdate(
+        (batch) -> {
+          if (Objects.nonNull(batch)) {
+            batch.cleanup();
+          }
+          return null;
+        });
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
@@ -251,7 +325,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
     return new SubscriptionEvent(
-        new SubscriptionEmptyPipeEvent(),
+        new SubscriptionPipeEmptyEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.TERMINATION.getType(),
             new TerminationPayload(),
@@ -261,7 +335,7 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent generateSubscriptionPollErrorResponse(
       final String errorMessage, final boolean critical) {
     return new SubscriptionEvent(
-        new SubscriptionEmptyPipeEvent(),
+        new SubscriptionPipeEmptyEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.ERROR.getType(),
             new ErrorPayload(errorMessage, critical),

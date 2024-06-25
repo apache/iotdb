@@ -21,13 +21,10 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
-import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileEventBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -47,10 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
@@ -58,12 +53,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
   private final Map<String, SubscriptionEvent> consumerIdToSubscriptionEventMap;
-
-  // TODO: config
-  private final int requestMaxDelayInMs = 5000;
-  private final long requestMaxBatchSizeInBytes = 80 * MB;
-
-  private final AtomicReference<PipeTabletEventBatch> currentBatchRef = new AtomicReference<>();
 
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
@@ -73,7 +62,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
     this.currentBatchRef.set(
-        new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes));
+        new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes));
   }
 
   @Override
@@ -83,15 +72,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     // clean up events in consumerIdToCurrentEventMap
     consumerIdToSubscriptionEventMap.values().forEach(SubscriptionEvent::cleanup);
     consumerIdToSubscriptionEventMap.clear();
-
-    // clean up batch
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (Objects.nonNull(batch)) {
-            batch.close();
-          }
-          return null;
-        });
   }
 
   @Override
@@ -259,94 +239,69 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  void prefetchOnce() {
-    Event event;
-    while (Objects.nonNull(
-        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
-      if (!(event instanceof EnrichedEvent)) {
-        LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingTsFileQueue {} only support prefetch EnrichedEvent. Ignore {}.",
-            this,
-            event);
-        continue;
-      }
-
-      if (event instanceof PipeTerminateEvent) {
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingTsFileQueue {} commit PipeTerminateEvent {}",
-            this,
-            event);
-        // commit directly
-        ((PipeTerminateEvent) event)
-            .decreaseReferenceCount(SubscriptionPrefetchingTsFileQueue.class.getName(), true);
-        continue;
-      }
-
-      if (event instanceof TabletInsertionEvent) {
-        final Event finalEvent = event;
-        currentBatchRef.getAndUpdate(
-            (batch) -> {
-              try {
-                if (batch.onEvent((TabletInsertionEvent) finalEvent)) {
-                  consumeBatch(batch);
-                  return new PipeTabletEventTsFileBatch(
-                      requestMaxDelayInMs, requestMaxBatchSizeInBytes);
-                }
-                return batch;
-              } catch (final Exception e) {
-                LOGGER.warn(
-                    "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFile from batch",
-                    this,
-                    e);
-                return batch;
-              }
-            });
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-        final SubscriptionEvent subscriptionEvent =
-            SubscriptionEvent.generateSubscriptionEventWithInitPayload(
-                (PipeTsFileInsertionEvent) event, commitContext);
-        uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
-        prefetchingQueue.add(subscriptionEvent);
-      } else {
-        currentBatchRef.getAndUpdate(
-            (batch) -> {
-              try {
-                if (batch.shouldEmit()) {
-                  consumeBatch(batch);
-                  return new PipeTabletEventTsFileBatch(
-                      requestMaxDelayInMs, requestMaxBatchSizeInBytes);
-                }
-                return batch;
-              } catch (final Exception e) {
-                LOGGER.warn(
-                    "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFile from batch",
-                    this,
-                    e);
-                return batch;
-              }
-            });
-        // TODO:
-        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-        //  - UserDefinedEnrichedEvent: ignored?
-        //  - Others: events related to meta sync, safe to ignore
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingTsFileQueue {} ignore EnrichedEvent {} when prefetching.",
-            this,
-            event);
-      }
-    }
+  protected boolean prefetchTabletInsertionEvent(final TabletInsertionEvent event) {
+    final AtomicBoolean result = new AtomicBoolean(false);
+    currentBatchRef.getAndUpdate(
+        (batch) -> {
+          try {
+            if (batch.onEvent((EnrichedEvent) event)) {
+              consumeBatch((SubscriptionPipeTsFileEventBatch) batch);
+              result.set(true);
+              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+            }
+            return batch;
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing tsFiles from batch",
+                this,
+                e);
+            return batch;
+          }
+        });
+    return result.get();
   }
 
-  private void consumeBatch(final PipeTabletEventBatch batch) throws Exception {
-    final List<File> tsFiles = ((PipeTabletEventTsFileBatch) batch).sealTsFiles();
+  @Override
+  protected boolean prefetchTsFileInsertionEvent(final PipeTsFileInsertionEvent event) {
+    final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
+    final SubscriptionEvent subscriptionEvent =
+        SubscriptionEvent.generateSubscriptionEventWithInitPayload(event, commitContext);
+    uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
+    prefetchingQueue.add(subscriptionEvent);
+    return true;
+  }
+
+  @Override
+  protected boolean prefetchEnrichedEvent() {
+    final AtomicBoolean result = new AtomicBoolean(false);
+    currentBatchRef.getAndUpdate(
+        (batch) -> {
+          try {
+            if (batch.shouldEmit()) {
+              consumeBatch((SubscriptionPipeTsFileEventBatch) batch);
+              result.set(true);
+              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+            }
+            return batch;
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFile from batch",
+                this,
+                e);
+            return batch;
+          }
+        });
+    return result.get();
+  }
+
+  private void consumeBatch(final SubscriptionPipeTsFileEventBatch batch) throws Exception {
+    final List<File> tsFiles = batch.sealTsFiles();
     final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
     for (final File tsFile : tsFiles) {
       final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
       final SubscriptionEvent subscriptionEvent =
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileEventBatch(
-                  (PipeTabletEventTsFileBatch) batch, tsFile, referenceCount),
+              new SubscriptionPipeTsFileBatchEvents(batch, tsFile, referenceCount),
               new SubscriptionPollResponse(
                   SubscriptionPollResponseType.FILE_INIT.getType(),
                   new FileInitPayload(tsFile.getName()),

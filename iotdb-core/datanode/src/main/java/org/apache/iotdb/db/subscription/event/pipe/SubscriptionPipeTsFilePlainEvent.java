@@ -19,23 +19,36 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+
 import java.io.File;
 
-public class SubscriptionEmptyPipeEvent implements SubscriptionPipeEvents {
+public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 
-  @Override
-  public File getTsFile() {
-    return null;
+  private final PipeTsFileInsertionEvent tsFileInsertionEvent;
+
+  public SubscriptionPipeTsFilePlainEvent(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
+    this.tsFileInsertionEvent = tsFileInsertionEvent;
   }
 
   @Override
-  public void ack() {}
+  public File getTsFile() {
+    return tsFileInsertionEvent.getTsFile();
+  }
 
   @Override
-  public void cleanup() {}
+  public void ack() {
+    tsFileInsertionEvent.decreaseReferenceCount(this.getClass().getName(), true);
+  }
+
+  @Override
+  public void cleanup() {
+    // clear the reference count of event
+    tsFileInsertionEvent.clearReferenceCount(this.getClass().getName());
+  }
 
   @Override
   public String toString() {
-    return "SubscriptionEmptyPipeEvent";
+    return tsFileInsertionEvent.coreReportMessage();
   }
 }

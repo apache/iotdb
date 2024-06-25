@@ -22,7 +22,7 @@ package org.apache.iotdb.db.subscription.event;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileEventPlain;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
@@ -197,7 +197,7 @@ public class SubscriptionEvent {
       final PipeTsFileInsertionEvent tsFileInsertionEvent,
       final SubscriptionCommitContext commitContext) {
     return new SubscriptionEvent(
-        new SubscriptionPipeTsFileEventPlain(tsFileInsertionEvent),
+        new SubscriptionPipeTsFilePlainEvent(tsFileInsertionEvent),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFileInsertionEvent.getTsFile().getName()),
