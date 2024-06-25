@@ -64,10 +64,17 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
       return planNode;
     }
 
-    return planNode.accept(new Rewriter(), new RewriterContext(queryContext));
+    return planNode.accept(new Rewriter(queryContext, analysis), new RewriterContext());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+    private final MPPQueryContext queryContext;
+    private final Analysis analysis;
+
+    Rewriter(MPPQueryContext queryContext, Analysis analysis) {
+      this.queryContext = queryContext;
+      this.analysis = analysis;
+    }
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
@@ -104,6 +111,10 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
         }
 
         context.pushDownPredicate = node.getPredicate();
+
+        if (node.getChild() instanceof TableScanNode) {
+          return processTableScan((TableScanNode) node.getChild(), context);
+        }
         return node.getChild().accept(this, context);
       } else {
         throw new IllegalStateException(
@@ -113,19 +124,21 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
+      return node;
+    }
+
+    public PlanNode processTableScan(TableScanNode node, RewriterContext context) {
       // has diff in FilterNode
       if (context.pushDownPredicate == null) {
         node.setPushDownPredicate(null);
         return node;
       }
 
-      context.queryContext.setTableModelPredicateExpressions(
-          splitConjunctionExpressions(context, node));
+      analysis.setTableModelPredicateExpressions(splitConjunctionExpressions(context, node));
 
       // exist expressions can push down to scan operator
-      if (!context.queryContext.getTableModelPredicateExpressions().get(1).isEmpty()) {
-        List<Expression> expressions =
-            context.queryContext.getTableModelPredicateExpressions().get(1);
+      if (!analysis.getTableModelPredicateExpressions().get(1).isEmpty()) {
+        List<Expression> expressions = analysis.getTableModelPredicateExpressions().get(1);
         node.setPushDownPredicate(
             expressions.size() == 1
                 ? expressions.get(0)
@@ -135,11 +148,10 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
       }
 
       // exist expressions can not push down to scan operator
-      if (!context.queryContext.getTableModelPredicateExpressions().get(2).isEmpty()) {
-        List<Expression> expressions =
-            context.queryContext.getTableModelPredicateExpressions().get(2);
+      if (!analysis.getTableModelPredicateExpressions().get(2).isEmpty()) {
+        List<Expression> expressions = analysis.getTableModelPredicateExpressions().get(2);
         return new FilterNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
+            queryContext.getQueryId().genPlanNodeId(),
             node,
             expressions.size() == 1
                 ? expressions.get(0)
@@ -217,11 +229,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
   private static class RewriterContext {
     Expression pushDownPredicate;
-    MPPQueryContext queryContext;
     FilterNode filterNode;
-
-    public RewriterContext(MPPQueryContext queryContext) {
-      this.queryContext = queryContext;
-    }
   }
 }

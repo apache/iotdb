@@ -170,13 +170,10 @@ public class Analysis implements IAnalysis {
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
 
-  public DataPartition getDataPartition() {
-    return dataPartition;
-  }
-
-  public void setDataPartition(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
-  }
+  // splits predicate expression in table model into three parts,
+  // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
+  // index 2 represents expressionsCannotPushDownToOperator
+  private List<List<Expression>> tableModelPredicateExpressions;
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -589,6 +586,15 @@ public class Analysis implements IAnalysis {
 
   public void setEmptyDataSource(boolean emptyDataSource) {
     this.emptyDataSource = emptyDataSource;
+  }
+
+  public List<List<Expression>> getTableModelPredicateExpressions() {
+    return tableModelPredicateExpressions;
+  }
+
+  public void setTableModelPredicateExpressions(
+      List<List<Expression>> tableModelPredicateExpressions) {
+    this.tableModelPredicateExpressions = tableModelPredicateExpressions;
   }
 
   @Override

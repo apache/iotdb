@@ -84,10 +84,10 @@ public class IndexScan implements RelationalPlanOptimizer {
     @Override
     public PlanNode visitTableScan(TableScanNode node, Void context) {
       List<Expression> metadataExpressions =
-          queryContext.getTableModelPredicateExpressions() == null
-                  || queryContext.getTableModelPredicateExpressions().get(0).isEmpty()
+          analysis.getTableModelPredicateExpressions() == null
+                  || analysis.getTableModelPredicateExpressions().get(0).isEmpty()
               ? Collections.emptyList()
-              : queryContext.getTableModelPredicateExpressions().get(0);
+              : analysis.getTableModelPredicateExpressions().get(0);
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
               .filter(
