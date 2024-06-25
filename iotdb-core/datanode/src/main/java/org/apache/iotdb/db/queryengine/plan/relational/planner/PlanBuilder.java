@@ -132,8 +132,7 @@ public class PlanBuilder {
       // or that are duplicated in the list of exp
       if (!mappings.containsKey(scopeAwareKey(expression, analysis, translations.getScope()))
           && !alreadyHasTranslation.test(translations, expression)) {
-        Symbol symbol =
-            symbolAllocator.newSymbol(expression.toString(), analysis.getType(expression));
+        Symbol symbol = symbolAllocator.newSymbol(expression, analysis.getType(expression));
         queryContext.getTypeProvider().putTableModelType(symbol, analysis.getType(expression));
         projections.put(symbol, rewriter.apply(translations, expression));
         mappings.put(scopeAwareKey(expression, analysis, translations.getScope()), symbol);

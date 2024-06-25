@@ -209,7 +209,7 @@ public class QueryPlanner {
         FieldReference reference = (FieldReference) expression;
         symbol = builder.getFieldSymbols()[reference.getFieldIndex()];
       }
-      outputSymbols.add(symbol != null ? symbol : new Symbol(expression.toString()));
+      outputSymbols.add(symbol != null ? symbol : builder.translate(expression));
     }
     return outputSymbols.build();
   }
