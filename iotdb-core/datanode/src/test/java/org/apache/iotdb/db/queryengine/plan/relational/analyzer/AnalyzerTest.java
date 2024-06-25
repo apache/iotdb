@@ -204,8 +204,15 @@ public class AnalyzerTest {
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-    assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
-    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+
+    // TODO change back after Gaofei update FilterAndScanCombineRule
+    /*assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
+    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();*/
+    assertTrue(((OutputNode) rootNode).getChild() instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) ((OutputNode) rootNode).getChild();
+    assertEquals("(\"time\" > 1)", filterNode.getPredicate().toString());
+
+    tableScanNode = (TableScanNode) (filterNode).getChild();
     assertEquals("table1", tableScanNode.getQualifiedTableName());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),

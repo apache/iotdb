@@ -60,9 +60,10 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
 
-    if (!analysis.hasValueFilter()) {
-      return planNode;
-    }
+    // TODO change back after Gaofei accomplish ScanTimeAndValueFilterSplitRule
+    //    if (!analysis.hasValueFilter()) {
+    //      return planNode;
+    //    }
 
     return planNode.accept(new Rewriter(), new RewriterContext(queryContext));
   }

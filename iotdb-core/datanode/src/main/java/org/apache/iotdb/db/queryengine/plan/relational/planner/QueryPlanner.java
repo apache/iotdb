@@ -19,8 +19,6 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -39,8 +37,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -51,7 +49,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -98,7 +95,7 @@ public class QueryPlanner {
     if (orderBy.size() > 0) {
       builder =
           builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
@@ -106,7 +103,7 @@ public class QueryPlanner {
     builder = sort(builder, orderingScheme);
     builder = offset(builder, query.getOffset());
     builder = limit(builder, query.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
@@ -127,7 +124,7 @@ public class QueryPlanner {
 
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
       // that might be referenced
-      builder = builder.appendProjections(expressions, analysis, symbolAllocator, queryContext);
+      builder = builder.appendProjections(expressions, symbolAllocator, queryContext);
     }
 
     List<Expression> outputs = outputExpressions(selectExpressions);
@@ -139,34 +136,30 @@ public class QueryPlanner {
         // translated
         // aggregations are visible.
         List<Expression> orderByAggregates = analysis.getOrderByAggregates(node.getOrderBy().get());
-        builder =
-            builder.appendProjections(orderByAggregates, analysis, symbolAllocator, queryContext);
+        builder = builder.appendProjections(orderByAggregates, symbolAllocator, queryContext);
       }
 
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      // TODO this appendProjections may be removed
-      builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
-      // List<Symbol> newFields = new ArrayList<>();
-      // newFields.addAll(builder.getTranslations().getFieldSymbols());
+      List<Symbol> newFields = new ArrayList<>();
+      newFields.addAll(builder.getTranslations().getFieldSymbolsList());
 
-      //            outputs.stream()
-      //                    .map(builder::translate)
-      //                    .forEach(newFields::add);
+      outputs.stream().map(builder::translate).forEach(newFields::add);
 
-      // builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
+      builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    if (!orderBy.isEmpty()) {
+    if (orderBy.size() > 0) {
       builder =
           builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
@@ -175,7 +168,7 @@ public class QueryPlanner {
     builder = offset(builder, node.getOffset());
     builder = limit(builder, node.getLimit(), orderingScheme);
 
-    builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
@@ -240,34 +233,16 @@ public class QueryPlanner {
     }
   }
 
-  private PlanBuilder filter(PlanBuilder planBuilder, Expression predicate) {
+  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate) {
     if (predicate == null) {
-      return planBuilder;
+      return subPlan;
     }
 
-    Pair<Expression, Boolean> resultPair = extractGlobalTimeFilter(predicate);
-    Expression globalTimePredicate = null;
-    if (resultPair.left != null) {
-      globalTimePredicate =
-          ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
-
-      queryContext.setGlobalTimeFilter(
-          globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
-    }
-    boolean hasValueFilter = resultPair.right;
-    if (!hasValueFilter) {
-      return planBuilder;
-    }
-    analysis.setHasValueFilter(true);
-    // TODO if predicate equals TrueConstant, no need filter
-
-    return planBuilder.withNewRoot(
+    // planBuilder = subqueryPlanner.handleSubqueries(subPlan, predicate,
+    // analysis.getSubqueries(node));
+    return subPlan.withNewRoot(
         new FilterNode(
-            queryIdAllocator.genPlanNodeId(),
-            planBuilder.getRoot(),
-            planBuilder.rewrite(predicate)));
-
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
+            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
   }
 
   public static Expression coerceIfNecessary(

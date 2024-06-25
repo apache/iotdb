@@ -15,6 +15,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -49,6 +53,26 @@ public class SymbolAllocator {
     }
 
     return symbol;
+  }
+
+  public Symbol newSymbol(Expression expression, Type type) {
+    return newSymbol(expression, type, null);
+  }
+
+  public Symbol newSymbol(Expression expression, Type type, String suffix) {
+    String nameHint = "expr";
+    if (expression instanceof Identifier) {
+      nameHint = ((Identifier) expression).getValue();
+    } else if (expression instanceof FunctionCall) {
+      nameHint = ((FunctionCall) expression).getName().getSuffix();
+    } else if (expression instanceof SymbolReference) {
+      nameHint = ((SymbolReference) expression).getName();
+    }
+    /*else if (expression instanceof GroupingOperation) {
+      nameHint = "grouping";
+    }*/
+
+    return newSymbol(nameHint, type, suffix);
   }
 
   public Symbol newSymbol(Field field) {

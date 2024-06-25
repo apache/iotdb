@@ -27,7 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
@@ -254,6 +256,25 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
+    protected Expression visitIsNotNullPredicate(IsNotNullPredicate node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteIsNotNullPredicate(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression value = rewrite(node.getValue(), context.get());
+
+      if (value != node.getValue()) {
+        return new IsNotNullPredicate(value);
+      }
+
+      return node;
+    }
+
+    @Override
     protected Expression visitNullIfExpression(NullIfExpression node, Context<C> context) {
       if (!context.isDefaultRewrite()) {
         Expression result =
@@ -380,6 +401,27 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
+    public Expression visitLikePredicate(LikePredicate node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteLikePredicate(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression escape = null;
+      if (node.getEscape().isPresent()) {
+        escape = node.getEscape().get();
+      }
+
+      return new LikePredicate(
+          process(node.getValue(), context),
+          process(node.getPattern(), context),
+          process(escape, context));
+    }
+
+    @Override
     public Expression visitInPredicate(InPredicate node, Context<C> context) {
       if (!context.isDefaultRewrite()) {
         Expression result =
@@ -449,6 +491,14 @@ public final class ExpressionTreeRewriter<C> {
 
     @Override
     protected Expression visitIdentifier(Identifier node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteIdentifier(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
       return node;
     }
 
