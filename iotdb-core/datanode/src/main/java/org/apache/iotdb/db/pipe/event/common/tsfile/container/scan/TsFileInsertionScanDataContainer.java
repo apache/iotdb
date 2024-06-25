@@ -345,6 +345,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           isMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
               : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+      currentIsAligned = true;
     } else {
       chunkReader = null;
     }
