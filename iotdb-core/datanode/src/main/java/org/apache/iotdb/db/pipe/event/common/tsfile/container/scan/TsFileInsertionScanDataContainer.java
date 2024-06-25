@@ -42,6 +42,7 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -49,6 +50,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -176,8 +178,11 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             ((boolean[]) columns[i])[rowIndex] = primitiveType.getBoolean();
             break;
           case INT32:
-          case DATE:
             ((int[]) columns[i])[rowIndex] = primitiveType.getInt();
+            break;
+          case DATE:
+            ((LocalDate[]) columns[i])[rowIndex] =
+                DateUtils.parseIntToLocalDate(primitiveType.getInt());
             break;
           case INT64:
           case TIMESTAMP:
@@ -333,7 +338,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     }
 
     lastMarker = marker;
-    if (Objects.nonNull(timeChunk)) {
+    if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
       chunkReader =
           isMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
