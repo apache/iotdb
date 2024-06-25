@@ -76,7 +76,11 @@ public class TsFileSplitter {
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
 
+  // Maintain the number of times the chunk of each measurement appears.
   private Map<String, Integer> valueColumn2TimeChunkIndex = new HashMap<>();
+  // When encountering a value chunk, find the corresponding time chunk index through
+  // valueColumn2TimeChunkIndex,
+  // and then restore the corresponding context in the following List through time chunk index
   private List<Map<Integer, List<AlignedChunkData>>> pageIndex2ChunkDataList = new ArrayList<>();
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
@@ -107,7 +111,7 @@ public class TsFileSplitter {
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             processTimeChunkOrNonAlignedChunk(reader, marker);
             if (isAligned) {
-              storeTimeColumnContext();
+              storeTimeChunkContext();
             }
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
@@ -295,7 +299,7 @@ public class TsFileSplitter {
       reader.readChunk(-1, header.getDataSize());
       return;
     }
-    switchToValueColumnContext(reader, header.getMeasurementID());
+    switchToTimeChunkContextOfCurrentMeasurement(reader, header.getMeasurementID());
     if (header.getDataSize() == 0) {
       handleEmptyValueChunk(header, pageIndex2ChunkData, chunkMetadata, isTimeChunkNeedDecode);
       return;
@@ -342,7 +346,7 @@ public class TsFileSplitter {
     }
   }
 
-  private void storeTimeColumnContext() {
+  private void storeTimeChunkContext() {
     pageIndex2TimesList.add(pageIndex2Times);
     pageIndex2ChunkDataList.add(pageIndex2ChunkData);
     isTimeChunkNeedDecodeList.add(isTimeChunkNeedDecode);
@@ -351,8 +355,8 @@ public class TsFileSplitter {
     isTimeChunkNeedDecode = true;
   }
 
-  private void switchToValueColumnContext(TsFileSequenceReader reader, String measurement)
-      throws IOException {
+  private void switchToTimeChunkContextOfCurrentMeasurement(
+      TsFileSequenceReader reader, String measurement) throws IOException {
     int index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
     if (index != timeChunkIndexOfCurrentValueColumn) {
       System.out.println(

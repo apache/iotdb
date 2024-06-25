@@ -43,20 +43,19 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class is used to be compatible with the new distribution of aligned series in chunk group.
+ * In past versions, a time chunk and all its corresponding value chunks were continuous within the
+ * chunk group. In order to solve the problem of excessive memory usage during compaction, the value
+ * column is grouped and merged, which will cause the above rules to be broken.
+ */
 public class BatchedAlignedValueChunkData extends AlignedChunkData {
 
-  private ChunkHeader timeChunkHeader = null;
-  private final List<ValueChunkWriter> valueChunkWriters;
+  private List<ValueChunkWriter> valueChunkWriters;
 
   // Used for splitter
   public BatchedAlignedValueChunkData(AlignedChunkData alignedChunkData) {
     super(alignedChunkData);
-    if (alignedChunkData instanceof BatchedAlignedValueChunkData) {
-      this.timeChunkHeader = ((BatchedAlignedValueChunkData) alignedChunkData).timeChunkHeader;
-    } else {
-      this.timeChunkHeader = alignedChunkData.chunkHeaderList.get(0);
-    }
-    valueChunkWriters = new ArrayList<>();
   }
 
   // Used for deserialize
@@ -77,6 +76,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
     satisfiedLengthQueue.offer(satisfiedLength);
 
+    // The time column data is not included after serialization, so each value page needs to record
+    // its start time and end time.
     long pageStartTime = Long.MAX_VALUE, pageEndTime = Long.MIN_VALUE;
     for (int i = 0; i < times.length; i++) {
       if (times[i] >= endTime) {
@@ -169,6 +170,12 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
         continue;
       }
 
+      // Since there is no data in the time column, we cannot provide the corresponding time for
+      // each value.
+      // However, if we only need to construct ValueChunk, we only need to provide the start time
+      // and end time of each page to construct the statistic. Therefore, when writing data to
+      // ValueChunkWriter, first use the wrong time. Before sealing each page, modify the statistic
+      // in the page writer and set the correct start time and end time.
       final int length = ReadWriteIOUtils.readInt(stream);
       for (int j = 0; j < length; j++) {
         final boolean isNull = ReadWriteIOUtils.readBool(stream);
@@ -211,6 +218,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       Statistics<? extends Serializable> statistics =
           valueChunkWriter.getPageWriter().getStatistics();
 
+      // set the correct start time and end time in statistics
       long startTime = ReadWriteIOUtils.readLong(stream);
       long endTime = ReadWriteIOUtils.readLong(stream);
       statistics.setStartTime(startTime);
