@@ -828,18 +828,21 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       session.open();
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.topic1.s");
         config.put(TopicConstant.END_TIME_KEY, currentTime - 1);
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
         session.createTopic("topic1", config);
       }
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.topic2.s");
         config.put(TopicConstant.START_TIME_KEY, currentTime);
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
         session.createTopic("topic2", config);
       }
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.*.s");
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
         session.createTopic("all", config);
       }
@@ -854,10 +857,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
-            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
+            String.format("insert into root.topic1(time, s, t) values (%s, 1, 2)", i)); // topic1
         session.executeNonQueryStatement(
             String.format(
-                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+                "insert into root.topic2(time, s, t) values (%s, 3, 4)",
+                currentTime + i)); // topic2
       }
       session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
@@ -875,6 +879,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
+      extractorAttributes.put("pattern", "root.topic1.s");
       extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
 
       final TSStatus status =
@@ -895,6 +900,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
+      extractorAttributes.put("pattern", "root.topic2.s");
       extractorAttributes.put("start-time", String.valueOf(currentTime));
 
       final TSStatus status =
@@ -1075,16 +1081,18 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               consumerGroupId, record.getTimestamp());
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else if ("root.topic2.s".equals(columnName)) {
+    }
+
+    if ("root.topic2.s".equals(columnName)) {
       final String sql =
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else {
-      LOGGER.warn("unexpected column name: {}", columnName);
-      throw new Exception("unexpected column name");
     }
+
+    LOGGER.warn("unexpected column name: {}", columnName);
+    throw new Exception("unexpected column name");
   }
 }
