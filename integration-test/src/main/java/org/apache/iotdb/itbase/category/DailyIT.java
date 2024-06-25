@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public interface DailyIT {
-}
+public interface DailyIT {}

@@ -209,7 +209,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final Connection connection = EnvFactory.getEnv().getConnection();
       final Statement statement = connection.createStatement();
       SyncConfigNodeIServiceClient client =
-              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
 
       statement.execute(INSERTION1);
 
