@@ -416,6 +416,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         }
 
         final Event peekedEvent = retryEventQueue.peek();
+
         if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
           retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
         } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
