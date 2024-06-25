@@ -914,7 +914,7 @@ public class DataRegion implements IDataRegionForQuery {
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
-        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
+        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       }
     } finally {
       writeUnlock();
@@ -1090,7 +1090,7 @@ public class DataRegion implements IDataRegionForQuery {
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
-      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
     }
     return true;
   }
@@ -1230,7 +1230,7 @@ public class DataRegion implements IDataRegionForQuery {
         count++;
       }
     }
-    WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, count);
+    WritingMetrics.getInstance().recordMemControlFlushMemTableCount(count);
 
     PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
@@ -1328,7 +1328,7 @@ public class DataRegion implements IDataRegionForQuery {
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
-        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
+        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       }
     } finally {
       writeUnlock();
@@ -1496,7 +1496,7 @@ public class DataRegion implements IDataRegionForQuery {
             e);
       }
     }
-    WritingMetrics.getInstance().recordManualFlushMemTableCount(dataRegionId, 1);
+    WritingMetrics.getInstance().recordManualFlushMemTableCount(1);
   }
 
   /**
@@ -1666,7 +1666,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
-    WritingMetrics.getInstance().recordTimedFlushMemTableCount(dataRegionId, count);
+    WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
   }
 
   public void timedFlushUnseqMemTable() {
@@ -1692,7 +1692,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
-    WritingMetrics.getInstance().recordTimedFlushMemTableCount(dataRegionId, count);
+    WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
   }
 
   /** This method will be blocked until all tsfile processors are closed. */
@@ -1756,7 +1756,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
-    WritingMetrics.getInstance().recordManualFlushMemTableCount(dataRegionId, count);
+    WritingMetrics.getInstance().recordManualFlushMemTableCount(count);
     return futures;
   }
 
@@ -3318,7 +3318,7 @@ public class DataRegion implements IDataRegionForQuery {
           count++;
         }
       }
-      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, count);
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(count);
 
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);

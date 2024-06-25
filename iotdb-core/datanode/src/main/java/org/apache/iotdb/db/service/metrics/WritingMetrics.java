@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointTyp
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
@@ -334,30 +335,53 @@ public class WritingMetrics implements IMetricSet {
       "oldest_mem_table_ram_when_cause_flush";
   public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
+  public static final String FLUSH_THRESHOLD = "flush_threshold";
+  public static final String REJECT_THRESHOLD = "reject_threshold";
+
+  public static final String TIMED_FLUSH_MEMTABLE_COUNT = "timed_flush_memtable_count";
+  public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
+  public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
+  public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
+  public static final String SERIES_FULL_FLUSH_MEMTABLE = "series_full_flush_memtable";
+
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
 
   private Timer memtableLiveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private Counter walFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter timedFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter seriesFullFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
     allDataRegions.forEach(this::createDataRegionMemoryCostMetrics);
     allDataRegionIds.forEach(this::createFlushingMemTableStatusMetrics);
-    allDataRegionIds.forEach(this::createSeriesFullFlushMemTableCounterMetrics);
-    allDataRegionIds.forEach(this::createManualFlushMemTableCounterMetrics);
-    allDataRegionIds.forEach(this::createMemControlFlushMemTableCounterMetrics);
-    allDataRegionIds.forEach(this::createTimedFlushMemTableCounterMetrics);
-    allDataRegionIds.forEach(this::createWalFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createActiveMemtableCounterMetrics);
     createActiveTimePartitionCounterMetrics();
+    walFlushMemtableCounter = createWalFlushMemTableCounterMetrics();
+    timedFlushMemtableCounter = createTimedFlushMemTableCounterMetrics();
+    seriesFullFlushMemtableCounter = createSeriesFullFlushMemTableCounterMetrics();
+    manualFlushMemtableCounter = createManualFlushMemTableCounterMetrics();
+    memControlFlushMemtableCounter = createMemControlFlushMemTableCounterMetrics();
 
     flushThreholdGauge =
         MetricService.getInstance()
-            .getOrCreateGauge(Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT);
+            .getOrCreateGauge(
+                Metric.MEMTABLE_THRESHOLD.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                FLUSH_THRESHOLD);
     rejectThreholdGauge =
         MetricService.getInstance()
-            .getOrCreateGauge(Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT);
+            .getOrCreateGauge(
+                Metric.MEMTABLE_THRESHOLD.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                REJECT_THRESHOLD);
 
     memtableLiveTimer =
         MetricService.getInstance()
@@ -370,16 +394,26 @@ public class WritingMetrics implements IMetricSet {
         dataRegionId -> {
           removeDataRegionMemoryCostMetrics(dataRegionId);
           removeFlushingMemTableStatusMetrics(dataRegionId);
-          removeSeriesFullFlushMemTableCounterMetrics(dataRegionId);
-          removeTimedFlushMemTableCounterMetrics(dataRegionId);
-          removeWalFlushMemTableCounterMetrics(dataRegionId);
-          removeManualFlushMemTableCounterMetrics(dataRegionId);
-          removeMemControlFlushMemTableCounterMetrics(dataRegionId);
           removeActiveMemtableCounterMetrics(dataRegionId);
         });
     removeActiveTimePartitionCounterMetrics();
-    MetricService.getInstance().remove(MetricType.GAUGE, Metric.FLUSH_THRESHOLD.toString());
-    MetricService.getInstance().remove(MetricType.GAUGE, Metric.REJECT_THRESHOLD.toString());
+    removeSeriesFullFlushMemTableCounterMetrics();
+    removeTimedFlushMemTableCounterMetrics();
+    removeWalFlushMemTableCounterMetrics();
+    removeManualFlushMemTableCounterMetrics();
+    removeMemControlFlushMemTableCounterMetrics();
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.MEMTABLE_THRESHOLD.toString(),
+            Tag.TYPE.toString(),
+            FLUSH_THRESHOLD);
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.MEMTABLE_THRESHOLD.toString(),
+            Tag.TYPE.toString(),
+            REJECT_THRESHOLD);
     MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
   }
 
@@ -458,49 +492,49 @@ public class WritingMetrics implements IMetricSet {
                         dataRegionId.toString()));
   }
 
-  public void createWalFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
-    MetricService.getInstance()
+  public Counter createWalFlushMemTableCounterMetrics() {
+    return MetricService.getInstance()
         .getOrCreateCounter(
-            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Tag.TYPE.toString(),
+            WAL_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void createTimedFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
-    MetricService.getInstance()
+  public Counter createTimedFlushMemTableCounterMetrics() {
+    return MetricService.getInstance()
         .getOrCreateCounter(
-            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Tag.TYPE.toString(),
+            TIMED_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void createSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
-    MetricService.getInstance()
+  public Counter createSeriesFullFlushMemTableCounterMetrics() {
+    return MetricService.getInstance()
         .getOrCreateCounter(
-            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Tag.TYPE.toString(),
+            SERIES_FULL_FLUSH_MEMTABLE);
   }
 
-  public void createManualFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
-    MetricService.getInstance()
+  public Counter createManualFlushMemTableCounterMetrics() {
+    return MetricService.getInstance()
         .getOrCreateCounter(
-            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Tag.TYPE.toString(),
+            MANUAL_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void createMemControlFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
-    MetricService.getInstance()
+  public Counter createMemControlFlushMemTableCounterMetrics() {
+    return MetricService.getInstance()
         .getOrCreateCounter(
-            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Tag.TYPE.toString(),
+            MEM_CONTROL_FLUSH_MEMTABLE_COUNT);
   }
 
   public void createActiveMemtableCounterMetrics(DataRegionId dataRegionId) {
@@ -517,49 +551,49 @@ public class WritingMetrics implements IMetricSet {
         .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
-  public void removeSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+  public void removeSeriesFullFlushMemTableCounterMetrics() {
     MetricService.getInstance()
         .remove(
             MetricType.COUNTER,
-            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.TYPE.toString(),
+            SERIES_FULL_FLUSH_MEMTABLE);
   }
 
-  public void removeTimedFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+  public void removeTimedFlushMemTableCounterMetrics() {
     MetricService.getInstance()
         .remove(
             MetricType.COUNTER,
-            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.TYPE.toString(),
+            TIMED_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void removeWalFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+  public void removeWalFlushMemTableCounterMetrics() {
     MetricService.getInstance()
         .remove(
             MetricType.COUNTER,
-            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.TYPE.toString(),
+            WAL_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void removeManualFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+  public void removeManualFlushMemTableCounterMetrics() {
     MetricService.getInstance()
         .remove(
             MetricType.COUNTER,
-            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.TYPE.toString(),
+            MANUAL_FLUSH_MEMTABLE_COUNT);
   }
 
-  public void removeMemControlFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+  public void removeMemControlFlushMemTableCounterMetrics() {
     MetricService.getInstance()
         .remove(
             MetricType.COUNTER,
-            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+            Metric.FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.TYPE.toString(),
+            MEM_CONTROL_FLUSH_MEMTABLE_COUNT);
   }
 
   public void removeActiveMemtableCounterMetrics(DataRegionId dataRegionId) {
@@ -803,54 +837,24 @@ public class WritingMetrics implements IMetricSet {
     memtableLiveTimer.updateMillis(durationMillis);
   }
 
-  public void recordTimedFlushMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+  public void recordTimedFlushMemTableCount(int number) {
+    timedFlushMemtableCounter.inc(number);
   }
 
-  public void recordWalFlushMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+  public void recordWalFlushMemTableCount(int number) {
+    walFlushMemtableCounter.inc(number);
   }
 
-  public void recordSeriesFullFlushMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+  public void recordSeriesFullFlushMemTableCount(int number) {
+    seriesFullFlushMemtableCounter.inc(number);
   }
 
-  public void recordManualFlushMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+  public void recordManualFlushMemTableCount(int number) {
+    manualFlushMemtableCounter.inc(number);
   }
 
-  public void recordMemControlFlushMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+  public void recordMemControlFlushMemTableCount(int number) {
+    memControlFlushMemtableCounter.inc(number);
   }
 
   public void recordActiveMemTableCount(String dataRegionId, int number) {
