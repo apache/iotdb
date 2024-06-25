@@ -174,6 +174,10 @@ public class PipeEventCollector implements EventCollector {
     collectInvocationCount.set(0);
   }
 
+  public long getCollectInvocationCount() {
+    return collectInvocationCount.get();
+  }
+
   public boolean hasNoCollectInvocationAfterReset() {
     return collectInvocationCount.get() == 0;
   }
