@@ -30,14 +30,13 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBatch {
+public class SubscriptionPipeTabletEventBatch {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
@@ -56,23 +55,15 @@ public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBa
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  @Override
-  public List<File> sealTsFiles() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public List<Tablet> sealTablets() {
     return tablets;
   }
 
-  @Override
   public boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
-  @Override
   public boolean onEvent(final EnrichedEvent event) {
     if (event instanceof TabletInsertionEvent) {
       final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
@@ -112,14 +103,12 @@ public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBa
     return shouldEmit();
   }
 
-  @Override
   public void ack() {
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
     }
   }
 
-  @Override
   public void cleanup() {
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
@@ -142,7 +131,6 @@ public class SubscriptionPipeTabletEventBatch implements SubscriptionPipeEventBa
     return Collections.emptyList();
   }
 
-  @Override
   public String toString() {
     return "SubscriptionPipeTabletEventBatch{enrichedEvents="
         + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())

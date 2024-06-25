@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -47,7 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -70,8 +68,6 @@ public abstract class SubscriptionPrefetchingQueue {
       SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxDelayInMs();
   protected final long maxBatchSizeInBytes =
       SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxSizeInBytes();
-  protected final AtomicReference<SubscriptionPipeEventBatch> currentBatchRef =
-      new AtomicReference<>();
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -129,11 +125,20 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
-  protected abstract boolean prefetchTabletInsertionEvent(final TabletInsertionEvent event);
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final TabletInsertionEvent event);
 
-  protected abstract boolean prefetchTsFileInsertionEvent(final PipeTsFileInsertionEvent event);
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final PipeTsFileInsertionEvent event);
 
-  protected abstract boolean prefetchEnrichedEvent();
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean trySealBatch();
 
   protected void prefetchOnce() {
     Event event;
@@ -159,11 +164,11 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof TabletInsertionEvent) {
-        if (prefetchTabletInsertionEvent((TabletInsertionEvent) event)) {
+        if (onEvent((TabletInsertionEvent) event)) {
           break;
         }
       } else if (event instanceof PipeTsFileInsertionEvent) {
-        if (prefetchTsFileInsertionEvent((PipeTsFileInsertionEvent) event)) {
+        if (onEvent((PipeTsFileInsertionEvent) event)) {
           break;
         }
       } else {
@@ -175,7 +180,7 @@ public abstract class SubscriptionPrefetchingQueue {
             "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
             this,
             event);
-        if (prefetchEnrichedEvent()) {
+        if (trySealBatch()) {
           break;
         }
       }
@@ -189,14 +194,9 @@ public abstract class SubscriptionPrefetchingQueue {
     uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
     uncommittedEvents.clear();
 
-    // clean up batch
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (Objects.nonNull(batch)) {
-            batch.cleanup();
-          }
-          return null;
-        });
+    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
+    // in uncommittedEvents
+    prefetchingQueue.clear();
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close

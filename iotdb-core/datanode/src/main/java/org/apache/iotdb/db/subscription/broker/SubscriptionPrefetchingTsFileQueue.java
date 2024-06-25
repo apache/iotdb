@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -46,6 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
@@ -53,6 +53,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
   private final Map<String, SubscriptionEvent> consumerIdToSubscriptionEventMap;
+
+  private final AtomicReference<SubscriptionPipeTsFileEventBatch> currentBatchRef =
+      new AtomicReference<>();
 
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
@@ -239,13 +242,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  protected boolean prefetchTabletInsertionEvent(final TabletInsertionEvent event) {
+  protected boolean onEvent(final TabletInsertionEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
           try {
-            if (batch.onEvent((EnrichedEvent) event)) {
-              consumeBatch((SubscriptionPipeTsFileEventBatch) batch);
+            if (batch.onEvent(event)) {
+              sealBatch(batch);
               result.set(true);
               return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
             }
@@ -262,7 +265,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  protected boolean prefetchTsFileInsertionEvent(final PipeTsFileInsertionEvent event) {
+  protected boolean onEvent(final PipeTsFileInsertionEvent event) {
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
     final SubscriptionEvent subscriptionEvent =
         SubscriptionEvent.generateSubscriptionEventWithInitPayload(event, commitContext);
@@ -272,13 +275,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  protected boolean prefetchEnrichedEvent() {
+  protected boolean trySealBatch() {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
           try {
             if (batch.shouldEmit()) {
-              consumeBatch((SubscriptionPipeTsFileEventBatch) batch);
+              sealBatch(batch);
               result.set(true);
               return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
             }
@@ -294,7 +297,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return result.get();
   }
 
-  private void consumeBatch(final SubscriptionPipeTsFileEventBatch batch) throws Exception {
+  private void sealBatch(final SubscriptionPipeTsFileEventBatch batch) throws Exception {
     final List<File> tsFiles = batch.sealTsFiles();
     final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
     for (final File tsFile : tsFiles) {

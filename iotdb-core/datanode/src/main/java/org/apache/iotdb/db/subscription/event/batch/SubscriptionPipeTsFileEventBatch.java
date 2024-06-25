@@ -19,22 +19,13 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.write.record.Tablet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
 
-public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBatch {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
+public class SubscriptionPipeTsFileEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
 
@@ -43,46 +34,27 @@ public class SubscriptionPipeTsFileEventBatch implements SubscriptionPipeEventBa
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
-  @Override
   public List<File> sealTsFiles() throws Exception {
     return batch.sealTsFiles();
   }
 
-  @Override
-  public List<Tablet> sealTablets() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public boolean shouldEmit() {
     return batch.shouldEmit();
   }
 
-  @Override
-  public boolean onEvent(final EnrichedEvent event) throws Exception {
-    if (event instanceof TabletInsertionEvent) {
-      return batch.onEvent((TabletInsertionEvent) event);
-    }
-
-    LOGGER.warn(
-        "SubscriptionPipeTsFileEventBatch {} only support convert TabletInsertionEvent to tsfile. Ignore {}.",
-        this,
-        event);
-    return false;
+  public boolean onEvent(final TabletInsertionEvent event) throws Exception {
+    return batch.onEvent(event);
   }
 
-  @Override
   public void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  @Override
   public void cleanup() {
     // close batch, it includes clearing the reference count of events
     batch.close();
   }
 
-  @Override
   public String toString() {
     return "SubscriptionPipeTsFileEventBatch{batch=" + batch + "}";
   }

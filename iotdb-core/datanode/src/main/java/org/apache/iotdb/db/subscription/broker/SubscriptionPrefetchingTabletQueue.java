@@ -42,11 +42,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
+
+  private final AtomicReference<SubscriptionPipeTabletEventBatch> currentBatchRef =
+      new AtomicReference<>();
 
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
@@ -62,9 +66,14 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   public void cleanup() {
     super.cleanup();
 
-    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
-    // in uncommittedEvents
-    prefetchingQueue.clear();
+    // clean up batch
+    currentBatchRef.getAndUpdate(
+        (batch) -> {
+          if (Objects.nonNull(batch)) {
+            batch.cleanup();
+          }
+          return null;
+        });
   }
 
   @Override
@@ -74,53 +83,45 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  protected boolean prefetchTabletInsertionEvent(final TabletInsertionEvent event) {
-    return prefetchEnrichedEvent((EnrichedEvent) event);
+  protected boolean onEvent(final TabletInsertionEvent event) {
+    return onEventInternal((EnrichedEvent) event);
   }
 
   @Override
-  protected boolean prefetchTsFileInsertionEvent(final PipeTsFileInsertionEvent event) {
-    return prefetchEnrichedEvent(event);
+  protected boolean onEvent(final PipeTsFileInsertionEvent event) {
+    return onEventInternal(event);
   }
 
-  private boolean prefetchEnrichedEvent(final EnrichedEvent event) {
+  private boolean onEventInternal(final EnrichedEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          try {
-            if (batch.onEvent(event)) {
-              consumeBatch((SubscriptionPipeTabletEventBatch) batch);
-              result.set(true);
-              return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
-            }
-            return batch;
-          } catch (final Exception ignored) {
-            return batch;
+          if (batch.onEvent(event)) {
+            sealBatch(batch);
+            result.set(true);
+            return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
           }
+          return batch;
         });
     return result.get();
   }
 
   @Override
-  protected boolean prefetchEnrichedEvent() {
+  protected boolean trySealBatch() {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          try {
-            if (batch.shouldEmit()) {
-              consumeBatch((SubscriptionPipeTabletEventBatch) batch);
-              result.set(true);
-              return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
-            }
-            return batch;
-          } catch (final Exception ignored) {
-            return batch;
+          if (batch.shouldEmit()) {
+            sealBatch(batch);
+            result.set(true);
+            return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
           }
+          return batch;
         });
     return result.get();
   }
 
-  private void consumeBatch(final SubscriptionPipeTabletEventBatch batch) {
+  private void sealBatch(final SubscriptionPipeTabletEventBatch batch) {
     final List<Tablet> tablets = batch.sealTablets();
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
     final SubscriptionEvent subscriptionEvent =
