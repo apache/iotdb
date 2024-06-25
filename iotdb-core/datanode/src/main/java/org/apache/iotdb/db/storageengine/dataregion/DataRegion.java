@@ -914,6 +914,7 @@ public class DataRegion implements IDataRegionForQuery {
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
       }
     } finally {
       writeUnlock();
@@ -1089,6 +1090,7 @@ public class DataRegion implements IDataRegionForQuery {
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
     }
     return true;
   }
@@ -1206,6 +1208,7 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
+    int count = 0;
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       TsFileProcessor tsFileProcessor = entry.getKey();
@@ -1224,8 +1227,10 @@ public class DataRegion implements IDataRegionForQuery {
       // check memtable size and may asyncTryToFlush the work memtable
       if (entry.getKey().shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        count++;
       }
     }
+    WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, count);
 
     PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
@@ -1323,6 +1328,7 @@ public class DataRegion implements IDataRegionForQuery {
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, 1);
       }
     } finally {
       writeUnlock();
@@ -1490,6 +1496,7 @@ public class DataRegion implements IDataRegionForQuery {
             e);
       }
     }
+    WritingMetrics.getInstance().recordManualFlushMemTableCount(dataRegionId, 1);
   }
 
   /**
@@ -1731,21 +1738,25 @@ public class DataRegion implements IDataRegionForQuery {
   List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
+    int count = 0;
     try {
       logger.info("async force close all files in database: {}", databaseName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
         futures.add(asyncCloseOneTsFileProcessor(true, tsFileProcessor));
+        count++;
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         futures.add(asyncCloseOneTsFileProcessor(false, tsFileProcessor));
+        count++;
       }
     } finally {
       writeUnlock();
     }
+    WritingMetrics.getInstance().recordManualFlushMemTableCount(dataRegionId, count);
     return futures;
   }
 
@@ -3286,6 +3297,7 @@ public class DataRegion implements IDataRegionForQuery {
             });
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+      int count = 0;
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
@@ -3303,8 +3315,10 @@ public class DataRegion implements IDataRegionForQuery {
         // check memtable size and may asyncTryToFlush the work memtable
         if (tsFileProcessor.shouldFlush()) {
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+          count++;
         }
       }
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(dataRegionId, count);
 
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);

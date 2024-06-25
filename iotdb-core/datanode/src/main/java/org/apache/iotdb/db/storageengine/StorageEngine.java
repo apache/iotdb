@@ -416,6 +416,8 @@ public class StorageEngine implements IService {
     WRITING_METRICS.createSeriesFullFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createWalFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createTimedFlushMemTableCounterMetrics(dataRegionId);
+    WRITING_METRICS.createManualFlushMemTableCounterMetrics(dataRegionId);
+    WRITING_METRICS.createMemControlFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
@@ -709,6 +711,8 @@ public class StorageEngine implements IService {
       WRITING_METRICS.removeWalFlushMemTableCounterMetrics(regionId);
       WRITING_METRICS.removeTimedFlushMemTableCounterMetrics(regionId);
       WRITING_METRICS.removeSeriesFullFlushMemTableCounterMetrics(regionId);
+      WRITING_METRICS.removeManualFlushMemTableCounterMetrics(regionId);
+      WRITING_METRICS.removeMemControlFlushMemTableCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();

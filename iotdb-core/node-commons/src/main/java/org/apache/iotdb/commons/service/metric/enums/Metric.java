@@ -80,6 +80,8 @@ public enum Metric {
   REJECT_THRESHOLD("reject_threshold"),
   TIMED_FLUSH_MEMTABLE_COUNT("timed_flush_memtable_count"),
   WAL_FLUSH_MEMTABLE_COUNT("wal_flush_memtable_count"),
+  MANUAL_FLUSH_MEMTABLE_COUNT("manual_flush_memtable_count"),
+  MEM_CONTROL_FLUSH_MEMTABLE_COUNT("mem_control_flush_memtable_count"),
   SERIES_FULL_FLUSH_MEMTABLE("series_full_flush_memtable"),
   ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
   ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),

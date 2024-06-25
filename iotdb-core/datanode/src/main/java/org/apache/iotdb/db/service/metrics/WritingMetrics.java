@@ -345,6 +345,8 @@ public class WritingMetrics implements IMetricSet {
     allDataRegions.forEach(this::createDataRegionMemoryCostMetrics);
     allDataRegionIds.forEach(this::createFlushingMemTableStatusMetrics);
     allDataRegionIds.forEach(this::createSeriesFullFlushMemTableCounterMetrics);
+    allDataRegionIds.forEach(this::createManualFlushMemTableCounterMetrics);
+    allDataRegionIds.forEach(this::createMemControlFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createTimedFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createWalFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createActiveMemtableCounterMetrics);
@@ -371,6 +373,8 @@ public class WritingMetrics implements IMetricSet {
           removeSeriesFullFlushMemTableCounterMetrics(dataRegionId);
           removeTimedFlushMemTableCounterMetrics(dataRegionId);
           removeWalFlushMemTableCounterMetrics(dataRegionId);
+          removeManualFlushMemTableCounterMetrics(dataRegionId);
+          removeMemControlFlushMemTableCounterMetrics(dataRegionId);
           removeActiveMemtableCounterMetrics(dataRegionId);
         });
     removeActiveTimePartitionCounterMetrics();
@@ -481,6 +485,24 @@ public class WritingMetrics implements IMetricSet {
             dataRegionId.toString());
   }
 
+  public void createManualFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void createMemControlFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
   public void createActiveMemtableCounterMetrics(DataRegionId dataRegionId) {
     MetricService.getInstance()
         .getOrCreateCounter(
@@ -518,6 +540,24 @@ public class WritingMetrics implements IMetricSet {
         .remove(
             MetricType.COUNTER,
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeManualFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeMemControlFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -788,6 +828,26 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordManualFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.MANUAL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordMemControlFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.MEM_CONTROL_FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
