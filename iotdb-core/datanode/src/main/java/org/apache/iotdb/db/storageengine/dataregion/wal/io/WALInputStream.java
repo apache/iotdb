@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.MmapUtil;
 
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -30,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -212,20 +210,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.uncompressedSize
           || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) dataBuffer);
-        }
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
+        dataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
       }
       dataBuffer.clear();
 
       if (Objects.isNull(compressedBuffer)
           || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
           || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(compressedBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) compressedBuffer);
-        }
-        compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        compressedBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       }
       compressedBuffer.clear();
       // limit the buffer to prevent it from reading too much byte than expected
@@ -242,10 +234,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.dataInDiskSize
           || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) dataBuffer);
-        }
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        dataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       }
       dataBuffer.clear();
       // limit the buffer to prevent it from reading too much byte than expected
