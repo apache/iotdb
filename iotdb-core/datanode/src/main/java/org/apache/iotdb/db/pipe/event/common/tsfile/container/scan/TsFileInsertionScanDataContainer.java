@@ -325,6 +325,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           }
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
+          // Return before "currentDevice" changes
+          if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
+            chunkReader =
+                isMultiPage
+                    ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
+                    : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+            currentIsAligned = true;
+            lastMarker = marker;
+            return;
+          }
           // TODO: Replace it by IDeviceID
           final String deviceID =
               ((PlainDeviceID) tsFileSequenceReader.readChunkGroupHeader().getDeviceID())
