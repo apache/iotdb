@@ -209,8 +209,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           ((boolean[]) columns[0])[rowIndex] = data.getBoolean();
           break;
         case INT32:
-        case DATE:
           ((int[]) columns[0])[rowIndex] = data.getInt();
+          break;
+        case DATE:
+          ((LocalDate[]) columns[0])[rowIndex] = DateUtils.parseIntToLocalDate(data.getInt());
           break;
         case INT64:
         case TIMESTAMP:
