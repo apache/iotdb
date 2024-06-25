@@ -28,7 +28,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -121,7 +121,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         if (Objects.isNull(deviceIsAlignedMap)) {
           this.deviceIsAlignedMap = readDeviceIsAlignedMap();
           memoryRequiredInBytes +=
-              PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(this.deviceIsAlignedMap);
+              PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(this.deviceIsAlignedMap);
 
           // Filter devices that may overlap with pattern first
           // to avoid reading all time-series of all devices.
@@ -132,11 +132,12 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         }
 
         measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
         deviceMeasurementsMap = readFilteredDeviceMeasurementsMap(devices);
         memoryRequiredInBytes +=
-            PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
+            PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 

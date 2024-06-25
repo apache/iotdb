@@ -161,7 +161,7 @@ public abstract class EnrichedEvent implements Event {
         isReleased.set(true);
       }
       if (newReferenceCount < 0) {
-        LOGGER.warn(
+        LOGGER.debug(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
