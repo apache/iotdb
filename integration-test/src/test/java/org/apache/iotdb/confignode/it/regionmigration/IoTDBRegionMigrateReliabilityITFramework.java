@@ -298,10 +298,22 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         checkRegionFileExistIfNodeAlive(originalDataNode);
         checkPeersClearIfNodeAlive(allDataNodeId, destDataNode, selectedRegion);
       }
+
+      // test pass, manually close resource
+      try {
+        statement.close();
+      } catch (Exception ignore) {
+
+      }
+      try {
+        connection.close();
+      } catch (Exception ignore) {
+
+      }
+      LOGGER.info("test pass");
     } catch (InconsistentDataException ignore) {
 
     }
-    LOGGER.info("test pass");
   }
 
   private void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
@@ -586,7 +598,15 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private static void checkRegionFileClear(int dataNode) {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
-    Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+    try {
+      Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+    } catch (AssertionError e) {
+      LOGGER.error(
+          "Original DataNode {} region file not clear, these files is still remain: {}",
+          dataNode,
+          Arrays.toString(originalRegionDir.listFiles()));
+      throw e;
+    }
     LOGGER.info("Original DataNode {} region file clear", dataNode);
   }
 
@@ -650,8 +670,12 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private void checkClusterStillWritable() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(INSERTION2);
       ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
+      Assert.assertEquals(1, resultSet.getLong(1));
+      Assert.assertEquals(1, resultSet.getLong(2));
+      LOGGER.info("Old data is still remain");
+      statement.execute(INSERTION2);
+      resultSet = statement.executeQuery(COUNT_TIMESERIES);
       resultSet.next();
       Assert.assertEquals(2, resultSet.getLong(1));
       Assert.assertEquals(2, resultSet.getLong(2));
