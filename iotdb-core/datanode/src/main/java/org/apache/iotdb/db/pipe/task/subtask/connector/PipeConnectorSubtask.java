@@ -233,22 +233,27 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           return false;
         });
     synchronized (this) {
-      // If exceptions to a dropped pipe still emerge, it must be caused by the last event, because
-      // now we can reckon that the input pending queue does not contain any of the pipe's events
+      // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
+      // stopped submission but will not be stopped by critical exceptions, because when it acquires
+      // lock, the pipe is already dropped, thus it will do nothing.
+      // Note that since we use a new thread to stop all the pipes, we will not encounter deadlock
+      // here. Or else we will.
       if (lastEvent instanceof EnrichedEvent
           && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
         // Do not clear last event's reference count because it may be on transferring
         lastEvent = null;
         // Submit self to avoid that the lastEvent has been retried "max times" times and has
         // stopped executing.
-        // 1. If the last event is still on execution, the "submitSelf" cause nothing.
-        // 2. If the last event is on success, then the callback method will skip this turn of
-        //    submission.
-        // 3. If the last event is on failure, then if it should retry, it's skipped. If it should
-        //    not retry, it's retried here and other "report" will wait for the "drop pipe" lock to
-        //    stop all the pipes with critical exceptions. Note that this "discardEventsOfPipe" is
-        //    under the "drop pipe" lock, the report will see no pipes with critical exceptions and
-        //    will do nothing.
+        // 1. If the last event is still on execution, or submitted by the previous "onSuccess" or
+        //    "onFailure", the "submitSelf" cause nothing.
+        // 2. If the last event is waiting the instance lock to call "onSuccess", then the callback
+        //    method will skip this turn of submission.
+        // 3. If the last event is waiting to call "onFailure", then it will be ignored because the
+        //    last event has been set to null.
+        // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
+        //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
+        //    the pipes with critical exceptions. As illustrated above, the "report" will do
+        // nothing.
         submitSelf();
       }
       // We only clear the lastEvent's reference count when it's already on failure. Namely, we
