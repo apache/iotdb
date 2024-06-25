@@ -99,6 +99,7 @@ public class TableScanNode extends SourceNode {
       List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
+      Expression timePredicate,
       Expression pushDownPredicate) {
     super(id);
     this.qualifiedObjectName = qualifiedObjectName;
@@ -107,6 +108,7 @@ public class TableScanNode extends SourceNode {
     this.deviceEntries = deviceEntries;
     this.idAndAttributeIndexMap = idAndAttributeIndexMap;
     this.scanOrder = scanOrder;
+    this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
   }
 
@@ -133,6 +135,7 @@ public class TableScanNode extends SourceNode {
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
+        timePredicate,
         pushDownPredicate);
   }
 
@@ -180,6 +183,13 @@ public class TableScanNode extends SourceNode {
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
 
+    if (timePredicate != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(timePredicate, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
       Expression.serialize(pushDownPredicate, byteBuffer);
@@ -222,6 +232,13 @@ public class TableScanNode extends SourceNode {
     }
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+
+    if (timePredicate != null) {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(timePredicate, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
 
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write(true, stream);
@@ -267,6 +284,12 @@ public class TableScanNode extends SourceNode {
 
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
+    Expression timePredicate = null;
+    boolean hasTimePredicate = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasTimePredicate) {
+      timePredicate = Expression.deserialize(byteBuffer);
+    }
+
     Expression pushDownPredicate = null;
     boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasPushDownPredicate) {
@@ -283,6 +306,7 @@ public class TableScanNode extends SourceNode {
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
+        timePredicate,
         pushDownPredicate);
   }
 
@@ -393,5 +417,9 @@ public class TableScanNode extends SourceNode {
 
   public Optional<Expression> getTimePredicate() {
     return Optional.ofNullable(timePredicate);
+  }
+
+  public void setTimePredicate(@Nullable Expression timePredicate) {
+    this.timePredicate = timePredicate;
   }
 }
