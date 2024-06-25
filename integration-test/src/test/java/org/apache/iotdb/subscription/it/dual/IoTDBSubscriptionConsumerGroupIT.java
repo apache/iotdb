@@ -879,7 +879,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
-      extractorAttributes.put("pattern", "root.topic1.s");
+      extractorAttributes.put("path", "root.topic1.s");
       extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
 
       final TSStatus status =
@@ -900,7 +900,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
-      extractorAttributes.put("pattern", "root.topic2.s");
+      extractorAttributes.put("path", "root.topic2.s");
       extractorAttributes.put("start-time", String.valueOf(currentTime));
 
       final TSStatus status =
