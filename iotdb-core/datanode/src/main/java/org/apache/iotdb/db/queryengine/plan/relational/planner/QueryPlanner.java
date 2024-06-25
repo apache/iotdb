@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -204,12 +203,7 @@ public class QueryPlanner {
       PlanBuilder builder, List<Expression> outputExpressions) {
     ImmutableList.Builder<Symbol> outputSymbols = ImmutableList.builder();
     for (Expression expression : outputExpressions) {
-      Symbol symbol = null;
-      if (expression instanceof FieldReference) {
-        FieldReference reference = (FieldReference) expression;
-        symbol = builder.getFieldSymbols()[reference.getFieldIndex()];
-      }
-      outputSymbols.add(symbol != null ? symbol : new Symbol(expression.toString()));
+      outputSymbols.add(builder.translate(expression));
     }
     return outputSymbols.build();
   }
