@@ -229,7 +229,8 @@ public class AggregationPushDown implements PlanOptimizer {
         context.setCurDevicePath(new PartialPath(node.getDevice()));
       } catch (IllegalPathException e) {
         throw new IllegalStateException(
-            "Should always legal here. Illegal Path is " + node.getDevice());
+            String.format(
+                "Illegal device path: %s in AggregationPushDown rule.", node.getDevice()));
       }
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
