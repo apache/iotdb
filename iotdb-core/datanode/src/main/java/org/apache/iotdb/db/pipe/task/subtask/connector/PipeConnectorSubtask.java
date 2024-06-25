@@ -233,7 +233,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           return false;
         });
     synchronized (this) {
-      // If exceptions to dropped pipe still emerge, it must be caused by the last event, because
+      // If exceptions to a dropped pipe still emerge, it must be caused by the last event, because
       // now we can reckon that the input pending queue does not contain any of the pipe's events
       if (lastEvent instanceof EnrichedEvent
           && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
@@ -246,10 +246,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         // 2. If the last event is on success, then the callback method will skip this turn of
         //    submission.
         // 3. If the last event is on failure, then if it should retry, it's skipped. If it should
-        //    not retry, it's retried here and other "report" will wait for the lock to stop all
-        //    the pipes with critical exceptions. Note that this "discardEventsOfPipe" is under
-        //    the "drop pipe" lock, the report will see no pipes with critical exceptions and will
-        //    do nothing.
+        //    not retry, it's retried here and other "report" will wait for the "drop pipe" lock to
+        //    stop all the pipes with critical exceptions. Note that this "discardEventsOfPipe" is
+        //    under the "drop pipe" lock, the report will see no pipes with critical exceptions and
+        //    will do nothing.
         submitSelf();
       }
       // We only clear the lastEvent's reference count when it's already on failure. Namely, we
