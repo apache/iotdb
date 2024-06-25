@@ -183,7 +183,7 @@ public class PathUtils {
   }
 
   public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
-    return deviceID.startWith(storageGroup + ".");
+    return deviceID.matchDatabaseName(storageGroup);
   }
 
   /** Remove the back quotes of a measurement if necessary */
