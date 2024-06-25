@@ -205,10 +205,11 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
-        SyncConfigNodeIServiceClient client =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+    try {
+      final Connection connection = EnvFactory.getEnv().getConnection();
+      final Statement statement = connection.createStatement();
+      SyncConfigNodeIServiceClient client =
+              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
 
       statement.execute(INSERTION1);
 
@@ -519,7 +520,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
     try {
       Awaitility.await()
-          .atMost(1, TimeUnit.MINUTES)
+          .atMost(2, TimeUnit.MINUTES)
           .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {

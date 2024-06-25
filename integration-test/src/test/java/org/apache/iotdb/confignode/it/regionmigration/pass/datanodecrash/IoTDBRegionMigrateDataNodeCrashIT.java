@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   // region Coordinator DataNode crash tests
 
