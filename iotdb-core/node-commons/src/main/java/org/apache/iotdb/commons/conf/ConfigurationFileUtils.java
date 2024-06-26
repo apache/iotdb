@@ -155,6 +155,32 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
+  public static String readConfigurationTemplateFile(String parameterName) throws IOException {
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        // skip comments and empty lines
+        if (line.startsWith("#") || !line.contains("=")) {
+          continue;
+        }
+        String[] parts = line.split("=");
+        if (parts[0].trim().equals(parameterName)) {
+          return parts[1].trim();
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+    logger.error("error parameterName {}", parameterName);
+    return null;
+  }
+
   public static String readConfigurationTemplateFile() throws IOException {
     StringBuilder content = new StringBuilder();
     try (InputStream inputStream =

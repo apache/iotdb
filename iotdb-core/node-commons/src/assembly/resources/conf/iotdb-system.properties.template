@@ -24,7 +24,7 @@
 # Used for indicate cluster name and distinguish different cluster.
 # If you need to modify the cluster name, it's recommended to use 'set configuration "cluster_name=xxx"' sql.
 # Manually modifying configuration file is not recommended, which may cause node restart fail.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: string
 cluster_name=defaultCluster
 
@@ -1410,6 +1410,7 @@ iot_consensus_cache_window_time_in_ms=-1
 
 # Enable Write Ahead Log compression.
 # Option: true, false
+# effectiveMode: hot_reload
 enable_wal_compression=false
 
 ####################
@@ -1462,7 +1463,7 @@ page_size_in_byte=65536
 max_number_of_points_in_page=10000
 
 # The threshold for pattern matching in regex
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 pattern_matching_threshold=1000000
 
@@ -1773,7 +1774,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ### Fast IoTConsensus Configuration
 ####################
 # Default event buffer size for connector and receiver in pipe consensus
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # DataType: int
 fast_iot_consensus_pipeline_size=5
 
@@ -1801,32 +1802,32 @@ procedure_completed_evict_ttl=800
 ####################
 
 # whether to enable the mqtt service.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: boolean
 enable_mqtt_service=false
 
 # the mqtt service binding host.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: String
 mqtt_host=127.0.0.1
 
 # the mqtt service binding port.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_port=1883
 
 # the handler pool size for handing the mqtt messages.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_handler_pool_size=1
 
 # the mqtt message payload formatter.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: String
 mqtt_payload_formatter=json
 
 # max length of mqtt message in byte
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_max_message_size=1048576
 
