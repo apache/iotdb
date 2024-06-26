@@ -170,6 +170,9 @@ public class ConfigurationFileUtils {
         }
         String[] parts = line.split("=");
         if (parts[0].trim().equals(parameterName)) {
+          // For directory configuration, only 'dn_data_dirs' supports hot reloading.
+          // The default path is in Linux format. On Windows, we need to convert it to the Windows
+          // path format.
           if (parameterName.equals("dn_data_dirs")) {
             String os = System.getProperty("os.name").toLowerCase();
             if (os.contains("win")) {
