@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -42,7 +42,7 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(memoryLimitInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(

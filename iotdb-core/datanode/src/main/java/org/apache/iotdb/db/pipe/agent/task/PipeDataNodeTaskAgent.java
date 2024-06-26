@@ -47,7 +47,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInser
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
@@ -314,7 +314,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -393,7 +393,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -515,7 +515,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
     try {
       final long linkedButDeletedTsFileSize =
-          PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
+          PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
       final double totalDisk =
           MetricService.getInstance()
               .getAutoGauge(
@@ -538,7 +538,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 

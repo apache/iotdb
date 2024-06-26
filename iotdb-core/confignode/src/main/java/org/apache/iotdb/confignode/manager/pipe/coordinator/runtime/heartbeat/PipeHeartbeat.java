@@ -63,6 +63,10 @@ public class PipeHeartbeat {
     }
   }
 
+  public int getPipeMetaSize() {
+    return pipeMetaMap.size();
+  }
+
   public PipeMeta getPipeMeta(final PipeStaticMeta pipeStaticMeta) {
     return pipeMetaMap.get(pipeStaticMeta);
   }
