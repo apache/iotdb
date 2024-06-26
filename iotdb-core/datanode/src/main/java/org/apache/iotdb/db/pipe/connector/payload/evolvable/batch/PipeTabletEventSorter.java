@@ -108,18 +108,17 @@ public class PipeTabletEventSorter {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] =
-            deduplicateValueList(
-                deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
+            reorderValueList(deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] =
-              deduplicateBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
+              reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
       }
     }
   }
 
-  private static Object deduplicateValueList(
+  private static Object reorderValueList(
       int deduplicatedSize,
       final Object valueList,
       final TSDataType dataType,
@@ -183,7 +182,7 @@ public class PipeTabletEventSorter {
     }
   }
 
-  private static BitMap deduplicateBitMap(
+  private static BitMap reorderBitMap(
       int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
     final BitMap deduplicatedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < deduplicatedSize; i++) {
