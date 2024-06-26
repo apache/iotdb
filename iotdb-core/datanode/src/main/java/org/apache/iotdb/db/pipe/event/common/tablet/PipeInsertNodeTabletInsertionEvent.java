@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -132,7 +132,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeResourceManager.wal().pin(walEntryHandler);
+      PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -147,7 +147,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeResourceManager.wal().unpin(walEntryHandler);
+      PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // Release the containers' memory.
       if (dataContainers != null) {
         dataContainers.clear();

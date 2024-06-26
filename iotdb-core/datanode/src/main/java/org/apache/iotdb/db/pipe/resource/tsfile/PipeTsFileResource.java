@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -67,7 +67,9 @@ public class PipeTsFileResource implements AutoCloseable {
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
   public PipeTsFileResource(
-      File hardlinkOrCopiedFile, boolean isTsFile, TsFileResource tsFileResource) {
+      final File hardlinkOrCopiedFile,
+      final boolean isTsFile,
+      final TsFileResource tsFileResource) {
     this.hardlinkOrCopiedFile = hardlinkOrCopiedFile;
     this.isTsFile = isTsFile;
     this.tsFileResource = tsFileResource;
@@ -190,7 +192,7 @@ public class PipeTsFileResource implements AutoCloseable {
     // Only allocate when pipe memory used is less than 50%, because memory here
     // is hard to shrink and may consume too much memory.
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
                 MEMORY_SUFFICIENT_THRESHOLD);
@@ -226,7 +228,7 @@ public class PipeTsFileResource implements AutoCloseable {
 
     // Allocate again for the cached objects.
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(

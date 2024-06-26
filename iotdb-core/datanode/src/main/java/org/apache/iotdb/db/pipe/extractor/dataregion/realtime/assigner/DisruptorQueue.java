@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
@@ -48,14 +48,14 @@ public class DisruptorQueue {
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
-  public DisruptorQueue(EventHandler<PipeRealtimeEvent> eventHandler) {
+  public DisruptorQueue(final EventHandler<PipeRealtimeEvent> eventHandler) {
     final PipeConfig config = PipeConfig.getInstance();
     final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
     final long ringBufferEntrySizeInBytes =
         config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
 
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(
                 ringBufferSize * ringBufferEntrySizeInBytes, currentSize -> currentSize / 2);
 
@@ -80,8 +80,8 @@ public class DisruptorQueue {
     ringBuffer = disruptor.start();
   }
 
-  public void publish(PipeRealtimeEvent event) {
-    EnrichedEvent internalEvent = event.getEvent();
+  public void publish(final PipeRealtimeEvent event) {
+    final EnrichedEvent internalEvent = event.getEvent();
     if (internalEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) internalEvent).recordDisruptorSize(ringBuffer);
     }
@@ -104,7 +104,7 @@ public class DisruptorQueue {
       return event;
     }
 
-    public void setEvent(PipeRealtimeEvent event) {
+    public void setEvent(final PipeRealtimeEvent event) {
       this.event = event;
     }
   }
