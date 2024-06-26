@@ -1670,6 +1670,9 @@ public class IoTDBConfig {
   }
 
   public void setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
     this.queryThreadCount = queryThreadCount;
     this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
