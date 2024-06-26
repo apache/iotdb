@@ -77,10 +77,17 @@ public class PipeTabletEventSorter {
 
     if (!isSorted) {
       sortTimestamps();
+
+      // Do deduplicate anyway.
+      // isDeduplicated may be false positive when isSorted is false.
+      deduplicateTimestamps();
+      isDeduplicated = true;
     }
+
     if (!isDeduplicated) {
       deduplicateTimestamps();
     }
+
     sortAndDeduplicateValuesAndBitMaps();
   }
 
