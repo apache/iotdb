@@ -263,35 +263,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             currentBatchId.get(),
             e.getMessage(),
             e);
-
-        try {
-          fileWriter.close();
-
-          final File sealedFile = fileWriter.getIOWriter().getFile();
-          sealedFiles.add(sealedFile);
-          LOGGER.info(
-              "Batch id = {}: Seal tsfile {} successfully after failed to write tablets into it. ",
-              currentBatchId.get(),
-              sealedFile.getPath());
-
-          fileWriter = null;
-        } catch (final Exception sealException) {
-          LOGGER.warn(
-              "Batch id = {}: Failed to seal tsfile after failed to write tablets into it. ",
-              currentBatchId.get(),
-              sealException);
-
-          final boolean deleteSuccess = FileUtils.deleteQuietly(fileWriter.getIOWriter().getFile());
-          LOGGER.warn(
-              "Batch id = {}: Delete the tsfile {} after failed to seal it {}. "
-                  + "Maybe the tsfile needs to be deleted manually.",
-              currentBatchId.get(),
-              fileWriter.getIOWriter().getFile().getPath(),
-              deleteSuccess ? "successfully" : "unsuccessfully");
-
-          fileWriter = null;
-        }
-
         throw e;
       }
 
