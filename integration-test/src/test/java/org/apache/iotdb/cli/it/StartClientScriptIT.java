@@ -195,10 +195,11 @@ public class StartClientScriptIT extends AbstractScript {
     testOutput(builder5, output5, 0);
 
     final String[] output6 = {
-      "|                         Time|root.db.d1.s_int32|root.db.d1.s_boolean|",
-      "+-----------------------------+------------------+--------------------+",
-      "|1970-01-01T08:00:00.000+08:00|                 0|                null|",
-      "+-----------------------------+------------------+--------------------+",
+      "+----+------------------+--------------------+",
+      "|Time|root.db.d1.s_int32|root.db.d1.s_boolean|",
+      "+----+------------------+--------------------+",
+      "|   0|                 0|                null|",
+      "+----+------------------+--------------------+",
       "Total line number = 1",
       "It costs "
     };
@@ -210,8 +211,9 @@ public class StartClientScriptIT extends AbstractScript {
             ip,
             "-p",
             port,
+            "-disableISO8601",
             "-e",
-            "\"select s_int32, s_boolean from root.db.d1;\"");
+            "\"select s_int32, s_boolean from root.db.d1\"");
     builder6.environment().put("IOTDB_HOME", homePath);
     testOutput(builder6, output6, 0);
   }
