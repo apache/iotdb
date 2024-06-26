@@ -139,7 +139,6 @@ public class SubscriptionSessionExample {
     consumer1.open();
     consumer1.subscribe(TOPIC_1);
     while (true) {
-      LockSupport.parkNanos(SLEEP_NS); // wait some time
       final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
       if (messages.isEmpty()) {
         retryCount++;
@@ -198,7 +197,6 @@ public class SubscriptionSessionExample {
                   consumer2.open();
                   consumer2.subscribe(TOPIC_2);
                   while (true) {
-                    LockSupport.parkNanos(SLEEP_NS); // wait some time
                     final List<SubscriptionMessage> messages =
                         consumer2.poll(Collections.singleton(TOPIC_2), POLL_TIMEOUT_MS);
                     if (messages.isEmpty()) {
@@ -311,7 +309,6 @@ public class SubscriptionSessionExample {
                   consumer4.open();
                   consumer4.subscribe(TOPIC_4);
                   while (true) {
-                    LockSupport.parkNanos(SLEEP_NS); // wait some time
                     if (!consumer4.hasMoreData()) {
                       break;
                     }
