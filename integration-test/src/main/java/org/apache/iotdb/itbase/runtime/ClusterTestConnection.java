@@ -19,6 +19,8 @@
 package org.apache.iotdb.itbase.runtime;
 
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
 import java.sql.Blob;
@@ -42,6 +44,8 @@ import java.util.concurrent.Executor;
 
 /** The implementation of {@link Connection} in cluster test. */
 public class ClusterTestConnection implements Connection {
+
+  private static Logger LOGGER = LoggerFactory.getLogger(ClusterTestConnection.class);
 
   private final NodeConnection writeConnection;
   private final List<NodeConnection> readConnections;
@@ -96,11 +100,15 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void close() {
-    writeConnection.close();
-    for (NodeConnection conn : readConnections) {
-      conn.close();
+    try {
+      writeConnection.close();
+      for (NodeConnection conn : readConnections) {
+        conn.close();
+      }
+      isClosed = true;
+    } catch (Exception e) {
+      LOGGER.warn("Exception happens during close(): ", e);
     }
-    isClosed = true;
   }
 
   @Override

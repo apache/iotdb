@@ -205,12 +205,10 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try {
-      final Connection connection = EnvFactory.getEnv().getConnection();
-      final Statement statement = connection.createStatement();
-      SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement();
+        SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       statement.execute(INSERTION1);
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
@@ -299,17 +297,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         checkPeersClearIfNodeAlive(allDataNodeId, destDataNode, selectedRegion);
       }
 
-      // test pass, manually close resource
-      try {
-        statement.close();
-      } catch (Exception ignore) {
-
-      }
-      try {
-        connection.close();
-      } catch (Exception ignore) {
-
-      }
       LOGGER.info("test pass");
     } catch (InconsistentDataException ignore) {
 
@@ -670,10 +657,13 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private void checkClusterStillWritable() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // check old data
       ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
+      resultSet.next();
       Assert.assertEquals(1, resultSet.getLong(1));
       Assert.assertEquals(1, resultSet.getLong(2));
       LOGGER.info("Old data is still remain");
+      // write new data
       statement.execute(INSERTION2);
       resultSet = statement.executeQuery(COUNT_TIMESERIES);
       resultSet.next();
