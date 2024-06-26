@@ -263,6 +263,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             currentBatchId.get(),
             e.getMessage(),
             e);
+
+        final boolean deleteSuccess = FileUtils.deleteQuietly(fileWriter.getIOWriter().getFile());
+        LOGGER.warn(
+            "Batch id = {}: Delete the tsfile {} after failed to write tablets into it {}. {}",
+            currentBatchId.get(),
+            fileWriter.getIOWriter().getFile().getPath(),
+            deleteSuccess ? "successfully" : "unsuccessfully",
+            deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+
+        fileWriter = null;
+
         throw e;
       }
 
