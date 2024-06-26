@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 public class SubscriptionSessionExample {
@@ -292,6 +293,7 @@ public class SubscriptionSessionExample {
       subscriptionSession.createTopic(TOPIC_4, config);
     }
 
+    final AtomicLong counter = new AtomicLong();
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < PARALLELISM; ++i) {
       final int idx = i;
@@ -316,8 +318,8 @@ public class SubscriptionSessionExample {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(
-                          Paths.get(System.getProperty("user.dir"), "new-subscription-dir")
-                              .resolve(handler.getPath().getFileName()));
+                          Paths.get(System.getProperty("user.dir"), "exported-tsfiles")
+                              .resolve(TOPIC_4 + "-" + counter.getAndIncrement() + ".tsfile"));
                     }
                   }
                 } catch (final IOException e) {
@@ -336,9 +338,9 @@ public class SubscriptionSessionExample {
   public static void main(final String[] args) throws Exception {
     prepareData();
     // dataQuery();
-    dataSubscription1();
+    // dataSubscription1();
     // dataSubscription2();
     // dataSubscription3();
-    // dataSubscription4();
+    dataSubscription4();
   }
 }
