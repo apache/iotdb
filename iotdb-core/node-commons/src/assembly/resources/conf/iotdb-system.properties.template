@@ -170,7 +170,7 @@ data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-cn_system_dir=data\\confignode\\system
+# cn_system_dir=data\\confignode\\system
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 cn_system_dir=data/confignode/system
@@ -183,7 +183,7 @@ cn_system_dir=data/confignode/system
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-cn_consensus_dir=data\\confignode\\consensus
+# cn_consensus_dir=data\\confignode\\consensus
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 cn_consensus_dir=data/confignode/consensus
@@ -196,7 +196,7 @@ cn_consensus_dir=data/confignode/consensus
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-pipe_receiver_file_dir=data\\confignode\\system\\pipe\\receiver
+# pipe_receiver_file_dir=data\\confignode\\system\\pipe\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 pipe_receiver_file_dir=data/confignode/system/pipe/receiver
@@ -208,7 +208,7 @@ pipe_receiver_file_dir=data/confignode/system/pipe/receiver
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-dn_system_dir=data\\datanode\\system
+# dn_system_dir=data\\datanode\\system
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_system_dir=data/datanode/system
@@ -223,7 +223,7 @@ dn_system_dir=data/datanode/system
 # effectiveMode: hot_reload
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-dn_data_dirs=data\\datanode\\data
+# dn_data_dirs=data\\datanode\\data
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_data_dirs=data/datanode/data
@@ -250,7 +250,7 @@ dn_multi_dir_strategy=SequenceStrategy
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-dn_consensus_dir=data\\datanode\\consensus
+# dn_consensus_dir=data\\datanode\\consensus
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_consensus_dir=data/datanode/consensus
@@ -264,7 +264,7 @@ dn_consensus_dir=data/datanode/consensus
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-dn_wal_dirs=data\\datanode\\wal
+# dn_wal_dirs=data\\datanode\\wal
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_wal_dirs=data/datanode/wal
@@ -273,7 +273,7 @@ dn_wal_dirs=data/datanode/wal
 # Uncomment following fields to configure the tracing root directory.
 # effectiveMode: restart
 # For Windows platform, the index is as follows:
-dn_tracing_dir=datanode\\tracing
+# dn_tracing_dir=datanode\\tracing
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_tracing_dir=datanode/tracing
@@ -286,7 +286,7 @@ dn_tracing_dir=datanode/tracing
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-dn_sync_dir=data\\datanode\\sync
+# dn_sync_dir=data\\datanode\\sync
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 dn_sync_dir=data/datanode/sync
@@ -300,7 +300,7 @@ dn_sync_dir=data/datanode/sync
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-sort_tmp_dir=data\\datanode\\tmp
+# sort_tmp_dir=data\\datanode\\tmp
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 sort_tmp_dir=data/datanode/tmp
@@ -314,7 +314,7 @@ sort_tmp_dir=data/datanode/tmp
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver
+# pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
@@ -328,7 +328,7 @@ pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver
+# pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 pipe_consensus_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
@@ -1410,7 +1410,7 @@ iot_consensus_cache_window_time_in_ms=-1
 
 # Enable Write Ahead Log compression.
 # Option: true, false
-# enable_wal_compression=false
+enable_wal_compression=false
 
 ####################
 ### IoTConsensus Configuration
@@ -1548,7 +1548,7 @@ udf_reader_transformer_collector_memory_proportion=1:1:1
 # For Windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is
 # absolute. Otherwise, it is relative.
-udf_lib_dir=ext\\udf
+# udf_lib_dir=ext\\udf
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 udf_lib_dir=ext/udf
@@ -1562,7 +1562,7 @@ udf_lib_dir=ext/udf
 # For Windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is
 # absolute. Otherwise, it is relative.
-trigger_lib_dir=ext\\trigger
+# trigger_lib_dir=ext\\trigger
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 trigger_lib_dir=ext/trigger
@@ -1617,7 +1617,7 @@ continuous_query_min_every_interval_in_ms=1000
 # For Windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is
 # absolute. Otherwise, it is relative.
-pipe_lib_dir=ext\\pipe
+# pipe_lib_dir=ext\\pipe
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 pipe_lib_dir=ext/pipe
@@ -1831,7 +1831,7 @@ mqtt_payload_formatter=json
 mqtt_max_message_size=1048576
 
 ####################
-### IoTDB-ML Configuration
+### IoTDB-AI Configuration
 ####################
 
 # The thread count which can be used for model inference operation.
