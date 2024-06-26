@@ -132,9 +132,6 @@ public class ConfigNodeConfig {
   private String consensusDir =
       IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.CONSENSUS_FOLDER_NAME;
 
-  /** External lib directory, stores user-uploaded JAR files. */
-  private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
-
   /** External lib directory for UDF, stores user-uploaded JAR files. */
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
@@ -302,7 +299,6 @@ public class ConfigNodeConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
-    extLibDir = addHomeDir(extLibDir);
     udfDir = addHomeDir(udfDir);
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
@@ -532,14 +528,6 @@ public class ConfigNodeConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
-  }
-
-  public String getExtLibDir() {
-    return extLibDir;
-  }
-
-  public void setExtLibDir(String extLibDir) {
-    this.extLibDir = extLibDir;
   }
 
   public String getUdfDir() {
