@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,34 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.type;
+package org.apache.iotdb.itbase.category;
 
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
-
-import java.util.concurrent.atomic.LongAdder;
-
-public class IoTDBCounter extends AbstractMetricMBean implements Counter, IoTDBCounterMBean {
-  private final LongAdder count;
-
-  public IoTDBCounter() {
-    this.count = new LongAdder();
-  }
-
-  @Override
-  public void inc() {
-    this.count.add(1L);
-  }
-
-  @Override
-  public void inc(long n) {
-    if (n != 0) {
-      this.count.add(n);
-    }
-  }
-
-  @Override
-  public long getCount() {
-    return this.count.sum();
-  }
-}
+public interface DailyIT {}
