@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -38,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -200,25 +200,26 @@ public class PipeHeartbeatParser {
                 .getValue()
                 .getProgressIndex()
                 .equals(runtimeMetaFromAgent.getProgressIndex()))) {
-          final Optional<Logger> logger =
-              PipeConfigNodeResourceManager.log()
-                  .schedule(
-                      PipeHeartbeatParser.class,
-                      PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                      PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                      pipeHeartbeat.getPipeMetaSize());
-          logger.ifPresent(
-              l ->
-                  l.info(
-                      "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
-                          + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
-                      pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-                      runtimeMetaFromCoordinator.getKey(),
-                      runtimeMetaFromCoordinator.getValue().getProgressIndex(),
-                      runtimeMetaFromAgent.getProgressIndex(),
-                      runtimeMetaFromCoordinator
-                          .getValue()
-                          .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex())));
+          final ProgressIndex updatedProgressIndex =
+              runtimeMetaFromCoordinator
+                  .getValue()
+                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex());
+          PipeConfigNodeResourceManager.log()
+              .schedule(
+                  PipeHeartbeatParser.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeHeartbeat.getPipeMetaSize())
+              .ifPresent(
+                  l ->
+                      l.info(
+                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
+                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+                          runtimeMetaFromCoordinator.getKey(),
+                          runtimeMetaFromCoordinator.getValue().getProgressIndex(),
+                          runtimeMetaFromAgent.getProgressIndex(),
+                          updatedProgressIndex));
 
           needWriteConsensusOnConfigNodes.set(true);
         }
