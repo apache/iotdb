@@ -110,7 +110,8 @@ public class PipeConsensusReceiver {
     this.pipeConsensus = pipeConsensus;
     this.consensusGroupId = consensusGroupId;
     this.pipeConsensusReceiverMetrics = new PipeConsensusReceiverMetrics(this);
-    this.requestExecutor = new RequestExecutor(pipeConsensusReceiverMetrics);
+    this.requestExecutor =
+        new RequestExecutor(pipeConsensusReceiverMetrics, pipeConsensusTsFileWriterPool);
     this.consensusPipeName = consensusPipeName;
     MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
 
@@ -1143,12 +1144,14 @@ public class PipeConsensusReceiver {
     private final Lock lock;
     private final Condition condition;
     private final PipeConsensusReceiverMetrics metric;
+    private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
     private volatile int WALEventCount = 0;
     private volatile int tsFileEventCount = 0;
 
-    public RequestExecutor(PipeConsensusReceiverMetrics metric) {
+    public RequestExecutor(
+        PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(RequestMeta::getRebootTimes)
@@ -1156,6 +1159,7 @@ public class PipeConsensusReceiver {
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
       this.metric = metric;
+      this.tsFileWriterPool = tsFileWriterPool;
     }
 
     private void onSuccess(long nextSyncedCommitIndex, boolean isTransferTsFileSeal) {
@@ -1342,6 +1346,7 @@ public class PipeConsensusReceiver {
       this.onSyncedCommitIndex = -1;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
+      this.tsFileWriterPool.handleExit(consensusPipeName);
     }
   }
 
