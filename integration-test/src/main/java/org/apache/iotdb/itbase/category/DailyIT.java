@@ -17,17 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.resource.snapshot;
+package org.apache.iotdb.itbase.category;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
-
-import java.util.Collections;
-import java.util.HashSet;
-
-public class PipeConfigNodeSnapshotResourceManager extends PipeSnapshotResourceManager {
-
-  public PipeConfigNodeSnapshotResourceManager() {
-    super(new HashSet<>(Collections.singletonList(IoTDBConstant.CONSENSUS_FOLDER_NAME)));
-  }
-}
+public interface DailyIT {}

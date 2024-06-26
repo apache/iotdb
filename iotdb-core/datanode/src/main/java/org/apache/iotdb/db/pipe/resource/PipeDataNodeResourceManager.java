@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
-import org.apache.iotdb.db.pipe.resource.log.PipeLogManager;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.resource.wal.selfhost.PipeWALSelfHostResourceMan
 
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeResourceManager {
+public class PipeDataNodeResourceManager {
 
   private final PipeTsFileResourceManager pipeTsFileResourceManager;
   private final AtomicReference<PipeWALResourceManager> pipeWALResourceManager;
@@ -71,7 +71,7 @@ public class PipeResourceManager {
 
   ///////////////////////////// SINGLETON /////////////////////////////
 
-  private PipeResourceManager() {
+  private PipeDataNodeResourceManager() {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
     pipeWALResourceManager = new AtomicReference<>();
     pipeSnapshotResourceManager = new PipeDataNodeSnapshotResourceManager();
@@ -80,6 +80,6 @@ public class PipeResourceManager {
   }
 
   private static class PipeResourceManagerHolder {
-    private static final PipeResourceManager INSTANCE = new PipeResourceManager();
+    private static final PipeDataNodeResourceManager INSTANCE = new PipeDataNodeResourceManager();
   }
 }

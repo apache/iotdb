@@ -17,36 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.log;
+package org.apache.iotdb.commons.pipe.resource.log;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-class PipeLogStatus {
+public class PipeLogManager {
 
-  private final Logger logger;
+  private final ConcurrentMap<Class<?>, PipeLogStatus> logClass2LogStatusMap =
+      new ConcurrentHashMap<>();
 
-  private final int maxAverageScale;
-  private final int maxLogInterval;
-  private final AtomicLong currentRounds = new AtomicLong(0);
-
-  PipeLogStatus(Class<?> logClass, int maxAverageScale, int maxLogInterval) {
-    logger = LoggerFactory.getLogger(logClass);
-
-    this.maxAverageScale = maxAverageScale;
-    this.maxLogInterval = maxLogInterval;
-  }
-
-  synchronized Optional<Logger> schedule(int scale) {
-    if (currentRounds.incrementAndGet()
-        >= Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval)) {
-      currentRounds.set(0);
-      return Optional.of(logger);
-    }
-
-    return Optional.empty();
+  public Optional<Logger> schedule(
+      final Class<?> logClass,
+      final int maxAverageScale,
+      final int maxLogInterval,
+      final int scale) {
+    return logClass2LogStatusMap
+        .computeIfAbsent(
+            logClass, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
+        .schedule(scale);
   }
 }

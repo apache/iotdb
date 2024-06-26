@@ -29,6 +29,7 @@ import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -381,9 +382,14 @@ public class IoTDBJDBCResultSet implements ResultSet {
       if (dataType == null) {
         return null;
       }
-      return dataType.equals(TSDataType.BLOB)
-          ? ioTDBRpcDataSet.getBinary(columnIndex).getValues()
-          : ioTDBRpcDataSet.getString(columnIndex).getBytes(charset);
+
+      if (dataType.equals(TSDataType.BLOB)) {
+        Binary binary = ioTDBRpcDataSet.getBinary(columnIndex);
+        return binary == null ? null : binary.getValues();
+      } else {
+        String s = ioTDBRpcDataSet.getString(columnIndex);
+        return s == null ? null : s.getBytes(charset);
+      }
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -396,9 +402,14 @@ public class IoTDBJDBCResultSet implements ResultSet {
       if (dataType == null) {
         return null;
       }
-      return dataType.equals(TSDataType.BLOB)
-          ? ioTDBRpcDataSet.getBinary(columnName).getValues()
-          : ioTDBRpcDataSet.getString(columnName).getBytes(charset);
+
+      if (dataType.equals(TSDataType.BLOB)) {
+        Binary binary = ioTDBRpcDataSet.getBinary(columnName);
+        return binary == null ? null : binary.getValues();
+      } else {
+        String s = ioTDBRpcDataSet.getString(columnName);
+        return s == null ? null : s.getBytes(charset);
+      }
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
