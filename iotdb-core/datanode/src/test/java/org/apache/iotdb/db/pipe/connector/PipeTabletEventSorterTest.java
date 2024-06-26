@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventSorter;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -36,10 +35,13 @@ import java.util.Set;
 
 public class PipeTabletEventSorterTest {
 
-  public static void main(String[] args) {
-    new PipeTabletEventSorterTest().testDeduplicateAndSort();
-    new PipeTabletEventSorterTest().testDeduplicate();
-    new PipeTabletEventSorterTest().testSort();
+  private static boolean checkSorted(final Tablet tablet) {
+    for (int i = 1; i < tablet.rowSize; i++) {
+      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Test
@@ -77,11 +79,11 @@ public class PipeTabletEventSorterTest {
       indices.add((int) tablet.timestamps[i]);
     }
 
-    Assert.assertFalse(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertFalse(checkSorted(tablet));
 
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    Assert.assertTrue(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertTrue(checkSorted(tablet));
 
     Assert.assertEquals(indices.size(), tablet.rowSize);
 
@@ -122,11 +124,11 @@ public class PipeTabletEventSorterTest {
       indices.add((int) tablet.timestamps[i]);
     }
 
-    Assert.assertTrue(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertTrue(checkSorted(tablet));
 
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    Assert.assertTrue(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertTrue(checkSorted(tablet));
 
     Assert.assertEquals(indices.size(), tablet.rowSize);
 
@@ -178,7 +180,7 @@ public class PipeTabletEventSorterTest {
       indices.add((int) tablet.timestamps[i]);
     }
 
-    Assert.assertFalse(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertFalse(checkSorted(tablet));
 
     long[] timestamps = Arrays.copyOfRange(tablet.timestamps, 0, tablet.rowSize);
     for (int i = 0; i < 3; ++i) {
@@ -195,7 +197,7 @@ public class PipeTabletEventSorterTest {
 
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    Assert.assertTrue(PipeTransferTabletRawReq.checkSorted(tablet));
+    Assert.assertTrue(checkSorted(tablet));
 
     Assert.assertEquals(indices.size(), tablet.rowSize);
 
