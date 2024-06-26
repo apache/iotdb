@@ -100,15 +100,11 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void close() {
-    try {
-      writeConnection.close();
-      for (NodeConnection conn : readConnections) {
-        conn.close();
-      }
-      isClosed = true;
-    } catch (Exception e) {
-      LOGGER.warn("Exception happens during close(): ", e);
+    writeConnection.close();
+    for (NodeConnection conn : readConnections) {
+      conn.close();
     }
+    isClosed = true;
   }
 
   @Override

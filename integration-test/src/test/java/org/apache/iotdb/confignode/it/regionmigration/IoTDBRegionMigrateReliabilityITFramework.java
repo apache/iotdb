@@ -52,6 +52,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -205,8 +208,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
+    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = closeQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       statement.execute(INSERTION1);
@@ -722,5 +725,28 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     result.addAll(
         Arrays.stream(keywords).map(KillPoint::enumToString).collect(Collectors.toList()));
     return result;
+  }
+
+  private static <T> T closeQuietly(T t) {
+    InvocationHandler handler =
+        (proxy, method, args) -> {
+          try {
+            if (method.getName().equals("close")) {
+              try {
+                method.invoke(t, args);
+              } catch (Throwable e) {
+                LOGGER.warn("Exception happens during close(): ", e);
+              }
+              return null;
+            } else {
+              return method.invoke(t, args);
+            }
+          } catch (InvocationTargetException e) {
+            throw e.getTargetException();
+          }
+        };
+    return (T)
+        Proxy.newProxyInstance(
+            t.getClass().getClassLoader(), t.getClass().getInterfaces(), handler);
   }
 }

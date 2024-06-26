@@ -86,38 +86,34 @@ public class ClusterTestStatement implements Statement {
   }
 
   @Override
-  public void close() {
-    try {
-      List<String> endpoints = new ArrayList<>();
-      endpoints.add(writEndpoint);
-      endpoints.addAll(readEndpoints);
-      RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout);
-      delegate.addRequest(
-          () -> {
-            if (writeStatement != null) {
-              writeStatement.close();
-            }
-            return null;
-          });
+  public void close() throws SQLException {
+    List<String> endpoints = new ArrayList<>();
+    endpoints.add(writEndpoint);
+    endpoints.addAll(readEndpoints);
+    RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout);
+    delegate.addRequest(
+        () -> {
+          if (writeStatement != null) {
+            writeStatement.close();
+          }
+          return null;
+        });
 
-      readStatements.forEach(
-          r ->
-              delegate.addRequest(
-                  () -> {
-                    if (r != null) {
-                      try {
-                        r.close();
-                      } catch (SQLException e) {
-                        // Ignore close exceptions
-                      }
+    readStatements.forEach(
+        r ->
+            delegate.addRequest(
+                () -> {
+                  if (r != null) {
+                    try {
+                      r.close();
+                    } catch (SQLException e) {
+                      // Ignore close exceptions
                     }
-                    return null;
-                  }));
-      delegate.requestAll();
-      closed = true;
-    } catch (Exception e) {
-      LOGGER.warn("Exception happens during close(): ", e);
-    }
+                  }
+                  return null;
+                }));
+    delegate.requestAll();
+    closed = true;
   }
 
   @Override
