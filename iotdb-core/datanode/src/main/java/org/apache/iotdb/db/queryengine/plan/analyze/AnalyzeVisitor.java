@@ -3132,7 +3132,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (showDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
           showDevicesStatement.getTimeCondition(),
-          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
           showDevicesStatement.getAuthorityScope(),
           analysis,
           context);
@@ -3219,7 +3219,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (countDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
           countDevicesStatement.getTimeCondition(),
-          countDevicesStatement.getPathPattern(),
+          countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
           countDevicesStatement.getAuthorityScope(),
           analysis,
           context);
