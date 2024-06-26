@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -165,7 +166,12 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void bufferTablet(
-      final String pipeName, long creationTime, Tablet tablet, boolean isAligned) {
+      final String pipeName,
+      final long creationTime,
+      final Tablet tablet,
+      final boolean isAligned) {
+    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
     pipeName2WeightMap.compute(
@@ -208,12 +214,19 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           Comparator.comparingLong(tablet -> tablet.timestamps[0]));
     }
 
+    // Sort the devices by device id
+    List<String> devices = new ArrayList<>(device2Tablets.keySet());
+    devices.sort(Comparator.naturalOrder());
+
     // Replace ArrayList with LinkedList to improve performance
-    final Map<String, LinkedList<Tablet>> device2TabletsLinkedList = new HashMap<>();
-    for (final Map.Entry<String, List<Tablet>> entry : device2Tablets.entrySet()) {
-      device2TabletsLinkedList.put(entry.getKey(), new LinkedList<>(entry.getValue()));
+    final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList =
+        new LinkedHashMap<>();
+    for (final String device : devices) {
+      device2TabletsLinkedList.put(device, new LinkedList<>(device2Tablets.get(device)));
     }
-    // Clear the original device2Tablets to release memory
+
+    // Help GC
+    devices.clear();
     device2Tablets.clear();
 
     // Write the tablets to the tsfile device by device, and the tablets
@@ -241,56 +254,44 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                         + TsFileConstant.TSFILE_SUFFIX));
       }
 
-      final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
-          device2TabletsLinkedList.entrySet().iterator();
+      try {
+        tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList, device2Aligned);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Batch id = {}: Failed to write tablets into tsfile, because {}",
+            currentBatchId.get(),
+            e.getMessage(),
+            e);
 
-      while (iterator.hasNext()) {
-        final Map.Entry<String, LinkedList<Tablet>> entry = iterator.next();
-        final String deviceId = entry.getKey();
-        final LinkedList<Tablet> tablets = entry.getValue();
+        try {
+          fileWriter.close();
 
-        final List<Tablet> tabletsToWrite = new ArrayList<>();
+          final File sealedFile = fileWriter.getIOWriter().getFile();
+          sealedFiles.add(sealedFile);
+          LOGGER.info(
+              "Batch id = {}: Seal tsfile {} successfully after failed to write tablets into it. ",
+              currentBatchId.get(),
+              sealedFile.getPath());
 
-        Tablet lastTablet = null;
-        while (!tablets.isEmpty()) {
-          final Tablet tablet = tablets.peekFirst();
-          if (Objects.isNull(lastTablet)
-              // lastTablet.rowSize is not 0
-              || lastTablet.timestamps[lastTablet.rowSize - 1] < tablet.timestamps[0]) {
-            tabletsToWrite.add(tablet);
-            lastTablet = tablet;
-            tablets.pollFirst();
-          } else {
-            break;
-          }
+          fileWriter = null;
+        } catch (final Exception sealException) {
+          LOGGER.warn(
+              "Batch id = {}: Failed to seal tsfile after failed to write tablets into it. ",
+              currentBatchId.get(),
+              sealException);
+
+          final boolean deleteSuccess = FileUtils.deleteQuietly(fileWriter.getIOWriter().getFile());
+          LOGGER.warn(
+              "Batch id = {}: Delete the tsfile {} after failed to seal it {}. "
+                  + "Maybe the tsfile needs to be deleted manually.",
+              currentBatchId.get(),
+              fileWriter.getIOWriter().getFile().getPath(),
+              deleteSuccess ? "successfully" : "unsuccessfully");
+
+          fileWriter = null;
         }
 
-        if (tablets.isEmpty()) {
-          iterator.remove();
-        }
-
-        final boolean isAligned = device2Aligned.get(deviceId);
-        for (final Tablet tablet : tabletsToWrite) {
-          if (isAligned) {
-            try {
-              fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
-            } catch (final WriteProcessException ignore) {
-              // Do nothing if the timeSeries has been registered
-            }
-
-            fileWriter.writeAligned(tablet);
-          } else {
-            for (final MeasurementSchema schema : tablet.getSchemas()) {
-              try {
-                fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
-              } catch (final WriteProcessException ignore) {
-                // Do nothing if the timeSeries has been registered
-              }
-            }
-
-            fileWriter.write(tablet);
-          }
-        }
+        throw e;
       }
 
       fileWriter.close();
@@ -306,6 +307,63 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     return sealedFiles;
+  }
+
+  private void tryBestToWriteTabletsIntoOneFile(
+      LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
+      Map<String, Boolean> device2Aligned)
+      throws IOException, WriteProcessException {
+    final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
+        device2TabletsLinkedList.entrySet().iterator();
+
+    while (iterator.hasNext()) {
+      final Map.Entry<String, LinkedList<Tablet>> entry = iterator.next();
+      final String deviceId = entry.getKey();
+      final LinkedList<Tablet> tablets = entry.getValue();
+
+      final List<Tablet> tabletsToWrite = new ArrayList<>();
+
+      Tablet lastTablet = null;
+      while (!tablets.isEmpty()) {
+        final Tablet tablet = tablets.peekFirst();
+        if (Objects.isNull(lastTablet)
+            // lastTablet.rowSize is not 0
+            || lastTablet.timestamps[lastTablet.rowSize - 1] < tablet.timestamps[0]) {
+          tabletsToWrite.add(tablet);
+          lastTablet = tablet;
+          tablets.pollFirst();
+        } else {
+          break;
+        }
+      }
+
+      if (tablets.isEmpty()) {
+        iterator.remove();
+      }
+
+      final boolean isAligned = device2Aligned.get(deviceId);
+      for (final Tablet tablet : tabletsToWrite) {
+        if (isAligned) {
+          try {
+            fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+          } catch (final WriteProcessException ignore) {
+            // Do nothing if the timeSeries has been registered
+          }
+
+          fileWriter.writeAligned(tablet);
+        } else {
+          for (final MeasurementSchema schema : tablet.getSchemas()) {
+            try {
+              fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+            } catch (final WriteProcessException ignore) {
+              // Do nothing if the timeSeries has been registered
+            }
+          }
+
+          fileWriter.write(tablet);
+        }
+      }
+    }
   }
 
   @Override
