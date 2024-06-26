@@ -1204,6 +1204,7 @@ public class DataRegion implements IDataRegionForQuery {
               v.setAligned(insertRowNode.isAligned());
             }
             v.addOneInsertRowNode(insertRowNode, finalI);
+            v.updateProgressIndex(insertRowNode.getProgressIndex());
             return v;
           });
     }
@@ -3293,6 +3294,7 @@ public class DataRegion implements IDataRegionForQuery {
                 v.setAligned(insertRowNode.isAligned());
               }
               v.addOneInsertRowNode(insertRowNode, finalI);
+              v.updateProgressIndex(insertRowNode.getProgressIndex());
               return v;
             });
       }
