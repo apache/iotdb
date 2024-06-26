@@ -126,17 +126,17 @@ public class WALCompressionTest {
       throws QueryProcessException, IllegalPathException, IOException {
     LogWriter writer = new WALWriter(walFile);
     ByteBuffer buffer = ByteBuffer.allocate(1024 * 4);
-    List<Pair<Long, InsertRowNode>> positionAndEntryPairList = new ArrayList<>();
+    List<Pair<Long, Integer>> positionAndEntryPairList = new ArrayList<>();
     int memTableId = 0;
     long fileOffset = 0;
     for (int i = 0; i < 100; ) {
       InsertRowNode insertRowNode = WALTestUtils.getInsertRowNode(devicePath + memTableId, i);
-      long serializedSize = insertRowNode.serializedSize();
-      if (buffer.remaining() >= serializedSize) {
+      if (buffer.remaining() >= buffer.capacity() / 4) {
         int pos = buffer.position();
         insertRowNode.serialize(buffer);
-        positionAndEntryPairList.add(new Pair<>(fileOffset, insertRowNode));
-        fileOffset += buffer.position() - pos;
+        int size = buffer.position() - pos;
+        positionAndEntryPairList.add(new Pair<>(fileOffset, size));
+        fileOffset += size;
         i++;
       } else {
         writer.write(buffer);
@@ -149,19 +149,12 @@ public class WALCompressionTest {
     writer.close();
     try (WALInputStream stream = new WALInputStream(walFile)) {
       for (int i = 0; i < 100; ++i) {
-        Pair<Long, InsertRowNode> positionAndNodePair = positionAndEntryPairList.get(i);
+        Pair<Long, Integer> positionAndNodePair = positionAndEntryPairList.get(i);
         stream.skipToGivenLogicalPosition(positionAndNodePair.left);
-        /*
-          Add the allocated buffer size by 2, because the actual serialized size
-          of InsertRowNode is larger than the estimated value got by serializedSize.
-          I don't know if this is a bug or not.
-        */
-        ByteBuffer nodeBuffer1 =
-            ByteBuffer.allocate(positionAndNodePair.right.serializedSize() + 2);
+        ByteBuffer nodeBuffer1 = ByteBuffer.allocate(positionAndNodePair.right);
         stream.read(nodeBuffer1);
-        ByteBuffer nodeBuffer2 =
-            ByteBuffer.allocate(positionAndNodePair.right.serializedSize() + 2);
-        positionAndNodePair.right.serialize(nodeBuffer2);
+        ByteBuffer nodeBuffer2 = ByteBuffer.allocate(positionAndNodePair.right);
+        WALTestUtils.getInsertRowNode(devicePath + memTableId, i).serialize(nodeBuffer2);
         nodeBuffer2.flip();
         Assert.assertArrayEquals(nodeBuffer1.array(), nodeBuffer2.array());
       }
