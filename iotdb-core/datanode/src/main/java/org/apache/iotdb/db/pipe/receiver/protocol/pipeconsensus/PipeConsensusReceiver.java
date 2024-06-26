@@ -1343,7 +1343,7 @@ public class PipeConsensusReceiver {
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
       this.reqExecutionOrderBuffer.clear();
-      this.onSyncedCommitIndex = -1;
+      this.onSyncedCommitIndex = 0;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
       this.tsFileWriterPool.handleExit(consensusPipeName);
