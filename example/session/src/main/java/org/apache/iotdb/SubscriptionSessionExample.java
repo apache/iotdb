@@ -308,10 +308,7 @@ public class SubscriptionSessionExample {
                         .buildPullConsumer()) {
                   consumer4.open();
                   consumer4.subscribe(TOPIC_4);
-                  while (true) {
-                    if (!consumer4.hasMoreData()) {
-                      break;
-                    }
+                  while (consumer4.hasMoreData()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(
