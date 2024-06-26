@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -1708,7 +1709,7 @@ public class PipelineBuilderTest {
           new SingleDeviceViewNode(
               new PlanNodeId(String.format("SingleDeviceViewNode%d", i)),
               Arrays.asList("Time", "Device", "s1"),
-              "root.sg.d" + i,
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i),
               Arrays.asList(0, 1, 2));
       singleDeviceViewNode.setCacheOutputColumnNames(true);
       SeriesScanNode seriesScanNode =

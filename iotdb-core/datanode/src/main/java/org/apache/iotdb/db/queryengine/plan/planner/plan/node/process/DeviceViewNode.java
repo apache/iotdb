@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -51,20 +52,20 @@ public class DeviceViewNode extends MultiChildProcessNode {
   private final OrderByParameter mergeOrderParameter;
 
   // The size devices and children should be the same.
-  private final List<String> devices = new ArrayList<>();
+  private final List<IDeviceID> devices = new ArrayList<>();
 
   // Device column and measurement columns in result output
   private List<String> outputColumnNames;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private final Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap;
 
   public DeviceViewNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+      Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumnNames = outputColumnNames;
@@ -75,8 +76,8 @@ public class DeviceViewNode extends MultiChildProcessNode {
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
-      List<String> devices,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+      List<IDeviceID> devices,
+      Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumnNames = outputColumnNames;
@@ -84,16 +85,16 @@ public class DeviceViewNode extends MultiChildProcessNode {
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
+  public void addChildDeviceNode(IDeviceID deviceName, PlanNode childNode) {
     this.devices.add(deviceName);
     this.children.add(childNode);
   }
 
-  public List<String> getDevices() {
+  public List<IDeviceID> getDevices() {
     return devices;
   }
 
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
+  public Map<IDeviceID, List<Integer>> getDeviceToMeasurementIndexesMap() {
     return deviceToMeasurementIndexesMap;
   }
 
@@ -139,12 +140,12 @@ public class DeviceViewNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
     ReadWriteIOUtils.write(devices.size(), byteBuffer);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, byteBuffer);
+    for (IDeviceID deviceName : devices) {
+      deviceName.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), byteBuffer);
-    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+    for (Map.Entry<IDeviceID, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
+      entry.getKey().serialize(byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
       for (Integer index : entry.getValue()) {
         ReadWriteIOUtils.write(index, byteBuffer);
@@ -161,12 +162,12 @@ public class DeviceViewNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write(column, stream);
     }
     ReadWriteIOUtils.write(devices.size(), stream);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, stream);
+    for (IDeviceID deviceName : devices) {
+      deviceName.serialize(stream);
     }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
-    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
+    for (Map.Entry<IDeviceID, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
+      entry.getKey().serialize(stream);
       ReadWriteIOUtils.write(entry.getValue().size(), stream);
       for (Integer index : entry.getValue()) {
         ReadWriteIOUtils.write(index, stream);
@@ -185,16 +186,17 @@ public class DeviceViewNode extends MultiChildProcessNode {
     }
 
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>();
+    List<IDeviceID> devices = new ArrayList<>();
     while (devicesSize > 0) {
-      devices.add(ReadWriteIOUtils.readString(byteBuffer));
+      devices.add(IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer));
       devicesSize--;
     }
 
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
     while (mapSize > 0) {
-      String deviceName = ReadWriteIOUtils.readString(byteBuffer);
+      IDeviceID deviceName =
+          IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer);
       int listSize = ReadWriteIOUtils.readInt(byteBuffer);
       List<Integer> indexes = new ArrayList<>(listSize);
       while (listSize > 0) {
@@ -216,8 +218,8 @@ public class DeviceViewNode extends MultiChildProcessNode {
     id.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
     ReadWriteIOUtils.write(devices.size(), stream);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, stream);
+    for (IDeviceID deviceName : devices) {
+      deviceName.serialize(stream);
     }
 
     ReadWriteIOUtils.write(getChildren().size(), stream);
@@ -232,9 +234,9 @@ public class DeviceViewNode extends MultiChildProcessNode {
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
 
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>(devicesSize);
+    List<IDeviceID> devices = new ArrayList<>(devicesSize);
     while (devicesSize > 0) {
-      devices.add(ReadWriteIOUtils.readString(byteBuffer));
+      devices.add(IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer));
       devicesSize--;
     }
 

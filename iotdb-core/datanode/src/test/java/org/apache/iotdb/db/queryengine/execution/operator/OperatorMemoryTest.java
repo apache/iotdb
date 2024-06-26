@@ -580,11 +580,11 @@ public class OperatorMemoryTest {
     List<TSDataType> dataTypeList = new ArrayList<>(2);
     dataTypeList.add(TSDataType.INT32);
     dataTypeList.add(TSDataType.INT32);
-    List<String> devices = new ArrayList<>(4);
-    devices.add("device1");
-    devices.add("device2");
-    devices.add("device3");
-    devices.add("device4");
+    List<IDeviceID> devices = new ArrayList<>(4);
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device1"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device2"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device3"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device4"));
     long expectedMaxReturnSize =
         2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     long expectedMaxPeekMemory = expectedMaxReturnSize;
