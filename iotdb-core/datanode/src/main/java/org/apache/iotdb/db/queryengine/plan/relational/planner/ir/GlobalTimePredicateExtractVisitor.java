@@ -41,9 +41,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 
@@ -111,8 +113,11 @@ public class GlobalTimePredicateExtractVisitor
 
       getNewTimeValueExpressions(node, resultPairs, newTimeFilterTerms, newValueFilterTerms);
 
+      // for example, `(t1 and s1) or t2`, `t1 or t2` meets this condition
       if (newTimeFilterTerms.size() == node.getTerms().size()) {
-        node.setTerms(newValueFilterTerms);
+        if (context.isFirstOr && newValueFilterTerms.isEmpty()) {
+          node.setTerms(Collections.singletonList(TRUE_LITERAL));
+        }
         return new Pair<>(
             newTimeFilterTerms.size() == 1
                 ? newTimeFilterTerms.get(0)
