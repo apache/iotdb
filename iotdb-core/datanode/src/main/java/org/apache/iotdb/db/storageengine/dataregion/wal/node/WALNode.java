@@ -486,7 +486,7 @@ public class WALNode implements IWALNode {
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
           || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
-        WRITING_METRICS.recordWalFlushMemTableCount(dataRegion.getDataRegionId(), 1);
+        WRITING_METRICS.recordWalFlushMemTableCount(1);
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
