@@ -156,7 +156,11 @@ public class PipeHeartbeatParser {
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
         uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
         if (uncompletedDataNodeIds.isEmpty()) {
-          pipeTaskInfo.get().removePipeMeta(pipeMetaFromCoordinator.getStaticMeta().getPipeName());
+          pipeTaskInfo.get().removePipeMeta(staticMeta.getPipeName());
+          LOGGER.info(
+              "Detected completion of pipe {}, static meta: {}, remove it.",
+              staticMeta.getPipeName(),
+              staticMeta);
           needWriteConsensusOnConfigNodes.set(true);
           needPushPipeMetaToDataNodes.set(true);
           continue;
