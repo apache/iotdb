@@ -264,13 +264,31 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             e.getMessage(),
             e);
 
-        final boolean deleteSuccess = FileUtils.deleteQuietly(fileWriter.getIOWriter().getFile());
-        LOGGER.warn(
-            "Batch id = {}: Delete the tsfile {} after failed to write tablets into it {}. {}",
-            currentBatchId.get(),
-            fileWriter.getIOWriter().getFile().getPath(),
-            deleteSuccess ? "successfully" : "unsuccessfully",
-            deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+        try {
+          fileWriter.close();
+        } catch (final Exception closeException) {
+          LOGGER.warn(
+              "Batch id = {}: Failed to close the tsfile {} after failed to write tablets into, because {}",
+              currentBatchId.get(),
+              fileWriter.getIOWriter().getFile().getPath(),
+              closeException.getMessage(),
+              closeException);
+        } finally {
+          // Add current writing file to the list and delete the file
+          sealedFiles.add(fileWriter.getIOWriter().getFile());
+        }
+
+        for (final File sealedFile : sealedFiles) {
+          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile);
+          LOGGER.warn(
+              "Batch id = {}: {} delete the tsfile {} after failed to write tablets into {}. {}",
+              deleteSuccess ? "Successfully" : "Failed to",
+              currentBatchId.get(),
+              sealedFile.getPath(),
+              fileWriter.getIOWriter().getFile().getPath(),
+              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+        }
+        sealedFiles.clear();
 
         fileWriter = null;
 
