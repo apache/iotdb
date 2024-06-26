@@ -85,10 +85,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
-    // TODO change back after Gaofei accomplish ScanTimeAndValueFilterSplitRule
-    //    if (!analysis.hasValueFilter()) {
-    //      return planNode;
-    //    }
     return planNode.accept(new Rewriter(queryContext, analysis, metadata), new RewriterContext());
   }
 
@@ -97,7 +93,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
     private final Analysis analysis;
     private final Metadata metadata;
     private Expression predicate;
-    private boolean hasDiffInFilter = false;
 
     // used for metadata index scan
     private final List<Expression> metadataExpressions = new ArrayList<>();
@@ -138,7 +133,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
         // when exist diff function, predicate can not be pushed down into TableScanNode
         if (containsDiffFunction(node.getPredicate())) {
-          hasDiffInFilter = true;
           node.getChild().accept(this, context);
           return node;
         }
@@ -175,7 +169,7 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
         if (resultPair.left != null) {
           tableScanNode.setTimePredicate(resultPair.left);
         }
-        if (resultPair.right) {
+        if (Boolean.TRUE.equals(resultPair.right)) {
           tableScanNode.setPushDownPredicate(pushDownPredicate);
         }
       } else {
