@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 
 public class PipeConfigNodeResourceManager {
+
   private final PipeSnapshotResourceManager pipeSnapshotResourceManager;
   private final PipeLogManager pipeLogManager;
 
