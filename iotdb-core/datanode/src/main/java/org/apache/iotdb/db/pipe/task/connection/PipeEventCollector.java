@@ -52,7 +52,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final int regionId;
 
-  private final boolean isTabletFormat;
+  private final boolean forceTabletFormat;
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
@@ -60,11 +60,11 @@ public class PipeEventCollector implements EventCollector {
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
-      final boolean isTabletFormat) {
+      final boolean forceTabletFormat) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
-    this.isTabletFormat = isTabletFormat;
+    this.forceTabletFormat = forceTabletFormat;
   }
 
   @Override
@@ -122,7 +122,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!isTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
+    if (!forceTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
       collectEvent(sourceEvent);
       return;
     }
