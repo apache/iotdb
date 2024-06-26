@@ -170,6 +170,12 @@ public class ConfigurationFileUtils {
         }
         String[] parts = line.split("=");
         if (parts[0].trim().equals(parameterName)) {
+          if (parameterName.equals("dn_data_dirs")) {
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("win")) {
+              return parts[1].trim().replace("/", "\\");
+            }
+          }
           return parts[1].trim();
         }
       }
