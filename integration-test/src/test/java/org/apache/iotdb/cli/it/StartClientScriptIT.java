@@ -117,6 +117,7 @@ public class StartClientScriptIT extends AbstractScript {
     testOutput(builder2, output2, 0);
   }
 
+  @Override
   protected void testOnUnix() throws IOException {
 
     final String[] output = {
