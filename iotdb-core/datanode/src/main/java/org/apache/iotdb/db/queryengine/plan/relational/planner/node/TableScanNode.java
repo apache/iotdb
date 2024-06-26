@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -64,6 +65,8 @@ public class TableScanNode extends SourceNode {
   // 1 or time < 10
   @Nullable private Expression timePredicate;
 
+  private Filter timeFilter;
+
   // push down predicate for current series, could be null if it doesn't exist
   @Nullable private Expression pushDownPredicate;
 
@@ -77,8 +80,6 @@ public class TableScanNode extends SourceNode {
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
-
-  private List<TRegionReplicaSet> regionReplicaSetList;
 
   public TableScanNode(
       PlanNodeId id,
@@ -379,6 +380,10 @@ public class TableScanNode extends SourceNode {
     return deviceEntries;
   }
 
+  public void appendDeviceEntry(DeviceEntry deviceEntry) {
+    this.deviceEntries.add(deviceEntry);
+  }
+
   public long getPushDownLimit() {
     return this.pushDownLimit;
   }
@@ -403,14 +408,6 @@ public class TableScanNode extends SourceNode {
     return this.regionReplicaSet;
   }
 
-  public List<TRegionReplicaSet> getRegionReplicaSetList() {
-    return regionReplicaSetList;
-  }
-
-  public void setRegionReplicaSetList(List<TRegionReplicaSet> regionReplicaSetList) {
-    this.regionReplicaSetList = regionReplicaSetList;
-  }
-
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
@@ -421,5 +418,13 @@ public class TableScanNode extends SourceNode {
 
   public void setTimePredicate(@Nullable Expression timePredicate) {
     this.timePredicate = timePredicate;
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 }

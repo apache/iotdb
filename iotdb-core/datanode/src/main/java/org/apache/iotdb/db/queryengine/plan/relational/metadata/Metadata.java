@@ -35,7 +35,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public interface Metadata {
@@ -140,16 +139,19 @@ public interface Metadata {
   /**
    * Get data partition, used in query scenarios.
    *
+   * @param database a user-provided db name, the database shall start with "root.".
    * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
-  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+  DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
    *
+   * @param database a user-provided db name, the database shall start with "root.".
    * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 }

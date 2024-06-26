@@ -14,8 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -28,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -46,9 +45,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -74,7 +71,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
  *     <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule
  *     need to be adapted.
  */
-public class FilterScanCombine implements RelationalPlanOptimizer {
+public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -94,9 +91,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
     private final Metadata metadata;
     private Expression predicate;
 
-    // used for metadata index scan
-    private final List<Expression> metadataExpressions = new ArrayList<>();
-
     Rewriter(MPPQueryContext queryContext, Analysis analysis, Metadata metadata) {
       this.queryContext = queryContext;
       this.analysis = analysis;
@@ -106,7 +100,7 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       throw new IllegalArgumentException(
-          String.format("Unexpected plan node: %s in FilterScanCombineRule", node));
+          String.format("Unexpected plan node: %s in rule PushPredicateIntoTableScan", node));
     }
 
     @Override
@@ -133,7 +127,7 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
         // when exist diff function, predicate can not be pushed down into TableScanNode
         if (containsDiffFunction(node.getPredicate())) {
-          node.getChild().accept(this, context);
+          node.setChild(node.getChild().accept(this, context));
           return node;
         }
 
@@ -144,7 +138,8 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
           return combineFilterAndScan((TableScanNode) node.getChild());
         } else {
           // FilterNode may get from having or subquery
-          return node.getChild().accept(this, context);
+          node.setChild(node.getChild().accept(this, context));
+          return node;
         }
 
       } else {
@@ -155,6 +150,9 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode) {
       List<List<Expression>> splitPredicates = splitPredicate(tableScanNode);
+
+      // exist indexed metadata expressions
+      tableMetadataIndexScan(tableScanNode, splitPredicates.get(0));
 
       // exist expressions can push down to scan operator
       if (!splitPredicates.get(1).isEmpty()) {
@@ -175,8 +173,6 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
       } else {
         tableScanNode.setPushDownPredicate(null);
       }
-
-      tableMetadataIndexScan(tableScanNode);
 
       // exist expressions can not push down to scan operator
       if (!splitPredicates.get(2).isEmpty()) {
@@ -211,6 +207,7 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
               .collect(Collectors.toSet());
       measurementColumnNames.add("time");
 
+      List<Expression> metadataExpressions = new ArrayList<>();
       List<Expression> expressionsCanPushDown = new ArrayList<>();
       List<Expression> expressionsCannotPushDown = new ArrayList<>();
 
@@ -245,12 +242,12 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
-      tableMetadataIndexScan(node);
+      tableMetadataIndexScan(node, Collections.emptyList());
       return node;
     }
 
     /** Get deviceEntries and DataPartition used in TableScan. */
-    private void tableMetadataIndexScan(TableScanNode node) {
+    private void tableMetadataIndexScan(TableScanNode node, List<Expression> metadataExpressions) {
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
               .filter(
@@ -265,11 +262,16 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
         analysis.setFinishQueryAfterAnalyze();
         analysis.setEmptyDataSource(true);
       } else {
-        // TODO(beyyes) use table model data partition fetch methods
+        Filter timeFilter =
+            node.getTimePredicate().isPresent()
+                ? node.getTimePredicate()
+                    .get()
+                    .accept(new ConvertPredicateToTimeFilterVisitor(), null)
+                : null;
+        node.setTimeFilter(timeFilter);
         String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
         DataPartition dataPartition =
-            fetchDataPartitionByDevices(
-                treeModelDatabase, deviceEntries, queryContext.getGlobalTimeFilter());
+            fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
@@ -280,20 +282,7 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
           analysis.setFinishQueryAfterAnalyze();
           analysis.setEmptyDataSource(true);
         } else {
-          Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
-          for (Map.Entry<
-                  String,
-                  Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-              e1 : dataPartition.getDataPartitionMap().entrySet()) {
-            for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-                e2 : e1.getValue().entrySet()) {
-              for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> e3 :
-                  e2.getValue().entrySet()) {
-                regionReplicaSet.addAll(e3.getValue());
-              }
-            }
-          }
-          node.setRegionReplicaSetList(new ArrayList<>(regionReplicaSet));
+          analysis.upsertDataPartition(dataPartition);
         }
       }
     }
@@ -318,13 +307,11 @@ public class FilterScanCombine implements RelationalPlanOptimizer {
                       new DataPartitionQueryParam(
                           deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right))
               .collect(Collectors.toList());
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap =
-          Collections.singletonMap(database, dataPartitionQueryParams);
 
       if (res.right.left || res.right.right) {
-        return metadata.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+        return metadata.getDataPartitionWithUnclosedTimeRange(database, dataPartitionQueryParams);
       } else {
-        return metadata.getDataPartition(sgNameToQueryParamsMap);
+        return metadata.getDataPartition(database, dataPartitionQueryParams);
       }
     }
   }

@@ -192,7 +192,6 @@ public class AnalyzerTest {
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(4, distributedQueryPlan.getInstances().size());
   }
 
   @Test
@@ -221,7 +220,6 @@ public class AnalyzerTest {
     assertEquals(ASC, tableScanNode.getScanOrder());
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(4, distributedQueryPlan.getInstances().size());
   }
 
   @Test

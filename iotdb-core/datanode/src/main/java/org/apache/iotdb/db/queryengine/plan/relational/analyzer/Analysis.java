@@ -154,7 +154,6 @@ public class Analysis implements IAnalysis {
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
 
-  // only be used in write plan and won't be used in query
   private DataPartition dataPartition;
 
   // only be used in write plan and won't be used in query
@@ -653,6 +652,18 @@ public class Analysis implements IAnalysis {
   @Override
   public DataPartition getDataPartitionInfo() {
     return dataPartition;
+  }
+
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
+
+  public void upsertDataPartition(DataPartition targetDataPartition) {
+    if (this.dataPartition == null) {
+      this.dataPartition = targetDataPartition;
+    } else {
+      this.dataPartition.upsertDataPartition(targetDataPartition);
+    }
   }
 
   @Override

@@ -47,9 +47,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -342,14 +342,16 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartition(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

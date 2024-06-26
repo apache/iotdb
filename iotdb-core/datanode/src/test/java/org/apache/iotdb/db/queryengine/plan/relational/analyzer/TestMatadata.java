@@ -231,13 +231,13 @@ public class TestMatadata implements Metadata {
 
   @Override
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 

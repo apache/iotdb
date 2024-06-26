@@ -110,14 +110,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
     QualifiedName qualifiedName = analysis.getRelationName(table);
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+    }
     TableScanNode tableScanNode =
         new TableScanNode(
             idAllocator.genPlanNodeId(),
             new QualifiedObjectName(
-                qualifiedName.getPrefix().isPresent()
-                    ? qualifiedName.getPrefix().get().toString()
-                    : null,
-                qualifiedName.getSuffix()),
+                qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix()),
             outputSymbols,
             symbolToColumnSchema.build());
 
