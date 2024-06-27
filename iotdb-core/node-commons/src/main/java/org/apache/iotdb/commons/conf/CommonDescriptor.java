@@ -559,6 +559,11 @@ public class CommonDescriptor {
                     "pipe_remaining_time_commit_rate_average_time",
                     String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
                 .trim()));
+    config.setPipeTsFileScanParsingThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_tsfile_scan_parsing_threshold",
+                String.valueOf(config.getPipeTsFileScanParsingThreshold()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(

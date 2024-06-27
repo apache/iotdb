@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import com.google.common.util.concurrent.Futures;
@@ -47,6 +48,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
   protected volatile boolean isSubmitted = false;
+
+  // For cleaning up the last event when the pipe is dropped
+  protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeConnector) {
@@ -76,8 +80,32 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     isSubmitted = false;
 
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
+          throwable);
       clearReferenceCountAndReleaseLastEvent();
+      return;
+    }
+
+    // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
+    // connector subtask. Then, it may fail because of released resource and block the other pipes
+    // using the same connector. We simply discard it.
+    if (lastExceptionEvent instanceof EnrichedEvent
+        && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the failure event is released.", throwable);
+      submitSelf();
+      return;
+    }
+
+    // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
+    // changed because the pipe of it has been dropped. In that case, we just discard the event.
+    if (lastEvent != lastExceptionEvent) {
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
+          throwable);
+      clearReferenceCountAndReleaseLastExceptionEvent();
+      submitSelf();
       return;
     }
 
@@ -190,5 +218,18 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
     Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
     isSubmitted = true;
+  }
+
+  protected synchronized void setLastExceptionEvent(final Event event) {
+    lastExceptionEvent = event;
+  }
+
+  protected synchronized void clearReferenceCountAndReleaseLastExceptionEvent() {
+    if (lastExceptionEvent != null) {
+      if (lastExceptionEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
+      }
+      lastExceptionEvent = null;
+    }
   }
 }
