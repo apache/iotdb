@@ -64,6 +64,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
 
+  // The point count of the TsFile after it is closed, used for metrics on receiver side.
+  private long pointCount = 0;
+
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -151,6 +154,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
           final boolean isClosedNow = resource.isClosed();
           if (isClosedNow) {
+            pointCount = resource.getProcessor().getFlushedMemTablePointCount();
             isClosed.set(true);
             isClosed.notifyAll();
             break;
@@ -189,6 +193,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public long getFileStartTime() {
     return resource.getFileStartTime();
+  }
+
+  public long getPointCount() {
+    return pointCount;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////

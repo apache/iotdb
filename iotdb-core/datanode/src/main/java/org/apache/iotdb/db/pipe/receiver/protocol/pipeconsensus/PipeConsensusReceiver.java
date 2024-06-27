@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -31,6 +32,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.Pi
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
@@ -40,6 +43,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
@@ -48,13 +52,17 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusReceiverMetrics;
+import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -417,7 +425,28 @@ public class PipeConsensusReceiver {
           loadFileToDataRegion(
               fileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+      if (req.getPointCount() > 0) {
+        updateLoadMetrics(req.getPointCount());
+      } else {
+        // If the point count in the req is 0, we will read the actual point count from the TsFile
+        LOGGER.debug(
+            "PipeConsensus-PipeName-{}: The point count of TsFile {} is 0, will read actual point count from TsFile.",
+            consensusPipeName,
+            fileAbsolutePath);
+        try (final TsFileInsertionPointCounter counter =
+            new TsFileInsertionPointCounter(new File(fileAbsolutePath), null)) {
+          updateLoadMetrics(counter.count());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
+              consensusPipeName,
+              fileAbsolutePath,
+              e);
+        }
+      }
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -530,11 +559,35 @@ public class PipeConsensusReceiver {
       long endPreCheckNanos = System.nanoTime();
       pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
+      final String tsFileAbsolutePath = fileAbsolutePaths.get(1);
       final TSStatus status =
           loadFileToDataRegion(
-              fileAbsolutePaths.get(1),
+              tsFileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+      // The second file is the TsFile to be recorded in metrics
+      final long writePointCount = req.getPointCounts().get(1);
+      if (writePointCount > 0) {
+        updateLoadMetrics(writePointCount);
+      } else {
+        // If the point count in the req is 0, we will read the actual point count from the TsFile
+        LOGGER.debug(
+            "PipeConsensus-PipeName-{}: The point count of TsFile {} is 0, will read actual point count from TsFile.",
+            consensusPipeName,
+            tsFileAbsolutePath);
+        try (final TsFileInsertionPointCounter counter =
+            new TsFileInsertionPointCounter(new File(tsFileAbsolutePath), null)) {
+          updateLoadMetrics(counter.count());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
+              consensusPipeName,
+              tsFileAbsolutePath,
+              e);
+        }
+      }
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -619,6 +672,62 @@ public class PipeConsensusReceiver {
         .getDataRegion(((DataRegionId) consensusGroupId))
         .loadNewTsFile(generateTsFileResource(filePath, progressIndex), true, false);
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /**
+   * Update load point metrics, similar to the load metrics in {@link
+   * org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager}.
+   */
+  private void updateLoadMetrics(long writePointCount) {
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
+    dataRegion
+        .getNonSystemDatabaseName()
+        .ifPresent(
+            databaseName -> {
+              // Report load tsFile points to IoTDB flush metrics
+              MemTableFlushTask.recordFlushPointsMetricInternal(
+                  writePointCount, databaseName, dataRegion.getDataRegionId());
+              MetricService.getInstance()
+                  .count(
+                      writePointCount,
+                      Metric.QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
+              // Because we cannot accurately judge who is the leader here,
+              // we directly divide the writePointCount by the replicationNum to ensure the
+              // correctness of this metric, which will be accurate in most cases
+              int replicationNum =
+                  DataRegionConsensusImpl.getInstance()
+                      .getReplicationNum(
+                          ConsensusGroupId.Factory.create(
+                              TConsensusGroupType.DataRegion.getValue(),
+                              Integer.parseInt(dataRegion.getDataRegionId())));
+              // It may happen that the replicationNum is 0 when load and db deletion occurs
+              // concurrently, so we can just not to count the number of points in this case
+              if (replicationNum != 0) {
+                MetricService.getInstance()
+                    .count(
+                        writePointCount / replicationNum,
+                        Metric.LEADER_QUANTITY.toString(),
+                        MetricLevel.CORE,
+                        Tag.NAME.toString(),
+                        Metric.POINTS_IN.toString(),
+                        Tag.DATABASE.toString(),
+                        databaseName,
+                        Tag.REGION.toString(),
+                        dataRegion.getDataRegionId(),
+                        Tag.TYPE.toString(),
+                        Metric.LOAD_POINT_COUNT.toString());
+              }
+            });
   }
 
   private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
