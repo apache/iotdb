@@ -55,6 +55,7 @@ public class PipeEventCollector implements EventCollector {
   private final boolean forceTabletFormat;
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
+  private boolean hasNoGeneratedEvent = true;
 
   public PipeEventCollector(
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
@@ -94,6 +95,7 @@ public class PipeEventCollector implements EventCollector {
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
+      hasNoGeneratedEvent = false;
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
         collectEvent(parsedEvent);
@@ -105,6 +107,7 @@ public class PipeEventCollector implements EventCollector {
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
+      hasNoGeneratedEvent = false;
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
         collectEvent(parsedEvent);
@@ -128,6 +131,7 @@ public class PipeEventCollector implements EventCollector {
     }
 
     try {
+      hasNoGeneratedEvent = false;
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
         collectEvent(parsedEvent);
       }
@@ -139,6 +143,7 @@ public class PipeEventCollector implements EventCollector {
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
+    hasNoGeneratedEvent = false;
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
         .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(
@@ -174,15 +179,16 @@ public class PipeEventCollector implements EventCollector {
     pendingQueue.directOffer(event);
   }
 
-  public void resetCollectInvocationCount() {
+  public void resetCollectInvocationCountAndGenerateFlag() {
     collectInvocationCount.set(0);
+    hasNoGeneratedEvent = true;
   }
 
   public long getCollectInvocationCount() {
     return collectInvocationCount.get();
   }
 
-  public boolean hasNoCollectInvocationAfterReset() {
-    return collectInvocationCount.get() == 0;
+  public boolean hasNoGeneratedEvent() {
+    return hasNoGeneratedEvent;
   }
 }
