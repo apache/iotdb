@@ -190,6 +190,10 @@ public class IoTDBPipePattern extends PipePattern {
     return !patternPartialPath.hasWildcard();
   }
 
+  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
+    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
+  }
+
   @Override
   public String toString() {
     return "IoTDBPipePattern" + super.toString();
