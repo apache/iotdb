@@ -46,7 +46,7 @@ public class AlignedSeriesGroupCompactionUtils {
         IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
     List<IMeasurementSchema> selectedColumnGroup = new ArrayList<>(compactColumnNum);
     for (IMeasurementSchema schema : schemaList) {
-      if (!schema.getType().equals(TSDataType.TEXT)) {
+      if (!isLargeDataType(schema.getType())) {
         continue;
       }
       if (compactedMeasurements.contains(schema.getMeasurementId())) {
@@ -72,6 +72,12 @@ public class AlignedSeriesGroupCompactionUtils {
       }
     }
     return selectedColumnGroup;
+  }
+
+  private static boolean isLargeDataType(TSDataType dataType) {
+    return dataType.equals(TSDataType.BLOB)
+        || dataType.equals(TSDataType.TEXT)
+        || dataType.equals(TSDataType.STRING);
   }
 
   public static void markAlignedChunkHasDeletion(

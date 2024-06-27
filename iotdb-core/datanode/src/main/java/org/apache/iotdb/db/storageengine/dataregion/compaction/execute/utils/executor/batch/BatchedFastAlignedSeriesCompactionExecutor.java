@@ -53,12 +53,12 @@ import java.util.stream.Collectors;
 public class BatchedFastAlignedSeriesCompactionExecutor
     extends FastAlignedSeriesCompactionExecutor {
 
-  private Set<String> compactedMeasurements;
-  private IMeasurementSchema timeSchema;
-  private List<IMeasurementSchema> valueMeasurementSchemas;
-  private List<TsFileResource> sortedSourceFiles;
+  private final Set<String> compactedMeasurements;
+  private final IMeasurementSchema timeSchema;
+  private final List<IMeasurementSchema> valueMeasurementSchemas;
+  private final List<TsFileResource> sortedSourceFiles;
 
-  private Map<TsFileResource, List<AlignedChunkMetadata>> alignedChunkMetadataCache;
+  private final Map<TsFileResource, List<AlignedChunkMetadata>> alignedChunkMetadataCache;
 
   public BatchedFastAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
