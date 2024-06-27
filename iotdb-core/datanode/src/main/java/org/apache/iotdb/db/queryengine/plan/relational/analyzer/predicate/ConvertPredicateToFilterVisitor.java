@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
@@ -164,7 +165,10 @@ public class ConvertPredicateToFilterVisitor
         case BOOLEAN:
           return (T) Boolean.valueOf(getBooleanValue(value));
         case TEXT:
+        case STRING:
           return (T) new Binary(getStringValue(value), TSFileConfig.STRING_CHARSET);
+        case BLOB:
+          return (T) new Binary(getBlobValue(value));
         default:
           throw new UnsupportedOperationException(
               String.format("Unsupported data type %s", dataType));
@@ -331,6 +335,10 @@ public class ConvertPredicateToFilterVisitor
 
   public static String getStringValue(Expression expression) {
     return ((StringLiteral) expression).getValue();
+  }
+
+  public static byte[] getBlobValue(Expression expression) {
+    return ((BinaryLiteral) expression).getValue();
   }
 
   public static class Context {

@@ -105,12 +105,12 @@ import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class ExpressionAnalyzer {
@@ -682,7 +682,7 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitStringLiteral(
         StringLiteral node, StackableAstVisitorContext<Context> context) {
-      return setExpressionType(node, TEXT);
+      return setExpressionType(node, STRING);
     }
 
     @Override
@@ -799,12 +799,12 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitCurrentDatabase(
         CurrentDatabase node, StackableAstVisitorContext<Context> context) {
-      return setExpressionType(node, TEXT);
+      return setExpressionType(node, STRING);
     }
 
     @Override
     protected Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
-      return setExpressionType(node, TEXT);
+      return setExpressionType(node, STRING);
     }
 
     @Override
