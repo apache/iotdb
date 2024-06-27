@@ -39,7 +39,7 @@ public class AlignedPageElement extends PageElement {
   private List<ByteBuffer> valuePageDataList;
 
   private final CompactionAlignedChunkReader chunkReader;
-  private boolean batched;
+  private boolean isFollowedBatch;
 
   @SuppressWarnings("squid:S107")
   public AlignedPageElement(
@@ -50,7 +50,7 @@ public class AlignedPageElement extends PageElement {
       CompactionAlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
-      boolean batched,
+      boolean isFollowedBatch,
       long priority) {
     super(chunkMetadataElement, isLastPage, priority);
     this.timePageHeader = timePageHeader;
@@ -58,14 +58,14 @@ public class AlignedPageElement extends PageElement {
     this.timePageData = timePageData;
     this.valuePageDataList = valuePageDataList;
     this.chunkReader = alignedChunkReader;
-    this.batched = batched;
+    this.isFollowedBatch = isFollowedBatch;
   }
 
   @Override
   public void deserializePage() throws IOException {
     // For aligned page, we use pointReader rather than deserialize all data point to get rid of
     // huge memory cost
-    if (batched) {
+    if (isFollowedBatch) {
       pointReader =
           chunkReader.getBatchedPagePointReader(
               timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
@@ -105,7 +105,7 @@ public class AlignedPageElement extends PageElement {
     return valuePageDataList;
   }
 
-  public boolean isBatched() {
-    return batched;
+  public boolean isFollowedBatch() {
+    return isFollowedBatch;
   }
 }

@@ -86,7 +86,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected IDeviceID deviceId;
 
-  protected boolean batched = false;
+  protected boolean isFollowedBatch = false;
 
   // Pages in this list will be sequentially judged whether there is a real overlap to choose
   // whether to put them in the point priority reader to deserialize or directly flush to chunk

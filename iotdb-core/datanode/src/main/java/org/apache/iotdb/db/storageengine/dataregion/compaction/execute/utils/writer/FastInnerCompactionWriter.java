@@ -107,7 +107,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (chunkPointNumArray[subTaskId] != 0) {
       return false;
     }
-    boolean isCompactingFollowedBatch = chunkMetadataElement.batched;
+    boolean isCompactingFollowedBatch = chunkMetadataElement.isFollowedBatch;
     if (!isCompactingFollowedBatch && !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
       return false;
     }
@@ -142,7 +142,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    boolean isCompactingFollowedBatch = alignedPageElement.isBatched();
+    boolean isCompactingFollowedBatch = alignedPageElement.isFollowedBatch();
     // there is unsealed page or current page is not large enough , then deserialize the page
     if (!isUnsealedPageOverThreshold) {
       return false;

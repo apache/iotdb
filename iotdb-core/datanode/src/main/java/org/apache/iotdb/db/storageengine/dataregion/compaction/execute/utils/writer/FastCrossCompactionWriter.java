@@ -114,7 +114,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       // chunk
       return false;
     }
-    boolean isCompactingFollowedBatch = chunkMetadataElement.batched;
+    boolean isCompactingFollowedBatch = chunkMetadataElement.isFollowedBatch;
     if (isCompactingFollowedBatch && !shouldDirectlyFlushChunkInBatchCompaction.get()) {
       return false;
     }

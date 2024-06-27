@@ -212,7 +212,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           subTaskId,
           measurementSchemas,
           summary);
-      batched = true;
     }
 
     @Override
@@ -284,7 +283,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           measurementSchemas,
           summary);
       this.compactionPlan = compactionPlan;
-      batched = true;
+      isFollowedBatch = true;
     }
 
     @Override
