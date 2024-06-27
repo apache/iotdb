@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -93,21 +93,21 @@ public class SubscriptionEventBinaryCache {
 
   private SubscriptionEventBinaryCache() {
     final long initMemorySizeInBytes =
-        PipeResourceManager.memory().getTotalMemorySizeInBytes() / 20;
+        PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 20;
     final long maxMemorySizeInBytes =
         (long)
-            (PipeResourceManager.memory().getTotalMemorySizeInBytes()
+            (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                 * PipeConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework
     this.allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(initMemorySizeInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor * ((double) oldMemory / newMemory));
                   LOGGER.info(
                       "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
@@ -117,8 +117,8 @@ public class SubscriptionEventBinaryCache {
                 oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
                   LOGGER.info(
                       "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,

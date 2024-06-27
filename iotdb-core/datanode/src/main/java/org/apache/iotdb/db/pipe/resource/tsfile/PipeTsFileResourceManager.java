@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -52,7 +52,7 @@ public class PipeTsFileResourceManager {
   private final ReentrantLock lock = new ReentrantLock();
 
   public PipeTsFileResourceManager() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeTsFileResourceManager#ttlCheck()",
             this::tryTtlCheck,
@@ -81,7 +81,7 @@ public class PipeTsFileResourceManager {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
     final Optional<Logger> logger =
-        PipeResourceManager.log()
+        PipeDataNodeResourceManager.log()
             .schedule(
                 PipeTsFileResourceManager.class,
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
@@ -278,13 +278,13 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(final File hardlinkOrCopiedTsFile)
-      throws IOException {
+  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(
+      final File hardlinkOrCopiedTsFile, final boolean cacheOtherMetadata) throws IOException {
     lock.lock();
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetDeviceIsAlignedMap();
+      return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
     } finally {
       lock.unlock();
     }

@@ -128,6 +128,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
 
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return COMMON_CONFIG.getPipeEndPointRateLimiterDropCheckIntervalMs();
+  }
+
   public float getPipeLeaderCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
@@ -146,6 +150,10 @@ public class PipeConfig {
 
   public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -337,6 +345,7 @@ public class PipeConfig {
         getPipeRemainingTimeCommitAutoSwitchSeconds());
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
@@ -344,6 +353,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
+    LOGGER.info(
+        "PipeEndPointRateLimiterDropCheckIntervalMs: {}",
+        getPipeEndPointRateLimiterDropCheckIntervalMs());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(

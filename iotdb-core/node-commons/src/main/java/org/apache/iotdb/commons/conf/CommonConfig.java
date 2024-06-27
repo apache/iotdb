@@ -41,6 +41,7 @@ public class CommonConfig {
   public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
   public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
   public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
+  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -202,6 +203,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
+  private int pipeEndPointRateLimiterDropCheckIntervalMs = 1000;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
@@ -239,6 +241,7 @@ public class CommonConfig {
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
+  private double pipeTsFileScanParsingThreshold = 0.05;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1042,12 +1045,29 @@ public class CommonConfig {
     this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
   }
 
+  public double getPipeTsFileScanParsingThreshold() {
+    return pipeTsFileScanParsingThreshold;
+  }
+
+  public void setPipeTsFileScanParsingThreshold(double pipeTsFileScanParsingThreshold) {
+    this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
+  }
+
   public double getPipeAllSinksRateLimitBytesPerSecond() {
     return pipeAllSinksRateLimitBytesPerSecond;
   }
 
   public void setPipeAllSinksRateLimitBytesPerSecond(double pipeAllSinksRateLimitBytesPerSecond) {
     this.pipeAllSinksRateLimitBytesPerSecond = pipeAllSinksRateLimitBytesPerSecond;
+  }
+
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return pipeEndPointRateLimiterDropCheckIntervalMs;
+  }
+
+  public void setPipeEndPointRateLimiterDropCheckIntervalMs(
+      int pipeEndPointRateLimiterDropCheckIntervalMs) {
+    this.pipeEndPointRateLimiterDropCheckIntervalMs = pipeEndPointRateLimiterDropCheckIntervalMs;
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {

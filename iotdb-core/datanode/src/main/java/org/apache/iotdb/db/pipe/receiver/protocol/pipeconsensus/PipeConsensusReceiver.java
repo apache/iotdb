@@ -110,7 +110,8 @@ public class PipeConsensusReceiver {
     this.pipeConsensus = pipeConsensus;
     this.consensusGroupId = consensusGroupId;
     this.pipeConsensusReceiverMetrics = new PipeConsensusReceiverMetrics(this);
-    this.requestExecutor = new RequestExecutor(pipeConsensusReceiverMetrics);
+    this.requestExecutor =
+        new RequestExecutor(pipeConsensusReceiverMetrics, pipeConsensusTsFileWriterPool);
     this.consensusPipeName = consensusPipeName;
     MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
 
@@ -867,41 +868,56 @@ public class PipeConsensusReceiver {
     }
 
     // initiate receiverFileDirWithIdSuffix
+    String receiverFileBaseDir;
     try {
-      final String receiverFileBaseDir = getReceiverFileBaseDir();
-      if (Objects.isNull(receiverFileBaseDir)) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because your folderManager is null. May because the disk is full.",
-            consensusPipeName.toString());
-        throw new DiskSpaceInsufficientException(receiverBaseDirsName);
-      }
-      // Create a new receiver file dir
-      final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
-      if (newReceiverDir.exists()) {
-        FileUtils.deleteDirectory(newReceiverDir);
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
-            consensusPipeName,
-            newReceiverDir.getPath());
-      }
-      if (!newReceiverDir.mkdirs()) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
-            consensusPipeName,
-            newReceiverDir.getPath());
-        throw new IOException(
-            String.format(
-                "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, newReceiverDir.getPath()));
-      }
-      receiverFileDirWithIdSuffix.set(newReceiverDir);
-
+      receiverFileBaseDir = getReceiverFileBaseDir();
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.",
           e);
       throw e;
     }
+
+    if (Objects.isNull(receiverFileBaseDir)) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because your folderManager is null. May because the disk is full.",
+          consensusPipeName.toString());
+      throw new DiskSpaceInsufficientException(receiverBaseDirsName);
+    }
+    // Create a new receiver file dir
+    final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
+    // Check whether systemDir exists in case of system concurrently exit when receiver try to make
+    // new dirs.
+    final File systemDir = new File(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    if (!systemDir.exists()) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. Because parent system dir have been deleted due to system concurrently exit.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+      throw new IOException(
+          String.format(
+              "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. Because parent system dir have been deleted due to system concurrently exit.",
+              consensusPipeName, newReceiverDir.getPath()));
+    }
+    // Remove exists dir
+    if (newReceiverDir.exists()) {
+      FileUtils.deleteDirectory(newReceiverDir);
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+    }
+    if (!newReceiverDir.mkdirs()) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
+          consensusPipeName,
+          newReceiverDir.getPath());
+      throw new IOException(
+          String.format(
+              "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
+              consensusPipeName, newReceiverDir.getPath()));
+    }
+    receiverFileDirWithIdSuffix.set(newReceiverDir);
   }
 
   public PipeConsensusRequestVersion getVersion() {
@@ -1128,12 +1144,14 @@ public class PipeConsensusReceiver {
     private final Lock lock;
     private final Condition condition;
     private final PipeConsensusReceiverMetrics metric;
+    private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
     private volatile int WALEventCount = 0;
     private volatile int tsFileEventCount = 0;
 
-    public RequestExecutor(PipeConsensusReceiverMetrics metric) {
+    public RequestExecutor(
+        PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(RequestMeta::getRebootTimes)
@@ -1141,6 +1159,7 @@ public class PipeConsensusReceiver {
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
       this.metric = metric;
+      this.tsFileWriterPool = tsFileWriterPool;
     }
 
     private void onSuccess(long nextSyncedCommitIndex, boolean isTransferTsFileSeal) {
@@ -1324,9 +1343,10 @@ public class PipeConsensusReceiver {
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
       this.reqExecutionOrderBuffer.clear();
-      this.onSyncedCommitIndex = -1;
+      this.onSyncedCommitIndex = 0;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
+      this.tsFileWriterPool.handleExit(consensusPipeName);
     }
   }
 
