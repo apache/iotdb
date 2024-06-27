@@ -22,9 +22,11 @@ package org.apache.iotdb.confignode.it.partition;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -41,10 +43,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -57,13 +63,15 @@ public class IoTDBTimePartitionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTimePartitionIT.class);
   private static final String INSERTION_1 =
-      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(100, 1, 2)";
+      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(0, 1, 2)";
   private static final String INSERTION_2 =
-      "INSERT INTO root.sg2.d1(timestamp,speed,temperature) values(100, 1, 2)";
+      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(1000, 1, 2)";
   private static final String INSERTION_3 =
-      "INSERT INTO root.sg3.d1(timestamp,speed,temperature) values(100, 1, 2)";
+      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(3601000, 1, 2)";
 
-  private static final String SHOW_DATABASE = "show databases";
+  private List<Long> timestatmps = Arrays.asList(0L, 1000L, 3601000L);
+
+  private static final String SHOW_TIME_PARTITION = "show timePartition where database = root.sg1";
 
   private static final TGetDatabaseReq showAllDatabasesReq;
 
@@ -107,6 +115,7 @@ public class IoTDBTimePartitionIT {
         final Statement statement = connection.createStatement();
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
       // create three databases
       statement.execute(INSERTION_1);
       statement.execute(INSERTION_2);
@@ -118,6 +127,23 @@ public class IoTDBTimePartitionIT {
           (k, v) -> {
             assertEquals(TEST_TIME_PARTITION_ORIGIN, v.getTimePartitionOrigin());
             assertEquals(TEST_TIME_PARTITION_INTERVAL, v.getTimePartitionInterval());
+          });
+
+      // check time partition
+      ResultSet result = statement.executeQuery(SHOW_TIME_PARTITION);
+      List<Long> timePartitions = new ArrayList<>();
+
+      while (result.next()) {
+        LOGGER.info(
+            "timePartition: {}, startTime: {}",
+            result.getLong(ColumnHeaderConstant.TIME_PARTITION),
+            result.getString(ColumnHeaderConstant.START_TIME));
+        timePartitions.add(result.getLong(ColumnHeaderConstant.TIME_PARTITION));
+      }
+      timestatmps.forEach(
+          t -> {
+            long timePartitionId = TimePartitionUtils.getTimePartitionId(t);
+            assertTrue(timePartitions.contains(timePartitionId));
           });
     }
   }
