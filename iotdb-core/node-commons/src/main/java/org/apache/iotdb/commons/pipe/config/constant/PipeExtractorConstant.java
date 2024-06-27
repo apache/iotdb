@@ -35,8 +35,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODE_KEY = "extractor.mode";
   public static final String SOURCE_MODE_KEY = "source.mode";
   public static final String EXTRACTOR_MODE_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_MODE_SNAPSHOT_VALUE = "snapshot";
   public static final String EXTRACTOR_MODE_SUBSCRIBE_VALUE = "subscribe";
-  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_SUBSCRIBE_VALUE;
+  public static final String EXTRACTOR_MODE_LIVE_VALUE = "live";
+  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_LIVE_VALUE;
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";

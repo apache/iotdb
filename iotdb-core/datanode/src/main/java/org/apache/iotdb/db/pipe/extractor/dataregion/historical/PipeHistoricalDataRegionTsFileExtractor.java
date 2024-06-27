@@ -320,14 +320,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 || // Should extract deletion
                 listeningOptionPair.getRight());
 
+    final String extractorModeValue =
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_KEY, PipeExtractorConstant.SOURCE_MODE_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
     shouldTerminatePipeOnAllHistoricalEventsConsumed =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                    PipeExtractorConstant.SOURCE_MODE_KEY),
-                PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-            .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+        extractorModeValue.equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+            || extractorModeValue.equalsIgnoreCase(
+                PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE);
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(

@@ -331,19 +331,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        final String extractorModeValue =
+            pipeMeta
+                .getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                        PipeExtractorConstant.SOURCE_MODE_KEY),
+                    PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
                     .getLeft()
-                && pipeMeta
-                    .getStaticMeta()
-                    .getExtractorParameters()
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                            PipeExtractorConstant.SOURCE_MODE_KEY),
-                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+                && (extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+                    || extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -410,19 +414,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        final String extractorModeValue =
+            pipeMeta
+                .getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                        PipeExtractorConstant.SOURCE_MODE_KEY),
+                    PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
                     .getLeft()
-                && pipeMeta
-                    .getStaticMeta()
-                    .getExtractorParameters()
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                            PipeExtractorConstant.SOURCE_MODE_KEY),
-                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+                && (extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+                    || extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =

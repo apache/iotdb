@@ -36,7 +36,7 @@ import java.util.Objects;
 
 public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
 
-  private transient Map<String, TopicConfig> topics = new HashMap<>(); // subscribed topic names
+  private transient Map<String, TopicConfig> topics = new HashMap<>(); // subscribed topics
 
   public Map<String, TopicConfig> getTopics() {
     return topics;
