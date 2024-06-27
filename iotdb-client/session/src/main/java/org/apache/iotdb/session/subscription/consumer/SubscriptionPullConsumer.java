@@ -353,4 +353,17 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
     }
   }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return super.toString()
+        + "(pull consumer"
+        + ", autoCommit="
+        + autoCommit
+        + ", autoCommitIntervalMs="
+        + autoCommitIntervalMs
+        + ")";
+  }
 }

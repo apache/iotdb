@@ -310,4 +310,19 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return new SubscriptionPushConsumer(this);
     }
   }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return super.toString()
+        + "(push consumer"
+        + ", ackStrategy="
+        + ackStrategy.toString()
+        + ", autoPollIntervalMs="
+        + autoPollIntervalMs
+        + ", autoPollTimeoutMs="
+        + autoPollTimeoutMs
+        + ")";
+  }
 }

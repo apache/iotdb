@@ -95,8 +95,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   // This variable indicates whether the consumer has ever been closed.
   private final AtomicBoolean isReleased = new AtomicBoolean(false);
 
-  private static final String IS_CLOSED_EXCEPTION_FORMATTER = "%s is closed.";
-
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
@@ -192,7 +190,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void checkIfClosed() throws SubscriptionException {
     if (isReleased.get()) {
-      final String errorMessage = String.format(IS_CLOSED_EXCEPTION_FORMATTER, this);
+      final String errorMessage =
+          String.format("%s has ever been closed, unsupported operation after closing.", this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+  }
+
+  private void checkIfOpened() throws SubscriptionException {
+    if (isClosed.get()) {
+      final String errorMessage =
+          String.format("%s is not yet open, please open the subscription consumer first.", this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -200,7 +208,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public synchronized void open() throws SubscriptionException {
     checkIfClosed();
-
     if (!isClosed.get()) {
       return;
     }
@@ -224,8 +231,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   @Override
   public synchronized void close() {
-    checkIfClosed();
-
     if (isClosed.get()) {
       return;
     }
@@ -262,6 +267,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void subscribe(Set<String> topicNames, final boolean needParse)
       throws SubscriptionException {
+    checkIfOpened();
+
     if (needParse) {
       topicNames =
           topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
@@ -290,6 +297,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void unsubscribe(Set<String> topicNames, final boolean needParse)
       throws SubscriptionException {
+    checkIfOpened();
+
     if (needParse) {
       topicNames =
           topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
@@ -374,17 +383,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   protected List<SubscriptionMessage> poll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
-    final List<SubscriptionMessage> messages = new ArrayList<>();
-    final SubscriptionPollTimer timer =
-        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
-
     // check topic names
+    if (subscribedTopicNames.isEmpty()) {
+      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+      return Collections.emptyList();
+    }
+
     topicNames.stream()
         .filter(topicName -> !subscribedTopicNames.contains(topicName))
         .forEach(
             topicName ->
                 LOGGER.warn(
                     "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    final SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
     do {
       try {
@@ -1028,6 +1042,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         + consumerId
         + ", consumerGroupId="
         + consumerGroupId
+        + ", heartbeatIntervalMs="
+        + heartbeatIntervalMs
+        + ", endpointsSyncIntervalMs="
+        + endpointsSyncIntervalMs
+        + ", providers="
+        + providers
+        + ", isReleased="
+        + isReleased
+        + ", isClosed="
+        + isClosed
+        + ", fileSaveDir="
+        + fileSaveDir
+        + ", fileSaveFsync="
+        + fileSaveFsync
+        + ", subscribedTopicNames="
+        + subscribedTopicNames
         + "}";
   }
 }
