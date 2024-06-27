@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -62,13 +65,15 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final FragmentInstanceStateMachine stateMachine;
 
+  private final MemoryReservationManager memoryReservationManager;
+
   private IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<PartialPath> sourcePaths;
   // Used for region scan.
-  private Map<IDeviceID, Boolean> devicePathsToAligned;
+  private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private IQueryDataSource sharedQueryDataSource;
@@ -192,6 +197,8 @@ public class FragmentInstanceContext extends QueryContext {
         globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
+    this.memoryReservationManager =
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -202,6 +209,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
+    this.memoryReservationManager =
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   private FragmentInstanceContext(
@@ -217,6 +226,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataRegion = dataRegion;
     this.globalTimeFilter = globalTimeFilter;
     this.dataNodeQueryContextMap = null;
+    this.memoryReservationManager =
+        new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
 
   @TestOnly
@@ -231,6 +242,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = null;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
+    this.memoryReservationManager = null;
   }
 
   public void start() {
@@ -264,6 +276,14 @@ public class FragmentInstanceContext extends QueryContext {
       // were a duplicate notification, which shouldn't happen
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
+
+      // release some query resource in FragmentInstanceContext
+      // why not release them in releaseResourceWhenAllDriversAreClosed() together?
+      // because we may have no chane to run the releaseResourceWhenAllDriversAreClosed which is
+      // called in callback of FragmentInstanceExecution
+      // FragmentInstanceExecution won't be created if we meet some errors like MemoryNotEnough
+      releaseDataNodeQueryContext();
+      sourcePaths = null;
     }
   }
 
@@ -356,8 +376,16 @@ public class FragmentInstanceContext extends QueryContext {
     this.sourcePaths = sourcePaths;
   }
 
-  public void setDevicePathsToAligned(Map<IDeviceID, Boolean> devicePathsToAligned) {
-    this.devicePathsToAligned = devicePathsToAligned;
+  public void setDevicePathsToContext(Map<IDeviceID, DeviceContext> devicePathsToContext) {
+    this.devicePathsToContext = devicePathsToContext;
+  }
+
+  public MemoryReservationManager getMemoryReservationContext() {
+    return memoryReservationManager;
+  }
+
+  public void releaseMemoryReservationManager() {
+    memoryReservationManager.releaseAllReservedMemory();
   }
 
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
@@ -399,17 +427,17 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void initRegionScanQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
+  public void initRegionScanQueryDataSource(Map<IDeviceID, DeviceContext> devicePathsToContext)
       throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (devicePathsToAligned == null) {
+    if (devicePathsToContext == null) {
       return;
     }
     dataRegion.readLock();
     try {
       this.sharedQueryDataSource =
           dataRegion.queryForDeviceRegionScan(
-              devicePathToAligned,
+              devicePathsToContext,
               this,
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
               timePartitions);
@@ -460,8 +488,8 @@ public class FragmentInstanceContext extends QueryContext {
           sourcePaths = null;
           break;
         case DEVICE_REGION_SCAN:
-          initRegionScanQueryDataSource(devicePathsToAligned);
-          devicePathsToAligned = null;
+          initRegionScanQueryDataSource(devicePathsToContext);
+          devicePathsToContext = null;
           break;
         case TIME_SERIES_REGION_SCAN:
           initRegionScanQueryDataSource(sourcePaths);
@@ -595,9 +623,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     dataRegion = null;
     globalTimeFilter = null;
-    sourcePaths = null;
     sharedQueryDataSource = null;
-    releaseDataNodeQueryContext();
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
@@ -658,7 +684,7 @@ public class FragmentInstanceContext extends QueryContext {
         .updatePageReaderMemoryUsage(getQueryStatistics().pageReaderMaxUsedMemorySize.get());
   }
 
-  private void releaseDataNodeQueryContext() {
+  private synchronized void releaseDataNodeQueryContext() {
     if (dataNodeQueryContextMap == null) {
       // this process is in fetch schema, nothing need to release
       return;

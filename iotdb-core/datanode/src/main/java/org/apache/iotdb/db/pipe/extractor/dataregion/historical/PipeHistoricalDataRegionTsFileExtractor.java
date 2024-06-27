@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -109,8 +109,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
-  private boolean sloppyPattern;
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+  private boolean sloppyPattern; // true to disable pattern filter after extraction
 
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
@@ -142,10 +142,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
                     .split(","))
             .map(String::trim)
+            .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    // Avoid empty string
-    sloppyOptionSet.remove("");
     sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
     sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
     if (!sloppyOptionSet.isEmpty()) {
@@ -183,6 +182,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   EXTRACTOR_END_TIME_KEY,
                   historicalDataExtractionEndTime));
         }
+      } catch (final PipeParameterNotValidException e) {
+        throw e;
       } catch (final Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
@@ -445,7 +446,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource, shouldTransferModFile);
+                PipeDataNodeResourceManager.tsfile()
+                    .pinTsFileResource(resource, shouldTransferModFile);
               } catch (final IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
@@ -506,7 +508,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final Set<IDeviceID> deviceSet;
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-          PipeResourceManager.tsfile()
+          PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
                   PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
       deviceSet =
@@ -594,7 +596,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
-      PipeResourceManager.tsfile().unpinTsFileResource(resource);
+      PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
     } catch (final IOException e) {
       LOGGER.warn(
           "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -626,7 +628,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeResourceManager.tsfile().unpinTsFileResource(resource);
+              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -123,6 +124,17 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
+  public void register(final PipeProcessorSubtask processorSubtask) {
+    // The metric is global thus the regionId is omitted
+    final String pipeID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .register(processorSubtask);
+    if (Objects.nonNull(metricService)) {
+      createMetrics(pipeID);
+    }
+  }
+
   public void register(
       final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
     // The metric is global thus the regionId is omitted
@@ -196,6 +208,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     } else {
       operator.markSchemaRegionCommit();
     }
+  }
+
+  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
+      return;
+    }
+
+    operator.markCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////

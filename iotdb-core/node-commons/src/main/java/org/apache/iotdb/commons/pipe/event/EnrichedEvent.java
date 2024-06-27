@@ -161,7 +161,7 @@ public abstract class EnrichedEvent implements Event {
         isReleased.set(true);
       }
       if (newReferenceCount < 0) {
-        LOGGER.warn(
+        LOGGER.debug(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
@@ -321,6 +321,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
+
+  public abstract boolean mayEventPathsOverlappedWithPattern();
 
   public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
     this.committerKey = committerKey;

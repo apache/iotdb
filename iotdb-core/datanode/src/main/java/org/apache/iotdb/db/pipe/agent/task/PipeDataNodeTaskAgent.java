@@ -40,14 +40,14 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
@@ -96,7 +96,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean isShutdown() {
-    return PipeAgent.runtime().isShutdown();
+    return PipeDataNodeAgent.runtime().isShutdown();
   }
 
   @Override
@@ -204,7 +204,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
         (schemaRegionId, listeningQueueNewFirstIndex) ->
-            PipeAgent.runtime()
+            PipeDataNodeAgent.runtime()
                 .schemaListener(new SchemaRegionId(schemaRegionId))
                 .removeBefore(listeningQueueNewFirstIndex));
 
@@ -218,12 +218,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .listeningSchemaRegionIds()
         .forEach(
             schemaRegionId -> {
               if (!validSchemaRegionIds.contains(schemaRegionId.getId())
-                  && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
+                  && PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
                 try {
                   SchemaRegionConsensusImpl.getInstance()
                       .write(
@@ -262,11 +262,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean dropPipe(final String pipeName) {
+    // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
     if (!super.dropPipe(pipeName)) {
       return false;
     }
 
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (Objects.nonNull(pipeMeta)) {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
@@ -297,7 +299,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void collectPipeMetaListInternal(final TDataNodeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown()) {
+    if (PipeDataNodeAgent.runtime().isShutdown()) {
       return;
     }
 
@@ -312,7 +314,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -375,7 +377,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown()) {
+    if (PipeDataNodeAgent.runtime().isShutdown()) {
       return;
     }
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
@@ -391,7 +393,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -513,7 +515,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
     try {
       final long linkedButDeletedTsFileSize =
-          PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
+          PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
       final double totalDisk =
           MetricService.getInstance()
               .getAutoGauge(
@@ -536,7 +538,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
@@ -630,11 +632,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   ///////////////////////// Pipe Consensus /////////////////////////
-
-  public long getPipeCreationTime(final String pipeName) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
-  }
 
   public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {

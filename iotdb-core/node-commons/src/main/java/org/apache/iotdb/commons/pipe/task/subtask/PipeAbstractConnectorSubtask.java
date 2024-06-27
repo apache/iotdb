@@ -94,10 +94,15 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
     // because the upper layer relies on this to stop all the related pipe tasks
     // Other exceptions may cause the subtask to stop forever and can not be restarted
-    super.onFailure(
-        throwable instanceof PipeRuntimeConnectorCriticalException
-            ? throwable
-            : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+    if (throwable instanceof PipeRuntimeConnectorCriticalException) {
+      super.onFailure(throwable);
+    } else {
+      // Print stack trace for better debugging
+      LOGGER.warn(
+          "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
+          throwable);
+      super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+    }
   }
 
   /**

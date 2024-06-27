@@ -309,7 +309,9 @@ public class FragmentInstanceExecution {
 
             // release memory
             exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
-                instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
+                instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+
+            context.releaseMemoryReservationManager();
 
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);

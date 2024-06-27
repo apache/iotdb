@@ -76,11 +76,8 @@ public enum Metric {
   WAL_COST("wal_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
-  FLUSH_THRESHOLD("flush_threshold"),
-  REJECT_THRESHOLD("reject_threshold"),
-  TIMED_FLUSH_MEMTABLE_COUNT("timed_flush_memtable_count"),
-  WAL_FLUSH_MEMTABLE_COUNT("wal_flush_memtable_count"),
-  SERIES_FULL_FLUSH_MEMTABLE("series_full_flush_memtable"),
+  MEMTABLE_THRESHOLD("memtable_threshold"),
+  FLUSH_MEMTABLE_COUNT("flush_memtable_count"),
   ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
   ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
   MEMTABLE_LIVE_DURATION("memtable_live_duration"),
@@ -176,7 +173,12 @@ public enum Metric {
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
-  LOAD_MEM("load_mem");
+  LOAD_MEM("load_mem"),
+  LOAD_DISK_IO("load_disk_io"),
+  LOAD_TIME_COST("load_time_cost"),
+  LOAD_POINT_COUNT("load_point_count"),
+  MEMTABLE_POINT_COUNT("memtable_point_count"),
+  ;
 
   final String value;
 

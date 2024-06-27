@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultResponse;
@@ -146,7 +146,7 @@ public class PipeCombineHandlerManager {
   /////////////////////////////// Singleton ///////////////////////////////
 
   private PipeCombineHandlerManager() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "CombineHandlerManager#fetchExpectedRegionIdSetAndCleanOutdatedCombiner",
             this::fetchExpectedRegionIdSetAndCleanOutdatedCombiner,

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -52,15 +52,19 @@ public class PipeEventCollector implements EventCollector {
 
   private final int regionId;
 
+  private final boolean forceTabletFormat;
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
   public PipeEventCollector(
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
-      final int regionId) {
+      final int regionId,
+      final boolean forceTabletFormat) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
+    this.forceTabletFormat = forceTabletFormat;
   }
 
   @Override
@@ -118,7 +122,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!sourceEvent.shouldParseTimeOrPattern()) {
+    if (!forceTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
       collectEvent(sourceEvent);
       return;
     }
@@ -160,7 +164,7 @@ public class PipeEventCollector implements EventCollector {
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
 
       // Assign a rebootTime for pipeConsensus
-      ((EnrichedEvent) event).setRebootTimes(PipeAgent.runtime().getRebootTimes());
+      ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
     }
 
     if (event instanceof PipeHeartbeatEvent) {
@@ -172,6 +176,10 @@ public class PipeEventCollector implements EventCollector {
 
   public void resetCollectInvocationCount() {
     collectInvocationCount.set(0);
+  }
+
+  public long getCollectInvocationCount() {
+    return collectInvocationCount.get();
   }
 
   public boolean hasNoCollectInvocationAfterReset() {

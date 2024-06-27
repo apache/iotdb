@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
@@ -60,21 +60,22 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */
   public PipeTaskProcessorStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeProcessorParameters,
-      int regionId,
-      EventSupplier pipeExtractorInputEventSupplier,
-      UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
-      PipeProcessorSubtaskExecutor executor,
-      PipeTaskMeta pipeTaskMeta) {
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeProcessorParameters,
+      final int regionId,
+      final EventSupplier pipeExtractorInputEventSupplier,
+      final UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      final PipeProcessorSubtaskExecutor executor,
+      final PipeTaskMeta pipeTaskMeta,
+      final boolean forceTabletFormat) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
                 pipeName, creationTime, regionId, pipeTaskMeta));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-            ? PipeAgent.plugin()
+            ? PipeDataNodeAgent.plugin()
                 .dataRegion()
                 .getConfiguredProcessor(
                     pipeProcessorParameters.getStringOrDefault(
@@ -82,7 +83,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
                         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
                     pipeProcessorParameters,
                     runtimeConfiguration)
-            : PipeAgent.plugin()
+            : PipeDataNodeAgent.plugin()
                 .schemaRegion()
                 .getConfiguredProcessor(
                     pipeProcessorParameters.getStringOrDefault(
@@ -98,7 +99,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue, creationTime, regionId);
+        new PipeEventCollector(
+            pipeConnectorOutputPendingQueue, creationTime, regionId, forceTabletFormat);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,

@@ -147,7 +147,8 @@ public class ClusterSchemaTree implements ISchemaTree {
     } else {
       Template template = templateMap.get(entityNode.getTemplateId());
       if (template != null && template.getSchemaMap().containsKey(measurement)) {
-        return new MeasurementSchemaInfo(measurement, template.getSchema(measurement), null, null);
+        return new MeasurementSchemaInfo(
+            measurement, template.getSchema(measurement), null, null, null);
       }
     }
     return null;
@@ -259,7 +260,8 @@ public class ClusterSchemaTree implements ISchemaTree {
                 measurementPath.getMeasurement(),
                 measurementPath.getMeasurementSchema(),
                 null,
-                measurementPath.getTagMap()),
+                measurementPath.getTagMap(),
+                null),
             measurementPath.isUnderAlignedEntity());
       }
     }
@@ -303,7 +305,9 @@ public class ClusterSchemaTree implements ISchemaTree {
       entityNode.setTemplateId(templateId);
       cur.replaceChild(deviceName, entityNode);
     }
-    templateMap.putIfAbsent(templateId, template);
+    if (template != null) {
+      templateMap.putIfAbsent(templateId, template);
+    }
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
@@ -317,6 +321,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         measurementPath,
         measurementPath.getMeasurementSchema(),
         measurementPath.getTagMap(),
+        null,
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
   }
@@ -325,6 +330,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath path,
       IMeasurementSchema schema,
       Map<String, String> tagMap,
+      Map<String, String> attributeMap,
       String alias,
       boolean isAligned) {
     String[] nodes = path.getNodes();
@@ -340,6 +346,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
           measurementNode.setTagMap(tagMap);
+          measurementNode.setAttributeMap(attributeMap);
           child = measurementNode;
           if (schema.isLogicalView()) {
             this.hasLogicalMeasurementPath = true;

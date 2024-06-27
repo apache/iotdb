@@ -63,6 +63,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
     return true;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
   /////////////////////////////// Type parsing ///////////////////////////////
 
   public String toSealTypeString() {

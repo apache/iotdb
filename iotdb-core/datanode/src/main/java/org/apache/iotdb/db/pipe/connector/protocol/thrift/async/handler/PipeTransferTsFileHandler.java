@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
@@ -35,8 +36,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,17 +48,28 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
-public class PipeTransferTsFileInsertionEventHandler
-    implements AsyncMethodCallback<TPipeTransferResp> {
+public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTransferResp> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTsFileInsertionEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
-  private final PipeTsFileInsertionEvent event;
+  // Used to transfer the file
   private final IoTDBDataRegionAsyncConnector connector;
+
+  // Used to rate limit the transfer
+  private final Map<Pair<String, Long>, Double> pipeName2WeightMap;
+
+  // The original events to be transferred, can be multiple events if
+  // the file is batched with other events
+  private final List<EnrichedEvent> events;
+  private final AtomicInteger eventsReferenceCount;
+  private final AtomicBoolean eventsHadBeenAddedToRetryQueue;
 
   private final File tsFile;
   private final File modFile;
@@ -74,15 +88,27 @@ public class PipeTransferTsFileInsertionEventHandler
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
 
-  public PipeTransferTsFileInsertionEventHandler(
-      final PipeTsFileInsertionEvent event, final IoTDBDataRegionAsyncConnector connector)
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncConnector connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod)
       throws FileNotFoundException {
-    this.event = event;
     this.connector = connector;
 
-    tsFile = event.getTsFile();
-    modFile = event.getModFile();
-    transferMod = event.isWithMod() && connector.supportModsIfIsDataNodeReceiver();
+    this.pipeName2WeightMap = pipeName2WeightMap;
+
+    this.events = events;
+    this.eventsReferenceCount = eventsReferenceCount;
+    this.eventsHadBeenAddedToRetryQueue = eventsHadBeenAddedToRetryQueue;
+
+    this.tsFile = tsFile;
+    this.modFile = modFile;
+    this.transferMod = transferMod;
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -98,7 +124,7 @@ public class PipeTransferTsFileInsertionEventHandler
   }
 
   public void transfer(
-      IoTDBDataNodeAsyncClientManager clientManager,
+      final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
     this.clientManager = clientManager;
@@ -134,8 +160,13 @@ public class PipeTransferTsFileInsertionEventHandler
                     uncompressedReq, connector.getCompressors())
                 : uncompressedReq;
 
-        connector.rateLimitIfNeeded(
-            event.getPipeName(), client.getEndPoint(), req.getBody().length);
+        pipeName2WeightMap.forEach(
+            (pipePair, weight) ->
+                connector.rateLimitIfNeeded(
+                    pipePair.getLeft(),
+                    pipePair.getRight(),
+                    client.getEndPoint(),
+                    (long) (req.getBody().length * weight)));
 
         client.pipeTransfer(req, this);
       }
@@ -158,7 +189,13 @@ public class PipeTransferTsFileInsertionEventHandler
                 uncompressedReq, connector.getCompressors())
             : uncompressedReq;
 
-    connector.rateLimitIfNeeded(event.getPipeName(), client.getEndPoint(), req.getBody().length);
+    pipeName2WeightMap.forEach(
+        (pipePair, weight) ->
+            connector.rateLimitIfNeeded(
+                pipePair.getLeft(),
+                pipePair.getRight(),
+                client.getEndPoint(),
+                (long) (req.getBody().length * weight)));
 
     client.pipeTransfer(req, this);
 
@@ -190,16 +227,35 @@ public class PipeTransferTsFileInsertionEventHandler
         if (reader != null) {
           reader.close();
         }
-      } catch (final IOException e) {
-        LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
-      } finally {
-        event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
 
-        LOGGER.info(
-            "Successfully transferred file {} (committer key={}, commit id={}).",
-            tsFile,
-            event.getCommitterKey(),
-            event.getCommitId());
+        // Delete current file when using tsFile as batch
+        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+          FileUtils.delete(currentFile);
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to close file reader or delete tsFile when successfully transferred file.", e);
+      } finally {
+        final int referenceCount = eventsReferenceCount.decrementAndGet();
+        if (referenceCount <= 0) {
+          events.forEach(
+              event ->
+                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+        }
+
+        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+          LOGGER.info(
+              "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
+              tsFile,
+              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+              referenceCount);
+        } else {
+          LOGGER.info(
+              "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
+              tsFile,
+              referenceCount);
+        }
 
         if (client != null) {
           client.setShouldReturnSelf(true);
@@ -242,12 +298,19 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onError(final Exception exception) {
     try {
-      LOGGER.warn(
-          "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
-          tsFile,
-          event.getCommitterKey(),
-          event.getCommitId(),
-          exception);
+      if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+        LOGGER.warn(
+            "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+            tsFile,
+            events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+            exception);
+      } else {
+        LOGGER.warn(
+            "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents)",
+            tsFile,
+            exception);
+      }
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);
     }
@@ -264,8 +327,13 @@ public class PipeTransferTsFileInsertionEventHandler
       if (reader != null) {
         reader.close();
       }
+
+      // Delete current file when using tsFile as batch
+      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+        FileUtils.delete(currentFile);
+      }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
+      LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
       try {
         if (client != null) {
@@ -273,7 +341,9 @@ public class PipeTransferTsFileInsertionEventHandler
           client.returnSelf();
         }
       } finally {
-        connector.addFailureEventToRetryQueue(event);
+        if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
+          connector.addFailureEventsToRetryQueue(events);
+        }
       }
     }
   }

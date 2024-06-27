@@ -493,6 +493,7 @@ class AutoCreateSchemaExecutor {
               measurements.get(i), tsDataTypes.get(i), encodings.get(i), compressors.get(i)),
           null,
           null,
+          null,
           isAligned);
     }
   }
@@ -618,6 +619,7 @@ class AutoCreateSchemaExecutor {
                 measurementGroup.getDataTypes().get(i),
                 measurementGroup.getEncodings().get(i),
                 measurementGroup.getCompressors().get(i)),
+            null,
             null,
             null,
             entry.getValue().left);

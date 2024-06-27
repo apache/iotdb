@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 
@@ -85,8 +85,13 @@ public class PipeTerminateEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
+  @Override
   public void reportProgress() {
-    PipeAgent.task().markCompleted(pipeName, dataRegionId);
+    PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId);
   }
 
   @Override

@@ -45,6 +45,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
@@ -133,8 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties, true);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(), NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
+            .updateRpcInstance(NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -177,7 +177,7 @@ public class ConfigNodeDescriptor {
       conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode.trim()).get(0));
     } else {
       throw new IOException(
-          "The parameter dn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
+          "The parameter cn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
     }
 
     conf.setSeriesSlotNum(
@@ -869,6 +869,11 @@ public class ConfigNodeDescriptor {
       LOGGER.warn("Unknown host when checking seed configNode IP {}", conf.getInternalAddress(), e);
       return false;
     }
+  }
+
+  public void loadHotModifiedProps(Properties properties) {
+    Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
+        .ifPresent(conf::setClusterName);
   }
 
   public static ConfigNodeDescriptor getInstance() {

@@ -127,6 +127,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
       throws PipeException, IOException {
     if (!send(
         pipeSchemaRegionWritePlanEvent.getPipeName(),
+        pipeSchemaRegionWritePlanEvent.getCreationTime(),
         socket,
         PipeTransferPlanNodeReq.toTPipeTransferBytes(
             pipeSchemaRegionWritePlanEvent.getPlanNode()))) {

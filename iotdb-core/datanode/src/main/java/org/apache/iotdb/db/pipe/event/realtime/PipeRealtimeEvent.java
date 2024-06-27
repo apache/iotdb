@@ -129,10 +129,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return event.getProgressIndex();
   }
 
-  /**
-   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
-   * data-region-level.
-   */
   @Override
   public void skipParsingPattern() {
     event.skipParsingPattern();
@@ -141,6 +137,26 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public void skipParsingTime() {
     event.skipParsingTime();
+  }
+
+  @Override
+  public boolean shouldParseTime() {
+    return event.shouldParseTime();
+  }
+
+  @Override
+  public boolean shouldParsePattern() {
+    return event.shouldParsePattern();
+  }
+
+  @Override
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    return event.mayEventTimeOverlappedWithTimeRange();
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return event.mayEventPathsOverlappedWithPattern();
   }
 
   @Override
@@ -165,11 +181,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
-  }
-
-  @Override
-  public boolean mayEventTimeOverlappedWithTimeRange() {
-    return event.mayEventTimeOverlappedWithTimeRange();
   }
 
   @Override
