@@ -223,7 +223,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       throws IOException {
     final Map<String, TSDataType> result = new HashMap<>();
 
-    for (IDeviceID device : devices) {
+    for (final IDeviceID device : devices) {
       tsFileSequenceReader
           .readDeviceMetadata(device)
           .values()
@@ -247,7 +247,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final Set<IDeviceID> devices) throws IOException {
     final Map<IDeviceID, List<String>> result = new HashMap<>();
 
-    for (IDeviceID device : devices) {
+    for (final IDeviceID device : devices) {
       tsFileSequenceReader
           .readDeviceMetadata(device)
           .values()
@@ -286,7 +286,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
                         ((PlainDeviceID) entry.getKey()).toStringID(),
                         entry.getValue(),
                         timeFilterExpression);
-              } catch (final IOException e) {
+              } catch (final Exception e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
               }

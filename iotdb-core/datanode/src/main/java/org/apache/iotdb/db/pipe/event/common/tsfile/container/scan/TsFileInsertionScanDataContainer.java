@@ -87,10 +87,15 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
-    tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+    try {
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
+      tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
-    prepareData();
+      prepareData();
+    } catch (final Exception e) {
+      close();
+      throw e;
+    }
   }
 
   @Override
@@ -106,7 +111,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           @Override
           public TabletInsertionEvent next() {
             if (!hasNext()) {
-              close();
               throw new NoSuchElementException();
             }
 
@@ -125,13 +129,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   }
 
   private Tablet getNextTablet() {
-    final Tablet tablet =
-        new Tablet(
-            currentDevice,
-            currentMeasurements,
-            PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-    tablet.initBitMaps();
     try {
+      final Tablet tablet =
+          new Tablet(
+              currentDevice,
+              currentMeasurements,
+              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+      tablet.initBitMaps();
+
       while (data.hasCurrent()) {
         if (isMultiPage || data.currentTime() >= startTime && data.currentTime() <= endTime) {
           final int rowIndex = tablet.rowSize;
@@ -157,13 +162,11 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         prepareData();
       }
 
-    } catch (final IOException e) {
+      return tablet;
+    } catch (final Exception e) {
+      close();
       throw new PipeException("Failed to get next tablet insertion event.", e);
     }
-    if (Objects.isNull(chunkReader)) {
-      close();
-    }
-    return tablet;
   }
 
   private void prepareData() throws IOException {
@@ -172,6 +175,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         moveToNextChunkReader();
       } while (Objects.nonNull(chunkReader) && !chunkReader.hasNextSatisfiedPage());
       if (Objects.isNull(chunkReader)) {
+        close();
         break;
       }
       do {
