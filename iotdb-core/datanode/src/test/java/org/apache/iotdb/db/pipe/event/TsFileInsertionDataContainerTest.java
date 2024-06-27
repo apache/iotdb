@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -69,20 +71,33 @@ public class TsFileInsertionDataContainerTest {
   }
 
   @Test
-  public void testToTabletInsertionEvents() throws Exception {
-    Set<Integer> deviceNumbers = new HashSet<>();
+  public void testQueryContainer() throws Exception {
+    final long startTime = System.currentTimeMillis();
+    testToTabletInsertionEvents(true);
+    System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testScanContainer() throws Exception {
+    final long startTime = System.currentTimeMillis();
+    testToTabletInsertionEvents(false);
+    System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  public void testToTabletInsertionEvents(final boolean isQuery) throws Exception {
+    final Set<Integer> deviceNumbers = new HashSet<>();
     deviceNumbers.add(1);
     deviceNumbers.add(2);
 
-    Set<Integer> measurementNumbers = new HashSet<>();
+    final Set<Integer> measurementNumbers = new HashSet<>();
     measurementNumbers.add(1);
     measurementNumbers.add(2);
 
-    Set<String> patternFormats = new HashSet<>();
+    final Set<String> patternFormats = new HashSet<>();
     patternFormats.add(PREFIX_FORMAT);
     patternFormats.add(IOTDB_FORMAT);
 
-    Set<Pair<Long, Long>> startEndTimes = new HashSet<>();
+    final Set<Pair<Long, Long>> startEndTimes = new HashSet<>();
     startEndTimes.add(new Pair<>(100L, TSFILE_START_TIME - 1));
     startEndTimes.add(new Pair<>(100L, TSFILE_START_TIME));
     startEndTimes.add(new Pair<>(100L, TSFILE_START_TIME + 1));
@@ -100,31 +115,34 @@ public class TsFileInsertionDataContainerTest {
 
     startEndTimes.add(new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
 
-    for (int deviceNumber : deviceNumbers) {
-      for (int measurementNumber : measurementNumbers) {
-        for (String patternFormat : patternFormats) {
-          for (Pair<Long, Long> startEndTime : startEndTimes) {
+    for (final int deviceNumber : deviceNumbers) {
+      for (final int measurementNumber : measurementNumbers) {
+        for (final String patternFormat : patternFormats) {
+          for (final Pair<Long, Long> startEndTime : startEndTimes) {
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 0,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 2,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
 
             testToTabletInsertionEvents(
                 deviceNumber,
@@ -132,21 +150,24 @@ public class TsFileInsertionDataContainerTest {
                 999,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1000,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1001,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
 
             testToTabletInsertionEvents(
                 deviceNumber,
@@ -154,21 +175,24 @@ public class TsFileInsertionDataContainerTest {
                 999 * 2 + 1,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1000,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1001 * 2 - 1,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
 
             testToTabletInsertionEvents(
                 deviceNumber,
@@ -176,21 +200,24 @@ public class TsFileInsertionDataContainerTest {
                 1023,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1024,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1025,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
 
             testToTabletInsertionEvents(
                 deviceNumber,
@@ -198,21 +225,24 @@ public class TsFileInsertionDataContainerTest {
                 1023 * 2 + 1,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1024 * 2,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
             testToTabletInsertionEvents(
                 deviceNumber,
                 measurementNumber,
                 1025 * 2 - 1,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
 
             testToTabletInsertionEvents(
                 deviceNumber,
@@ -220,7 +250,8 @@ public class TsFileInsertionDataContainerTest {
                 10001,
                 patternFormat,
                 startEndTime.left,
-                startEndTime.right);
+                startEndTime.right,
+                isQuery);
           }
         }
       }
@@ -228,12 +259,13 @@ public class TsFileInsertionDataContainerTest {
   }
 
   private void testToTabletInsertionEvents(
-      int deviceNumber,
-      int measurementNumber,
-      int rowNumberInOneDevice,
-      String patternFormat,
-      long startTime,
-      long endTime)
+      final int deviceNumber,
+      final int measurementNumber,
+      final int rowNumberInOneDevice,
+      final String patternFormat,
+      final long startTime,
+      final long endTime,
+      final boolean isQuery)
       throws Exception {
     LOGGER.debug(
         "testToTabletInsertionEvents: deviceNumber: {}, measurementNumber: {}, rowNumberInOneDevice: {}, patternFormat: {}, startTime: {}, endTime: {}",
@@ -298,12 +330,20 @@ public class TsFileInsertionDataContainerTest {
     }
 
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(alignedTsFile, rootPattern, startTime, endTime);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    alignedTsFile, rootPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    alignedTsFile, rootPattern, startTime, endTime, null, null);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(nonalignedTsFile, rootPattern, startTime, endTime)) {
-      AtomicInteger count1 = new AtomicInteger(0);
-      AtomicInteger count2 = new AtomicInteger(0);
-      AtomicInteger count3 = new AtomicInteger(0);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    nonalignedTsFile, rootPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    nonalignedTsFile, rootPattern, startTime, endTime, null, null)) {
+      final AtomicInteger count1 = new AtomicInteger(0);
+      final AtomicInteger count2 = new AtomicInteger(0);
+      final AtomicInteger count3 = new AtomicInteger(0);
 
       alignedContainer
           .toTabletInsertionEvents()
@@ -366,8 +406,7 @@ public class TsFileInsertionDataContainerTest {
                                       (row, collector) -> {
                                         try {
                                           rowCollector.collectRow(row);
-                                          Assert.assertEquals(measurementNumber, row.size());
-                                          count1.incrementAndGet();
+                                          count1.addAndGet(row.size());
                                         } catch (IOException e) {
                                           throw new RuntimeException(e);
                                         }
@@ -379,8 +418,7 @@ public class TsFileInsertionDataContainerTest {
                                       (row, collector) -> {
                                         try {
                                           collector.collectRow(row);
-                                          Assert.assertEquals(measurementNumber, row.size());
-                                          count2.incrementAndGet();
+                                          count2.addAndGet(row.size());
                                         } catch (IOException e) {
                                           throw new RuntimeException(e);
                                         }
@@ -391,31 +429,30 @@ public class TsFileInsertionDataContainerTest {
                                               (row, collector) -> {
                                                 try {
                                                   collector.collectRow(row);
-                                                  Assert.assertEquals(
-                                                      measurementNumber, row.size());
-                                                  count3.incrementAndGet();
+                                                  count3.addAndGet(row.size());
                                                 } catch (IOException e) {
                                                   throw new RuntimeException(e);
                                                 }
                                               }))));
 
-      Assert.assertEquals(deviceNumber * expectedRowNumber, count1.get());
-      Assert.assertEquals(deviceNumber * expectedRowNumber, count2.get());
-      Assert.assertEquals(deviceNumber * expectedRowNumber, count3.get());
-    } catch (Exception e) {
+      // Calculate points in non-aligned tablets
+      Assert.assertEquals(deviceNumber * expectedRowNumber * measurementNumber, count1.get());
+      Assert.assertEquals(deviceNumber * expectedRowNumber * measurementNumber, count2.get());
+      Assert.assertEquals(deviceNumber * expectedRowNumber * measurementNumber, count3.get());
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    AtomicReference<String> oneDeviceInAlignedTsFile = new AtomicReference<>();
-    AtomicReference<String> oneMeasurementInAlignedTsFile = new AtomicReference<>();
+    final AtomicReference<String> oneDeviceInAlignedTsFile = new AtomicReference<>();
+    final AtomicReference<String> oneMeasurementInAlignedTsFile = new AtomicReference<>();
 
-    AtomicReference<String> oneDeviceInUnalignedTsFile = new AtomicReference<>();
-    AtomicReference<String> oneMeasurementInUnalignedTsFile = new AtomicReference<>();
+    final AtomicReference<String> oneDeviceInUnalignedTsFile = new AtomicReference<>();
+    final AtomicReference<String> oneMeasurementInUnalignedTsFile = new AtomicReference<>();
 
-    try (TsFileSequenceReader alignedReader =
+    try (final TsFileSequenceReader alignedReader =
             new TsFileSequenceReader(alignedTsFile.getAbsolutePath());
-        TsFileSequenceReader nonalignedReader =
+        final TsFileSequenceReader nonalignedReader =
             new TsFileSequenceReader(nonalignedTsFile.getAbsolutePath())) {
 
       alignedReader
@@ -457,14 +494,20 @@ public class TsFileInsertionDataContainerTest {
     }
 
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(
-                alignedTsFile, oneAlignedDevicePattern, startTime, endTime);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    alignedTsFile, oneAlignedDevicePattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    alignedTsFile, oneAlignedDevicePattern, startTime, endTime, null, null);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(
-                nonalignedTsFile, oneNonAlignedDevicePattern, startTime, endTime)) {
-      AtomicInteger count1 = new AtomicInteger(0);
-      AtomicInteger count2 = new AtomicInteger(0);
-      AtomicInteger count3 = new AtomicInteger(0);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    nonalignedTsFile, oneNonAlignedDevicePattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    nonalignedTsFile, oneNonAlignedDevicePattern, startTime, endTime, null, null)) {
+      final AtomicInteger count1 = new AtomicInteger(0);
+      final AtomicInteger count2 = new AtomicInteger(0);
+      final AtomicInteger count3 = new AtomicInteger(0);
 
       alignedContainer
           .toTabletInsertionEvents()
@@ -527,8 +570,7 @@ public class TsFileInsertionDataContainerTest {
                                       (row, collector) -> {
                                         try {
                                           rowCollector.collectRow(row);
-                                          Assert.assertEquals(measurementNumber, row.size());
-                                          count1.incrementAndGet();
+                                          count1.addAndGet(row.size());
                                         } catch (IOException e) {
                                           throw new RuntimeException(e);
                                         }
@@ -540,8 +582,7 @@ public class TsFileInsertionDataContainerTest {
                                       (row, collector) -> {
                                         try {
                                           collector.collectRow(row);
-                                          Assert.assertEquals(measurementNumber, row.size());
-                                          count2.incrementAndGet();
+                                          count2.addAndGet(row.size());
                                         } catch (IOException e) {
                                           throw new RuntimeException(e);
                                         }
@@ -552,18 +593,17 @@ public class TsFileInsertionDataContainerTest {
                                               (row, collector) -> {
                                                 try {
                                                   collector.collectRow(row);
-                                                  Assert.assertEquals(
-                                                      measurementNumber, row.size());
-                                                  count3.incrementAndGet();
+                                                  count3.addAndGet(row.size());
                                                 } catch (IOException e) {
                                                   throw new RuntimeException(e);
                                                 }
                                               }))));
 
-      Assert.assertEquals(expectedRowNumber, count1.get());
-      Assert.assertEquals(expectedRowNumber, count2.get());
-      Assert.assertEquals(expectedRowNumber, count3.get());
-    } catch (Exception e) {
+      // Calculate points in non-aligned tablets
+      Assert.assertEquals(expectedRowNumber * measurementNumber, count1.get());
+      Assert.assertEquals(expectedRowNumber * measurementNumber, count2.get());
+      Assert.assertEquals(expectedRowNumber * measurementNumber, count3.get());
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -585,14 +625,25 @@ public class TsFileInsertionDataContainerTest {
     }
 
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(
-                alignedTsFile, oneAlignedMeasurementPattern, startTime, endTime);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    alignedTsFile, oneAlignedMeasurementPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    alignedTsFile, oneAlignedMeasurementPattern, startTime, endTime, null, null);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(
-                nonalignedTsFile, oneNonAlignedMeasurementPattern, startTime, endTime)) {
-      AtomicInteger count1 = new AtomicInteger(0);
-      AtomicInteger count2 = new AtomicInteger(0);
-      AtomicInteger count3 = new AtomicInteger(0);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    nonalignedTsFile, oneNonAlignedMeasurementPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    nonalignedTsFile,
+                    oneNonAlignedMeasurementPattern,
+                    startTime,
+                    endTime,
+                    null,
+                    null)) {
+      final AtomicInteger count1 = new AtomicInteger(0);
+      final AtomicInteger count2 = new AtomicInteger(0);
+      final AtomicInteger count3 = new AtomicInteger(0);
 
       alignedContainer
           .toTabletInsertionEvents()
@@ -689,7 +740,7 @@ public class TsFileInsertionDataContainerTest {
       Assert.assertEquals(expectedRowNumber, count1.get());
       Assert.assertEquals(expectedRowNumber, count2.get());
       Assert.assertEquals(expectedRowNumber, count3.get());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -706,13 +757,20 @@ public class TsFileInsertionDataContainerTest {
     }
 
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(alignedTsFile, notExistPattern, startTime, endTime);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    alignedTsFile, notExistPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    alignedTsFile, notExistPattern, startTime, endTime, null, null);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(
-                nonalignedTsFile, notExistPattern, startTime, endTime)) {
-      AtomicInteger count1 = new AtomicInteger(0);
-      AtomicInteger count2 = new AtomicInteger(0);
-      AtomicInteger count3 = new AtomicInteger(0);
+            isQuery
+                ? new TsFileInsertionQueryDataContainer(
+                    nonalignedTsFile, notExistPattern, startTime, endTime)
+                : new TsFileInsertionScanDataContainer(
+                    nonalignedTsFile, notExistPattern, startTime, endTime, null, null)) {
+      final AtomicInteger count1 = new AtomicInteger(0);
+      final AtomicInteger count2 = new AtomicInteger(0);
+      final AtomicInteger count3 = new AtomicInteger(0);
 
       alignedContainer
           .toTabletInsertionEvents()
@@ -809,7 +867,7 @@ public class TsFileInsertionDataContainerTest {
       Assert.assertEquals(0, count1.get());
       Assert.assertEquals(0, count2.get());
       Assert.assertEquals(0, count3.get());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
