@@ -86,22 +86,27 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
 
   @Override
   protected void buildResult(TsBlock tsBlock) {
+    appendDataIntoBuilder(tsBlock, resultTsBlockBuilder);
+  }
+
+  public static void appendDataIntoBuilder(TsBlock tsBlock, TsBlockBuilder builder) {
     int size = tsBlock.getPositionCount();
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
-      resultTsBlockBuilder.declarePosition();
+      builder.declarePosition();
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
         columnIndex++) {
-      appendOneColumn(columnIndex, tsBlock, size);
+      appendOneColumn(columnIndex, tsBlock, size, builder);
     }
   }
 
-  private void appendOneColumn(int columnIndex, TsBlock tsBlock, int size) {
-    ColumnBuilder columnBuilder = resultTsBlockBuilder.getColumnBuilder(columnIndex);
+  private static void appendOneColumn(
+      int columnIndex, TsBlock tsBlock, int size, TsBlockBuilder builder) {
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
     Column column = tsBlock.getColumn(columnIndex);
     if (column.mayHaveNull()) {
       for (int i = 0; i < size; i++) {
