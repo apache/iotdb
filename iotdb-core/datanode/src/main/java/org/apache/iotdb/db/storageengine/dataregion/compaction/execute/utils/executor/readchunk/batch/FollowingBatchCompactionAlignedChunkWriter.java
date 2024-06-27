@@ -39,6 +39,7 @@ import java.util.List;
 public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
   private int currentPage = 0;
   private CompactChunkPlan compactChunkPlan;
+  private ChunkWriterFlushCallback chunkWriterFlushCallback;
 
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
@@ -98,6 +99,9 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   @Override
   public boolean checkIsChunkSizeOverThreshold(
       long size, long pointNum, boolean returnTrueIfChunkEmpty) {
+    if (compactChunkPlan.isCompactedByDirectlyFlush()) {
+      return true;
+    }
     return currentPage >= compactChunkPlan.getPageRecords().size();
   }
 
@@ -109,7 +113,16 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   @Override
   public boolean checkIsUnsealedPageOverThreshold(
       long size, long pointNum, boolean returnTrueIfPageEmpty) {
-    throw new RuntimeException("unimplemented");
+    if (currentPage >= compactChunkPlan.getPageRecords().size()) {
+      return true;
+    }
+    CompactPagePlan compactPagePlan = compactChunkPlan.getPageRecords().get(currentPage);
+    if (compactPagePlan.isCompactedByDirectlyFlush()) {
+      return true;
+    }
+    long endTime =
+        ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).pageStatistics.getEndTime();
+    return endTime == compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMax();
   }
 
   public int getCurrentPage() {
@@ -120,6 +133,10 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     this.compactChunkPlan = compactChunkPlan;
     this.currentPage = 0;
     this.timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
+  }
+
+  public void registerFlushChunkWriterCallback(ChunkWriterFlushCallback flushChunkWriterCallback) {
+    this.chunkWriterFlushCallback = flushChunkWriterCallback;
   }
 
   public static class FollowingBatchCompactionTimeChunkWriter extends TimeChunkWriter {

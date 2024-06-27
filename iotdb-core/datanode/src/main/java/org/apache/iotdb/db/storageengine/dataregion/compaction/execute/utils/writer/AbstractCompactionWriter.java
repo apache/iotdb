@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -40,11 +39,11 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Supplier;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
@@ -101,18 +100,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void endChunkGroup() throws IOException;
 
-  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
+  public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     lastCheckIndex = 0;
     lastTime[subTaskId] = Long.MIN_VALUE;
-    if (isAlign) {
-      // the first is time metadata and the rest is value metadata list
-      chunkWriters[subTaskId] =
-          new AlignedChunkWriterImpl(measurementSchemaList.remove(0), measurementSchemaList);
-      measurementId[subTaskId] = TsFileConstant.TIME_COLUMN_ID;
-    } else {
-      chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
-      measurementId[subTaskId] = measurementSchemaList.get(0).getMeasurementId();
-    }
+    chunkWriters[subTaskId] = chunkWriter;
+    measurementId[subTaskId] = measurement;
   }
 
   public abstract void endMeasurement(int subTaskId) throws IOException;
@@ -187,7 +179,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
       List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId)
+      int subTaskId,
+      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException;
 
   @SuppressWarnings("squid:S2445")
@@ -220,7 +213,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       targetWriter.markStartingWritingAligned();
 
       // flush time chunk
-      targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
+      if (timeChunk != null) {
+        // time chunk may be null when compact following series batch
+        targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
+      }
 
       // flush value chunks
       for (int i = 0; i < valueChunks.size(); i++) {

@@ -40,7 +40,7 @@ public class ChunkMetadataElement {
 
   public List<Chunk> valueChunks;
 
-  public boolean needForceDecoding;
+  public boolean needForceDecodingPage;
 
   public ChunkMetadataElement(
       IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {

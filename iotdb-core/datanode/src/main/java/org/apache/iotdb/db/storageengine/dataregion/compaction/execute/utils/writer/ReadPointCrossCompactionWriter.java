@@ -35,6 +35,7 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
@@ -84,7 +85,8 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
       List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId) {
+      int subTaskId,
+      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction) {
     throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
   }
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -42,12 +41,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,26 +64,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
   @Override
   public void execute() throws IOException, PageException {
-    markAlignedChunkHasDeletion(readerAndChunkMetadataList);
+    AlignedSeriesGroupCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
     List<CompactChunkPlan> compactChunkPlans = compactFirstColumnGroup();
     compactLeftColumnGroups(compactChunkPlans);
-  }
-
-  private void markAlignedChunkHasDeletion(
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-          readerAndChunkMetadataList) {
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-        IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
-        for (IChunkMetadata iChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-          if (iChunkMetadata != null && iChunkMetadata.isModified()) {
-            timeChunkMetadata.setModified(true);
-            break;
-          }
-        }
-      }
-    }
   }
 
   private List<CompactChunkPlan> compactFirstColumnGroup() throws IOException, PageException {
@@ -153,35 +132,13 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       List<AlignedChunkMetadata> selectedColumnAlignedChunkMetadataList = new LinkedList<>();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         selectedColumnAlignedChunkMetadataList.add(
-            filterAlignedChunkMetadata(alignedChunkMetadata, selectedMeasurements));
+            AlignedSeriesGroupCompactionUtils.filterAlignedChunkMetadata(
+                alignedChunkMetadata, selectedMeasurements));
       }
       groupReaderAndChunkMetadataList.add(
           new Pair<>(pair.getLeft(), selectedColumnAlignedChunkMetadataList));
     }
     return groupReaderAndChunkMetadataList;
-  }
-
-  private AlignedChunkMetadata filterAlignedChunkMetadata(
-      AlignedChunkMetadata alignedChunkMetadata, List<String> selectedMeasurements) {
-    List<IChunkMetadata> valueChunkMetadataList =
-        Arrays.asList(new IChunkMetadata[selectedMeasurements.size()]);
-
-    Map<String, Integer> measurementIndex = new HashMap<>();
-    for (int i = 0; i < selectedMeasurements.size(); i++) {
-      measurementIndex.put(selectedMeasurements.get(i), i);
-    }
-
-    for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null) {
-        continue;
-      }
-      if (measurementIndex.containsKey(chunkMetadata.getMeasurementUid())) {
-        valueChunkMetadataList.set(
-            measurementIndex.get(chunkMetadata.getMeasurementUid()), chunkMetadata);
-      }
-    }
-    return new AlignedChunkMetadata(
-        alignedChunkMetadata.getTimeChunkMetadata(), valueChunkMetadataList);
   }
 
   public static class FirstBatchedReadChunkAlignedSeriesCompactionExecutor

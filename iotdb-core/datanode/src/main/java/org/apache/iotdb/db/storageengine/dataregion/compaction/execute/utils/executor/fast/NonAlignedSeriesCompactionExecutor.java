@@ -47,11 +47,11 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -212,14 +212,15 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType());
-      compactionWriter.startMeasurement(Collections.singletonList(schema), subTaskId);
+      compactionWriter.startMeasurement(
+          schema.getMeasurementId(), new ChunkWriterImpl(schema, true), subTaskId);
       hasStartMeasurement = true;
       seriesCompressionType = header.getCompressionType();
       seriesTSEncoding = header.getEncodingType();
-      chunkMetadataElement.needForceDecoding = false;
+      chunkMetadataElement.needForceDecodingPage = false;
     } else {
       ChunkHeader header = chunkMetadataElement.chunk.getHeader();
-      chunkMetadataElement.needForceDecoding =
+      chunkMetadataElement.needForceDecodingPage =
           header.getCompressionType() != seriesCompressionType
               || header.getEncodingType() != seriesTSEncoding;
     }

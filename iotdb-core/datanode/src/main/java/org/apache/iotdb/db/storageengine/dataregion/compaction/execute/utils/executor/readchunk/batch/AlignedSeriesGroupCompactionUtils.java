@@ -22,10 +22,18 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class AlignedSeriesGroupCompactionUtils {
@@ -64,5 +72,50 @@ public class AlignedSeriesGroupCompactionUtils {
       }
     }
     return selectedColumnGroup;
+  }
+
+  public static void markAlignedChunkHasDeletion(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
+      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      markAlignedChunkHasDeletion(alignedChunkMetadataList);
+    }
+  }
+
+  public static void markAlignedChunkHasDeletion(
+      List<AlignedChunkMetadata> alignedChunkMetadataList) {
+    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+      for (IChunkMetadata iChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        if (iChunkMetadata != null && iChunkMetadata.isModified()) {
+          timeChunkMetadata.setModified(true);
+          break;
+        }
+      }
+    }
+  }
+
+  public static AlignedChunkMetadata filterAlignedChunkMetadata(
+      AlignedChunkMetadata alignedChunkMetadata, List<String> selectedMeasurements) {
+    List<IChunkMetadata> valueChunkMetadataList =
+        Arrays.asList(new IChunkMetadata[selectedMeasurements.size()]);
+
+    Map<String, Integer> measurementIndex = new HashMap<>();
+    for (int i = 0; i < selectedMeasurements.size(); i++) {
+      measurementIndex.put(selectedMeasurements.get(i), i);
+    }
+
+    for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (chunkMetadata == null) {
+        continue;
+      }
+      if (measurementIndex.containsKey(chunkMetadata.getMeasurementUid())) {
+        valueChunkMetadataList.set(
+            measurementIndex.get(chunkMetadata.getMeasurementUid()), chunkMetadata);
+      }
+    }
+    return new AlignedChunkMetadata(
+        alignedChunkMetadata.getTimeChunkMetadata(), valueChunkMetadataList);
   }
 }

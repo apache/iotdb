@@ -33,6 +33,7 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -62,7 +63,8 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
       List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId) {
+      int subTaskId,
+      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 

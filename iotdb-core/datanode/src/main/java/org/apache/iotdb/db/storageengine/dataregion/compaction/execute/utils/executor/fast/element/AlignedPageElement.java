@@ -39,6 +39,7 @@ public class AlignedPageElement extends PageElement {
   private List<ByteBuffer> valuePageDataList;
 
   private final CompactionAlignedChunkReader chunkReader;
+  private boolean batched;
 
   @SuppressWarnings("squid:S107")
   public AlignedPageElement(
@@ -62,9 +63,15 @@ public class AlignedPageElement extends PageElement {
   public void deserializePage() throws IOException {
     // For aligned page, we use pointReader rather than deserialize all data point to get rid of
     // huge memory cost
-    pointReader =
-        chunkReader.getPagePointReader(
-            timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    if (batched) {
+      pointReader =
+          chunkReader.getBatchedPagePointReader(
+              timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    } else {
+      pointReader =
+          chunkReader.getPagePointReader(
+              timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    }
     // friendly for gc
     timePageData = null;
     valuePageDataList = null;
@@ -94,5 +101,9 @@ public class AlignedPageElement extends PageElement {
 
   public List<ByteBuffer> getValuePageDataList() {
     return valuePageDataList;
+  }
+
+  public void setBatched(boolean batched) {
+    this.batched = batched;
   }
 }

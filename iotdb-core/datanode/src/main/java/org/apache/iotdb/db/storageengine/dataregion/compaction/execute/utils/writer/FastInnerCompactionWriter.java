@@ -33,6 +33,7 @@ import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
@@ -85,7 +86,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
       List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId)
+      int subTaskId,
+      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException {
     checkPreviousTimestamp(timeChunkMetadata.getStartTime(), subTaskId);
     if (chunkPointNumArray[subTaskId] != 0
@@ -94,9 +96,15 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       // if there is unsealed chunk which is large enough, then seal chunk
       sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     }
-    if (chunkPointNumArray[subTaskId] != 0
-        || !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
-      // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
+    // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
+    if (chunkPointNumArray[subTaskId] != 0) {
+      return false;
+    }
+    boolean isCompactingFollowedBatch = timeChunk == null;
+    if (!isCompactingFollowedBatch && !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
+      return false;
+    }
+    if (isCompactingFollowedBatch && !shouldDirectlyFlushChunkInBatchCompaction.get()) {
       return false;
     }
     flushAlignedChunkToFileWriter(
@@ -127,9 +135,13 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    if (!isUnsealedPageOverThreshold
-        || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
-      // there is unsealed page or current page is not large enough , then deserialize the page
+    boolean isCompactingFollowedBatch = compressedTimePageData == null;
+    // there is unsealed page or current page is not large enough , then deserialize the page
+    if (!isUnsealedPageOverThreshold) {
+      return false;
+    }
+    if (!isCompactingFollowedBatch
+        && !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
       return false;
     }
 

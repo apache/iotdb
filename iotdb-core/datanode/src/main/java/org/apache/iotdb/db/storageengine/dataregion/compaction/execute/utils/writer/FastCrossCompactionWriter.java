@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   // Only used for fast compaction performer
@@ -96,13 +97,18 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
       List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId)
+      int subTaskId,
+      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timeChunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
     if (!checkIsChunkSatisfied(timeChunkMetadata, fileIndex, subTaskId)) {
       // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
       // chunk
+      return false;
+    }
+    boolean isCompactingFollowedBatch = timeChunk == null;
+    if (isCompactingFollowedBatch && !shouldDirectlyFlushChunkInBatchCompaction.get()) {
       return false;
     }
 

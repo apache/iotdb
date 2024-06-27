@@ -31,8 +31,10 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
@@ -254,6 +256,61 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
 
     ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer();
     CompactionTaskSummary summary = new CompactionTaskSummary();
+    performer.setSummary(summary);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
+    Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(0, summary.getDeserializeChunkCount());
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+    Assert.assertEquals(
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
+  }
+
+  @Test
+  public void testSimpleCompactionWithAllDeletedColumnByFlushChunk2() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(130, 200), new TimeRange(30000, 50000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+    //    seqResource1
+    //        .getModFile()
+    //        .write(
+    //            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE,
+    // Long.MAX_VALUE));
+    //    seqResource1.getModFile().close();
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(60000, 70000), new TimeRange(800000, 900000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    tsFileManager.addAll(seqResources, true);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+
+    FastCompactionPerformer performer = new FastCompactionPerformer(false);
+    FastCompactionTaskSummary summary = new FastCompactionTaskSummary();
     performer.setSummary(summary);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));

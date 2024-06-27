@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.util.Collections;
 import java.util.List;
 
 public class CompactChunkPlan {
@@ -39,6 +40,7 @@ public class CompactChunkPlan {
 
   public CompactChunkPlan(long startTime, long endTime) {
     this.timeRange = new TimeRange(startTime, endTime);
+    this.pageRecords = Collections.emptyList();
     this.isCompactedByDirectlyFlush = true;
   }
 

@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.sub
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.AlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.BatchedFastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.NonAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -137,17 +139,34 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         seriesCompactionExecutor.execute();
       }
     } else {
-      AlignedSeriesCompactionExecutor seriesCompactionExecutor =
-          new AlignedSeriesCompactionExecutor(
-              compactionWriter,
-              timeseriesMetadataOffsetMap,
-              readerCacheMap,
-              modificationCacheMap,
-              sortedSourceFiles,
-              deviceId,
-              subTaskId,
-              measurementSchemas,
-              summary);
+      AlignedSeriesCompactionExecutor seriesCompactionExecutor;
+      if (measurementSchemas.size()
+          > IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch()
+              + 1) {
+        seriesCompactionExecutor =
+            new BatchedFastAlignedSeriesCompactionExecutor(
+                compactionWriter,
+                timeseriesMetadataOffsetMap,
+                readerCacheMap,
+                modificationCacheMap,
+                sortedSourceFiles,
+                deviceId,
+                subTaskId,
+                measurementSchemas,
+                summary);
+      } else {
+        seriesCompactionExecutor =
+            new AlignedSeriesCompactionExecutor(
+                compactionWriter,
+                timeseriesMetadataOffsetMap,
+                readerCacheMap,
+                modificationCacheMap,
+                sortedSourceFiles,
+                deviceId,
+                subTaskId,
+                measurementSchemas,
+                summary);
+      }
       seriesCompactionExecutor.execute();
     }
     return null;
