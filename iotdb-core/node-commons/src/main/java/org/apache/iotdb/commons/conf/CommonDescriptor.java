@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -70,7 +71,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
+  public void loadCommonProps(Properties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -633,18 +634,20 @@ public class CommonDescriptor {
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
   }
 
-  public void loadRetryProperties(Properties properties) {
+  public void loadRetryProperties(Properties properties) throws IOException {
     config.setRemoteWriteMaxRetryDurationInMs(
         Long.parseLong(
             properties.getProperty(
                 "write_request_remote_dispatch_max_retry_duration_in_ms",
-                String.valueOf(config.getRemoteWriteMaxRetryDurationInMs()))));
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "write_request_remote_dispatch_max_retry_duration_in_ms"))));
 
     config.setRetryForUnknownErrors(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_retry_for_unknown_error",
-                String.valueOf(config.isRetryForUnknownErrors()))));
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "enable_retry_for_unknown_error"))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
