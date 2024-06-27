@@ -82,6 +82,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
           "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
           throwable);
       clearReferenceCountAndReleaseLastEvent();
+      submitSelf();
       return;
     }
 
@@ -92,6 +93,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
         && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
       LOGGER.info(
           "onFailure in pipe transfer, ignored because the failure event is released.", throwable);
+      submitSelf();
       return;
     }
 
@@ -102,6 +104,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
           "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
           throwable);
       clearReferenceCountAndReleaseLastExceptionEvent();
+      submitSelf();
       return;
     }
 
