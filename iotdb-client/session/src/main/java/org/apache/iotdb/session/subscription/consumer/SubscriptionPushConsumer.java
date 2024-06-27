@@ -316,14 +316,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   @Override
   public String toString() {
-    return super.toString()
-        + "(push consumer"
-        + ", ackStrategy="
-        + ackStrategy.toString()
-        + ", autoPollIntervalMs="
-        + autoPollIntervalMs
-        + ", autoPollTimeoutMs="
-        + autoPollTimeoutMs
-        + ")";
+    return super.toString() + "(push consumer" + ", ackStrategy=" + ackStrategy.toString() + ")";
   }
 }

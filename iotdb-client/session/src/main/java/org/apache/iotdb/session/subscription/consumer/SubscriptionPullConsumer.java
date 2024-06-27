@@ -358,12 +358,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   @Override
   public String toString() {
-    return super.toString()
-        + "(pull consumer"
-        + ", autoCommit="
-        + autoCommit
-        + ", autoCommitIntervalMs="
-        + autoCommitIntervalMs
-        + ")";
+    return super.toString() + "(pull consumer" + ", autoCommit=" + autoCommit + ")";
   }
 }

@@ -1043,22 +1043,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         + consumerId
         + ", consumerGroupId="
         + consumerGroupId
-        + ", heartbeatIntervalMs="
-        + heartbeatIntervalMs
-        + ", endpointsSyncIntervalMs="
-        + endpointsSyncIntervalMs
-        + ", providers="
-        + providers
-        + ", isReleased="
-        + isReleased
         + ", isClosed="
         + isClosed
-        + ", fileSaveDir="
-        + fileSaveDir
-        + ", fileSaveFsync="
-        + fileSaveFsync
-        + ", subscribedTopics="
-        + subscribedTopics
+        + ", subscribedTopicNames="
+        + subscribedTopics.keySet()
         + "}";
   }
 }
