@@ -2311,9 +2311,6 @@ public class IoTDBDescriptor {
         LOGGER.error(
             "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
       }
-    } else {
-      throw new IOException(
-          "The parameter dn_seed_config_node is not set, this DataNode will not join in any cluster.");
     }
 
     conf.setInternalAddress(
