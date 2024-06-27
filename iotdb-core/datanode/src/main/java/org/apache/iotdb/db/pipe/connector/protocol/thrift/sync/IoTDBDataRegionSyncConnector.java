@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -172,7 +173,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       doTransferWrapper();
     }
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
+    if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBThriftSyncConnector does not support transferring generic event: {}.", event);
     }
