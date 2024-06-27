@@ -1732,7 +1732,7 @@ public class IoTDBDescriptor {
     return tierDataDirs;
   }
 
-  public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
+  public synchronized void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -1862,7 +1862,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadHotModifiedProps() throws QueryProcessException {
+  public synchronized void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url == null) {
       LOGGER.warn("Couldn't load the configuration from any of the known sources.");
