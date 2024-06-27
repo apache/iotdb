@@ -1732,7 +1732,8 @@ public class IoTDBDescriptor {
     return tierDataDirs;
   }
 
-  public synchronized void loadHotModifiedProps(Properties properties) throws QueryProcessException {
+  public synchronized void loadHotModifiedProps(Properties properties)
+      throws QueryProcessException {
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
