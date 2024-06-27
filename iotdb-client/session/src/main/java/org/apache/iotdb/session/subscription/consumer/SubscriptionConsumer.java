@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -74,6 +75,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
+
 abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
@@ -98,7 +101,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
-  protected volatile Set<String> subscribedTopicNames = new HashSet<>();
+  protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
+
+  public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
+    return subscribedTopics.values().stream()
+        .noneMatch(
+            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
+  }
 
   /////////////////////////////// getter ///////////////////////////////
 
@@ -108,14 +117,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public String getConsumerGroupId() {
     return consumerGroupId;
-  }
-
-  /**
-   * @return When <b>only</b> subscribing to the query mode topics, if there is no new data to
-   *     process, return {@code false}; otherwise, return {@code true}.
-   */
-  public boolean hasMoreData() {
-    return !subscribedTopicNames.isEmpty();
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -384,13 +385,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     // check topic names
-    if (subscribedTopicNames.isEmpty()) {
+    if (subscribedTopics.isEmpty()) {
       LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
       return Collections.emptyList();
     }
 
     topicNames.stream()
-        .filter(topicName -> !subscribedTopicNames.contains(topicName))
+        .filter(topicName -> !subscribedTopics.containsKey(topicName))
         .forEach(
             topicName ->
                 LOGGER.warn(
@@ -876,7 +877,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        subscribedTopicNames = provider.subscribe(topicNames);
+        subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -906,7 +907,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        subscribedTopicNames = provider.unsubscribe(topicNames);
+        subscribedTopics = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -1056,8 +1057,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         + fileSaveDir
         + ", fileSaveFsync="
         + fileSaveFsync
-        + ", subscribedTopicNames="
-        + subscribedTopicNames
+        + ", subscribedTopics="
+        + subscribedTopics
         + "}";
   }
 }

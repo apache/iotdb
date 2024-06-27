@@ -530,7 +530,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicWithQueryMode() throws Exception {
+  public void testTopicWithSnapshotMode() throws Exception {
     // Insert some historical data
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -551,7 +551,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       session.createTopic(topicName, config);
     } catch (final Exception e) {
       e.printStackTrace();

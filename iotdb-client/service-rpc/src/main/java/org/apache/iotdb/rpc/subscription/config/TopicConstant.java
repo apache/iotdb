@@ -31,9 +31,9 @@ public class TopicConstant {
   public static final String NOW_TIME_VALUE = "now";
 
   public static final String MODE_KEY = "mode";
-  public static final String MODE_SUBSCRIBE_VALUE = "subscribe";
-  public static final String MODE_QUERY_VALUE = "query";
-  public static final String MODE_DEFAULT_VALUE = MODE_SUBSCRIBE_VALUE;
+  public static final String MODE_LIVE_VALUE = "live";
+  public static final String MODE_SNAPSHOT_VALUE = "snapshot";
+  public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
 
   public static final String FORMAT_KEY = "format";
   public static final String FORMAT_SESSION_DATA_SETS_HANDLER_VALUE = "SessionDataSetsHandler";

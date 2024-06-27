@@ -33,6 +33,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_LIVE_VALUE;
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
+
 public class TopicConfig extends PipeParameters {
 
   public TopicConfig() {
@@ -48,10 +51,10 @@ public class TopicConfig extends PipeParameters {
   private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
       Collections.singletonMap("realtime.mode", "stream");
 
-  private static final Map<String, String> QUERY_MODE_CONFIG =
-      Collections.singletonMap("mode", "query");
-  private static final Map<String, String> SUBSCRIBE_MODE_CONFIG =
-      Collections.singletonMap("mode", "subscribe");
+  private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
+      Collections.singletonMap("mode", MODE_SNAPSHOT_VALUE);
+  private static final Map<String, String> LIVE_MODE_CONFIG =
+      Collections.singletonMap("mode", MODE_LIVE_VALUE);
 
   private static final Set<String> LOOSE_RANGE_KEY_SET =
       Collections.unmodifiableSet(
@@ -117,10 +120,10 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    return TopicConstant.MODE_QUERY_VALUE.equals(
+    return MODE_SNAPSHOT_VALUE.equals(
             attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
-        ? QUERY_MODE_CONFIG
-        : SUBSCRIBE_MODE_CONFIG;
+        ? SNAPSHOT_MODE_CONFIG
+        : LIVE_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceLooseRange() {

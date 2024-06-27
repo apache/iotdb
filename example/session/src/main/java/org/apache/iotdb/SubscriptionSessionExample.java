@@ -236,13 +236,13 @@ public class SubscriptionSessionExample {
     }
   }
 
-  /** multi push consumer subscribe topic with tsfile format and query mode */
+  /** multi push consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription3() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_3, config);
     }
 
@@ -268,7 +268,7 @@ public class SubscriptionSessionExample {
                         .buildPushConsumer()) {
                   consumer3.open();
                   consumer3.subscribe(TOPIC_3);
-                  while (consumer3.hasMoreData()) {
+                  while (!consumer3.allSnapshotTopicMessagesHaveBeenConsumed()) {
                     LockSupport.parkNanos(SLEEP_NS); // wait some time
                   }
                 }
@@ -282,13 +282,13 @@ public class SubscriptionSessionExample {
     }
   }
 
-  /** multi pull consumer subscribe topic with tsfile format and query mode */
+  /** multi pull consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription4() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_4, config);
     }
 
@@ -309,7 +309,7 @@ public class SubscriptionSessionExample {
                         .buildPullConsumer()) {
                   consumer4.open();
                   consumer4.subscribe(TOPIC_4);
-                  while (consumer4.hasMoreData()) {
+                  while (!consumer4.allSnapshotTopicMessagesHaveBeenConsumed()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(
