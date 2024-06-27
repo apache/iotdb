@@ -18,6 +18,33 @@
     under the License.
 
 -->
+# Apache IoTDB 1.3.2
+
+## Features & Improvements
+- Storage Module: Performance improvement in the insertRecords interface for writing
+- Query Module: New Explain Analyze statement added (monitoring the time spent on each stage of a single SQL execution)
+- Query Module: New UDAF (User-Defined Aggregate Function) framework added
+- Query Module: New MaxBy/MinBy functions added, supporting the retrieval of maximum/minimum values along with the corresponding timestamps
+- Query Module: Performance improvement in value filtering queries
+- Data Synchronization: Path matching supports path pattern
+- Data Synchronization: Supports metadata synchronization (including time series and related attributes, permissions, etc.)
+- Stream Processing: Added Alter Pipe statement, supporting hot updates of plugins for Pipe tasks
+- System Module: System data point count statistics now include statistics for data imported by loading TsFile
+- Scripts and Tools: New local upgrade backup tool added (backing up original data through hard links)
+- Scripts and Tools: New export-data/import-data scripts added, supporting data export in CSV, TsFile formats or SQL statements
+- Scripts and Tools: Windows environment now supports distinguishing ConfigNode, DataNode, and Cli by window name
+  ...
+## Bugs
+- Optimize the error message when a NullPointerException (NPE) occurs due to a timeout when dropping a database.
+- Add logs for notifyLeaderReady, notifyLeaderChanged, and procedure worker.
+- Add compatibility handling for existing erroneous data during file merging.
+- Fix the deadlock issue caused by flushing empty files during querying.
+- Fix the issue where Ratis becomes unresponsive during read, write, and delete operations.
+- Fix the concurrent bug in load and merge operations.
+- Fix the issue where the system's compression ratio is recorded as a negative number in the file for certain scenarios.
+- Fix the ConcurrentModificationException issue during memory estimation for merge tasks.
+- Fix potential deadlocks that may occur when writing, automatically creating, and deleting databases concurrently.
+  ...
 
 # Apache IoTDB 1.1.0
 
