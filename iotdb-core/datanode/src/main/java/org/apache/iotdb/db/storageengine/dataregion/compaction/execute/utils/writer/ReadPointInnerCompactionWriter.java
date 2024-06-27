@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
@@ -59,10 +59,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
+      ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");

@@ -165,13 +165,15 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
                 chunkMetadata,
                 resource.getVersion(),
                 i == iChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                batched));
       }
     }
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  protected void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
     CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);

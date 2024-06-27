@@ -165,7 +165,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                 alignedChunkMetadataList.get(i),
                 resource.getVersion(),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                batched));
       }
     }
   }
@@ -327,14 +328,11 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
               new CompactionAlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePages.size() - 1,
+              batched,
               chunkMetadataElement.priority);
-      putAlignedPageElementIntoPageQueue(alignedPageElement);
+      pageQueue.add(alignedPageElement);
     }
     chunkMetadataElement.clearChunks();
-  }
-
-  protected void putAlignedPageElementIntoPageQueue(AlignedPageElement alignedPageElement) {
-    pageQueue.add(alignedPageElement);
   }
 
   @Override

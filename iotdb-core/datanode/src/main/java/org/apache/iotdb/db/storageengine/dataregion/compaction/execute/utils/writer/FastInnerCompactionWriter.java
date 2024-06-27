@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
@@ -82,13 +84,17 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    */
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
+      ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException {
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+    List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
+    Chunk timeChunk = chunkMetadataElement.chunk;
+    List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
+
     checkPreviousTimestamp(timeChunkMetadata.getStartTime(), subTaskId);
     if (chunkPointNumArray[subTaskId] != 0
         && chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
@@ -100,7 +106,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (chunkPointNumArray[subTaskId] != 0) {
       return false;
     }
-    boolean isCompactingFollowedBatch = timeChunk == null;
+    boolean isCompactingFollowedBatch = chunkMetadataElement.batched;
     if (!isCompactingFollowedBatch && !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
       return false;
     }

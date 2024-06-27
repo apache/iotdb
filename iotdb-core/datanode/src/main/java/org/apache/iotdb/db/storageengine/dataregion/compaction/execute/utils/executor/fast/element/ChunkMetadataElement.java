@@ -42,8 +42,14 @@ public class ChunkMetadataElement {
 
   public boolean needForceDecodingPage;
 
+  public boolean batched;
+
   public ChunkMetadataElement(
-      IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {
+      IChunkMetadata chunkMetadata,
+      long priority,
+      boolean isLastChunk,
+      FileElement fileElement,
+      boolean batched) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
     this.startTime = chunkMetadata.getStartTime();

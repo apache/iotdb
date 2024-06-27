@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 
 import org.apache.tsfile.exception.write.PageException;
@@ -175,10 +176,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;
 
   public abstract boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
+      ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException;

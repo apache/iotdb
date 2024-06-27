@@ -212,6 +212,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           subTaskId,
           measurementSchemas,
           summary);
+      batched = true;
     }
 
     @Override
@@ -283,6 +284,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           measurementSchemas,
           summary);
       this.compactionPlan = compactionPlan;
+      batched = true;
     }
 
     @Override
@@ -318,11 +320,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       boolean success;
       success =
           compactionWriter.flushAlignedChunk(
-              null,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata).getTimeChunkMetadata(),
-              chunkMetadataElement.valueChunks,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
-                  .getValueChunkMetadataList(),
+              chunkMetadataElement,
               subTaskId,
               () -> compactionPlan.get(currentCompactChunk).isCompactedByDirectlyFlush());
 
@@ -384,12 +382,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
             compactionPlan.get(currentCompactChunk));
       }
       super.successFlushChunk(chunkMetadataElement);
-    }
-
-    @Override
-    protected void putAlignedPageElementIntoPageQueue(AlignedPageElement alignedPageElement) {
-      alignedPageElement.setBatched(true);
-      super.putAlignedPageElementIntoPageQueue(alignedPageElement);
     }
   }
 }

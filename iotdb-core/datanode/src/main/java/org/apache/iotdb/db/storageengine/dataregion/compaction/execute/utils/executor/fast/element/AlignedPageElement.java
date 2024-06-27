@@ -50,6 +50,7 @@ public class AlignedPageElement extends PageElement {
       CompactionAlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
+      boolean batched,
       long priority) {
     super(chunkMetadataElement, isLastPage, priority);
     this.timePageHeader = timePageHeader;
@@ -57,6 +58,7 @@ public class AlignedPageElement extends PageElement {
     this.timePageData = timePageData;
     this.valuePageDataList = valuePageDataList;
     this.chunkReader = alignedChunkReader;
+    this.batched = batched;
   }
 
   @Override
@@ -101,9 +103,5 @@ public class AlignedPageElement extends PageElement {
 
   public List<ByteBuffer> getValuePageDataList() {
     return valuePageDataList;
-  }
-
-  public void setBatched(boolean batched) {
-    this.batched = batched;
   }
 }

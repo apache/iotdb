@@ -86,6 +86,8 @@ public abstract class SeriesCompactionExecutor {
 
   protected IDeviceID deviceId;
 
+  protected boolean batched = false;
+
   // Pages in this list will be sequentially judged whether there is a real overlap to choose
   // whether to put them in the point priority reader to deserialize or directly flush to chunk
   // writer. During the process of compacting overlapped page, there may be new overlapped pages
@@ -187,15 +189,7 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     boolean success;
     if (isAligned) {
-      success =
-          compactionWriter.flushAlignedChunk(
-              chunkMetadataElement.chunk,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata).getTimeChunkMetadata(),
-              chunkMetadataElement.valueChunks,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
-                  .getValueChunkMetadataList(),
-              subTaskId,
-              () -> false);
+      success = compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId, () -> false);
     } else {
       success =
           compactionWriter.flushNonAlignedChunk(

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -93,13 +95,17 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    */
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
+      ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
       throws IOException {
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+    List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
+    Chunk timeChunk = chunkMetadataElement.chunk;
+    List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
+
     checkTimeAndMayFlushChunkToCurrentFile(timeChunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
     if (!checkIsChunkSatisfied(timeChunkMetadata, fileIndex, subTaskId)) {
@@ -107,7 +113,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       // chunk
       return false;
     }
-    boolean isCompactingFollowedBatch = timeChunk == null;
+    boolean isCompactingFollowedBatch = chunkMetadataElement.batched;
     if (isCompactingFollowedBatch && !shouldDirectlyFlushChunkInBatchCompaction.get()) {
       return false;
     }
