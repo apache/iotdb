@@ -48,7 +48,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
   protected volatile boolean isSubmitted = false;
-  protected Event lastExceptionEvent;
+
+  // For cleaning up the last event when the pipe is dropped
+  protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeConnector) {
