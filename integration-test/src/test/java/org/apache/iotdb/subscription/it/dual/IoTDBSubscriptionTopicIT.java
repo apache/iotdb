@@ -74,7 +74,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   protected void setUpConfig() {
     super.setUpConfig();
 
-    // Shorten heartbeat and sync interval to avoid timeout of query mode test
+    // Shorten heartbeat and sync interval to avoid timeout of snapshot mode test
     senderEnv
         .getConfig()
         .getCommonConfig()

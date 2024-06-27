@@ -186,7 +186,7 @@ public class SubscriptionBroker {
     // mark prefetching queue closed first
     prefetchingQueue.markClosed();
 
-    // mark prefetching queue completed only for topic of query mode
+    // mark prefetching queue completed only for topic of snapshot mode
     if (SubscriptionAgent.topic()
         .getTopicMode(topicName)
         .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {

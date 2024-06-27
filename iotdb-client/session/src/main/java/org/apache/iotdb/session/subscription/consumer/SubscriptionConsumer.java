@@ -189,7 +189,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  private void checkIfClosed() throws SubscriptionException {
+  private void checkIfHasBeenClosed() throws SubscriptionException {
     if (isReleased.get()) {
       final String errorMessage =
           String.format("%s has ever been closed, unsupported operation after closing.", this);
@@ -208,7 +208,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public synchronized void open() throws SubscriptionException {
-    checkIfClosed();
+    checkIfHasBeenClosed();
     if (!isClosed.get()) {
       return;
     }
