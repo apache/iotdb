@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.schema.ttl;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -46,9 +45,7 @@ public class TTLCache {
 
   public TTLCache() {
     ttlCacheTree = new CacheNode(IoTDBConstant.PATH_ROOT);
-    ttlCacheTree.addChild(
-        IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    ttlCacheTree.addChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, Long.MAX_VALUE);
     ttlCount = 1;
   }
 
@@ -88,8 +85,7 @@ public class TTLCache {
       // if path equals to root.**, then unset it to configured ttl
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
           && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl =
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
+        ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl = Long.MAX_VALUE;
         return;
       }
     }
@@ -223,9 +219,7 @@ public class TTLCache {
 
   public void clear() {
     ttlCacheTree.removeAllChildren();
-    ttlCacheTree.addChild(
-        IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    ttlCacheTree.addChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, Long.MAX_VALUE);
   }
 
   static class CacheNode {
