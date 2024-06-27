@@ -111,19 +111,26 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           @Override
           public TabletInsertionEvent next() {
             if (!hasNext()) {
+              close();
               throw new NoSuchElementException();
             }
 
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
-            return new PipeRawTabletInsertionEvent(
-                tablet,
-                currentIsAligned,
-                sourceEvent != null ? sourceEvent.getPipeName() : null,
-                sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                pipeTaskMeta,
-                sourceEvent,
-                !hasNext);
+            try {
+              return new PipeRawTabletInsertionEvent(
+                  tablet,
+                  currentIsAligned,
+                  sourceEvent != null ? sourceEvent.getPipeName() : null,
+                  sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                  pipeTaskMeta,
+                  sourceEvent,
+                  !hasNext);
+            } finally {
+              if (!hasNext) {
+                close();
+              }
+            }
           }
         };
   }
@@ -174,10 +181,12 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       do {
         moveToNextChunkReader();
       } while (Objects.nonNull(chunkReader) && !chunkReader.hasNextSatisfiedPage());
+
       if (Objects.isNull(chunkReader)) {
         close();
         break;
       }
+
       do {
         data = chunkReader.nextPageData();
       } while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage());
