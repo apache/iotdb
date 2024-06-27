@@ -60,7 +60,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       allDeviceTimeseriesMetadataMap = tsFileSequenceReader.getAllTimeseriesMetadata(false);
 
-      if (Objects.isNull(this.pattern)) {
+      if (Objects.isNull(this.pattern) || pattern.isRoot()) {
         countAllTimeseriesPoints();
         return;
       } else {
@@ -92,7 +92,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (pattern.isRoot() || pattern.coversDevice(deviceId)) {
+      if (pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
           filteredDeviceMeasurementsMap.put(
               new PlainDeviceID(deviceId), new HashSet<>(entry.getValue()));
