@@ -161,7 +161,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               && outputEventCollector.hasNoGeneratedEvent()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof PipeConsensusProcessor);
-      if (shouldReport && event instanceof EnrichedEvent) {
+      if (shouldReport
+          && outputEventCollector.hasNoCollectInvocationAfterReset()
+          && event instanceof EnrichedEvent) {
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
