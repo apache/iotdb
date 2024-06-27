@@ -92,6 +92,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final SubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  // This variable indicates whether the consumer has ever been closed.
+  private final AtomicBoolean isReleased = new AtomicBoolean(false);
+
+  private static final String IS_CLOSED_EXCEPTION_FORMATTER = "%s is closed.";
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
@@ -186,7 +190,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
+  private void checkIfClosed() throws SubscriptionException {
+    if (isReleased.get()) {
+      final String errorMessage = String.format(IS_CLOSED_EXCEPTION_FORMATTER, this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+  }
+
   public synchronized void open() throws SubscriptionException {
+    checkIfClosed();
+
     if (!isClosed.get()) {
       return;
     }
@@ -210,6 +224,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    checkIfClosed();
+
     if (isClosed.get()) {
       return;
     }
@@ -220,6 +236,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     providers.releaseWriteLock();
 
     isClosed.set(true);
+
+    // mark is released to avoid reopening after closing
+    isReleased.set(true);
   }
 
   boolean isClosed() {
