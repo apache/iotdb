@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -30,6 +32,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 
 import org.slf4j.Logger;
@@ -153,7 +156,11 @@ public class PipeHeartbeatParser {
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
         uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
         if (uncompletedDataNodeIds.isEmpty()) {
-          pipeTaskInfo.get().removePipeMeta(pipeMetaFromCoordinator.getStaticMeta().getPipeName());
+          pipeTaskInfo.get().removePipeMeta(staticMeta.getPipeName());
+          LOGGER.info(
+              "Detected completion of pipe {}, static meta: {}, remove it.",
+              staticMeta.getPipeName(),
+              staticMeta);
           needWriteConsensusOnConfigNodes.set(true);
           needPushPipeMetaToDataNodes.set(true);
           continue;
@@ -193,20 +200,26 @@ public class PipeHeartbeatParser {
                 .getValue()
                 .getProgressIndex()
                 .equals(runtimeMetaFromAgent.getProgressIndex()))) {
-          LOGGER.info(
-              "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
-                  + "Progress index on coordinator: {}, progress index from agent: {}",
-              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-              runtimeMetaFromCoordinator.getKey(),
-              runtimeMetaFromCoordinator.getValue().getProgressIndex(),
-              runtimeMetaFromAgent.getProgressIndex());
-          LOGGER.info(
-              "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
-              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-              runtimeMetaFromCoordinator.getKey(),
+          final ProgressIndex updatedProgressIndex =
               runtimeMetaFromCoordinator
                   .getValue()
-                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex()));
+                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex());
+          PipeConfigNodeResourceManager.log()
+              .schedule(
+                  PipeHeartbeatParser.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeHeartbeat.getPipeMetaSize())
+              .ifPresent(
+                  l ->
+                      l.info(
+                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
+                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+                          runtimeMetaFromCoordinator.getKey(),
+                          runtimeMetaFromCoordinator.getValue().getProgressIndex(),
+                          runtimeMetaFromAgent.getProgressIndex(),
+                          updatedProgressIndex));
 
           needWriteConsensusOnConfigNodes.set(true);
         }
