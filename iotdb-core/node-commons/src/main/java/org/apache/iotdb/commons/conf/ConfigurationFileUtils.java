@@ -159,7 +159,7 @@ public class ConfigurationFileUtils {
   }
 
   public static void getConfigurationDefaultValue() throws IOException {
-    if(configuration2DefaultValue != null){
+    if (configuration2DefaultValue != null) {
       return;
     }
     configuration2DefaultValue = new HashMap<>();
@@ -175,13 +175,11 @@ public class ConfigurationFileUtils {
         Matcher matcher = pattern.matcher(line);
         if (matcher.find()) {
           String[] parts = line.split("=");
-          if(parts.length==2){
+          if (parts.length == 2) {
             configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
-          }
-          else if(parts.length==1){
+          } else if (parts.length == 1) {
             configuration2DefaultValue.put(parts[0].trim(), null);
-          }
-          else{
+          } else {
             logger.error("Failed to parse configuration template: {}", line);
           }
         }
@@ -196,12 +194,11 @@ public class ConfigurationFileUtils {
   // modification.
   public static String getConfigurationDefaultValue(String parameterName) throws IOException {
     parameterName = parameterName.trim();
-    if(configuration2DefaultValue!=null){
+    if (configuration2DefaultValue != null) {
       return configuration2DefaultValue.get(parameterName);
-    }
-    else{
+    } else {
       getConfigurationDefaultValue();
-      return configuration2DefaultValue.getOrDefault(parameterName,null);
+      return configuration2DefaultValue.getOrDefault(parameterName, null);
     }
   }
 
