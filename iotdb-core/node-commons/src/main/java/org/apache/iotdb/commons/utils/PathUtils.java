@@ -183,9 +183,7 @@ public class PathUtils {
   }
 
   public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
-    // TODO: use correct judgement without converting to string
-    String deviceName = deviceID.toString();
-    return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
+    return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(storageGroup);
   }
 
   /** Remove the back quotes of a measurement if necessary */

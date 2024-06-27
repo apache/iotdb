@@ -68,8 +68,7 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext().getSession(),
                 WarningCollector.NOOP)
             .plan(context.getAnalysis());
-    if (context.getAnalysis().getDataPartition() == null
-        || context.getAnalysis().getDataPartition().isEmpty()) {
+    if (context.getAnalysis().isEmptyDataSource()) {
       return new StatementMemorySource(new TsBlock(0), header);
     }
 

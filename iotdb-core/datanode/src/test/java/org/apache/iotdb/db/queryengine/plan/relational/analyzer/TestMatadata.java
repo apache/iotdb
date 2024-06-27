@@ -47,6 +47,7 @@ import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -194,7 +195,7 @@ public class TestMatadata implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return Arrays.asList(
+    return Collections.singletonList(
         new DeviceEntry(
             new StringArrayDeviceID("root.testdb", "table1", "t1", "t2", "t3"),
             Arrays.asList("a1", "a2")));
@@ -226,6 +227,18 @@ public class TestMatadata implements Metadata {
   @Override
   public SchemaPartition getSchemaPartition(String database) {
     return null;
+  }
+
+  @Override
+  public DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return DATA_PARTITION;
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return DATA_PARTITION;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

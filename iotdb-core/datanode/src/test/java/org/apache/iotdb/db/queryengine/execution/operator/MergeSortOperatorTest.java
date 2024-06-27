@@ -105,9 +105,13 @@ public class MergeSortOperatorTest {
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
 
   private static final String DEVICE0 = MERGE_SORT_OPERATOR_TEST_SG + ".device0";
+  private static final IDeviceID DEVICE0_ID = IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE0);
   private static final String DEVICE1 = MERGE_SORT_OPERATOR_TEST_SG + ".device1";
+  private static final IDeviceID DEVICE1_ID = IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE1);
   private static final String DEVICE2 = MERGE_SORT_OPERATOR_TEST_SG + ".device2";
+  private static final IDeviceID DEVICE2_ID = IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE2);
   private static final String DEVICE3 = MERGE_SORT_OPERATOR_TEST_SG + ".device3";
+  private static final IDeviceID DEVICE3_ID = IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE3);
 
   private int dataNodeId;
 
@@ -1276,8 +1280,8 @@ public class MergeSortOperatorTest {
         new DeviceViewOperator(
             driverContext.getOperatorContexts().get(10),
             deviceOrdering == Ordering.ASC
-                ? Arrays.asList(DEVICE0, DEVICE1)
-                : Arrays.asList(DEVICE1, DEVICE0),
+                ? Arrays.asList(DEVICE0_ID, DEVICE1_ID)
+                : Arrays.asList(DEVICE1_ID, DEVICE0_ID),
             deviceOrdering == Ordering.ASC
                 ? Arrays.asList(seriesScanOperator1, timeJoinOperator1)
                 : Arrays.asList(timeJoinOperator1, seriesScanOperator1),
@@ -1290,8 +1294,8 @@ public class MergeSortOperatorTest {
         new DeviceViewOperator(
             driverContext.getOperatorContexts().get(11),
             deviceOrdering == Ordering.ASC
-                ? Arrays.asList(DEVICE2, DEVICE3)
-                : Arrays.asList(DEVICE3, DEVICE2),
+                ? Arrays.asList(DEVICE2_ID, DEVICE3_ID)
+                : Arrays.asList(DEVICE3_ID, DEVICE2_ID),
             deviceOrdering == Ordering.ASC
                 ? Arrays.asList(timeJoinOperator2, timeJoinOperator3)
                 : Arrays.asList(timeJoinOperator3, timeJoinOperator2),

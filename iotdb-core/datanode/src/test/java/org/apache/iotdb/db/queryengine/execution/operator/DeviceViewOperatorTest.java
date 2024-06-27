@@ -138,9 +138,11 @@ public class DeviceViewOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      List<String> devices = new ArrayList<>();
-      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
-      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1");
+      List<IDeviceID> devices = new ArrayList<>();
+      devices.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"));
+      devices.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1"));
       List<Operator> deviceOperators = new ArrayList<>();
       deviceOperators.add(seriesScanOperator1);
       deviceOperators.add(seriesScanOperator2);

@@ -89,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -157,32 +158,32 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+      Map<IDeviceID, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
       for (PartialPath device : analysis.getDeviceList()) {
-        String deviceName = device.getFullPath();
+        IDeviceID deviceID = device.getIDeviceIDAsFullDevice();
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
             subPlanBuilder.withNewRoot(
                 visitQueryBody(
                     queryStatement,
-                    analysis.getDeviceToSourceExpressions().get(deviceName),
-                    analysis.getDeviceToSourceTransformExpressions().get(deviceName),
+                    analysis.getDeviceToSourceExpressions().get(deviceID),
+                    analysis.getDeviceToSourceTransformExpressions().get(deviceID),
                     analysis.getDeviceToWhereExpression() != null
-                        ? analysis.getDeviceToWhereExpression().get(deviceName)
+                        ? analysis.getDeviceToWhereExpression().get(deviceID)
                         : null,
-                    analysis.getDeviceToAggregationExpressions().get(deviceName),
+                    analysis.getDeviceToAggregationExpressions().get(deviceID),
                     analysis.getDeviceToGroupByExpression() != null
-                        ? analysis.getDeviceToGroupByExpression().get(deviceName)
+                        ? analysis.getDeviceToGroupByExpression().get(deviceID)
                         : null,
                     context));
         // order by device, expression, push down sortOperator
         if (queryStatement.needPushDownSort()) {
           subPlanBuilder =
               subPlanBuilder.planOrderBy(
-                  analysis.getDeviceToOrderByExpressions().get(deviceName),
-                  analysis.getDeviceToSortItems().get(deviceName));
+                  analysis.getDeviceToOrderByExpressions().get(deviceID),
+                  analysis.getDeviceToSortItems().get(deviceID));
         }
-        deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+        deviceToSubPlanMap.put(deviceID, subPlanBuilder.getRoot());
       }
 
       // convert to ALIGN BY DEVICE view

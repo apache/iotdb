@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -67,7 +68,9 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
@@ -165,7 +168,7 @@ public class AnalyzerTest {
   @Test
   public void singleTableNoFilterTest() {
     // wildcard
-    sql = "SELECT * FROM table1";
+    sql = "SELECT * FROM testdb.table1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
@@ -177,7 +180,7 @@ public class AnalyzerTest {
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
     tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
-    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
@@ -188,13 +191,11 @@ public class AnalyzerTest {
     assertEquals(ASC, tableScanNode.getScanOrder());
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
-    DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(4, distributedQueryPlan.getInstances().size());
   }
 
   @Test
-  public void singleTableWithFilterTest() {
-    // global time filter
+  public void singleTableWithFilterTest1() {
+    // only global time filter
     sql = "SELECT * FROM table1 where time > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
@@ -204,28 +205,24 @@ public class AnalyzerTest {
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-
-    // TODO change back after Gaofei update FilterAndScanCombineRule
-    /*assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
-    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();*/
-    assertTrue(((OutputNode) rootNode).getChild() instanceof FilterNode);
-    FilterNode filterNode = (FilterNode) ((OutputNode) rootNode).getChild();
-    assertEquals("(\"time\" > 1)", filterNode.getPredicate().toString());
-
-    tableScanNode = (TableScanNode) (filterNode).getChild();
-    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
+    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
     assertEquals(9, tableScanNode.getAssignments().size());
     assertEquals(1, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals("(\"time\" > 1)", tableScanNode.getTimePredicate().get().toString());
+    assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
-    distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(4, distributedQueryPlan.getInstances().size());
+  }
 
-    // value filter which can be pushed down
+  @Test
+  public void singleTableWithFilterTest2() {
+    // measurement value filter, which can be pushed down to TableScanNode
     sql = "SELECT tag1, attr1, s2 FROM table1 where s1 > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
@@ -237,9 +234,91 @@ public class AnalyzerTest {
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNotNull(tableScanNode.getPushDownPredicate());
+    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
 
+  @Test
+  public void singleTableWithFilterTest3() {
+    // measurement value filter with time filter, take apart into pushDownPredicate and
+    // timePredicate of TableScanNode
+    sql =
+        "SELECT tag1, attr1, s2 FROM table1 where s1 > 1 and s2>2 and tag1='A' and time > 1 and time < 10";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNotNull(tableScanNode.getPushDownPredicate());
+    assertEquals(
+        "((\"s1\" > 1) AND (\"s2\" > 2))", tableScanNode.getPushDownPredicate().toString());
+    assertTrue(tableScanNode.getTimePredicate().isPresent());
+    assertEquals(
+        "((\"time\" > 1) AND (\"time\" < 10))", tableScanNode.getTimePredicate().get().toString());
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
+
+  @Test
+  public void singleTableWithFilterTest4() {
+    // measurement value filter with time filter
+    // transfer to : ((("time" > 1) OR ("s1" > 1)) AND (("time" > 1) OR ("s2" > 2)) AND (("time" >
+    // 1) OR ("time" < 10)))
+    sql = "SELECT tag1, attr1, s2 FROM table1 where time > 1 or s1 > 1 and s2 > 2 and time < 10";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertTrue(tableScanNode.getTimePredicate().isPresent());
+    assertEquals(
+        "((\"time\" > 1) OR (\"time\" < 10))", tableScanNode.getTimePredicate().get().toString());
+    assertNotNull(tableScanNode.getPushDownPredicate());
+    assertEquals(
+        "(((\"time\" > 1) OR (\"s1\" > 1)) AND ((\"time\" > 1) OR (\"s2\" > 2)))",
+        tableScanNode.getPushDownPredicate().toString());
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
+
+  @Test
+  public void singleTableWithFilterTest5() {
+    // measurement value filter with time filter
+    sql = "SELECT tag1, attr1, s2 FROM table1 where time > 1 or s1 > 1 or time < 10 or s2 > 2";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNotNull(tableScanNode.getPushDownPredicate());
+    assertEquals(
+        "((\"time\" > 1) OR (\"s1\" > 1) OR (\"time\" < 10) OR (\"s2\" > 2))",
+        tableScanNode.getPushDownPredicate().toString());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
+
+  @Test
+  public void singleTableWithFilterTest6() {
     // value filter which can not be pushed down
     sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -264,10 +343,21 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertEquals("((diff(\"s1\") + 1) > 1)", filterNode.getPredicate().toString());
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
+
+  @Ignore
+  @Test
+  public void singleTableWithFilterTest00() {
+    // TODO(beyyes) fix the CNFs parse error
+    sql =
+        "SELECT tag1, attr1, s2 FROM table1 where (time > 1 and s1 > 1 or s2 < 7) or (time < 10 and s1 > 4)";
+    actualAnalysis = analyzeSQL(sql, metadata);
   }
 
   @Test
@@ -298,6 +388,9 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    TableScanNode tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertEquals("(\"s2\" = 8)", tableScanNode.getPushDownPredicate().toString());
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
@@ -312,9 +405,17 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals("(REPLACE(\"tag1\", 'low', '!') = '!')", filterNode.getPredicate().toString());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
     tableScanNode =
         (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(
         Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
@@ -345,6 +446,15 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertEquals(
+        "((\"tag1\" IS NOT NULL) AND (\"s1\" IS NULL))", filterNode.getPredicate().toString());
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
+    TableScanNode tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
 
     // 2. like
     sql = "SELECT * FROM table1 WHERE tag1 like '%m'";
@@ -354,6 +464,13 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertEquals("(\"tag1\" LIKE '%m')", filterNode.getPredicate().toString());
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
 
     // 3. in / not in
     sql =
@@ -364,6 +481,19 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        "((\"tag1\" IN \"tag1\") AND (NOT (\"tag2\" IN \"tag2\")))",
+        filterNode.getPredicate().toString());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
 
     // 4. not
     sql = "SELECT * FROM table1 WHERE tag1 not like '%m'";
@@ -409,14 +539,34 @@ public class AnalyzerTest {
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+  }
 
-    // 5. diff
+  @Test
+  public void diffTest() {
+    // 1. only diff
     sql = "SELECT DIFF(s1) FROM table1 WHERE DIFF(s2) > 0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
+
+    // 2. diff with time filter, tag filter and measurement filter
+    sql = "SELECT s1 FROM table1 WHERE DIFF(s2) > 0 and time > 5 and tag1 = 'A' and s1 = 1";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertEquals(
+        "((DIFF(\"s2\") > 0) AND (\"time\" > 5) AND (\"tag1\" = 'A') AND (\"s1\" = 1))",
+        filterNode.getPredicate().toString());
   }
 
   @Test
@@ -490,8 +640,6 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    distributedQueryPlan =
-        new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context).plan();
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

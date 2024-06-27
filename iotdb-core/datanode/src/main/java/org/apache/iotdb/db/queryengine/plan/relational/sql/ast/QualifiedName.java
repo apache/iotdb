@@ -114,7 +114,7 @@ public class QualifiedName {
   }
 
   /**
-   * For an identifier of the form "a.b.c.d", returns "a.b.c" For an identifier of the form "a",
+   * For an identifier of the form "a.b.c.d", returns "a.b.c", For an identifier of the form "a",
    * returns absent
    */
   public Optional<QualifiedName> getPrefix() {

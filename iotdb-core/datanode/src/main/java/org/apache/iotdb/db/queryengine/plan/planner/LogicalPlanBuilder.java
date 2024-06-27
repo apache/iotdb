@@ -486,9 +486,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceView(
-      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      Map<IDeviceID, PlanNode> deviceNameToSourceNodesMap,
       Set<Expression> deviceViewOutputExpressions,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap,
       Set<Expression> selectExpression,
       QueryStatement queryStatement,
       Analysis analysis) {
@@ -614,21 +614,21 @@ public class LogicalPlanBuilder {
 
   private void addSingleDeviceViewNodes(
       MultiChildProcessNode parent,
-      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      Map<IDeviceID, PlanNode> deviceNameToSourceNodesMap,
       List<String> outputColumnNames,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap,
       long valueFilterLimit) {
-    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
+    for (Map.Entry<IDeviceID, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      IDeviceID deviceID = entry.getKey();
       PlanNode subPlan = entry.getValue();
       SingleDeviceViewNode singleDeviceViewNode =
           new SingleDeviceViewNode(
               context.getQueryId().genPlanNodeId(),
               outputColumnNames,
-              deviceName,
+              deviceID,
               deviceToMeasurementIndexesMap == null
                   ? null
-                  : deviceToMeasurementIndexesMap.get(deviceName));
+                  : deviceToMeasurementIndexesMap.get(deviceID));
 
       // put LIMIT-NODE below of SingleDeviceViewNode if exists value filter
       if (valueFilterLimit > 0) {
@@ -646,8 +646,8 @@ public class LogicalPlanBuilder {
   private DeviceViewNode addDeviceViewNode(
       OrderByParameter orderByParameter,
       List<String> outputColumnNames,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap,
+      Map<IDeviceID, PlanNode> deviceNameToSourceNodesMap,
       long valueFilterLimit) {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
@@ -656,15 +656,15 @@ public class LogicalPlanBuilder {
             outputColumnNames,
             deviceToMeasurementIndexesMap);
 
-    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
+    for (Map.Entry<IDeviceID, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      IDeviceID deviceID = entry.getKey();
       PlanNode subPlan = entry.getValue();
       if (valueFilterLimit > 0) {
         LimitNode limitNode =
             new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
-        deviceViewNode.addChildDeviceNode(deviceName, limitNode);
+        deviceViewNode.addChildDeviceNode(deviceID, limitNode);
       } else {
-        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+        deviceViewNode.addChildDeviceNode(deviceID, subPlan);
       }
     }
     return deviceViewNode;

@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 public class DataPartition extends Partition {
@@ -129,6 +130,19 @@ public class DataPartition extends Partition {
         .flatMap(entry -> entry.getValue().stream())
         .distinct()
         .collect(toList());
+  }
+
+  /**
+   * For table model usage.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      String database, IDeviceID deviceID, Filter timeFilter) {
+    // TODO implement this interface, @Potato
+    throw new UnsupportedOperationException();
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSet(
@@ -230,5 +244,31 @@ public class DataPartition extends Partition {
           }
         });
     return new ArrayList<>(distributionMap.values());
+  }
+
+  public void upsertDataPartition(DataPartition targetDataPartition) {
+    requireNonNull(this.dataPartitionMap, "dataPartitionMap is null");
+
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dbEntry : targetDataPartition.getDataPartitionMap().entrySet()) {
+      String database = dbEntry.getKey();
+      if (dataPartitionMap.containsKey(database)) {
+        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> innerMap1 =
+            dataPartitionMap.get(database);
+        for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+            seriesSlotEntry : dbEntry.getValue().entrySet()) {
+          TSeriesPartitionSlot seriesSlot = seriesSlotEntry.getKey();
+          if (innerMap1.containsKey(seriesSlot)) {
+            Map<TTimePartitionSlot, List<TRegionReplicaSet>> innerMap2 = innerMap1.get(seriesSlot);
+            innerMap2.putAll(seriesSlotEntry.getValue());
+          } else {
+            innerMap1.put(seriesSlot, seriesSlotEntry.getValue());
+          }
+        }
+      } else {
+        dataPartitionMap.put(database, dbEntry.getValue());
+      }
+    }
   }
 }

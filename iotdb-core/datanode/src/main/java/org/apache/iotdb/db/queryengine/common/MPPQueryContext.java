@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -89,11 +88,6 @@ public class MPPQueryContext {
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
 
   private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
-
-  // splits predicate expression in table model into three parts,
-  // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
-  // index 2 represents expressionsCannotPushDownToOperator
-  private List<List<Expression>> tableModelPredicateExpressions;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -316,15 +310,6 @@ public class MPPQueryContext {
       queryPlanStatistics = new QueryPlanStatistics();
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
-  }
-
-  public List<List<Expression>> getTableModelPredicateExpressions() {
-    return tableModelPredicateExpressions;
-  }
-
-  public void setTableModelPredicateExpressions(
-      List<List<Expression>> tableModelPredicateExpressions) {
-    this.tableModelPredicateExpressions = tableModelPredicateExpressions;
   }
 
   // region =========== FE memory related, make sure its not called concurrently ===========

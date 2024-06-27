@@ -45,6 +45,8 @@ public class QualifiedObjectName {
   }
 
   private final String dbName;
+
+  // objectName represents tableName
   private final String objectName;
 
   public QualifiedObjectName(String dbName, String objectName) {

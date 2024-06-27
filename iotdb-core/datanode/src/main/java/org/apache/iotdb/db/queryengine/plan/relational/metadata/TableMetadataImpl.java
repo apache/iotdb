@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
@@ -45,6 +47,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -335,6 +338,20 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public SchemaPartition getSchemaPartition(String database) {
     return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
+  }
+
+  @Override
+  public DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartition(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

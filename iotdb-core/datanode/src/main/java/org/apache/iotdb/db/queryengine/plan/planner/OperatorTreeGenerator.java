@@ -1103,7 +1103,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }
     return new SingleDeviceViewOperator(
-        operatorContext, node.getDevice(), child, deviceColumnIndex, outputColumnTypes);
+        operatorContext, node.getDevice().toString(), child, deviceColumnIndex, outputColumnTypes);
   }
 
   @Override

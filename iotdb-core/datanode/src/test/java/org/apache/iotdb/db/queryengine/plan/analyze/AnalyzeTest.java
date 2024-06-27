@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -77,6 +78,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class AnalyzeTest {
+
+  private final IDeviceID DEVICE1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+  private final IDeviceID DEVICE2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2");
 
   @Test
   public void testRawDataQuery() {
@@ -294,14 +298,14 @@ public class AnalyzeTest {
                   new ConstantOperand(TSDataType.INT64, "1"))));
       expectedAnalysis.setDeviceToSelectExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.status")),
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                       new ConstantOperand(TSDataType.INT64, "1"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.status")),
@@ -310,25 +314,25 @@ public class AnalyzeTest {
                       new ConstantOperand(TSDataType.INT64, "1")))));
       expectedAnalysis.setDeviceToWhereExpression(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               new GreaterThanExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                   new ConstantOperand(TSDataType.INT64, "10")),
-              "root.sg.d2",
+              DEVICE2,
               new GreaterThanExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
                   new ConstantOperand(TSDataType.INT64, "10"))));
       expectedAnalysis.setDeviceToAggregationExpressions(ImmutableMap.of());
       expectedAnalysis.setDeviceToSourceTransformExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                       new ConstantOperand(TSDataType.INT64, "1"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
@@ -337,17 +341,16 @@ public class AnalyzeTest {
                       new ConstantOperand(TSDataType.INT64, "1")))));
       expectedAnalysis.setDeviceToSourceExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
       expectedAnalysis.setDeviceViewInputIndexesMap(
-          ImmutableMap.of(
-              "root.sg.d1", Arrays.asList(1, 2, 3), "root.sg.d2", Arrays.asList(1, 2, 3)));
+          ImmutableMap.of(DEVICE1, Arrays.asList(1, 2, 3), DEVICE2, Arrays.asList(1, 2, 3)));
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
@@ -415,7 +418,7 @@ public class AnalyzeTest {
               new ConstantOperand(TSDataType.INT64, "100")));
       expectedAnalysis.setDeviceToSelectExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new AdditionExpression(
                       new FunctionExpression(
@@ -426,7 +429,7 @@ public class AnalyzeTest {
                                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                                   new ConstantOperand(TSDataType.INT64, "1")))),
                       new ConstantOperand(TSDataType.INT64, "1"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new AdditionExpression(
                       new FunctionExpression(
@@ -439,17 +442,17 @@ public class AnalyzeTest {
                       new ConstantOperand(TSDataType.INT64, "1")))));
       expectedAnalysis.setDeviceToWhereExpression(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               new GreaterThanExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                   new ConstantOperand(TSDataType.INT64, "10")),
-              "root.sg.d2",
+              DEVICE2,
               new GreaterThanExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
                   new ConstantOperand(TSDataType.INT64, "10"))));
       expectedAnalysis.setDeviceToAggregationExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new FunctionExpression(
                       "count",
@@ -470,7 +473,7 @@ public class AnalyzeTest {
                       new LinkedHashMap<>(),
                       Collections.singletonList(
                           new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new FunctionExpression(
                       "count",
@@ -493,7 +496,7 @@ public class AnalyzeTest {
                           new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")))))));
       expectedAnalysis.setDeviceToSourceTransformExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new AdditionExpression(
@@ -502,7 +505,7 @@ public class AnalyzeTest {
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                       new ConstantOperand(TSDataType.INT64, "1"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
                   new AdditionExpression(
@@ -513,11 +516,11 @@ public class AnalyzeTest {
                       new ConstantOperand(TSDataType.INT64, "1")))));
       expectedAnalysis.setDeviceToSourceExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
-              "root.sg.d2",
+              DEVICE2,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
@@ -544,8 +547,7 @@ public class AnalyzeTest {
                           new TimeSeriesOperand(new PartialPath("s1")),
                           new ConstantOperand(TSDataType.INT64, "1"))))));
       expectedAnalysis.setDeviceViewInputIndexesMap(
-          ImmutableMap.of(
-              "root.sg.d1", Arrays.asList(2, 3, 1), "root.sg.d2", Arrays.asList(2, 3, 1)));
+          ImmutableMap.of(DEVICE1, Arrays.asList(2, 3, 1), DEVICE2, Arrays.asList(2, 3, 1)));
 
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
@@ -924,14 +926,14 @@ public class AnalyzeTest {
                   new TimeSeriesOperand(new PartialPath("s2")))));
       expectedAnalysis.setDeviceToOrderByExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))));
       expectedAnalysis.setDeviceToSourceTransformExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -963,7 +965,7 @@ public class AnalyzeTest {
                       Collections.singletonList(new TimeSeriesOperand(new PartialPath("s2")))))));
       expectedAnalysis.setDeviceToOrderByExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new AdditionExpression(
                       new FunctionExpression(
@@ -978,7 +980,7 @@ public class AnalyzeTest {
                               new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))))));
       expectedAnalysis.setDeviceToAggregationExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new FunctionExpression(
                       "avg",
@@ -992,7 +994,7 @@ public class AnalyzeTest {
                           new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))))));
       expectedAnalysis.setDeviceToSourceTransformExpressions(
           ImmutableMap.of(
-              "root.sg.d1",
+              DEVICE1,
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))));
