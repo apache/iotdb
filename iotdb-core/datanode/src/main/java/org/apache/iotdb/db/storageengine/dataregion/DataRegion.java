@@ -1105,7 +1105,7 @@ public class DataRegion implements IDataRegionForQuery {
                 || config
                     .getDataRegionConsensusProtocolClass()
                     .equals(ConsensusFactory.IOT_CONSENSUS_V2))
-            && node.isGeneratedByPipe())) {
+            && node.isGeneratedByRemoteConsensusLeader())) {
       // disable updating last cache on follower
       return;
     }
@@ -1157,7 +1157,7 @@ public class DataRegion implements IDataRegionForQuery {
                   || config
                       .getDataRegionConsensusProtocolClass()
                       .equals(ConsensusFactory.IOT_CONSENSUS_V2))
-              && insertRowNode.isGeneratedByPipe())) {
+              && insertRowNode.isGeneratedByRemoteConsensusLeader())) {
         return tsFileProcessor;
       }
       // disable updating last cache on follower
@@ -1261,7 +1261,7 @@ public class DataRegion implements IDataRegionForQuery {
                   || config
                       .getDataRegionConsensusProtocolClass()
                       .equals(ConsensusFactory.IOT_CONSENSUS_V2))
-              && insertRowsNode.isGeneratedByPipe())) {
+              && insertRowsNode.isGeneratedByRemoteConsensusLeader())) {
         return;
       }
       // disable updating last cache on follower
@@ -3366,7 +3366,7 @@ public class DataRegion implements IDataRegionForQuery {
                     || config
                         .getDataRegionConsensusProtocolClass()
                         .equals(ConsensusFactory.IOT_CONSENSUS_V2))
-                && insertRowsOfOneDeviceNode.isGeneratedByPipe())) {
+                && insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader())) {
           return;
         }
         // disable updating last cache on follower
