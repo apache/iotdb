@@ -226,7 +226,7 @@ public class PipeTsFileResource implements AutoCloseable {
 
     // Allocate again for the cached objects.
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
@@ -261,7 +261,7 @@ public class PipeTsFileResource implements AutoCloseable {
     // Only allocate when pipe memory used is less than 50%, because memory here
     // is hard to shrink and may consume too much memory.
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
                 MEMORY_SUFFICIENT_THRESHOLD);

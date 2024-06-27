@@ -181,7 +181,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
   // can't be set to true
-  public void disableMod4NonTransferPipes(boolean isWithMod) {
+  public void disableMod4NonTransferPipes(final boolean isWithMod) {
     this.isWithMod = isWithMod && this.isWithMod;
   }
 
