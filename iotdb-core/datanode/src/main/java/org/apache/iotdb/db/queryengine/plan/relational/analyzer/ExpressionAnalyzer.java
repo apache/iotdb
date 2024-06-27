@@ -105,6 +105,7 @@ import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
@@ -688,7 +689,7 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitBinaryLiteral(
         BinaryLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("BinaryLiteral is not supported yet.");
+      return setExpressionType(node, BLOB);
     }
 
     @Override

@@ -116,6 +116,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
@@ -287,7 +288,20 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitBinaryLiteral(BinaryLiteral node, Context context) {
-    throw new UnsupportedOperationException();
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  new ConstantColumnTransformer(
+                      BLOB,
+                      new BinaryColumn(
+                          1, Optional.empty(), new Binary[] {new Binary(node.getValue())}));
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
