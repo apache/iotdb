@@ -175,9 +175,6 @@ public class ConfigNodeDescriptor {
     }
     if (seedConfigNode != null) {
       conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode.trim()).get(0));
-    } else {
-      throw new IOException(
-          "The parameter cn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
     }
 
     conf.setSeriesSlotNum(
