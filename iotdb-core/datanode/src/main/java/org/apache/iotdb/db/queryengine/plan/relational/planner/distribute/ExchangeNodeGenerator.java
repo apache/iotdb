@@ -55,24 +55,29 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
               .analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetWithTimeFilter(
-                  deviceEntry.getDeviceID(), node.getTimeFilter());
+                  node.getQualifiedObjectName().getDatabaseName(),
+                  deviceEntry.getDeviceID(),
+                  node.getTimeFilter());
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         TableScanNode tableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
-                k ->
-                    new TableScanNode(
-                        context.queryContext.getQueryId().genPlanNodeId(),
-                        node.getQualifiedObjectName(),
-                        node.getOutputSymbols(),
-                        node.getAssignments(),
-                        new ArrayList<>(),
-                        node.getIdAndAttributeIndexMap(),
-                        node.getScanOrder(),
-                        node.getTimePredicate().orElse(null),
-                        node.getPushDownPredicate()));
+                k -> {
+                  TableScanNode scanNode =
+                      new TableScanNode(
+                          context.queryContext.getQueryId().genPlanNodeId(),
+                          node.getQualifiedObjectName(),
+                          node.getOutputSymbols(),
+                          node.getAssignments(),
+                          new ArrayList<>(),
+                          node.getIdAndAttributeIndexMap(),
+                          node.getScanOrder(),
+                          node.getTimePredicate().orElse(null),
+                          node.getPushDownPredicate());
+                  scanNode.setRegionReplicaSet(regionReplicaSet);
+                  return scanNode;
+                });
         tableScanNode.appendDeviceEntry(deviceEntry);
-        tableScanNode.setRegionReplicaSet(regionReplicaSet);
       }
     }
 

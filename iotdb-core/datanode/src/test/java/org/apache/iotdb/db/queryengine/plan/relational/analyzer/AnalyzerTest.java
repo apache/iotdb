@@ -191,7 +191,6 @@ public class AnalyzerTest {
     assertEquals(ASC, tableScanNode.getScanOrder());
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
-    DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
   }
 
   @Test
@@ -219,7 +218,6 @@ public class AnalyzerTest {
     assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
-    distributedQueryPlan = distributionPlanner.plan();
   }
 
   @Test
@@ -642,8 +640,6 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    distributedQueryPlan =
-        new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context).plan();
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

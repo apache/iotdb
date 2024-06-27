@@ -139,7 +139,7 @@ public class DataPartition extends Partition {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  public TRegionReplicaSet getDataRegionReplicaSetWithTimeFilter(
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String database, IDeviceID deviceID, Filter timeFilter) {
     // TODO implement this interface, @Potato
     throw new UnsupportedOperationException();
