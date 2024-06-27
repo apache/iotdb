@@ -354,10 +354,28 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
-    return super.toString() + "(pull consumer" + ", autoCommit=" + autoCommit + ")";
+    return "SubscriptionPullConsumer" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    return coreReportMessage;
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> coreReportMessage = super.allReportMessage();
+    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    coreReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
+    if (autoCommit) {
+      coreReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
+    }
+    return coreReportMessage;
   }
 }

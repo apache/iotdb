@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
@@ -316,6 +317,22 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   @Override
   public String toString() {
-    return super.toString() + "(push consumer" + ", ackStrategy=" + ackStrategy.toString() + ")";
+    return "SubscriptionPushConsumer" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("ackStrategy", ackStrategy.toString());
+    return coreReportMessage;
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> coreReportMessage = super.allReportMessage();
+    coreReportMessage.put("ackStrategy", ackStrategy.toString());
+    coreReportMessage.put("autoPollIntervalMs", String.valueOf(autoPollIntervalMs));
+    coreReportMessage.put("autoPollTimeoutMs", String.valueOf(autoPollTimeoutMs));
+    return coreReportMessage;
   }
 }

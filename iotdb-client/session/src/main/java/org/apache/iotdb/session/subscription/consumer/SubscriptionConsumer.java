@@ -1035,18 +1035,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
-  @Override
-  public String toString() {
-    return "SubscriptionConsumer{consumerId="
-        + consumerId
-        + ", consumerGroupId="
-        + consumerGroupId
-        + ", isClosed="
-        + isClosed
-        + ", subscribedTopicNames="
-        + subscribedTopics.keySet()
-        + "}";
+  protected Map<String, String> allReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("consumerId", consumerId);
+        put("consumerGroupId", consumerGroupId);
+        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+        put("providers", providers.toString());
+        put("isReleased", isReleased.toString());
+        put("isClosed", isClosed.toString());
+        put("fileSaveDir", fileSaveDir);
+        put("fileSaveFsync", String.valueOf(fileSaveFsync));
+        put("subscribedTopics", subscribedTopics.toString());
+      }
+    };
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("consumerId", consumerId);
+        put("consumerGroupId", consumerGroupId);
+        put("isClosed", isClosed.toString());
+        put("fileSaveDir", fileSaveDir);
+        put("subscribedTopicNames", subscribedTopics.keySet().toString());
+      }
+    };
   }
 }

@@ -125,6 +125,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
     super.open(); // throw IoTDBConnectionException
 
+    // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
