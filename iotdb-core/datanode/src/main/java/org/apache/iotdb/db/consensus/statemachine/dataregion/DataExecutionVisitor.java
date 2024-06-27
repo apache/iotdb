@@ -77,6 +77,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
+      LOGGER.info("insert tablet success, {}", node.getSearchIndex());
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -236,6 +237,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
       }
       PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
+      LOGGER.info("delete data success, {}", node.getSearchIndex());
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);

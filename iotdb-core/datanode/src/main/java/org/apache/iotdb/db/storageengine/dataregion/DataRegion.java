@@ -935,6 +935,8 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
+        logger.info(
+            "won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
         return;
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
@@ -1063,6 +1065,9 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
+      logger.info(
+          "return true, because {}",
+          start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
       return true;
     }
 
@@ -1079,6 +1084,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
+      logger.info(
+          "tsFileProcessor insert tablet success, the search index is {}",
+          insertTabletNode.getSearchIndex());
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
