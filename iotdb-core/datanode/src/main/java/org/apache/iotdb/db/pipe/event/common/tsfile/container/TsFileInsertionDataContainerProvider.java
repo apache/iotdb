@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
@@ -62,7 +62,7 @@ public class TsFileInsertionDataContainerProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionDataContainer getTsFileInsertionDataContainer() throws IOException {
+  public TsFileInsertionDataContainer provide() throws IOException {
     if (startTime != Long.MIN_VALUE
         || endTime != Long.MAX_VALUE
         || pattern instanceof IoTDBPipePattern
@@ -78,7 +78,7 @@ public class TsFileInsertionDataContainerProvider {
           tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-        PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
+        PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
     if (Objects.isNull(deviceIsAlignedMap)) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.

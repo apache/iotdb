@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -344,7 +343,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         dataContainer =
             new TsFileInsertionDataContainerProvider(
                     tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
-                .getTsFileInsertionDataContainer();
+                .provide();
       }
       return dataContainer;
     } catch (final IOException e) {
@@ -380,7 +379,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  /** Release the resource of {@link TsFileInsertionQueryDataContainer}. */
+  /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
     if (dataContainer != null) {
