@@ -100,7 +100,16 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
+  public void testSinkTabletFormat() throws Exception {
+    testSinkFormat("tablet");
+  }
+
+  @Test
   public void testSinkTsFileFormat() throws Exception {
+    testSinkFormat("tsfile");
+  }
+
+  private void testSinkFormat(final String format) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -127,7 +136,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.format", "tsfile");
+      connectorAttributes.put("connector.format", format);
       connectorAttributes.put("connector.realtime-first", "false");
 
       Assert.assertEquals(

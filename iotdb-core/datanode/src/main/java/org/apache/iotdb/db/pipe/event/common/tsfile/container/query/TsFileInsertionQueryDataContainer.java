@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -98,7 +98,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
     super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
-      final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
+      final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
       // TsFileReader is not thread-safe, so we need to create it here and close it later.
@@ -139,7 +139,8 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         memoryRequiredInBytes +=
             PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
-      allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+      allocatedMemoryBlock =
+          PipeDataNodeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 
       // Filter again to get the final deviceMeasurementsMap that exactly matches the pattern.
       deviceMeasurementsMapIterator =

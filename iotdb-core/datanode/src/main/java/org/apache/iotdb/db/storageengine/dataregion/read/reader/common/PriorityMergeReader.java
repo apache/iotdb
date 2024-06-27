@@ -182,6 +182,9 @@ public class PriorityMergeReader implements IPointReader {
       Element e = heap.poll();
       e.close();
     }
+    if (memoryReservationManager != null) {
+      memoryReservationManager.releaseMemoryCumulatively(usedMemorySize);
+    }
     usedMemorySize = 0;
   }
 
