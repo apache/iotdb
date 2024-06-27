@@ -652,6 +652,11 @@ enable_auto_leader_balance_for_iot_consensus=true
 ### Cluster management
 ####################
 
+# Time partition origin in milliseconds, default is equal to zero
+# effectiveMode: first_start
+# Datatype: long
+# time_partition_origin=0
+
 # Time partition interval in milliseconds, and partitioning data inside each data region, default is equal to one week
 # effectiveMode: first_start
 # Datatype: long

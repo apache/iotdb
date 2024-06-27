@@ -180,14 +180,14 @@ public class SystemPropertiesUtils {
 
     if (systemProperties.getProperty(TIME_PARTITION_ORIGIN, null) != null) {
       long timePartitionOrigin =
-              Long.parseLong(systemProperties.getProperty(TIME_PARTITION_ORIGIN));
+          Long.parseLong(systemProperties.getProperty(TIME_PARTITION_ORIGIN));
       if (timePartitionOrigin != COMMON_CONFIG.getTimePartitionOrigin()) {
-          LOGGER.warn(
-                  format,
-                  TIME_PARTITION_ORIGIN,
-                  COMMON_CONFIG.getTimePartitionOrigin(),
-                  timePartitionOrigin);
-          COMMON_CONFIG.setTimePartitionOrigin(timePartitionOrigin);
+        LOGGER.warn(
+            format,
+            TIME_PARTITION_ORIGIN,
+            COMMON_CONFIG.getTimePartitionOrigin(),
+            timePartitionOrigin);
+        COMMON_CONFIG.setTimePartitionOrigin(timePartitionOrigin);
       }
     }
 
