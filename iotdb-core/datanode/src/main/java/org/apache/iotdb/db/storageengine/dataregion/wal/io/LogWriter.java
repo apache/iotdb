@@ -115,10 +115,8 @@ public abstract class LogWriter implements ILogWriter {
       bufferSize = buffer.position();
       buffer.flip();
       compressed = true;
-      originalSize += COMPRESSED_HEADER_SIZE;
       size += COMPRESSED_HEADER_SIZE;
     } else {
-      originalSize += UN_COMPRESSED_HEADER_SIZE;
       size += UN_COMPRESSED_HEADER_SIZE;
     }
     size += bufferSize;

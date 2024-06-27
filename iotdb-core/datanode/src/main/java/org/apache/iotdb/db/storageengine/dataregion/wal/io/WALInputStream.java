@@ -275,10 +275,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       long posRemain = pos;
       SegmentInfo segmentInfo;
       do {
+        long currentPos = channel.position();
         segmentInfo = getNextSegmentInfo();
         if (posRemain >= segmentInfo.uncompressedSize) {
           posRemain -= segmentInfo.uncompressedSize;
-          channel.position(channel.position() + segmentInfo.dataInDiskSize);
+          channel.position(currentPos + segmentInfo.dataInDiskSize + segmentInfo.headerSize());
         } else {
           break;
         }
@@ -341,5 +342,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     public CompressionType compressionType;
     public int dataInDiskSize;
     public int uncompressedSize;
+
+    int headerSize() {
+      return compressionType == CompressionType.UNCOMPRESSED
+          ? Byte.BYTES + Integer.BYTES
+          : Byte.BYTES + Integer.BYTES * 2;
+    }
   }
 }

@@ -105,8 +105,7 @@ public class WALEntryPosition {
     try (WALInputStream is = openReadFileStream()) {
       is.skipToGivenLogicalPosition(position);
       ByteBuffer buffer = ByteBuffer.allocate(size);
-      is.read(buffer);
-      buffer.flip();
+      is.read(buffer);g
       return buffer;
     }
   }
