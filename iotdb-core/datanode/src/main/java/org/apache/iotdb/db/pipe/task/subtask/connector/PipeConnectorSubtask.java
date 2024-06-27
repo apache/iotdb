@@ -232,6 +232,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           }
           return false;
         });
+
+    // synchronized to use the lastEvent and lastExceptionEvent
     synchronized (this) {
       // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
       // stopped submission but will not be stopped by critical exceptions, because when it acquires
@@ -253,9 +255,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
         //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
         //    the pipes with critical exceptions. As illustrated above, the "report" will do
-        // nothing.
+        //    nothing.
         submitSelf();
       }
+
       // We only clear the lastEvent's reference count when it's already on failure. Namely, we
       // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
       // "nonnull" detection.
@@ -264,6 +267,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         clearReferenceCountAndReleaseLastExceptionEvent();
       }
     }
+
     if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
       ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }

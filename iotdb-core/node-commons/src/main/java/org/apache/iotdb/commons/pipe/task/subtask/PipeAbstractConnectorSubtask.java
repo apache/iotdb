@@ -84,7 +84,6 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
           "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
           throwable);
       clearReferenceCountAndReleaseLastEvent();
-      submitSelf();
       return;
     }
 
