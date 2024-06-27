@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -141,13 +142,13 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * @throws IOException if io errors occurred
    * @throws PageException if errors occurred when write data page header
    */
-  public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+  public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
       throws IOException, PageException {
+    PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
+    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
+    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
+    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
+
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
     if (!checkIsPageSatisfied(timePageHeader, fileIndex, subTaskId)) {

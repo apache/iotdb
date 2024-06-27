@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -130,18 +131,18 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * @throws IOException if io errors occurred
    * @throws PageException if errors occurred when write data page header
    */
-  public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+  public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
       throws IOException, PageException {
+    PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
+    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
+    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
+    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
+
     checkPreviousTimestamp(timePageHeader.getStartTime(), subTaskId);
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    boolean isCompactingFollowedBatch = compressedTimePageData == null;
+    boolean isCompactingFollowedBatch = alignedPageElement.isBatched();
     // there is unsealed page or current page is not large enough , then deserialize the page
     if (!isUnsealedPageOverThreshold) {
       return false;

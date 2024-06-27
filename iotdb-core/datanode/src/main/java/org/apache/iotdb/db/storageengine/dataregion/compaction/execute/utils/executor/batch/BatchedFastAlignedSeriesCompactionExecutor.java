@@ -343,13 +343,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         throws PageException, IOException, WriteProcessException, IllegalPathException {
       boolean success;
       AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success =
-          compactionWriter.flushAlignedPage(
-              null,
-              alignedPageElement.getTimePageHeader(),
-              alignedPageElement.getValuePageDataList(),
-              alignedPageElement.getValuePageHeaders(),
-              subTaskId);
+      success = compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
       if (success) {
         // flush the page successfully, then remove this page
         checkShouldRemoveFile(pageElement);

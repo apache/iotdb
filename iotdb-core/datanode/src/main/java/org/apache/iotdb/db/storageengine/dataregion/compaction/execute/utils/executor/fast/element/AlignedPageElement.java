@@ -104,4 +104,8 @@ public class AlignedPageElement extends PageElement {
   public List<ByteBuffer> getValuePageDataList() {
     return valuePageDataList;
   }
+
+  public boolean isBatched() {
+    return batched;
+  }
 }

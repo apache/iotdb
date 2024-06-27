@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -32,7 +33,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.function.Supplier;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
@@ -72,12 +72,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId) {
+  public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 }

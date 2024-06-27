@@ -264,13 +264,7 @@ public abstract class SeriesCompactionExecutor {
     boolean success;
     if (isAligned) {
       AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success =
-          compactionWriter.flushAlignedPage(
-              alignedPageElement.getTimePageData(),
-              alignedPageElement.getTimePageHeader(),
-              alignedPageElement.getValuePageDataList(),
-              alignedPageElement.getValuePageHeaders(),
-              subTaskId);
+      success = compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
     } else {
       NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
       success =
