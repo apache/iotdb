@@ -39,6 +39,7 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -313,7 +314,11 @@ public class SubscriptionSessionExample {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(
                           Paths.get(System.getProperty("user.dir"), "exported-tsfiles")
-                              .resolve(TOPIC_4 + "-" + counter.getAndIncrement() + ".tsfile"));
+                              .resolve(
+                                  URLEncoder.encode(TOPIC_4)
+                                      + "-"
+                                      + counter.getAndIncrement()
+                                      + ".tsfile"));
                     }
                   }
                 } catch (final IOException e) {
