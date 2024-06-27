@@ -58,7 +58,7 @@ public class TTLCache {
    * @param nodes should be prefix path or specific device path without wildcard
    */
   public void setTTL(String[] nodes, long ttl) {
-    if (nodes.length < 2 || ttl <= 0) {
+    if (nodes.length < 2 || ttl < 0) {
       return;
     }
     CacheNode current = ttlCacheTree;
