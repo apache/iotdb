@@ -121,7 +121,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     flushAlignedChunkToFileWriter(
         targetFileWriters.get(fileIndex),
-        timeChunk,
+        isCompactingFollowedBatch ? null : timeChunk,
         timeChunkMetadata,
         valueChunks,
         valueChunkMetadatas,

@@ -21,8 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -36,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -45,17 +42,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -73,12 +65,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompactionTest {
 
@@ -281,11 +269,13 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(130, 200), new TimeRange(30000, 50000)},
+            new TimeRange[] {
+              new TimeRange(130, 200), new TimeRange(30000, 50000), new TimeRange(55000, 80000)
+            },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
-            true);
+            false);
     seqResources.add(seqResource1);
     //    seqResource1
     //        .getModFile()
@@ -302,7 +292,7 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
-            true);
+            false);
     seqResources.add(seqResource2);
 
     tsFileManager.addAll(seqResources, true);
@@ -935,98 +925,5 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
     //            Collections.singletonList(targetResource),
     //            Collections.emptyList()));
     Assert.assertEquals(devices.size(), targetResource.buildDeviceTimeIndex().getDevices().size());
-  }
-
-  private TsFileResource generateSingleAlignedSeriesFile(
-      String device,
-      List<String> measurement,
-      TimeRange[] chunkTimeRanges,
-      TSEncoding encoding,
-      CompressionType compressionType,
-      List<Boolean> nullValues,
-      boolean isSeq)
-      throws IOException {
-    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
-    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
-    writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
-        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
-    writer1.endChunkGroup();
-    writer1.endFile();
-    writer1.close();
-    return seqResource1;
-  }
-
-  private TsFileResource generateSingleAlignedSeriesFile(
-      String device,
-      List<String> measurement,
-      TimeRange[][] chunkTimeRanges,
-      TSEncoding encoding,
-      CompressionType compressionType,
-      List<Boolean> nullValues,
-      boolean isSeq)
-      throws IOException {
-    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
-    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
-    writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
-        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
-    writer1.endChunkGroup();
-    writer1.endFile();
-    writer1.close();
-    return seqResource1;
-  }
-
-  private TsFileResource generateSingleAlignedSeriesFile(
-      String device,
-      List<String> measurement,
-      TimeRange[][][] chunkTimeRanges,
-      TSEncoding encoding,
-      CompressionType compressionType,
-      List<Boolean> nullValues,
-      boolean isSeq)
-      throws IOException {
-    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
-    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
-    writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
-        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
-    writer1.endChunkGroup();
-    writer1.endFile();
-    writer1.close();
-    return seqResource1;
-  }
-
-  private List<PartialPath> getPaths(List<TsFileResource> resources)
-      throws IOException, IllegalPathException {
-    Set<PartialPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
-      while (deviceIterator.hasNextDevice()) {
-        Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
-        IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
-        boolean isAlign = iDeviceIDBooleanPair.getRight();
-        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
-        IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
-        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
-        if (measurementSchemas.isEmpty()) {
-          continue;
-        }
-        List<String> existedMeasurements =
-            measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
-                .collect(Collectors.toList());
-        PartialPath seriesPath;
-        if (isAlign) {
-          seriesPath =
-              new AlignedPath(
-                  ((PlainDeviceID) deviceID).toStringID(), existedMeasurements, measurementSchemas);
-        } else {
-          seriesPath =
-              new MeasurementPath(deviceID, existedMeasurements.get(0), measurementSchemas.get(0));
-        }
-        paths.add(seriesPath);
-      }
-    }
-    return new ArrayList<>(paths);
   }
 }

@@ -115,7 +115,12 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       return false;
     }
     flushAlignedChunkToFileWriter(
-        fileWriter, timeChunk, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
+        fileWriter,
+        isCompactingFollowedBatch ? null : timeChunk,
+        timeChunkMetadata,
+        valueChunks,
+        valueChunkMetadatas,
+        subTaskId);
 
     isEmptyFile = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
