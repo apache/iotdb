@@ -218,7 +218,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {}
 
-  abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
+  protected abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
 
   abstract void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException;
@@ -567,7 +567,7 @@ public abstract class SeriesCompactionExecutor {
     }
   }
 
-  enum ChunkStatus {
+  protected enum ChunkStatus {
     READ_IN,
     DIRECTORY_FLUSH,
     DESERIALIZE_CHUNK

@@ -17,21 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
 import org.apache.tsfile.read.common.TimeRange;
 
-public class CompactPagePlan {
+import java.util.Collections;
+import java.util.List;
+
+public class CompactChunkPlan {
   private final TimeRange timeRange;
+  private List<CompactPagePlan> pageRecords;
   private final boolean isCompactedByDirectlyFlush;
 
-  public CompactPagePlan(long startTime, long endTime, boolean isCompactedByDirectlyFlush) {
+  public CompactChunkPlan(List<CompactPagePlan> pageRecords) {
+    this.timeRange =
+        new TimeRange(
+            pageRecords.get(0).getTimeRange().getMin(),
+            pageRecords.get(pageRecords.size() - 1).getTimeRange().getMax());
+    this.pageRecords = pageRecords;
+    this.isCompactedByDirectlyFlush = false;
+  }
+
+  public CompactChunkPlan(long startTime, long endTime) {
     this.timeRange = new TimeRange(startTime, endTime);
-    this.isCompactedByDirectlyFlush = isCompactedByDirectlyFlush;
+    this.pageRecords = Collections.emptyList();
+    this.isCompactedByDirectlyFlush = true;
   }
 
   public TimeRange getTimeRange() {
     return timeRange;
+  }
+
+  public List<CompactPagePlan> getPageRecords() {
+    return pageRecords;
   }
 
   public boolean isCompactedByDirectlyFlush() {
@@ -40,9 +58,11 @@ public class CompactPagePlan {
 
   @Override
   public String toString() {
-    return "CompactPagePlan{"
+    return "CompactChunkPlan{"
         + "timeRange="
         + timeRange
+        + ", pageRecords="
+        + pageRecords
         + ", isCompactedByDirectlyFlush="
         + isCompactedByDirectlyFlush
         + '}';

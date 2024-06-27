@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.AlignedSeriesCompactionExecutor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.BatchedFastAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedFastAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.NonAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -139,7 +139,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         seriesCompactionExecutor.execute();
       }
     } else {
-      AlignedSeriesCompactionExecutor seriesCompactionExecutor;
+      FastAlignedSeriesCompactionExecutor seriesCompactionExecutor;
       if (measurementSchemas.size()
           > IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch()
               + 1) {
@@ -156,7 +156,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 summary);
       } else {
         seriesCompactionExecutor =
-            new AlignedSeriesCompactionExecutor(
+            new FastAlignedSeriesCompactionExecutor(
                 compactionWriter,
                 timeseriesMetadataOffsetMap,
                 readerCacheMap,

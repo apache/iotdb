@@ -59,7 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
+public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
   // linked hash map, which has the same measurement lexicographical order as measurementSchemas.
@@ -71,7 +71,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   protected final Map<String, IMeasurementSchema> measurementSchemaMap;
 
   @SuppressWarnings("squid:S107")
-  public AlignedSeriesCompactionExecutor(
+  public FastAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
@@ -276,7 +276,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
    * @throws IOException if io errors occurred
    */
   @SuppressWarnings("squid:S3776")
-  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  protected void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
 
     // deserialize time chunk

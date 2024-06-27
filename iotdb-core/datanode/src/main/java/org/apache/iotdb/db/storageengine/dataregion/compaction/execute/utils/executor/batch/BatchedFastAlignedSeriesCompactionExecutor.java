@@ -17,19 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch.AlignedSeriesGroupCompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch.CompactChunkPlan;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch.FirstBatchCompactionAlignedChunkWriter;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -53,7 +50,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class BatchedFastAlignedSeriesCompactionExecutor extends AlignedSeriesCompactionExecutor {
+public class BatchedFastAlignedSeriesCompactionExecutor
+    extends FastAlignedSeriesCompactionExecutor {
 
   private Set<String> compactedMeasurements;
   private IMeasurementSchema timeSchema;
@@ -189,7 +187,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor extends AlignedSeriesCom
   }
 
   private class FirstBatchFastAlignedSeriesCompactionExecutor
-      extends AlignedSeriesCompactionExecutor {
+      extends FastAlignedSeriesCompactionExecutor {
 
     private List<CompactChunkPlan> compactionPlan = new ArrayList<>();
 
@@ -256,7 +254,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor extends AlignedSeriesCom
   }
 
   private class FollowingBatchFastAlignedSeriesCompactionExecutor
-      extends AlignedSeriesCompactionExecutor {
+      extends FastAlignedSeriesCompactionExecutor {
 
     private final List<CompactChunkPlan> compactionPlan;
     private int currentCompactChunk = 0;
