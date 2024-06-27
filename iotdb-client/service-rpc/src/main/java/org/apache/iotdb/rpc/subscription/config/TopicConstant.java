@@ -43,7 +43,7 @@ public class TopicConstant {
   public static final String LOOSE_RANGE_KEY = "loose-range";
   public static final String LOOSE_RANGE_TIME_VALUE = "time";
   public static final String LOOSE_RANGE_PATH_VALUE = "path";
-  public static final String LOOSE_RANGE_TIME_AND_PATH_VALUE = "time,path";
+  public static final String LOOSE_RANGE_ALL_VALUE = "all";
   public static final String LOOSE_RANGE_DEFAULT_VALUE = "";
 
   private TopicConstant() {
