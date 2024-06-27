@@ -1737,7 +1737,7 @@ public class IoTDBDescriptor {
       // update data dirs
       String dataDirs =
           properties.getProperty(
-              "dn_data_dirs", ConfigurationFileUtils.getConfigurationDefaultValue("dn_data_dirs"));
+              "dn_data_dirs", null);
       if (dataDirs != null) {
         conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
