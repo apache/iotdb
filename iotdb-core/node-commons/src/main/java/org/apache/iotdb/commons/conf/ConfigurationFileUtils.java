@@ -37,6 +37,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ConfigurationFileUtils {
 
@@ -71,7 +74,7 @@ public class ConfigurationFileUtils {
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
           .toString();
-  ;
+  private static Map<String, String> configuration2DefaultValue;
 
   // This is a temporary implementations
   private static final Set<String> ignoreConfigKeys =
@@ -155,7 +158,11 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
-  public static String readConfigurationTemplateFile(String parameterName) throws IOException {
+  public static void getConfigurationDefaultValue() throws IOException {
+    if(configuration2DefaultValue != null){
+      return;
+    }
+    configuration2DefaultValue = new HashMap<>();
     try (InputStream inputStream =
             ConfigurationFileUtils.class
                 .getClassLoader()
@@ -163,31 +170,43 @@ public class ConfigurationFileUtils {
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
+      Pattern pattern = Pattern.compile("^[^#].*?=.*$");
       while ((line = reader.readLine()) != null) {
-        // skip comments and empty lines
-        if (line.startsWith("#") || !line.contains("=")) {
-          continue;
-        }
-        String[] parts = line.split("=");
-        if (parts[0].trim().equals(parameterName)) {
-          // For directory configuration, only 'dn_data_dirs' supports hot reloading.
-          // The default path is in Linux format. On Windows, we need to convert it to the Windows
-          // path format.
-          if (parameterName.equals("dn_data_dirs")) {
-            String os = System.getProperty("os.name").toLowerCase();
-            if (os.contains("win")) {
-              return parts[1].trim().replace("/", "\\");
-            }
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+          String[] parts = line.split("=");
+          if(parts.length==2){
+            configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
           }
-          return parts[1].trim();
+          else if(parts.length==1){
+            configuration2DefaultValue.put(parts[0].trim(), null);
+          }
+          else{
+            logger.error("Failed to parse configuration template: {}", line);
+          }
         }
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
       throw e;
     }
-    logger.error("error parameterName {}", parameterName);
-    return null;
+  }
+
+  // This function is used to get the default value for the configuration that enables hot
+  // modification.
+  public static String getConfigurationDefaultValue(String parameterName) throws IOException {
+    parameterName = parameterName.trim();
+    if(configuration2DefaultValue!=null){
+      return configuration2DefaultValue.get(parameterName);
+    }
+    else{
+      getConfigurationDefaultValue();
+      return configuration2DefaultValue.getOrDefault(parameterName,null);
+    }
+  }
+
+  public static void releaseDefault() {
+    configuration2DefaultValue = null;
   }
 
   public static String readConfigurationTemplateFile() throws IOException {

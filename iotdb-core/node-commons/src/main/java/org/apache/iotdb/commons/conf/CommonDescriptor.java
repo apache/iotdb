@@ -634,14 +634,14 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "write_request_remote_dispatch_max_retry_duration_in_ms",
-                ConfigurationFileUtils.readConfigurationTemplateFile(
+                ConfigurationFileUtils.getConfigurationDefaultValue(
                     "write_request_remote_dispatch_max_retry_duration_in_ms"))));
 
     config.setRetryForUnknownErrors(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_retry_for_unknown_error",
-                ConfigurationFileUtils.readConfigurationTemplateFile(
+                ConfigurationFileUtils.getConfigurationDefaultValue(
                     "enable_retry_for_unknown_error"))));
   }
 
