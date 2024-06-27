@@ -41,6 +41,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent sourceEvent; // used to report progress
+
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionDataContainer(
