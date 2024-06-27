@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -37,17 +36,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.utils.Pair;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.or;
 
 public class GlobalTimePredicateExtractVisitor
     extends IrVisitor<Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
@@ -76,58 +76,80 @@ public class GlobalTimePredicateExtractVisitor
   protected Pair<Expression, Boolean> visitLogicalExpression(
       LogicalExpression node, Context context) {
     if (node.getOperator() == AND) {
-      Pair<Expression, Boolean> leftResultPair = process(node.getTerms().get(0), context);
-      Pair<Expression, Boolean> rightResultPair = process(node.getTerms().get(1), context);
+      List<Pair<Expression, Boolean>> resultPairs = new ArrayList<>();
+      for (Expression term : node.getTerms()) {
+        resultPairs.add(process(term, context));
+      }
 
+      List<Expression> newTimeFilterTerms = new ArrayList<>();
+      List<Expression> newValueFilterTerms = new ArrayList<>();
       // rewrite predicate to avoid duplicate calculation on time filter
       // If Left-child or Right-child does not contain value filter
       // We can set it to true in Predicate Tree
       if (context.canRewrite) {
-        Expression newLeftExpression = null, newRightExpression = null;
-        if (leftResultPair.left != null && !leftResultPair.right) {
-          newLeftExpression = TRUE_LITERAL;
-        }
-        if (rightResultPair.left != null && !rightResultPair.right) {
-          newRightExpression = TRUE_LITERAL;
-        }
-        if (newLeftExpression != null || newRightExpression != null) {
-          node.setTerms(
-              Arrays.asList(
-                  newLeftExpression != null ? newLeftExpression : node.getTerms().get(0),
-                  newRightExpression != null ? newRightExpression : node.getTerms().get(1)));
-        }
+        getNewTimeValueExpressions(node, resultPairs, newTimeFilterTerms, newValueFilterTerms);
       }
 
-      if (leftResultPair.left != null && rightResultPair.left != null) {
+      if (!newTimeFilterTerms.isEmpty()) {
+        node.setTerms(newValueFilterTerms);
+
         return new Pair<>(
-            and(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
-      } else if (leftResultPair.left != null) {
-        return new Pair<>(leftResultPair.left, true);
-      } else if (rightResultPair.left != null) {
-        return new Pair<>(rightResultPair.left, true);
+            newTimeFilterTerms.size() == 1
+                ? newTimeFilterTerms.get(0)
+                : new LogicalExpression(AND, newTimeFilterTerms),
+            !newValueFilterTerms.isEmpty());
       }
 
       return new Pair<>(null, true);
     } else if (node.getOperator() == OR) {
-      Pair<Expression, Boolean> leftResultPair =
-          process(node.getTerms().get(0), new Context(false, false));
-      Pair<Expression, Boolean> rightResultPair =
-          process(node.getTerms().get(1), new Context(false, false));
 
-      if (leftResultPair.left != null && rightResultPair.left != null) {
-        if (Boolean.TRUE.equals(
-            context.isFirstOr && !leftResultPair.right && !rightResultPair.right)) {
-          node.getTerms().set(0, TRUE_LITERAL);
-          node.getTerms().set(0, TRUE_LITERAL);
+      List<Pair<Expression, Boolean>> resultPairs = new ArrayList<>();
+      for (Expression term : node.getTerms()) {
+        resultPairs.add(process(term, new Context(false, false)));
+      }
+
+      List<Expression> newTimeFilterTerms = new ArrayList<>();
+      List<Expression> newValueFilterTerms = new ArrayList<>();
+
+      getNewTimeValueExpressions(node, resultPairs, newTimeFilterTerms, newValueFilterTerms);
+
+      // for example, `(t1 and s1) or t2`, `t1 or t2` meets this condition
+      if (newTimeFilterTerms.size() == node.getTerms().size()) {
+        if (context.isFirstOr && newValueFilterTerms.isEmpty()) {
+          node.setTerms(Collections.singletonList(TRUE_LITERAL));
         }
         return new Pair<>(
-            or(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
+            newTimeFilterTerms.size() == 1
+                ? newTimeFilterTerms.get(0)
+                : new LogicalExpression(OR, newTimeFilterTerms),
+            !newValueFilterTerms.isEmpty());
       }
+
       return new Pair<>(null, true);
     } else {
       throw new IllegalStateException("Illegal state in visitLogicalExpression");
+    }
+  }
+
+  private void getNewTimeValueExpressions(
+      LogicalExpression node,
+      List<Pair<Expression, Boolean>> resultPairs,
+      List<Expression> newTimeFilterTerms,
+      List<Expression> newValueFilterTerms) {
+    for (int i = 0; i < resultPairs.size(); i++) {
+      Pair<Expression, Boolean> pair = resultPairs.get(i);
+
+      if (pair.left != null) {
+        newTimeFilterTerms.add(pair.left);
+
+        // has time filter, also has value filter
+        if (pair.right) {
+          newValueFilterTerms.add(node.getTerms().get(i));
+        }
+      } else {
+        // only has value filter
+        newValueFilterTerms.add(node.getTerms().get(i));
+      }
     }
   }
 
@@ -237,12 +259,12 @@ public class GlobalTimePredicateExtractVisitor
   }
 
   private static boolean isTimeIdentifier(Expression e) {
-    return e instanceof Identifier && TIME.equalsIgnoreCase(((Identifier) e).getValue());
+    return e instanceof SymbolReference && TIME.equalsIgnoreCase(((SymbolReference) e).getName());
   }
 
   private static boolean checkIsTimeFilter(Expression timeExpression, Expression valueExpression) {
-    return timeExpression instanceof Identifier
-        && ((Identifier) timeExpression).getValue().equalsIgnoreCase(TIME)
+    return timeExpression instanceof SymbolReference
+        && TIME.equalsIgnoreCase(((SymbolReference) timeExpression).getName())
         && valueExpression instanceof LongLiteral;
   }
 

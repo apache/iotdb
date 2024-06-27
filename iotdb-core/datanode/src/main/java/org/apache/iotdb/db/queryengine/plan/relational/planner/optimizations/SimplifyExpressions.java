@@ -52,8 +52,8 @@ public class SimplifyExpressions implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      Expression predicate = normalizeOrExpression(node.getPredicate());
-      predicate = extractCommonPredicates(predicate);
+      Expression predicate = extractCommonPredicates(node.getPredicate());
+      predicate = normalizeOrExpression(predicate);
       node.setPredicate(predicate);
       return node;
     }

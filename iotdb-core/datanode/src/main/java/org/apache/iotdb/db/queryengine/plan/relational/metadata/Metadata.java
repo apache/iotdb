@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -132,4 +134,24 @@ public interface Metadata {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getSchemaPartition(String database);
+
+  // ======================== Table Model Data Partition Interface ========================
+  /**
+   * Get data partition, used in query scenarios.
+   *
+   * @param database a user-provided db name, the database shall start with "root.".
+   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+
+  /**
+   * Get data partition, used in query scenarios which contains time filter like: time < XX or time
+   * > XX
+   *
+   * @param database a user-provided db name, the database shall start with "root.".
+   * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 }
