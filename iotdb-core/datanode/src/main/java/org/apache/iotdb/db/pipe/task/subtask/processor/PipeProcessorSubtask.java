@@ -158,12 +158,27 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
       final boolean shouldReport =
           !isClosed.get()
+              // If an event does not generate any events except itself at this stage, it is divided
+              // into two categories:
+              // 1. If the event is collected and passed to the connector, the reference count of
+              // the event may eventually be zero in the processor (the connector reduces the
+              // reference count first, and then the processor reduces the reference count), at this
+              // time, the progress of the event needs to be reported.
+              // 2. If the event is not collected (not passed to the connector), the reference count
+              // of the event must be zero in the processor stage, at this time, the progress of the
+              // event needs to be reported.
               && outputEventCollector.hasNoGeneratedEvent()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof PipeConsensusProcessor);
       if (shouldReport
-          && outputEventCollector.hasNoCollectInvocationAfterReset()
-          && event instanceof EnrichedEvent) {
+          && event instanceof EnrichedEvent
+          && outputEventCollector.hasNoCollectInvocationAfterReset()) {
+        // An event should be reported here when it is not passed to the connector stage, and it
+        // does not generate any new events to be passed to the connector. In our system, before
+        // reporting an event, we need to enrich a commitKey and commitId, which is done in the
+        // collector stage. But for the event that not passed to the connector and not generate any
+        // new events, the collector stage is not triggered, so we need to enrich the commitKey and
+        // commitId here.
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
