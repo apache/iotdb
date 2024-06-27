@@ -95,9 +95,9 @@ public class PipeEventCollector implements EventCollector {
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      hasNoGeneratedEvent = false;
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } else {
@@ -107,9 +107,9 @@ public class PipeEventCollector implements EventCollector {
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      hasNoGeneratedEvent = false;
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } else {
@@ -131,8 +131,8 @@ public class PipeEventCollector implements EventCollector {
     }
 
     try {
-      hasNoGeneratedEvent = false;
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } finally {
@@ -143,7 +143,6 @@ public class PipeEventCollector implements EventCollector {
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
-    hasNoGeneratedEvent = false;
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
         .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(
@@ -155,7 +154,11 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getPipePattern(),
                     deleteDataEvent.isGeneratedByPipe()))
-        .ifPresent(this::collectEvent);
+        .ifPresent(
+            event -> {
+              hasNoGeneratedEvent = false;
+              collectEvent(event);
+            });
   }
 
   private void collectEvent(final Event event) {
