@@ -54,15 +54,17 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
-  private IChunkReader chunkReader;
-  private BatchData data;
 
   private final long startTime;
   private final long endTime;
   private final Filter filter;
+
+  private IChunkReader chunkReader;
+  private BatchData data;
 
   private boolean isMultiPage;
   private String currentDevice;
@@ -80,11 +82,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final EnrichedEvent sourceEvent)
       throws IOException {
     super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+
     this.startTime = startTime;
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
+
     tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
     tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+
     prepareData();
   }
 
@@ -100,14 +105,21 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
           @Override
           public TabletInsertionEvent next() {
+            if (!hasNext()) {
+              close();
+              throw new NoSuchElementException();
+            }
+
+            final Tablet tablet = getNextTablet();
+            final boolean hasNext = hasNext();
             return new PipeRawTabletInsertionEvent(
-                getNextTablet(),
+                tablet,
                 currentIsAligned,
                 sourceEvent != null ? sourceEvent.getPipeName() : null,
                 sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                 pipeTaskMeta,
                 sourceEvent,
-                !hasNext());
+                !hasNext);
           }
         };
   }
