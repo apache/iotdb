@@ -67,16 +67,18 @@ public class TsFileInsertionDataContainerProvider {
         || endTime != Long.MAX_VALUE
         || pattern instanceof IoTDBPipePattern
             && !((IoTDBPipePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
-      // 1. If time limitation exists, use query here because scan may filter it row by row in
-      // single page chunk.
-      // 2. If the pattern matches only one timeSeries in one device, use query here because there
-      // are no alignment overhead.
-      // Note: We judge prefix pattern as matching multiple timeSeries in one device because it's
-      // hard to know whether it only matches one timeSeries, while matching multiple is often the
+      // 1. If time filter exists, use query here because the scan container may filter it
+      // row by row in single page chunk.
+      // 2. If the pattern matches only one time series in one device, use query container here
+      // because there is no timestamps merge overhead.
+      //
+      // Note: We judge prefix pattern as matching multiple timeseries in one device because it's
+      // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
       return new TsFileInsertionQueryDataContainer(
           tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
+
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
     if (Objects.isNull(deviceIsAlignedMap)) {
