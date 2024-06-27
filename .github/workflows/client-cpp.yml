@@ -9,7 +9,7 @@ on:
   push:
     branches:
       - master
-      - "rel/*"
+      - "rc/*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'

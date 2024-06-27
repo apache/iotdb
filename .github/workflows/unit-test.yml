@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
+      - 'rc/*'
       - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
