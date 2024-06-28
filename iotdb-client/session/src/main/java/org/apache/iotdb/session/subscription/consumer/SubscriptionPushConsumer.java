@@ -313,7 +313,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
@@ -329,10 +329,10 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   @Override
   protected Map<String, String> allReportMessage() {
-    final Map<String, String> coreReportMessage = super.allReportMessage();
-    coreReportMessage.put("ackStrategy", ackStrategy.toString());
-    coreReportMessage.put("autoPollIntervalMs", String.valueOf(autoPollIntervalMs));
-    coreReportMessage.put("autoPollTimeoutMs", String.valueOf(autoPollTimeoutMs));
-    return coreReportMessage;
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("ackStrategy", ackStrategy.toString());
+    allReportMessage.put("autoPollIntervalMs", String.valueOf(autoPollIntervalMs));
+    allReportMessage.put("autoPollTimeoutMs", String.valueOf(autoPollTimeoutMs));
+    return allReportMessage;
   }
 }

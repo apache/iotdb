@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -52,6 +54,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
+  private static final int BATCH_MAX_DELAY_IN_MS =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxDelayInMs();
+  private static final long BATCH_MAX_SIZE_IN_BYTES =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxSizeInBytes();
+
   private final Map<String, SubscriptionEvent> consumerIdToSubscriptionEventMap;
 
   private final AtomicReference<SubscriptionPipeTsFileEventBatch> currentBatchRef =
@@ -65,7 +72,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
     this.currentBatchRef.set(
-        new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes));
+        new SubscriptionPipeTsFileEventBatch(BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
   }
 
   @Override
@@ -259,7 +266,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             if (batch.onEvent(event)) {
               sealBatch(batch);
               result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+              return new SubscriptionPipeTsFileEventBatch(
+                  BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
             }
             return batch;
           } catch (final Exception e) {
@@ -277,7 +285,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   protected boolean onEvent(final PipeTsFileInsertionEvent event) {
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
     final SubscriptionEvent subscriptionEvent =
-        SubscriptionEvent.generateSubscriptionEventWithInitPayload(event, commitContext);
+        new SubscriptionEvent(
+            new SubscriptionPipeTsFilePlainEvent(event),
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.FILE_INIT.getType(),
+                new FileInitPayload(event.getTsFile().getName()),
+                commitContext));
     uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
     prefetchingQueue.add(subscriptionEvent);
     return true;
@@ -292,7 +305,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             if (batch.shouldEmit()) {
               sealBatch(batch);
               result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+              return new SubscriptionPipeTsFileEventBatch(
+                  BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
             }
             return batch;
           } catch (final Exception e) {
@@ -396,5 +410,21 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
     // consider non-critical by default, meaning the client can retry
     return super.generateSubscriptionPollErrorResponse(errorMessage, false);
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPrefetchingTsFileQueue" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put(
+        "consumerIdToSubscriptionEventMap", consumerIdToSubscriptionEventMap.toString());
+    allReportMessage.put("currentBatch", currentBatchRef.toString());
+    return allReportMessage;
   }
 }

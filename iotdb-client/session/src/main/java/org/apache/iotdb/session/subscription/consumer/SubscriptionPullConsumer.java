@@ -370,12 +370,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   @Override
   protected Map<String, String> allReportMessage() {
-    final Map<String, String> coreReportMessage = super.allReportMessage();
-    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
-    coreReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    allReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
     if (autoCommit) {
-      coreReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
+      allReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
     }
-    return coreReportMessage;
+    return allReportMessage;
   }
 }

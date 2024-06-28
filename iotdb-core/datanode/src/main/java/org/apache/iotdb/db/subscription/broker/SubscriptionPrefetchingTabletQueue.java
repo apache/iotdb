@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,6 +49,11 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
+
+  private static final int BATCH_MAX_DELAY_IN_MS =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs();
+  private static final long BATCH_MAX_SIZE_IN_BYTES =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
 
   private final AtomicReference<SubscriptionPipeTabletEventBatch> currentBatchRef =
       new AtomicReference<>();
@@ -59,7 +65,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     super(brokerId, topicName, inputPendingQueue);
 
     this.currentBatchRef.set(
-        new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes));
+        new SubscriptionPipeTabletEventBatch(BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
   }
 
   @Override
@@ -99,7 +105,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (batch.onEvent(event)) {
             sealBatch(batch);
             result.set(true);
-            return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
+            return new SubscriptionPipeTabletEventBatch(
+                BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
           }
           return batch;
         });
@@ -108,17 +115,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean trySealBatch() {
-    final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          if (batch.shouldEmit()) {
-            sealBatch(batch);
-            result.set(true);
-            return new SubscriptionPipeTabletEventBatch(maxDelayInMs, maxBatchSizeInBytes);
-          }
-          return batch;
+          sealBatch(batch);
+          return new SubscriptionPipeTabletEventBatch(
+              BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
         });
-    return result.get();
+    return true;
   }
 
   private void sealBatch(final SubscriptionPipeTabletEventBatch batch) {
@@ -154,7 +157,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         // Serialize the uncommitted and pollable event.
         if (event.pollable()) {
           // No need to concern whether serialization is successful.
-          SubscriptionEventBinaryCache.getInstance().trySerialize(event);
+          // TODO
+          SubscriptionEventBinaryCache.getInstance().trySerialize(event.getCurrentResponse());
         }
         // Re-enqueue the uncommitted event at the end of the queue.
         prefetchingQueue.add(event);
@@ -166,5 +170,19 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           this,
           e);
     }
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPrefetchingTabletQueue" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("currentBatch", currentBatchRef.toString());
+    return allReportMessage;
   }
 }

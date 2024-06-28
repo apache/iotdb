@@ -156,9 +156,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
 
     final String extractorRealtimeLooseRangeValue =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
-            EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE);
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
+                EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
+            .trim();
     if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
         extractorRealtimeLooseRangeValue)) {
       sloppyTimeRange = true;

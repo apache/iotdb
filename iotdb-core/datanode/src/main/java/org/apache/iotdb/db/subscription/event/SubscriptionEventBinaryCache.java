@@ -42,10 +42,6 @@ public class SubscriptionEventBinaryCache {
 
   private final LoadingCache<SubscriptionPollResponse, ByteBuffer> cache;
 
-  public ByteBuffer serialize(final SubscriptionEvent event) throws IOException {
-    return serialize(event.getCurrentResponse());
-  }
-
   public ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
     try {
       return this.cache.get(response);
@@ -56,13 +52,6 @@ public class SubscriptionEventBinaryCache {
           e);
       throw new IOException(e);
     }
-  }
-
-  /**
-   * @return true -> byte buffer is not null
-   */
-  public boolean trySerialize(final SubscriptionEvent event) {
-    return trySerialize(event.getCurrentResponse());
   }
 
   /**
@@ -79,10 +68,6 @@ public class SubscriptionEventBinaryCache {
           e);
       return false;
     }
-  }
-
-  public void resetByteBuffer(final SubscriptionEvent event, final boolean resetAll) {
-    event.resetByteBuffer(resetAll);
   }
 
   public void invalidate(final SubscriptionPollResponse response) {

@@ -1037,23 +1037,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// stringify ///////////////////////////////
 
-  protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
-        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
-        put("providers", providers.toString());
-        put("isReleased", isReleased.toString());
-        put("isClosed", isClosed.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("fileSaveFsync", String.valueOf(fileSaveFsync));
-        put("subscribedTopics", subscribedTopics.toString());
-      }
-    };
-  }
-
   protected Map<String, String> coreReportMessage() {
     return new HashMap<String, String>() {
       {
@@ -1062,6 +1045,23 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         put("isClosed", isClosed.toString());
         put("fileSaveDir", fileSaveDir);
         put("subscribedTopicNames", subscribedTopics.keySet().toString());
+      }
+    };
+  }
+
+  protected Map<String, String> allReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("consumerId", consumerId);
+        put("consumerGroupId", consumerGroupId);
+        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+        put("providers", providers.toString());
+        put("isClosed", isClosed.toString());
+        put("isReleased", isReleased.toString());
+        put("fileSaveDir", fileSaveDir);
+        put("fileSaveFsync", String.valueOf(fileSaveFsync));
+        put("subscribedTopics", subscribedTopics.toString());
       }
     };
   }

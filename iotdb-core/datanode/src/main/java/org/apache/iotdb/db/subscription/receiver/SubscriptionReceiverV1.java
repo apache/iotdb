@@ -368,13 +368,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     final SubscriptionCommitContext commitContext = response.getCommitContext();
                     try {
                       final ByteBuffer byteBuffer =
-                          SubscriptionEventBinaryCache.getInstance().serialize(event);
+                          SubscriptionEventBinaryCache.getInstance().serialize(response);
                       SubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(
                               SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                   commitContext.getConsumerGroupId(), commitContext.getTopicName()),
                               byteBuffer.limit());
-                      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
+                      event.resetByteBuffer(false);
                       LOGGER.info(
                           "Subscription: consumer {} poll {} successfully with request: {}",
                           consumerConfig,

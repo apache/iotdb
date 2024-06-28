@@ -135,9 +135,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     final String extractorHistoryLooseRangeValue =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-            EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE);
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
+            .trim();
     if (EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(extractorHistoryLooseRangeValue)) {
       sloppyTimeRange = true;
       sloppyPattern = true;

@@ -20,10 +20,7 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -137,7 +134,7 @@ public class SubscriptionEvent {
 
   public void cleanup() {
     // reset serialized responses
-    SubscriptionEventBinaryCache.getInstance().resetByteBuffer(this, true);
+    resetByteBuffer(true);
 
     // clean up pipe events
     pipeEvents.cleanup();
@@ -192,17 +189,6 @@ public class SubscriptionEvent {
   }
 
   /////////////////////////////// tsfile ///////////////////////////////
-
-  public static @NonNull SubscriptionEvent generateSubscriptionEventWithInitPayload(
-      final PipeTsFileInsertionEvent tsFileInsertionEvent,
-      final SubscriptionCommitContext commitContext) {
-    return new SubscriptionEvent(
-        new SubscriptionPipeTsFilePlainEvent(tsFileInsertionEvent),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.FILE_INIT.getType(),
-            new FileInitPayload(tsFileInsertionEvent.getTsFile().getName()),
-            commitContext));
-  }
 
   public @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
       final long writingOffset) throws IOException {
@@ -328,6 +314,10 @@ public class SubscriptionEvent {
         + pipeEvents.toString()
         + ", responses="
         + Arrays.toString(responses)
+        + ", responses' byte buffer size="
+        + Arrays.stream(byteBuffers)
+            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "null" : byteBuffer.limit())
+            .collect(Collectors.toList())
         + ", currentResponseIndex="
         + currentResponseIndex
         + ", lastPolledConsumerId="
@@ -336,11 +326,6 @@ public class SubscriptionEvent {
         + lastPolledTimestamp
         + ", committedTimestamp="
         + committedTimestamp
-        + "}"
-        + "(responses' byte buffer size: "
-        + Arrays.stream(byteBuffers)
-            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "null" : byteBuffer.limit())
-            .collect(Collectors.toList())
-        + ")";
+        + "}";
   }
 }

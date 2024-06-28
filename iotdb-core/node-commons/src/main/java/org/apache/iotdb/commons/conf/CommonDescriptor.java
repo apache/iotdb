@@ -597,16 +597,26 @@ public class CommonDescriptor {
     if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
       config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
     }
-    config.setSubscriptionPrefetchBatchMaxDelayInMs(
+    config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_prefetch_batch_max_delay_in_ms",
-                String.valueOf(config.getSubscriptionPrefetchBatchMaxDelayInMs()))));
-    config.setSubscriptionPrefetchBatchMaxSizeInBytes(
+                "subscription_prefetch_tablet_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "subscription_prefetch_batch_max_size_in_bytes",
-                String.valueOf(config.getSubscriptionPrefetchBatchMaxSizeInBytes()))));
+                "subscription_prefetch_tablet_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxSizeInBytes()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(

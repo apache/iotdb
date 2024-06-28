@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,11 +64,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
-
-  protected final int maxDelayInMs =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxDelayInMs();
-  protected final long maxBatchSizeInBytes =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchBatchMaxSizeInBytes();
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -279,13 +275,6 @@ public abstract class SubscriptionPrefetchingQueue {
         INVALID_COMMIT_ID);
   }
 
-  /////////////////////////////// object ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPrefetchingQueue{brokerId=" + brokerId + ", topicName=" + topicName + "}";
-  }
-
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getPrefetchingQueueId() {
@@ -340,5 +329,35 @@ public abstract class SubscriptionPrefetchingQueue {
             SubscriptionPollResponseType.ERROR.getType(),
             new ErrorPayload(errorMessage, critical),
             generateInvalidSubscriptionCommitContext()));
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  protected Map<String, String> coreReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("brokerId", brokerId);
+        put("topicName", topicName);
+        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+        put("isCompleted", String.valueOf(isCompleted));
+        put("isClosed", String.valueOf(isClosed));
+      }
+    };
+  }
+
+  protected Map<String, String> allReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("brokerId", brokerId);
+        put("topicName", topicName);
+        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+        put("uncommittedEvents", uncommittedEvents.toString());
+        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+        put("isCompleted", String.valueOf(isCompleted));
+        put("isClosed", String.valueOf(isClosed));
+      }
+    };
   }
 }

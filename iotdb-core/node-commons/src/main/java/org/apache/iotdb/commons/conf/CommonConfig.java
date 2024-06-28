@@ -253,8 +253,10 @@ public class CommonConfig {
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionPrefetchBatchMaxDelayInMs = 5000; // 5s
-  private long subscriptionPrefetchBatchMaxSizeInBytes = 80 * MB;
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
@@ -1121,21 +1123,42 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public int getSubscriptionPrefetchBatchMaxDelayInMs() {
-    return subscriptionPrefetchBatchMaxDelayInMs;
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public void setSubscriptionPrefetchBatchMaxDelayInMs(int subscriptionPrefetchBatchMaxDelayInMs) {
-    this.subscriptionPrefetchBatchMaxDelayInMs = subscriptionPrefetchBatchMaxDelayInMs;
+  public void setSubscriptionPrefetchTabletBatchMaxDelayInMs(
+      int subscriptionPrefetchTabletBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTabletBatchMaxDelayInMs = subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public long getSubscriptionPrefetchBatchMaxSizeInBytes() {
-    return subscriptionPrefetchBatchMaxSizeInBytes;
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTabletBatchMaxSizeInBytes;
   }
 
-  public void setSubscriptionPrefetchBatchMaxSizeInBytes(
-      long subscriptionPrefetchBatchMaxSizeInBytes) {
-    this.subscriptionPrefetchBatchMaxSizeInBytes = subscriptionPrefetchBatchMaxSizeInBytes;
+  public void setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+      long subscriptionPrefetchTabletBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTabletBatchMaxSizeInBytes =
+        subscriptionPrefetchTabletBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTsFileBatchMaxDelayInMs = subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTsFileBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      long subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTsFileBatchMaxSizeInBytes =
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
