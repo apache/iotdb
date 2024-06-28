@@ -64,8 +64,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
 
-  // The point count of the TsFile after it is closed, used for metrics on receiver side.
-  private long pointCount = 0;
+  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // May be updated after it is closed. It is not necessary to be accurate.
+  // Should be negative if not set.
+  private static final long POINT_COUNT_NOT_SET = -1;
+  private long pointCount = POINT_COUNT_NOT_SET;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
