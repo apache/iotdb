@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -30,6 +29,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class TableSchema {
 
@@ -83,8 +83,7 @@ public class TableSchema {
       return false;
     }
     TableSchema that = (TableSchema) o;
-    return Objects.equals(tableName, that.tableName) && Objects.equals(columns,
-        that.columns);
+    return Objects.equals(tableName, that.tableName) && Objects.equals(columns, that.columns);
   }
 
   @Override

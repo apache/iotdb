@@ -93,7 +93,8 @@ public class AnalyzeUtils {
             .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new HashSet<>())
             .add(insertTabletStatement.getTimePartitionSlot(i));
       }
-      return computeDataPartitionParams(timePartitionSlotMap, context.getSession().getDatabaseName().get());
+      return computeDataPartitionParams(
+          timePartitionSlotMap, context.getSession().getDatabaseName().get());
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
@@ -106,7 +107,8 @@ public class AnalyzeUtils {
               .add(insertTabletStatement.getTimePartitionSlot(i));
         }
       }
-      return computeDataPartitionParams(timePartitionSlotMap, context.getSession().getDatabaseName().get());
+      return computeDataPartitionParams(
+          timePartitionSlotMap, context.getSession().getDatabaseName().get());
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
@@ -134,7 +136,8 @@ public class AnalyzeUtils {
                 k -> new HashSet<>());
         timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
       }
-      return computeDataPartitionParams(dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
+      return computeDataPartitionParams(
+          dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
     } else if (statement instanceof InsertRowsStatement) {
       final InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
       Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
@@ -146,7 +149,8 @@ public class AnalyzeUtils {
                 k -> new HashSet<>());
         timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
       }
-      return computeDataPartitionParams(dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
+      return computeDataPartitionParams(
+          dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }

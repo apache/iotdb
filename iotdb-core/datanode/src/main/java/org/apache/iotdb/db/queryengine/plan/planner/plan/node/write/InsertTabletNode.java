@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -177,8 +176,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void addChild(PlanNode child) {
-  }
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNodeType getType() {
@@ -260,8 +258,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       final List<TRegionReplicaSet> replicaSets =
           analysis
               .getDataPartitionInfo()
-              .getDataRegionReplicaSetForWriting(deviceID, splitInfo.timePartitionSlots,
-                  analysis.getDatabaseName());
+              .getDataRegionReplicaSetForWriting(
+                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       analysis.addEndPointToRedirectNodeList(
@@ -459,9 +457,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
-  /**
-   * Serialize measurements or measurement schemas, ignoring failed time series
-   */
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
     ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
@@ -480,9 +476,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize measurements or measurement schemas, ignoring failed time series
-   */
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
@@ -501,9 +495,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize data types, ignoring failed time series
-   */
+  /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       // ignore failed partial insert
@@ -514,9 +506,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize data types, ignoring failed time series
-   */
+  /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(DataOutputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       // ignore failed partial insert
@@ -541,9 +531,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize bitmaps, ignoring failed time series
-   */
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(ByteBuffer buffer) {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), buffer);
     if (bitMaps != null) {
@@ -563,9 +551,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize bitmaps, ignoring failed time series
-   */
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
     if (bitMaps != null) {
@@ -585,9 +571,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize values, ignoring failed time series
-   */
+  /** Serialize values, ignoring failed time series */
   private void writeValues(ByteBuffer buffer) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
@@ -598,9 +582,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize values, ignoring failed time series
-   */
+  /** Serialize values, ignoring failed time series */
   private void writeValues(DataOutputStream stream) throws IOException {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
@@ -759,17 +741,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   // region serialize & deserialize methods for WAL
 
-  /**
-   * Serialized size for wal
-   */
+  /** Serialized size for wal */
   @Override
   public int serializedSize() {
     return serializedSize(0, rowCount);
   }
 
-  /**
-   * Serialized size for wal
-   */
+  /** Serialized size for wal */
   public int serializedSize(int start, int end) {
     return Short.BYTES + subSerializeSize(start, end);
   }
@@ -872,9 +850,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
-  /**
-   * Serialize measurement schemas, ignoring failed time series
-   */
+  /** Serialize measurement schemas, ignoring failed time series */
   private void writeMeasurementSchemas(IWALByteBufferView buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
@@ -887,9 +863,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize bitmaps, ignoring failed time series
-   */
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
@@ -912,9 +886,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Serialize values, ignoring failed time series
-   */
+  /** Serialize values, ignoring failed time series */
   private void writeValues(IWALByteBufferView buffer, int start, int end) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
@@ -974,9 +946,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /**
-   * Deserialize from wal
-   */
+  /** Deserialize from wal */
   public static InsertTabletNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
@@ -1221,7 +1191,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
    * Split the tablet of the given range according to Table deviceID.
    *
    * @param start inclusive
-   * @param end   exclusive
+   * @param end exclusive
    * @return each the number in the pair is the end offset of a device
    */
   public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
@@ -1229,7 +1199,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /**
-   * @param results      insertion result of each row
+   * @param results insertion result of each row
    * @param rowTTLGetter the ttl associated with each row
    * @return the position of the first alive row
    * @throws OutOfTTLException if all rows have expired the TTL
