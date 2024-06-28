@@ -77,7 +77,7 @@ public class WALRecoverWriterTest {
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_BYTES * 2,
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -102,7 +102,7 @@ public class WALRecoverWriterTest {
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_BYTES * 2,
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
