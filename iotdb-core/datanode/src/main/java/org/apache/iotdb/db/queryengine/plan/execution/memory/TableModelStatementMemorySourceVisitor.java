@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
@@ -67,17 +66,15 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
                 context.getQueryContext().getSession(),
-                ClusterPartitionFetcher.getInstance(),
                 WarningCollector.NOOP)
             .plan(context.getAnalysis());
-    if (context.getAnalysis().getDataPartition() == null
-        || context.getAnalysis().getDataPartition().isEmpty()) {
+    if (context.getAnalysis().isEmptyDataSource()) {
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
     // TODO(beyyes) adapt this logic after optimize ExchangeNodeAdder
     ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(context.getQueryContext());
+        new ExchangeNodeGenerator.PlanContext(context.getQueryContext(), context.getAnalysis());
     List<PlanNode> distributedPlanNodeResult =
         new ExchangeNodeGenerator().visitPlan(logicalPlan.getRootNode(), exchangeContext);
 

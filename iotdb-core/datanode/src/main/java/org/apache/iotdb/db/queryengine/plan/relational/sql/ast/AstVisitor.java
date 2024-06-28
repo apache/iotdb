@@ -458,4 +458,12 @@ public abstract class AstVisitor<R, C> {
   protected R visitCreateDevice(CreateDevice node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitFetchDevice(FetchDevice node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowDevice(ShowDevice node, C context) {
+    return visitStatement(node, context);
+  }
 }

@@ -157,10 +157,9 @@ public class Analysis implements IAnalysis {
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
 
-  private Expression globalTableModelTimePredicate;
-
   private DataPartition dataPartition;
 
+  // only be used in write plan and won't be used in query
   private SchemaPartition schemaPartition;
 
   private DatasetHeader respDatasetHeader;
@@ -172,20 +171,11 @@ public class Analysis implements IAnalysis {
 
   private TSStatus failStatus;
 
-  public Expression getGlobalTableModelTimePredicate() {
-    return this.globalTableModelTimePredicate;
-  }
-
-  public void setGlobalTableModelTimePredicate(Expression globalTableModelTimePredicate) {
-    this.globalTableModelTimePredicate = globalTableModelTimePredicate;
-  }
+  // if emptyDataSource, there is no need to execute the query in BE
+  private boolean emptyDataSource = false;
 
   public DataPartition getDataPartition() {
     return dataPartition;
-  }
-
-  public void setDataPartition(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
   }
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
@@ -593,6 +583,14 @@ public class Analysis implements IAnalysis {
     this.hasValueFilter = hasValueFilter;
   }
 
+  public boolean isEmptyDataSource() {
+    return emptyDataSource;
+  }
+
+  public void setEmptyDataSource(boolean emptyDataSource) {
+    this.emptyDataSource = emptyDataSource;
+  }
+
   @Override
   public boolean isFailed() {
     return false;
@@ -624,14 +622,6 @@ public class Analysis implements IAnalysis {
 
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
-  }
-
-  private boolean hasDataSource() {
-    return (dataPartition != null && !dataPartition.isEmpty());
-    //            || (schemaPartition != null && !schemaPartition.isEmpty())
-    //            || statement instanceof ShowQueriesStatement
-    //            || (statement instanceof QueryStatement
-    //            && ((QueryStatement) statement).isAggregationQuery());
   }
 
   @Override
@@ -686,6 +676,18 @@ public class Analysis implements IAnalysis {
   @Override
   public DataPartition getDataPartitionInfo() {
     return dataPartition;
+  }
+
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
+
+  public void upsertDataPartition(DataPartition targetDataPartition) {
+    if (this.dataPartition == null) {
+      this.dataPartition = targetDataPartition;
+    } else {
+      this.dataPartition.upsertDataPartition(targetDataPartition);
+    }
   }
 
   @Override

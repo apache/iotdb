@@ -21,9 +21,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
@@ -57,14 +60,16 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitPlan(PlanNode node, Void context) {
-      node.getOutputSymbols()
-          .forEach(
-              symbol ->
-                  beTypeProvider.putTableModelType(
-                      symbol, feTypeProvider.getTableModelType(symbol)));
-      for (PlanNode source : node.getChildren()) {
-        source.accept(this, context);
+      for (Symbol symbol : node.getOutputSymbols()) {
+        if (!feTypeProvider.isSymbolExist(symbol)) {
+          throw new IllegalStateException(
+              String.format(
+                  "Symbol: %s is not exist in feTypeProvider with %s",
+                  symbol, node.getClass().getSimpleName()));
+        }
+        beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
+      node.getChildren().forEach(child -> child.accept(this, context));
       return null;
     }
 
@@ -102,8 +107,26 @@ public class TableModelTypeProviderExtractor {
     }
 
     @Override
+    public Void visitSort(SortNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
     public Void visitMergeSort(MergeSortNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitLimit(LimitNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitOffset(OffsetNode node, Void context) {
+      node.getChild().accept(this, context);
       return null;
     }
 

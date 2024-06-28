@@ -178,7 +178,9 @@ public class PathPatternTree {
 
     Set<IDeviceID> resultPaths = new HashSet<>();
     for (List<String> resultNodes : resultNodesSet) {
-      resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+      if (resultNodes != null && !resultNodes.isEmpty()) {
+        resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+      }
     }
 
     return new ArrayList<>(resultPaths);

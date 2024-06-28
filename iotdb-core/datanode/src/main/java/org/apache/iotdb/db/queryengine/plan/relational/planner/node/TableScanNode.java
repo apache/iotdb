@@ -22,11 +22,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -39,12 +41,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class TableScanNode extends SourceNode {
 
-  // db.tablename
-  private final String qualifiedTableName;
+  private final QualifiedObjectName qualifiedObjectName;
   private List<Symbol> outputSymbols;
   private Map<Symbol, ColumnSchema> assignments;
 
@@ -55,6 +57,15 @@ public class TableScanNode extends SourceNode {
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private Ordering scanOrder = Ordering.ASC;
+
+  // extracted time filter expression in where clause
+  // case 1: where s1 > 1 and time >= 0 and time <= 10, time predicate will be time >= 0 and time <=
+  // 10, pushDownPredicate will be s1 > 1
+  // case 2: where s1 > 1 or time < 10, time predicate will be null, pushDownPredicate will be s1 >
+  // 1 or time < 10
+  @Nullable private Expression timePredicate;
+
+  private Filter timeFilter;
 
   // push down predicate for current series, could be null if it doesn't exist
   @Nullable private Expression pushDownPredicate;
@@ -70,35 +81,35 @@ public class TableScanNode extends SourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  private List<TRegionReplicaSet> regionReplicaSetList;
-
   public TableScanNode(
       PlanNodeId id,
-      String qualifiedTableName,
+      QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments) {
     super(id);
-    this.qualifiedTableName = qualifiedTableName;
+    this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
   }
 
   public TableScanNode(
       PlanNodeId id,
-      String qualifiedTableName,
+      QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
+      Expression timePredicate,
       Expression pushDownPredicate) {
     super(id);
-    this.qualifiedTableName = qualifiedTableName;
+    this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
     this.deviceEntries = deviceEntries;
     this.idAndAttributeIndexMap = idAndAttributeIndexMap;
     this.scanOrder = scanOrder;
+    this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
   }
 
@@ -119,12 +130,13 @@ public class TableScanNode extends SourceNode {
   public TableScanNode clone() {
     return new TableScanNode(
         getPlanNodeId(),
-        qualifiedTableName,
+        qualifiedObjectName,
         outputSymbols,
         assignments,
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
+        timePredicate,
         pushDownPredicate);
   }
 
@@ -141,7 +153,14 @@ public class TableScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_SCAN_NODE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(qualifiedTableName, byteBuffer);
+
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
 
     ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
     outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
@@ -165,6 +184,13 @@ public class TableScanNode extends SourceNode {
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
 
+    if (timePredicate != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(timePredicate, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
       Expression.serialize(pushDownPredicate, byteBuffer);
@@ -176,7 +202,13 @@ public class TableScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_SCAN_NODE.serialize(stream);
-    ReadWriteIOUtils.write(qualifiedTableName, stream);
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
 
     ReadWriteIOUtils.write(outputSymbols.size(), stream);
     for (Symbol symbol : outputSymbols) {
@@ -202,6 +234,13 @@ public class TableScanNode extends SourceNode {
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
 
+    if (timePredicate != null) {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(timePredicate, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write(true, stream);
       Expression.serialize(pushDownPredicate, stream);
@@ -211,9 +250,15 @@ public class TableScanNode extends SourceNode {
   }
 
   public static TableScanNode deserialize(ByteBuffer byteBuffer) {
-    String qualifiedTableName = ReadWriteIOUtils.readString(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
+    String databaseName = null;
+    if (hasDatabaseName) {
+      databaseName = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    String tableName = ReadWriteIOUtils.readString(byteBuffer);
+    QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
 
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> outputSymbols = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       outputSymbols.add(Symbol.deserialize(byteBuffer));
@@ -240,6 +285,12 @@ public class TableScanNode extends SourceNode {
 
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
+    Expression timePredicate = null;
+    boolean hasTimePredicate = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasTimePredicate) {
+      timePredicate = Expression.deserialize(byteBuffer);
+    }
+
     Expression pushDownPredicate = null;
     boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasPushDownPredicate) {
@@ -250,12 +301,13 @@ public class TableScanNode extends SourceNode {
 
     return new TableScanNode(
         planNodeId,
-        qualifiedTableName,
+        qualifiedObjectName,
         outputSymbols,
         assignments,
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
+        timePredicate,
         pushDownPredicate);
   }
 
@@ -282,18 +334,18 @@ public class TableScanNode extends SourceNode {
       return false;
     }
     TableScanNode that = (TableScanNode) o;
-    return Objects.equals(qualifiedTableName, that.qualifiedTableName)
+    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
         && Objects.equals(outputSymbols, that.outputSymbols)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), qualifiedTableName, outputSymbols, regionReplicaSet);
+    return Objects.hash(super.hashCode(), qualifiedObjectName, outputSymbols, regionReplicaSet);
   }
 
-  public String getQualifiedTableName() {
-    return this.qualifiedTableName;
+  public QualifiedObjectName getQualifiedObjectName() {
+    return this.qualifiedObjectName;
   }
 
   public void setOutputSymbols(List<Symbol> outputSymbols) {
@@ -328,6 +380,10 @@ public class TableScanNode extends SourceNode {
     return deviceEntries;
   }
 
+  public void appendDeviceEntry(DeviceEntry deviceEntry) {
+    this.deviceEntries.add(deviceEntry);
+  }
+
   public long getPushDownLimit() {
     return this.pushDownLimit;
   }
@@ -352,15 +408,23 @@ public class TableScanNode extends SourceNode {
     return this.regionReplicaSet;
   }
 
-  public List<TRegionReplicaSet> getRegionReplicaSetList() {
-    return regionReplicaSetList;
-  }
-
-  public void setRegionReplicaSetList(List<TRegionReplicaSet> regionReplicaSetList) {
-    this.regionReplicaSetList = regionReplicaSetList;
-  }
-
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  public Optional<Expression> getTimePredicate() {
+    return Optional.ofNullable(timePredicate);
+  }
+
+  public void setTimePredicate(@Nullable Expression timePredicate) {
+    this.timePredicate = timePredicate;
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 }

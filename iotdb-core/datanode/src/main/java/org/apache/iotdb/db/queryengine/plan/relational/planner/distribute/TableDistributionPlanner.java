@@ -53,7 +53,7 @@ public class TableDistributionPlanner {
 
   public DistributedQueryPlan plan() {
     ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(mppQueryContext);
+        new ExchangeNodeGenerator.PlanContext(mppQueryContext, analysis);
     List<PlanNode> distributedPlanNodeResult =
         new ExchangeNodeGenerator().visitPlan(logicalQueryPlan.getRootNode(), exchangeContext);
 

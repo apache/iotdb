@@ -15,40 +15,43 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.FilterScanCombine;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +61,7 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
@@ -66,37 +70,31 @@ public class LogicalPlanner {
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
   private final List<RelationalPlanOptimizer> relationalPlanOptimizers;
   private final Metadata metadata;
-  private final IPartitionFetcher partitionFetcher;
   private final WarningCollector warningCollector;
 
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
       SessionInfo sessionInfo,
-      IPartitionFetcher partitionFetcher,
       WarningCollector warningCollector) {
     this.context = context;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
-    this.partitionFetcher = requireNonNull(partitionFetcher, "partitionFetcher is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
 
     this.relationalPlanOptimizers =
         Arrays.asList(
             new SimplifyExpressions(),
             new PruneUnUsedColumns(),
-            new FilterScanCombine(),
-            new RemoveRedundantIdentityProjections(),
-            new IndexScan());
+            new PushPredicateIntoTableScan(),
+            new RemoveRedundantIdentityProjections());
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     relationalPlanOptimizers.forEach(
-        optimizer ->
-            optimizer.optimize(
-                planNode, analysis, metadata, partitionFetcher, sessionInfo, context));
+        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
 
     return new LogicalQueryPlan(context, planNode);
   }
@@ -104,6 +102,12 @@ public class LogicalPlanner {
   private PlanNode planStatement(Analysis analysis, Statement statement) {
     if (statement instanceof CreateDevice) {
       return planCreateDevice((CreateDevice) statement, analysis);
+    }
+    if (statement instanceof FetchDevice) {
+      return planFetchDevice((FetchDevice) statement, analysis);
+    }
+    if (statement instanceof ShowDevice) {
+      return planShowDevice((ShowDevice) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -142,8 +146,7 @@ public class LogicalPlanner {
       outputs.add(symbol);
 
       if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(name)) {
-        columnHeaders.add(
-            new ColumnHeader(symbol.getName(), transferTypeToTsDataType(field.getType())));
+        columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
       }
 
       columnNumber++;
@@ -175,26 +178,6 @@ public class LogicalPlanner {
     return new RelationPlanner(analysis, symbolAllocator, context, sessionInfo, ImmutableMap.of());
   }
 
-  public TSDataType transferTypeToTsDataType(Type type) {
-    switch (type.getTypeEnum()) {
-      case INT32:
-        return TSDataType.INT32;
-      case INT64:
-        return TSDataType.INT64;
-      case BOOLEAN:
-        return TSDataType.BOOLEAN;
-      case FLOAT:
-        return TSDataType.FLOAT;
-      case DOUBLE:
-        return TSDataType.DOUBLE;
-      case TEXT:
-        return TSDataType.TEXT;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Cannot transfer type: %s to TSDataType.", type.getTypeEnum()));
-    }
-  }
-
   private enum Stage {
     CREATED,
     OPTIMIZED,
@@ -222,5 +205,81 @@ public class LogicalPlanner {
     analysis.setSchemaPartitionInfo(partition);
 
     return node;
+  }
+
+  private PlanNode planFetchDevice(FetchDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.READ);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
+    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
+    TableDeviceFetchNode fetchNode =
+        new TableDeviceFetchNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTableName(),
+            statement.getDeviceIdList(),
+            columnHeaderList,
+            null);
+    mergeNode.addChild(fetchNode);
+
+    SchemaPartition schemaPartition =
+        metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze();
+    }
+
+    return mergeNode;
+  }
+
+  private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.READ);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
+    TableDeviceQueryNode queryNode =
+        new TableDeviceQueryNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTableName(),
+            statement.getIdDeterminedPredicateList(),
+            statement.getIdFuzzyPredicate(),
+            columnHeaderList,
+            null);
+    mergeNode.addChild(queryNode);
+
+    SchemaPartition schemaPartition =
+        statement.isIdDetermined()
+            ? metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList())
+            : metadata.getSchemaPartition(statement.getDatabase());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze();
+    }
+
+    return mergeNode;
+  }
+
+  private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {
+    List<TsTableColumnSchema> columnSchemaList =
+        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
+
+    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnHeaderList.add(
+            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
+      }
+    }
+    return columnHeaderList;
   }
 }

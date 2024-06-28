@@ -42,7 +42,7 @@ public class LikePredicate extends Expression {
     super(null);
     this.value = requireNonNull(value, "value is null");
     this.pattern = requireNonNull(pattern, "pattern is null");
-    this.escape = requireNonNull(escape, "escape is null");
+    this.escape = escape;
   }
 
   public LikePredicate(NodeLocation location, Expression value, Expression pattern) {

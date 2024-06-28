@@ -23,6 +23,10 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Arrays;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
+
 public class CompareNonEqualColumnTransformer extends CompareBinaryColumnTransformer {
   public CompareNonEqualColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
@@ -31,12 +35,8 @@ public class CompareNonEqualColumnTransformer extends CompareBinaryColumnTransfo
 
   @Override
   protected final void checkType() {
-    if (typeEquals(leftTransformer, rightTransformer)) {
-      return;
-    }
-
-    // Boolean type and Binary Type can not be compared with other types
-    if (!leftTransformer.isReturnTypeNumeric() || !rightTransformer.isReturnTypeNumeric()) {
+    if (!isTwoTypeComparable(
+        Arrays.asList(leftTransformer.getType(), rightTransformer.getType()))) {
       throw new UnsupportedOperationException("Unsupported Type");
     }
   }

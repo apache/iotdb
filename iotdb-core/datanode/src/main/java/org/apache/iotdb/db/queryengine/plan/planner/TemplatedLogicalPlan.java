@@ -35,6 +35,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -254,9 +255,9 @@ public class TemplatedLogicalPlan {
     LogicalPlanBuilder planBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
-    Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    Map<IDeviceID, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
     for (PartialPath devicePath : analysis.getDeviceList()) {
-      String deviceName = devicePath.getFullPath();
+      IDeviceID deviceID = devicePath.getIDeviceIDAsFullDevice();
       PlanNode rootNode = visitQueryBody(devicePath);
 
       LogicalPlanBuilder subPlanBuilder =
@@ -267,10 +268,10 @@ public class TemplatedLogicalPlan {
       if (queryStatement.needPushDownSort()) {
         subPlanBuilder =
             subPlanBuilder.planOrderBy(
-                analysis.getDeviceToOrderByExpressions().get(deviceName),
-                analysis.getDeviceToSortItems().get(deviceName));
+                analysis.getDeviceToOrderByExpressions().get(deviceID),
+                analysis.getDeviceToSortItems().get(deviceID));
       }
-      deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+      deviceToSubPlanMap.put(deviceID, subPlanBuilder.getRoot());
     }
 
     // convert to ALIGN BY DEVICE view
@@ -339,7 +340,7 @@ public class TemplatedLogicalPlan {
 
     LogicalPlanBuilder templatedPlanBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
-    Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    Map<IDeviceID, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
     aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
 
     boolean needCheckAscending = queryStatement.isGroupByTime();
@@ -358,7 +359,7 @@ public class TemplatedLogicalPlan {
     context.getTypeProvider().getTemplatedInfo().setDescendingDescriptorList(descendingDescriptors);
 
     for (PartialPath devicePath : analysis.getDeviceList()) {
-      String deviceName = devicePath.getFullPath();
+      IDeviceID deviceName = devicePath.getIDeviceID();
       PlanNode rootNode = visitDeviceAggregationBody(devicePath);
 
       LogicalPlanBuilder subPlanBuilder =

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -28,23 +31,28 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -61,14 +69,30 @@ public class TableMetadataImpl implements Metadata {
 
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
+  private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+
   @Override
   public boolean tableExists(QualifiedObjectName name) {
-    return false;
+    return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    return null;
+    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    if (table == null) {
+      return Optional.empty();
+    }
+    List<ColumnSchema> columnSchemaList =
+        table.getColumnList().stream()
+            .map(
+                o ->
+                    new ColumnSchema(
+                        o.getColumnName(),
+                        TypeFactory.getType(o.getDataType()),
+                        false,
+                        o.getColumnCategory()))
+            .collect(Collectors.toList());
+    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
   }
 
   @Override
@@ -141,19 +165,19 @@ public class TableMetadataImpl implements Metadata {
       return DOUBLE;
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
 
-      if (!isTwoTextType(argumentTypes) && !isThreeTextType(argumentTypes)) {
+      if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function: "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }
-      return TEXT;
+      return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
-              && TEXT.equals(argumentTypes.get(0))
+              && isCharType(argumentTypes.get(0))
               && isNumericType(argumentTypes.get(1)))
           && !(argumentTypes.size() == 3
-              && TEXT.equals(argumentTypes.get(0))
+              && isCharType(argumentTypes.get(0))
               && isNumericType(argumentTypes.get(1))
               && isNumericType(argumentTypes.get(2)))) {
         throw new SemanticException(
@@ -161,7 +185,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }
-      return TEXT;
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -270,29 +294,34 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return ClusterPartitionFetcher.getInstance();
+  }
+
+  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    // fixme, perfect the real metadata impl
-    List<DeviceEntry> result = new ArrayList<>();
-    IDeviceID deviceID1 = new StringArrayDeviceID("db.table1", "beijing", "a_1");
-    IDeviceID deviceID2 = new StringArrayDeviceID("db.table1", "beijing", "b_1");
-    result.add(new DeviceEntry(deviceID1, Arrays.asList("old", "low")));
-    result.add(new DeviceEntry(deviceID2, Arrays.asList("new", "high")));
-    return result;
+    return TableDeviceSchemaFetcher.getInstance()
+        .fetchDeviceSchemaForDataQuery(
+            tableName.getDatabaseName(),
+            tableName.getObjectName(),
+            expressionList,
+            attributeColumns);
   }
 
   @Override
   public TableSchema validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context) {
-    throw new UnsupportedOperationException();
+    return TableHeaderSchemaValidator.getInstance()
+        .validateTableHeaderSchema(database, tableSchema, context);
   }
 
   @Override
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
-    throw new UnsupportedOperationException();
+    TableDeviceSchemaValidator.getInstance().validateDeviceSchema(schemaValidation, context);
   }
 
   @Override
@@ -312,6 +341,20 @@ public class TableMetadataImpl implements Metadata {
     return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
   }
 
+  @Override
+  public DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartition(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
@@ -326,21 +369,25 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }
 
-  public static boolean isOneTextType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && TEXT.equals(argumentTypes.get(0));
+  public static boolean isOneCharType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 1 && isCharType(argumentTypes.get(0));
   }
 
-  public static boolean isTwoTextType(List<? extends Type> argumentTypes) {
+  public static boolean isTwoCharType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
-        && TEXT.equals(argumentTypes.get(0))
-        && TEXT.equals(argumentTypes.get(1));
+        && isCharType(argumentTypes.get(0))
+        && isCharType(argumentTypes.get(1));
   }
 
-  public static boolean isThreeTextType(List<? extends Type> argumentTypes) {
+  public static boolean isThreeCharType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 3
-        && TEXT.equals(argumentTypes.get(0))
-        && TEXT.equals(argumentTypes.get(1))
-        && TEXT.equals(argumentTypes.get(2));
+        && isCharType(argumentTypes.get(0))
+        && isCharType(argumentTypes.get(1))
+        && isCharType(argumentTypes.get(2));
+  }
+
+  public static boolean isCharType(Type type) {
+    return TEXT.equals(type) || StringType.STRING.equals(type);
   }
 
   public static boolean isNumericType(Type type) {
@@ -358,6 +405,6 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return isNumericType(left) && isNumericType(right);
+    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
   }
 }

@@ -98,8 +98,6 @@ import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.LongType;
-import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
@@ -117,6 +115,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator.MAP_NODE_RETRAINED_SIZE;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -580,11 +579,11 @@ public class OperatorMemoryTest {
     List<TSDataType> dataTypeList = new ArrayList<>(2);
     dataTypeList.add(TSDataType.INT32);
     dataTypeList.add(TSDataType.INT32);
-    List<String> devices = new ArrayList<>(4);
-    devices.add("device1");
-    devices.add("device2");
-    devices.add("device3");
-    devices.add("device4");
+    List<IDeviceID> devices = new ArrayList<>(4);
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device1"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device2"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device3"));
+    devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create("device4"));
     long expectedMaxReturnSize =
         2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     long expectedMaxPeekMemory = expectedMaxReturnSize;
@@ -628,24 +627,20 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
-    BooleanType booleanType = Mockito.mock(BooleanType.class);
-    Mockito.when(booleanType.getTypeEnum()).thenReturn(TypeEnum.BOOLEAN);
-    LongType longType = Mockito.mock(LongType.class);
-    Mockito.when(longType.getTypeEnum()).thenReturn(TypeEnum.INT64);
     ColumnTransformer filterColumnTransformer =
         new CompareLessEqualColumnTransformer(
-            booleanType,
-            new TimeColumnTransformer(longType),
-            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class)));
+            BooleanType.BOOLEAN,
+            new TimeColumnTransformer(INT64),
+            new ConstantColumnTransformer(INT64, Mockito.mock(IntColumn.class)));
     List<TSDataType> filterOutputTypes = new ArrayList<>();
     filterOutputTypes.add(TSDataType.INT32);
     filterOutputTypes.add(TSDataType.INT64);
     List<ColumnTransformer> projectColumnTransformers = new ArrayList<>();
     projectColumnTransformers.add(
         new ArithmeticAdditionColumnTransformer(
-            booleanType,
-            new TimeColumnTransformer(longType),
-            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class))));
+            BooleanType.BOOLEAN,
+            new TimeColumnTransformer(INT64),
+            new ConstantColumnTransformer(INT64, Mockito.mock(IntColumn.class))));
 
     FilterAndProjectOperator operator =
         new FilterAndProjectOperator(

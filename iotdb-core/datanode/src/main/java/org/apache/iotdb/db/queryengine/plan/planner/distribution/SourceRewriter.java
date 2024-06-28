@@ -81,7 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -151,17 +151,13 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return Collections.singletonList(node);
     }
 
-    String device = node.getDevice();
-    // TODO: remove conversion for device and OutputDeviceToQueriedDevicesMap
+    IDeviceID device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
         !analysis.useLogicalView()
-            ? new ArrayList<>(
-                analysis.getPartitionInfo(
-                    Factory.DEFAULT_FACTORY.create(device), context.getPartitionTimeFilter()))
+            ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
             : new ArrayList<>(
                 analysis.getPartitionInfo(
-                    Factory.DEFAULT_FACTORY.create(
-                        analysis.getOutputDeviceToQueriedDevicesMap().get(device)),
+                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
                     context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
@@ -200,19 +196,16 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     boolean existDeviceCrossRegion = false;
 
     for (int i = 0; i < node.getDevices().size(); i++) {
-      String outputDevice = node.getDevices().get(i);
+      IDeviceID outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(
-                      Factory.DEFAULT_FACTORY.create(
-                          analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice)),
+                      analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice),
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
-                  analysis.getPartitionInfo(
-                      Factory.DEFAULT_FACTORY.create(outputDevice),
-                      context.getPartitionTimeFilter()));
+                  analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
         existDeviceCrossRegion = true;
         if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {
@@ -284,7 +277,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 : Collections.singletonList(newIdxSum++));
       }
 
-      for (String device : node.getDevices()) {
+      for (IDeviceID device : node.getDevices()) {
         List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
         List<Integer> newMeasurementIdxList = new ArrayList<>();
         oldMeasurementIdxList.forEach(
@@ -348,7 +341,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       DeviceViewNode node,
       DistributionPlanContext context) {
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
-      List<String> devices = new ArrayList<>();
+      List<IDeviceID> devices = new ArrayList<>();
       List<PlanNode> children = new ArrayList<>();
       for (DeviceViewSplit split : deviceViewSplits) {
         if (split.needDistributeTo(regionReplicaSet)) {
@@ -1774,12 +1767,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private static class DeviceViewSplit {
-    protected String device;
+    protected IDeviceID device;
     protected PlanNode root;
     protected Set<TRegionReplicaSet> dataPartitions;
 
     protected DeviceViewSplit(
-        String device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
+        IDeviceID device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
       this.device = device;
       this.root = root;
       this.dataPartitions = new HashSet<>();

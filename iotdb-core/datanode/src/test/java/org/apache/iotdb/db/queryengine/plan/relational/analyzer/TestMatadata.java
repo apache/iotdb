@@ -14,11 +14,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -34,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -41,16 +47,18 @@ import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class TestMatadata implements Metadata {
@@ -178,11 +186,16 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return getFakePartitionFetcher();
+  }
+
+  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return Arrays.asList(
+    return Collections.singletonList(
         new DeviceEntry(
             new StringArrayDeviceID("root.testdb", "table1", "t1", "t2", "t3"),
             Arrays.asList("a1", "a2")));
@@ -216,39 +229,90 @@ public class TestMatadata implements Metadata {
     return null;
   }
 
-  public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 2
-        && isNumericType(argumentTypes.get(0))
-        && isNumericType(argumentTypes.get(1));
+  @Override
+  public DataPartition getDataPartition(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return DATA_PARTITION;
   }
 
-  public static boolean isOneNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return DATA_PARTITION;
   }
 
-  public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
-  }
+  private static final DataPartition DATA_PARTITION = MockTablePartition.constructDataPartition();
+  private static final SchemaPartition SCHEMA_PARTITION =
+      MockTablePartition.constructSchemaPartition();
 
-  public static boolean isOneTextType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && TEXT.equals(argumentTypes.get(0));
-  }
+  private static IPartitionFetcher getFakePartitionFetcher() {
 
-  public static boolean isNumericType(Type type) {
-    return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
-  }
+    return new IPartitionFetcher() {
 
-  public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
-    if (argumentTypes.size() != 2) {
-      return false;
-    }
-    Type left = argumentTypes.get(0);
-    Type right = argumentTypes.get(1);
-    if (left.equals(right)) {
-      return true;
-    }
+      @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+        return SCHEMA_PARTITION;
+      }
 
-    // Boolean type and Binary Type can not be compared with other types
-    return isNumericType(left) && isNumericType(right);
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+        return null;
+      }
+
+      @Override
+      public boolean updateRegionCache(TRegionRouteReq req) {
+        return false;
+      }
+
+      @Override
+      public void invalidAllCache() {}
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          String database, List<IDeviceID> deviceIDList, String userName) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database) {
+        return null;
+      }
+    };
   }
 }

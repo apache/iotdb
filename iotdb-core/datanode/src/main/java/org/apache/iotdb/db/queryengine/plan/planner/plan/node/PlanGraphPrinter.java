@@ -604,7 +604,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitTableScan(TableScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TableScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedTableName()));
+    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
@@ -649,6 +649,47 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Output-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLimit(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitOffset(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitMergeSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     return render(node, boxValue, context);
   }
 

@@ -284,8 +284,8 @@ public class TemplatedAnalyze {
       return;
     }
 
-    Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
-    Map<String, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
+    Map<IDeviceID, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
+    Map<IDeviceID, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
     // build the device-view outputColumn for the sortNode above the deviceViewNode
     Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
     for (PartialPath device : deviceSet) {
@@ -319,8 +319,9 @@ public class TemplatedAnalyze {
         orderByExpressionsForOneDevice.add(expressionForItem);
       }
       deviceToSortItems.put(
-          device.getFullPath(), queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
-      deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
+          device.getIDeviceIDAsFullDevice(),
+          queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
+      deviceToOrderByExpressions.put(device.getIDeviceID(), orderByExpressionsForOneDevice);
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);

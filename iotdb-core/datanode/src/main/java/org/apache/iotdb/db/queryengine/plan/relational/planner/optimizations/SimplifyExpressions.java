@@ -16,7 +16,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -35,7 +34,6 @@ public class SimplifyExpressions implements RelationalPlanOptimizer {
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
-      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
     // TODO add query statement pruning
@@ -54,8 +52,8 @@ public class SimplifyExpressions implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      Expression predicate = normalizeOrExpression(node.getPredicate());
-      predicate = extractCommonPredicates(predicate);
+      Expression predicate = extractCommonPredicates(node.getPredicate());
+      predicate = normalizeOrExpression(predicate);
       node.setPredicate(predicate);
       return node;
     }
