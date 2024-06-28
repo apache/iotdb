@@ -65,6 +65,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
 
+  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // May be updated after it is flushed. Should be negative if not set.
+  private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
+
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -114,6 +118,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
+
+                // Update flushPointCount after TsFile is closed
+                flushPointCount = processor.getMemTableFlushPointCount();
               }
             });
       }
@@ -154,6 +161,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           if (isClosedNow) {
             isClosed.set(true);
             isClosed.notifyAll();
+
+            // Update flushPointCount after TsFile is closed
+            final TsFileProcessor processor = resource.getProcessor();
+            if (processor != null) {
+              flushPointCount = processor.getMemTableFlushPointCount();
+            }
+
             break;
           }
         }
@@ -190,6 +204,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public long getFileStartTime() {
     return resource.getFileStartTime();
+  }
+
+  /**
+   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * receiver side. The receiver side will count the actual point count from the TsFile.
+   *
+   * <p>If you want to get the actual point count with no risk, you can call {@link
+   * #count(boolean)}.
+   */
+  public long getFlushPointCount() {
+    return flushPointCount;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
