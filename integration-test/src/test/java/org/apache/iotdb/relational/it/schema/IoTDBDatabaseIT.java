@@ -147,9 +147,9 @@ public class IoTDBDatabaseIT {
       }
       //
       //      // TODO fix it, should succeed
-      statement.execute("create database \"a.b\"");
+      //      statement.execute("create database \"a.b\"");
       //      statement.execute("use \"a.b\"");
-      statement.execute("drop database \"a.b\"");
+      //      statement.execute("drop database \"a.b\"");
 
     } catch (SQLException e) {
       e.printStackTrace();

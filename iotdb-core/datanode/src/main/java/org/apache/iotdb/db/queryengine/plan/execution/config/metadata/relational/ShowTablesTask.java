@@ -37,7 +37,10 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 
 public class ShowTablesTask implements IConfigTask {
 
@@ -67,7 +70,9 @@ public class ShowTablesTask implements IConfigTask {
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).appendNull();
+      builder
+          .getColumnBuilder(1)
+          .writeLong(Long.parseLong(table.getPropValue(COLUMN_TTL.toLowerCase(Locale.ENGLISH))));
       builder.declarePosition();
     }
 

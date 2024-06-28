@@ -147,6 +147,10 @@ public class TsTable {
     return table;
   }
 
+  public void setProps(Map<String, String> props) {
+    this.props = props;
+  }
+
   @Override
   public boolean equals(Object o) {
     return super.equals(o);

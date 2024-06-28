@@ -29,9 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -222,13 +222,11 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public List<TsTable> getTables(String database) {
+  public Optional<List<TsTable>> getTables(String database) {
     readWriteLock.readLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)) {
-        return new ArrayList<>(databaseTableMap.get(database).values());
-      }
-      return Collections.emptyList();
+      Map<String, TsTable> tableMap = databaseTableMap.get(database);
+      return tableMap != null ? Optional.of(new ArrayList<>(tableMap.values())) : Optional.empty();
     } finally {
       readWriteLock.readLock().unlock();
     }
