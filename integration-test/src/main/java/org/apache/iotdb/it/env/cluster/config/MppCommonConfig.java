@@ -233,6 +233,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    setProperty("time_partition_origin", String.valueOf(timePartitionOrigin));
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     setProperty("timestamp_precision", timestampPrecision);
     return this;

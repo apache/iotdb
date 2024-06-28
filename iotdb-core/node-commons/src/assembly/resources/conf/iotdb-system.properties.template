@@ -651,6 +651,14 @@ enable_auto_leader_balance_for_iot_consensus=true
 ### Cluster management
 ####################
 
+# Time partition origin in milliseconds, default is equal to zero.
+# This origin is set by default to the beginning of Unix time, which is January 1, 1970, at 00:00 UTC (Coordinated Universal Time).
+# This point is known as the Unix epoch, and its timestamp is 0.
+# If you want to specify a different time partition origin, you can set this value to a specific Unix timestamp in milliseconds.
+# effectiveMode: first_start
+# Datatype: long
+time_partition_origin=0
+
 # Time partition interval in milliseconds, and partitioning data inside each data region, default is equal to one week
 # effectiveMode: first_start
 # Datatype: long

@@ -1096,6 +1096,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
+            add("TimePartitionOrigin");
             add("TimePartitionInterval");
           }
         };
@@ -1747,6 +1748,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
+            add("TimePartitionOrigin");
             add("TimePartitionInterval");
           }
         };
