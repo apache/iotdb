@@ -82,6 +82,8 @@ public class Analysis implements IAnalysis {
   // Common Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  private String databaseName;
+
   // Statement
   private Statement statement;
 
@@ -987,5 +989,15 @@ public class Analysis implements IAnalysis {
 
   public boolean fromWhere(FilterNode filterNode) {
     return fromWhereFilterNodes.contains(NodeRef.of(filterNode));
+  }
+
+  @Override
+  public void setDatabaseName(String database) {
+    this.databaseName = database;
+  }
+
+  @Override
+  public String getDatabaseName() {
+    return databaseName;
   }
 }

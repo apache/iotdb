@@ -91,6 +91,9 @@ import static java.util.Objects.requireNonNull;
 
 public class Analysis implements IAnalysis {
 
+  private String databaseName;
+  private List<TEndPoint> redirectNodeList;
+
   @Nullable private Statement root;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
@@ -687,12 +690,15 @@ public class Analysis implements IAnalysis {
 
   @Override
   public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
-    throw new UnsupportedOperationException();
+    this.redirectNodeList = redirectNodeList;
   }
 
   @Override
   public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
-    throw new UnsupportedOperationException();
+    if (redirectNodeList == null) {
+      redirectNodeList = new ArrayList<>();
+    }
+    redirectNodeList.add(endPoint);
   }
 
   @Override
@@ -949,5 +955,15 @@ public class Analysis implements IAnalysis {
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
     }
+  }
+
+  @Override
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  @Override
+  public String getDatabaseName() {
+    return databaseName;
   }
 }

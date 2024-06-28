@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -122,6 +123,9 @@ public class LogicalPlanner {
   }
 
   private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis) {
+    if (plan.getRoot() instanceof WritePlanNode) {
+      return plan.getRoot();
+    }
     ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
     ImmutableList.Builder<String> names = ImmutableList.builder();
     List<ColumnHeader> columnHeaders = new ArrayList<>();

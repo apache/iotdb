@@ -155,17 +155,16 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
-      IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList) {
+      IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList, String databaseName) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    String storageGroup = getStorageGroupByDevice(deviceID);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
     List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-        dataBasePartitionMap = dataPartitionMap.get(storageGroup);
+        dataBasePartitionMap = dataPartitionMap.get(databaseName);
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {

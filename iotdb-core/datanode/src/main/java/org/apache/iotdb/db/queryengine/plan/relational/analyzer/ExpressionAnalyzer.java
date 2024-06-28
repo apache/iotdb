@@ -1328,6 +1328,7 @@ public class ExpressionAnalyzer {
       Map<NodeRef<Parameter>, Expression> parameters,
       WarningCollector warningCollector) {
     Analysis analysis = new Analysis(null, parameters);
+    analysis.setDatabaseName(session.getDatabaseName().get());
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
             metadata,

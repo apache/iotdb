@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -537,6 +538,10 @@ public class AnalyzerTest {
       public DataPartition getOrCreateDataPartition(
           List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
         int seriesSlotNum = 1000;
+        String partitionExecutorName = "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+        SeriesPartitionExecutor seriesPartitionExecutor = SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            partitionExecutorName, seriesSlotNum);
+
         Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
             dataPartitionMap = new HashMap<>();
         assertEquals(3, dataPartitionQueryParams.size());
@@ -548,34 +553,31 @@ public class AnalyzerTest {
           String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
           assertEquals(StatementTestUtils.tableName(), tableName);
 
-          int partitionSlot = Math.abs(tableName.hashCode()) % seriesSlotNum;
-          TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(partitionSlot);
+          TSeriesPartitionSlot partitionSlot = seriesPartitionExecutor.getSeriesPartitionSlot(
+              dataPartitionQueryParam.getDeviceID());
           for (TTimePartitionSlot tTimePartitionSlot : dataPartitionQueryParam.getTimePartitionSlotList()) {
             dataPartitionMap.computeIfAbsent(databaseName, d -> new HashMap<>())
-                .computeIfAbsent(seriesPartitionSlot, slot -> new HashMap<>())
+                .computeIfAbsent(partitionSlot, slot -> new HashMap<>())
                 .computeIfAbsent(tTimePartitionSlot, slot -> new ArrayList<>())
                 .add(new TRegionReplicaSet(new TConsensusGroupId(
-                    TConsensusGroupType.DataRegion, partitionSlot), Collections.singletonList(
-                    new TDataNodeLocation(partitionSlot, null, null, null, null, null))));
+                    TConsensusGroupType.DataRegion, partitionSlot.slotId), Collections.singletonList(
+                    new TDataNodeLocation(partitionSlot.slotId, null, null, null, null, null))));
           }
         }
-        return new DataPartition(dataPartitionMap, "dummy", seriesSlotNum);
+        return new DataPartition(dataPartitionMap, partitionExecutorName, seriesSlotNum);
       }
     };
 
     InsertTabletStatement insertTabletStatement = StatementTestUtils.genInsertTabletStatement(true);
     context = new MPPQueryContext("", queryId, sessionInfo, null, null);
     actualAnalysis = analyzeStatement(insertTabletStatement.toRelationalStatement(context),
-        mockMetadata, new SqlParser());
+        mockMetadata, new SqlParser(), sessionInfo);
     logicalQueryPlan =
         new LogicalPlanner(
             context, mockMetadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
             .plan(actualAnalysis);
 
-    OutputNode node = (OutputNode) logicalQueryPlan.getRootNode();
-    assertEquals(1, node.getChildren().size());
-    RelationalInsertTabletNode insertTabletNode = (RelationalInsertTabletNode) node.getChildren()
-        .get(0);
+    RelationalInsertTabletNode insertTabletNode = (RelationalInsertTabletNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertTabletNode.getTableName(), StatementTestUtils.tableName());
     assertEquals(3, insertTabletNode.getRowCount());
@@ -586,20 +588,24 @@ public class AnalyzerTest {
     }
     assertEquals(columns, insertTabletNode.getColumns());
     assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getInstances().size());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
     SqlParser sqlParser = new SqlParser();
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
-    return analyzeStatement(statement, metadata, sqlParser);
+    SessionInfo session =
+        new SessionInfo(
+            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+    return analyzeStatement(statement, metadata, sqlParser, session);
   }
 
   public static Analysis analyzeStatement(Statement statement, Metadata metadata,
-      SqlParser sqlParser) {
+      SqlParser sqlParser, SessionInfo session) {
     try {
-      SessionInfo session =
-          new SessionInfo(
-              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 

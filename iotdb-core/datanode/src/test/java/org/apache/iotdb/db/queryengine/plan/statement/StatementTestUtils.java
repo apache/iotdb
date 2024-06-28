@@ -47,7 +47,7 @@ public class StatementTestUtils {
   }
 
   public static TSDataType[] genDataTypes() {
-    return new TSDataType[]{TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE};
+    return new TSDataType[]{TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE};
   }
 
   public static TsTableColumnCategory[] genColumnCategories() {
@@ -78,7 +78,7 @@ public class StatementTestUtils {
     return new Object[]{
         new String[]{"a", "b", "c"},
         new String[]{"x", "y", "z"},
-        new Double[]{1.0, 2.0, 3.0}
+        new double[]{1.0, 2.0, 3.0}
     };
   }
 

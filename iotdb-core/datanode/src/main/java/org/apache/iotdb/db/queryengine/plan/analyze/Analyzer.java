@@ -45,6 +45,7 @@ public class Analyzer {
     long startTime = System.nanoTime();
     Analysis analysis =
         new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+    analysis.setDatabaseName(context.getSession().getDatabaseName().get());
 
     if (statement.isQuery()) {
       QueryPlanCostMetricSet.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);

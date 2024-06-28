@@ -2272,6 +2272,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
     final Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    analysis.setDatabaseName(context.getSession().getDatabaseName().get());
     if (analysis.isFailed()) {
       future.setException(
           new IoTDBException(

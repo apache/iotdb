@@ -64,7 +64,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
     PlanFragment fragment = subPlan.getPlanFragment();
     PlanNode node = fragment.getPlanNodeTree();
     if (!(node instanceof WritePlanNode)) {
-      throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");
+      throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation:" + node.getClass());
     }
     List<WritePlanNode> splits = nodeSplitter.apply(((WritePlanNode) node), analysis);
     List<FragmentInstance> ret = new ArrayList<>();
