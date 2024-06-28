@@ -40,6 +40,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
 
   private transient List<String> fileNames;
   private transient List<Long> fileLengths;
+  private transient List<Long> pointCounts;
   private transient Map<String, String> parameters;
 
   public final List<String> getFileNames() {
@@ -48,6 +49,10 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
 
   public final List<Long> getFileLengths() {
     return fileLengths;
+  }
+
+  public final List<Long> getPointCounts() {
+    return pointCounts;
   }
 
   public final Map<String, String> getParameters() {
@@ -61,6 +66,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
   protected PipeConsensusTransferFileSealWithModReq convertToTPipeConsensusTransferReq(
       List<String> fileNames,
       List<Long> fileLengths,
+      List<Long> pointCounts,
       Map<String, String> parameters,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
@@ -70,6 +76,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
 
     this.fileNames = fileNames;
     this.fileLengths = fileLengths;
+    this.pointCounts = pointCounts;
     this.parameters = parameters;
 
     this.commitId = commitId;
@@ -86,6 +93,10 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
       ReadWriteIOUtils.write(fileLengths.size(), outputStream);
       for (Long fileLength : fileLengths) {
         ReadWriteIOUtils.write(fileLength, outputStream);
+      }
+      ReadWriteIOUtils.write(pointCounts.size(), outputStream);
+      for (Long pointCount : pointCounts) {
+        ReadWriteIOUtils.write(pointCount, outputStream);
       }
       ReadWriteIOUtils.write(parameters.size(), outputStream);
       for (final Map.Entry<String, String> entry : parameters.entrySet()) {
@@ -116,6 +127,12 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     size = ReadWriteIOUtils.readInt(req.body);
     for (int i = 0; i < size; ++i) {
       fileLengths.add(ReadWriteIOUtils.readLong(req.body));
+    }
+
+    pointCounts = new ArrayList<>();
+    size = ReadWriteIOUtils.readInt(req.body);
+    for (int i = 0; i < size; ++i) {
+      pointCounts.add(ReadWriteIOUtils.readLong(req.body));
     }
 
     parameters = new HashMap<>();
@@ -150,6 +167,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     PipeConsensusTransferFileSealWithModReq that = (PipeConsensusTransferFileSealWithModReq) obj;
     return Objects.equals(fileNames, that.fileNames)
         && Objects.equals(fileLengths, that.fileLengths)
+        && Objects.equals(pointCounts, that.pointCounts)
         && Objects.equals(parameters, that.parameters)
         && Objects.equals(version, that.version)
         && Objects.equals(type, that.type)
@@ -165,6 +183,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     return Objects.hash(
         fileNames,
         fileLengths,
+        pointCounts,
         parameters,
         version,
         type,

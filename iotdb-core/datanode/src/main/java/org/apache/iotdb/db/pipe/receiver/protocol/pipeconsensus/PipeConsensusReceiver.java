@@ -48,8 +48,11 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusReceiverMetrics;
+import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -419,7 +422,9 @@ public class PipeConsensusReceiver {
           loadFileToDataRegion(
               fileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+      updateWritePointCountMetrics(req.getPointCount(), fileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -532,11 +537,14 @@ public class PipeConsensusReceiver {
       long endPreCheckNanos = System.nanoTime();
       pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
+      final String tsFileAbsolutePath = fileAbsolutePaths.get(1);
       final TSStatus status =
           loadFileToDataRegion(
-              fileAbsolutePaths.get(1),
+              tsFileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+      updateWritePointCountMetrics(req.getPointCounts().get(1), tsFileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -621,6 +629,46 @@ public class PipeConsensusReceiver {
         .getDataRegion(((DataRegionId) consensusGroupId))
         .loadNewTsFile(generateTsFileResource(filePath, progressIndex), true, false);
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private void updateWritePointCountMetrics(
+      final long writePointCountGivenByReq, final String tsFileAbsolutePath) {
+    if (writePointCountGivenByReq >= 0) {
+      updateWritePointCountMetrics(writePointCountGivenByReq);
+      return;
+    }
+
+    // If the point count in the req is not given,
+    // we will read the actual point count from the TsFile.
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "PipeConsensus-PipeName-{}: The point count of TsFile {} is not given by sender, "
+              + "will read actual point count from TsFile.",
+          consensusPipeName,
+          tsFileAbsolutePath);
+    }
+
+    try (final TsFileInsertionPointCounter counter =
+        new TsFileInsertionPointCounter(new File(tsFileAbsolutePath), null)) {
+      updateWritePointCountMetrics(counter.count());
+    } catch (IOException e) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
+          consensusPipeName,
+          tsFileAbsolutePath,
+          e);
+    }
+  }
+
+  private void updateWritePointCountMetrics(long writePointCount) {
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
+    dataRegion
+        .getNonSystemDatabaseName()
+        .ifPresent(
+            databaseName ->
+                LoadTsFileManager.updateWritePointCountMetrics(
+                    dataRegion, databaseName, writePointCount));
   }
 
   private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
