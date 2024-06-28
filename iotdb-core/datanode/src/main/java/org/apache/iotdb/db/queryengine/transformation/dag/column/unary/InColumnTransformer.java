@@ -180,6 +180,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     String errorMsg = "\"%s\" cannot be cast to [%s]";
     switch (childType) {
       case INT32:
+      case DATE:
         intSet = new HashSet<>();
         for (Literal value : values) {
           try {
@@ -190,6 +191,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (Literal value : values) {
           try {
@@ -226,6 +228,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = new HashSet<>();
         for (Literal value : values) {
           stringSet.add(((StringLiteral) value).getValue());

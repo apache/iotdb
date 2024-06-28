@@ -405,6 +405,6 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return isNumericType(left) && isNumericType(right);
+    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
   }
 }

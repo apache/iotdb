@@ -79,7 +79,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
-import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.UnknownType;
@@ -87,6 +86,7 @@ import org.apache.tsfile.read.common.type.UnknownType;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -103,12 +103,14 @@ import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
@@ -652,27 +654,27 @@ public class ExpressionAnalyzer {
     protected Type visitLikePredicate(
         LikePredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
-      if (!(valueType instanceof BinaryType)) {
+      if (!isCharType(valueType)) {
         throw new SemanticException(
             String.format(
-                "Left side of LIKE expression must evaluate to a BinaryType (actual: %s)",
+                "Left side of LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
                 valueType));
       }
 
       Type patternType = process(node.getPattern(), context);
-      if (!(patternType instanceof BinaryType)) {
+      if (!isCharType(patternType)) {
         throw new SemanticException(
             String.format(
-                "Pattern for LIKE expression must evaluate to a BinaryType (actual: %s)",
+                "Pattern for LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
                 patternType));
       }
       if (node.getEscape().isPresent()) {
         Expression escape = node.getEscape().get();
         Type escapeType = process(escape, context);
-        if (!(escapeType instanceof BinaryType)) {
+        if (!isCharType(escapeType)) {
           throw new SemanticException(
               String.format(
-                  "Escape for LIKE expression must evaluate to a BinaryType (actual: %s)",
+                  "Escape for LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
                   escapeType));
         }
       }
@@ -1172,7 +1174,7 @@ public class ExpressionAnalyzer {
         if (superType == UNKNOWN) {
           superType = type;
         } else {
-          if (!superType.equals(type)) {
+          if (!isTwoTypeComparable(Arrays.asList(superType, type))) {
             throw new SemanticException(
                 String.format(
                     "%s must be the same type or coercible to a common type. Cannot find common type between %s and %s, all types (without duplicates): %s",
@@ -1480,20 +1482,8 @@ public class ExpressionAnalyzer {
         });
   }
 
-  public static boolean isNumericType(Type type) {
-    return type.equals(INT32) || type.equals(INT64) || type.equals(FLOAT) || type.equals(DOUBLE);
-  }
-
   private static boolean isExactNumericWithScaleZero(Type type) {
     return type.equals(INT32) || type.equals(INT64);
-  }
-
-  public static boolean isStringType(Type type) {
-    return isCharacterStringType(type);
-  }
-
-  public static boolean isCharacterStringType(Type type) {
-    return type instanceof BinaryType;
   }
 
   public static class LabelPrefixedReference {
