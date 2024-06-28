@@ -417,7 +417,7 @@ public class IoTDBDescriptor {
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
     boolean enableWALCompression =
-        Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "false"));
+        Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "true"));
     conf.setWALCompressionAlgorithm(
         enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 

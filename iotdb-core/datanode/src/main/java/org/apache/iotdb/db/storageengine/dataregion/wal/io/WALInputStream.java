@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
-import org.apache.iotdb.db.utils.MmapUtil;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -29,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -38,11 +37,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(WALInputStream.class);
   private final FileChannel channel;
-  private final ByteBuffer segmentHeaderBuffer = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
-  private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
+
+  /** 1 byte for whether enable compression, 4 byte for compressedSize */
+  private final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
+      ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
+
+  private final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
-  private long fileSize;
+  private final long fileSize;
   File logFile;
   /*
    The WAL file consist of following parts:
@@ -52,24 +55,18 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   */
   private long endOffset = -1;
 
-  enum FileVersion {
-    V1,
-    V2,
-    UNKNOWN
-  };
-
-  FileVersion version;
+  WALFileVersion version;
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
     fileSize = channel.size();
+    this.logFile = logFile;
     analyzeFileVersion();
     getEndOffset();
-    this.logFile = logFile;
   }
 
   private void getEndOffset() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES + Integer.BYTES) {
+    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES + Integer.BYTES) {
       // An broken file
       endOffset = channel.size();
       return;
@@ -77,27 +74,30 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
     long position;
     try {
-      if (version == FileVersion.V2) {
+      if (version == WALFileVersion.V2) {
         // New Version
-        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
+        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
         magicStringBuffer.flip();
-        if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
-            .equals(WALWriter.MAGIC_STRING)) {
-          // This is a broken wal file
+        if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)
+            || !new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
+                .equals(WALWriter.MAGIC_STRING_V2)) {
+          // This is a broken wal or checkpoint file
           endOffset = channel.size();
           return;
         } else {
-          // This is a normal wal file
-          position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
+          // This is a normal wal file or check point file
+          position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
         }
       } else {
+        if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)) {
+          // this is an old check point file
+          endOffset = channel.size();
+          return;
+        }
         // Old version
-        ByteBuffer magicStringBuffer =
-            ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
-        channel.read(
-            magicStringBuffer,
-            channel.size() - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1_BYTES);
+        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V1_BYTES);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
             .equals(WALWriter.MAGIC_STRING_V1)) {
@@ -105,39 +105,29 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           endOffset = channel.size();
           return;
         } else {
-          position =
-              channel.size()
-                  - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length
-                  - Integer.BYTES;
+          position = channel.size() - WALWriter.MAGIC_STRING_V1_BYTES - Integer.BYTES;
         }
       }
-      // Read the meta data size
+      // Read the metadata size
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
-      endOffset = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES - metadataSize - 1;
+      // -1 is for the endmarker
+      endOffset =
+          channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES - metadataSize - 1;
     } finally {
-      channel.position(WALWriter.MAGIC_STRING_BYTES);
+      if (version == WALFileVersion.V2) {
+        // Set the position back to the end of head magic string
+        channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
+      } else {
+        // There is no head magic string in V1 version
+        channel.position(0);
+      }
     }
   }
 
   private void analyzeFileVersion() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES) {
-      version = FileVersion.UNKNOWN;
-      return;
-    }
-    if (isCurrentVersion()) {
-      this.version = FileVersion.V2;
-      return;
-    }
-    this.version = FileVersion.V1;
-  }
-
-  private boolean isCurrentVersion() throws IOException {
-    channel.position(0);
-    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(buffer);
-    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING);
+    version = WALFileVersion.getVersion(channel);
   }
 
   @Override
@@ -188,11 +178,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextSegment() throws IOException {
     if (channel.position() >= endOffset) {
-      throw new IOException("End of file");
+      throw new IOException("Reach the end offset of wal file");
     }
-    if (version == FileVersion.V2) {
+    if (version == WALFileVersion.V2) {
       loadNextSegmentV2();
-    } else if (version == FileVersion.V1) {
+    } else if (version == WALFileVersion.V1) {
       loadNextSegmentV1();
     } else {
       tryLoadSegment();
@@ -220,20 +210,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.uncompressedSize
           || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) dataBuffer);
-        }
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
+        dataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
       }
       dataBuffer.clear();
 
       if (Objects.isNull(compressedBuffer)
           || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
           || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(compressedBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) compressedBuffer);
-        }
-        compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        compressedBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       }
       compressedBuffer.clear();
       // limit the buffer to prevent it from reading too much byte than expected
@@ -250,10 +234,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.dataInDiskSize
           || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean((MappedByteBuffer) dataBuffer);
-        }
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        dataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       }
       dataBuffer.clear();
       // limit the buffer to prevent it from reading too much byte than expected
@@ -270,17 +251,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     long originPosition = channel.position();
     try {
       loadNextSegmentV2();
-      version = FileVersion.V2;
+      version = WALFileVersion.V2;
+      return;
     } catch (Throwable e) {
       // failed to load in V2 way, try in V1 way
       logger.warn("Failed to load WAL segment in V2 way, try in V1 way", e);
       channel.position(originPosition);
     }
-
-    if (version == FileVersion.UNKNOWN) {
-      loadNextSegmentV1();
-      version = FileVersion.V1;
-    }
+    loadNextSegmentV1();
+    version = WALFileVersion.V1;
   }
 
   /**
@@ -291,15 +270,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    * @throws IOException If the file is broken or the given position is invalid
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
-    if (version == FileVersion.V2) {
-      channel.position(WALWriter.MAGIC_STRING_BYTES);
+    if (version == WALFileVersion.V2) {
+      channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
       long posRemain = pos;
-      SegmentInfo segmentInfo = null;
+      SegmentInfo segmentInfo;
       do {
+        long currentPos = channel.position();
         segmentInfo = getNextSegmentInfo();
         if (posRemain >= segmentInfo.uncompressedSize) {
           posRemain -= segmentInfo.uncompressedSize;
-          channel.position(channel.position() + segmentInfo.dataInDiskSize);
+          channel.position(currentPos + segmentInfo.dataInDiskSize + segmentInfo.headerSize());
         } else {
           break;
         }
@@ -340,26 +320,33 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private SegmentInfo getNextSegmentInfo() throws IOException {
-    segmentHeaderBuffer.clear();
-    channel.read(segmentHeaderBuffer);
-    segmentHeaderBuffer.flip();
+    segmentHeaderWithoutCompressedSizeBuffer.clear();
+    channel.read(segmentHeaderWithoutCompressedSizeBuffer);
+    segmentHeaderWithoutCompressedSizeBuffer.flip();
     SegmentInfo info = new SegmentInfo();
-    info.compressionType = CompressionType.deserialize(segmentHeaderBuffer.get());
-    info.dataInDiskSize = segmentHeaderBuffer.getInt();
+    info.compressionType =
+        CompressionType.deserialize(segmentHeaderWithoutCompressedSizeBuffer.get());
+    info.dataInDiskSize = segmentHeaderWithoutCompressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
-      compressedHeader.clear();
-      channel.read(compressedHeader);
-      compressedHeader.flip();
-      info.uncompressedSize = compressedHeader.getInt();
+      compressedSizeBuffer.clear();
+      channel.read(compressedSizeBuffer);
+      compressedSizeBuffer.flip();
+      info.uncompressedSize = compressedSizeBuffer.getInt();
     } else {
       info.uncompressedSize = info.dataInDiskSize;
     }
     return info;
   }
 
-  private class SegmentInfo {
+  private static class SegmentInfo {
     public CompressionType compressionType;
     public int dataInDiskSize;
     public int uncompressedSize;
+
+    int headerSize() {
+      return compressionType == CompressionType.UNCOMPRESSED
+          ? Byte.BYTES + Integer.BYTES
+          : Byte.BYTES + Integer.BYTES * 2;
+    }
   }
 }
