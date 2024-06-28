@@ -75,6 +75,15 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     // clean up events in consumerIdToCurrentEventMap
     consumerIdToSubscriptionEventMap.values().forEach(SubscriptionEvent::cleanup);
     consumerIdToSubscriptionEventMap.clear();
+
+    // clean up batch
+    currentBatchRef.getAndUpdate(
+        (batch) -> {
+          if (Objects.nonNull(batch)) {
+            batch.cleanup();
+          }
+          return null;
+        });
   }
 
   @Override

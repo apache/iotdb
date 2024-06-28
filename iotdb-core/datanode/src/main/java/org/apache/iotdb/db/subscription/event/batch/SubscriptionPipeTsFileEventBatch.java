@@ -34,15 +34,15 @@ public class SubscriptionPipeTsFileEventBatch {
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
-  public List<File> sealTsFiles() throws Exception {
+  public synchronized List<File> sealTsFiles() throws Exception {
     return batch.sealTsFiles();
   }
 
-  public boolean shouldEmit() {
+  public synchronized boolean shouldEmit() {
     return batch.shouldEmit();
   }
 
-  public boolean onEvent(final TabletInsertionEvent event) throws Exception {
+  public synchronized boolean onEvent(final TabletInsertionEvent event) throws Exception {
     return batch.onEvent(event);
   }
 
@@ -50,7 +50,7 @@ public class SubscriptionPipeTsFileEventBatch {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  public void cleanup() {
+  public synchronized void cleanup() {
     // close batch, it includes clearing the reference count of events
     batch.close();
   }

@@ -55,16 +55,16 @@ public class SubscriptionPipeTabletEventBatch {
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  public List<Tablet> sealTablets() {
+  public synchronized List<Tablet> sealTablets() {
     return tablets;
   }
 
-  public boolean shouldEmit() {
+  public synchronized boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
-  public boolean onEvent(final EnrichedEvent event) {
+  public synchronized boolean onEvent(final EnrichedEvent event) {
     if (event instanceof TabletInsertionEvent) {
       final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
       if (currentTablets.isEmpty()) {
@@ -109,7 +109,7 @@ public class SubscriptionPipeTabletEventBatch {
     }
   }
 
-  public void cleanup() {
+  public synchronized void cleanup() {
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
