@@ -157,7 +157,6 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         // Serialize the uncommitted and pollable event.
         if (event.pollable()) {
           // No need to concern whether serialization is successful.
-          // TODO
           SubscriptionEventBinaryCache.getInstance().trySerialize(event.getCurrentResponse());
         }
         // Re-enqueue the uncommitted event at the end of the queue.
