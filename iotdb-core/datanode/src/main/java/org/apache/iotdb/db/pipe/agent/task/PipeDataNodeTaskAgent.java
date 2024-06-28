@@ -160,7 +160,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to clear / close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
+          "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
           e.getMessage());
       exceptionMessages.add(
           new TPushPipeMetaRespExceptionMessage(null, e.getMessage(), System.currentTimeMillis()));
