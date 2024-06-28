@@ -68,6 +68,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_HISTORY_LOOSE_RANGE_KEY = "source.history.loose-range";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE = "time";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE = "path";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE = "";
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
@@ -88,6 +89,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_REALTIME_LOOSE_RANGE_KEY = "source.realtime.loose-range";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE = "time";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE = "path";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE = "";
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";

@@ -127,18 +127,11 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceLooseRange() {
-    String looseRangeValue =
+    final String looseRangeValue =
         attributes.getOrDefault(
             TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_DEFAULT_VALUE);
-    // translate "all" to "path,time"
-    if (TopicConstant.LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(looseRangeValue)) {
-      looseRangeValue =
-          String.join(
-              ",", TopicConstant.LOOSE_RANGE_PATH_VALUE, TopicConstant.LOOSE_RANGE_PATH_VALUE);
-    }
-    final String finalLooseRangeValue = looseRangeValue;
     return LOOSE_RANGE_KEY_SET.stream()
-        .collect(Collectors.toMap(key -> key, key -> finalLooseRangeValue));
+        .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
   }
 
   public Map<String, String> getAttributesWithProcessorPrefix() {
