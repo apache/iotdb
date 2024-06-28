@@ -33,8 +33,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
-public class SubscriptionEventBinaryCache {
+/** This class is used to cache {@link SubscriptionPollResponse} in {@link SubscriptionEvent}. */
+class SubscriptionEventBinaryCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionEventBinaryCache.class);
 
@@ -42,7 +44,7 @@ public class SubscriptionEventBinaryCache {
 
   private final LoadingCache<SubscriptionPollResponse, ByteBuffer> cache;
 
-  public ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
+  ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
     try {
       return this.cache.get(response);
     } catch (final Exception e) {
@@ -54,24 +56,24 @@ public class SubscriptionEventBinaryCache {
     }
   }
 
-  /**
-   * @return true -> byte buffer is not null
-   */
-  public boolean trySerialize(final SubscriptionPollResponse response) {
+  Optional<ByteBuffer> trySerialize(final SubscriptionPollResponse response) {
     try {
-      serialize(response);
-      return true;
+      return Optional.of(serialize(response));
     } catch (final IOException e) {
       LOGGER.warn(
           "Subscription: something unexpected happened when serializing SubscriptionPollResponse: {}",
           response,
           e);
-      return false;
+      return Optional.empty();
     }
   }
 
-  public void invalidate(final SubscriptionPollResponse response) {
+  void invalidate(final SubscriptionPollResponse response) {
     this.cache.invalidate(response);
+  }
+
+  void invalidateAll(final Iterable<SubscriptionPollResponse> responses) {
+    this.cache.invalidateAll(responses);
   }
 
   //////////////////////////// singleton ////////////////////////////
@@ -85,7 +87,7 @@ public class SubscriptionEventBinaryCache {
     }
   }
 
-  public static SubscriptionEventBinaryCache getInstance() {
+  static SubscriptionEventBinaryCache getInstance() {
     return SubscriptionEventBinaryCache.SubscriptionEventBinaryCacheHolder.INSTANCE;
   }
 

@@ -79,7 +79,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
-      prefetchOnce();
+      tryPrefetch();
     }
 
     final long size = prefetchingQueue.size();
@@ -136,7 +136,12 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   protected abstract boolean trySealBatch();
 
-  protected void prefetchOnce() {
+  /**
+   * prefetch at most one subscription event from {@link
+   * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
+   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   */
+  protected void tryPrefetch() {
     Event event;
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {

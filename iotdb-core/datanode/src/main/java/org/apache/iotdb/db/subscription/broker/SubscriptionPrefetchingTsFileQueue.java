@@ -242,11 +242,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
     // 3. Poll tsfile piece or tsfile seal
     try {
-      event.fetchNext();
-    } catch (final IOException e) {
+      event.fetchNextResponse();
+    } catch (final Exception e) {
       final String errorMessage =
           String.format(
-              "IOException occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
+              "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
               this, event, consumerId, e);
       LOGGER.warn(errorMessage);
       return generateSubscriptionPollErrorResponse(errorMessage);
@@ -339,12 +339,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   public synchronized void executePrefetch() {
-    prefetchOnce();
+    tryPrefetch();
 
+    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
     for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
       try {
-        event.prefetchNext();
-        event.serializeNext();
+        event.prefetchRemainingResponses();
+        event.trySerializeRemainingResponses();
       } catch (final IOException ignored) {
       }
     }

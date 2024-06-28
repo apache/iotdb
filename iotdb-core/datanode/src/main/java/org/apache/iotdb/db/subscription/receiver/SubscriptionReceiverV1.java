@@ -34,7 +34,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -367,14 +366,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     }
                     final SubscriptionCommitContext commitContext = response.getCommitContext();
                     try {
-                      final ByteBuffer byteBuffer =
-                          SubscriptionEventBinaryCache.getInstance().serialize(response);
+                      final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
                       SubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(
                               SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                   commitContext.getConsumerGroupId(), commitContext.getTopicName()),
                               byteBuffer.limit());
-                      event.resetByteBuffer(false);
+                      event.resetResponseByteBuffer(false);
                       LOGGER.info(
                           "Subscription: consumer {} poll {} successfully with request: {}",
                           consumerConfig,

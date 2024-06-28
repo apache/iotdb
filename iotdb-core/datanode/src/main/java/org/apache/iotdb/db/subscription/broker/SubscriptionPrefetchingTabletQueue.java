@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQue
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -84,8 +83,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   public void executePrefetch() {
-    prefetchOnce();
-    serializeOnce();
+    tryPrefetch();
+    serializeEventsInQueue();
   }
 
   @Override
@@ -138,7 +137,11 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     prefetchingQueue.add(subscriptionEvent);
   }
 
-  private void serializeOnce() {
+  /**
+   * serialize uncommitted and pollable events in {@link
+   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   */
+  private void serializeEventsInQueue() {
     final long size = prefetchingQueue.size();
     long count = 0;
 
@@ -157,7 +160,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         // Serialize the uncommitted and pollable event.
         if (event.pollable()) {
           // No need to concern whether serialization is successful.
-          SubscriptionEventBinaryCache.getInstance().trySerialize(event.getCurrentResponse());
+          event.trySerializeCurrentResponse();
         }
         // Re-enqueue the uncommitted event at the end of the queue.
         prefetchingQueue.add(event);

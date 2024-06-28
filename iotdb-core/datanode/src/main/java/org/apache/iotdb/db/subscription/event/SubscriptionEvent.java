@@ -38,6 +38,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -49,6 +50,7 @@ public class SubscriptionEvent {
   private static final long INVALID_TIMESTAMP = -1;
 
   private final SubscriptionPipeEvents pipeEvents;
+
   private final SubscriptionPollResponse[] responses;
   private int currentResponseIndex;
 
@@ -63,11 +65,13 @@ public class SubscriptionEvent {
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final SubscriptionPollResponse initialResponse) {
     this.pipeEvents = pipeEvents;
+
     final int responseLength = getResponseLength(initialResponse.getResponseType());
     this.responses = new SubscriptionPollResponse[responseLength];
-    this.byteBuffers = new ByteBuffer[responseLength];
     this.responses[0] = initialResponse;
     this.currentResponseIndex = 0;
+
+    this.byteBuffers = new ByteBuffer[responseLength];
     this.commitContext = initialResponse.getCommitContext();
 
     this.lastPolledConsumerId = null;
@@ -106,6 +110,10 @@ public class SubscriptionEvent {
     return responses[index];
   }
 
+  public void resetCurrentResponseIndex() {
+    currentResponseIndex = 0;
+  }
+
   //////////////////////////// commit ////////////////////////////
 
   public void recordCommittedTimestamp() {
@@ -134,7 +142,7 @@ public class SubscriptionEvent {
 
   public void cleanup() {
     // reset serialized responses
-    resetByteBuffer(true);
+    resetResponseByteBuffer(true);
 
     // clean up pipe events
     pipeEvents.cleanup();
@@ -173,12 +181,122 @@ public class SubscriptionEvent {
     return lastPolledConsumerId;
   }
 
+  //////////////////////////// prefetch & fetch ////////////////////////////
+
+  /**
+   * @param index the index of response to be prefetched
+   */
+  private void prefetchResponse(final int index) throws IOException {
+    if (index >= responses.length || index <= 0) {
+      return;
+    }
+
+    if (Objects.nonNull(responses[index])) {
+      return;
+    }
+
+    final SubscriptionPollResponse previousResponse = this.getResponse(index - 1);
+    final short responseType = previousResponse.getResponseType();
+    final SubscriptionPollPayload payload = previousResponse.getPayload();
+    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+      LOGGER.warn("unexpected response type: {}", responseType);
+      return;
+    }
+
+    switch (SubscriptionPollResponseType.valueOf(responseType)) {
+      case FILE_INIT:
+        responses[index] = generateSubscriptionPollResponseWithPieceOrSealPayload(0);
+        break;
+      case FILE_PIECE:
+        responses[index] =
+            generateSubscriptionPollResponseWithPieceOrSealPayload(
+                ((FilePiecePayload) payload).getNextWritingOffset());
+        break;
+      case FILE_SEAL:
+        // not need to prefetch
+        return;
+      default:
+        LOGGER.warn("unexpected message type: {}", responseType);
+    }
+  }
+
+  public void prefetchRemainingResponses() throws IOException {
+    for (int currentIndex = currentResponseIndex;
+        currentIndex < responses.length - 1;
+        currentIndex++) {
+      if (Objects.isNull(responses[currentIndex + 1])) {
+        prefetchResponse(currentIndex + 1);
+        return;
+      }
+    }
+  }
+
+  public void fetchNextResponse() throws IOException {
+    if (currentResponseIndex >= responses.length - 1) {
+      LOGGER.warn("No more responses when fetching next response for {}, do nothing.", this);
+      return;
+    }
+    if (Objects.isNull(responses[currentResponseIndex + 1])) {
+      prefetchRemainingResponses();
+    }
+    currentResponseIndex++;
+  }
+
   //////////////////////////// byte buffer ////////////////////////////
 
-  public void resetByteBuffer(final boolean resetAll) {
+  public void trySerializeRemainingResponses() {
+    for (int currentIndex = currentResponseIndex;
+        currentIndex < responses.length - 1;
+        currentIndex++) {
+      if (Objects.nonNull(responses[currentIndex + 1]) && trySerializeResponse(currentIndex + 1)) {
+        break;
+      }
+    }
+  }
+
+  public boolean trySerializeCurrentResponse() {
+    return trySerializeResponse(currentResponseIndex);
+  }
+
+  /**
+   * @param index the index of response to be serialized
+   * @return {@code true} if a serialization operation was actually performed
+   */
+  public boolean trySerializeResponse(final int index) {
+    if (index >= responses.length) {
+      return false;
+    }
+
+    if (Objects.isNull(responses[index])) {
+      return false;
+    }
+
+    if (Objects.nonNull(byteBuffers[index])) {
+      return false;
+    }
+
+    final Optional<ByteBuffer> optionalByteBuffer =
+        SubscriptionEventBinaryCache.getInstance().trySerialize(responses[index]);
+    if (optionalByteBuffer.isPresent()) {
+      byteBuffers[index] = optionalByteBuffer.get();
+      return true;
+    }
+
+    return false;
+  }
+
+  public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+    if (Objects.nonNull(byteBuffers[currentResponseIndex])) {
+      return byteBuffers[currentResponseIndex];
+    }
+
+    return byteBuffers[currentResponseIndex] =
+        SubscriptionEventBinaryCache.getInstance().serialize(getCurrentResponse());
+  }
+
+  public void resetResponseByteBuffer(final boolean resetAll) {
     if (resetAll) {
-      Arrays.stream(responses)
-          .forEach((response -> SubscriptionEventBinaryCache.getInstance().invalidate(response)));
+      SubscriptionEventBinaryCache.getInstance().invalidateAll(Arrays.asList(responses));
       // maybe friendly for gc
       Arrays.fill(byteBuffers, null);
     } else {
@@ -225,83 +343,6 @@ public class SubscriptionEvent {
     }
   }
 
-  private void prefetch(final int currentIndex) throws IOException {
-    if (currentIndex >= responses.length || currentIndex <= 0) {
-      return;
-    }
-
-    if (Objects.nonNull(responses[currentIndex])) {
-      return;
-    }
-
-    final SubscriptionPollResponse response = this.getResponse(currentIndex - 1);
-    final short responseType = response.getResponseType();
-    final SubscriptionPollPayload payload = response.getPayload();
-    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-      LOGGER.warn("unexpected response type: {}", responseType);
-      return;
-    }
-
-    switch (SubscriptionPollResponseType.valueOf(responseType)) {
-      case FILE_INIT:
-        responses[currentIndex] = generateSubscriptionPollResponseWithPieceOrSealPayload(0);
-        break;
-      case FILE_PIECE:
-        responses[currentIndex] =
-            generateSubscriptionPollResponseWithPieceOrSealPayload(
-                ((FilePiecePayload) payload).getNextWritingOffset());
-        break;
-      case FILE_SEAL:
-        // not need to prefetch
-        return;
-      default:
-        LOGGER.warn("unexpected message type: {}", responseType);
-    }
-  }
-
-  public void prefetchNext() throws IOException {
-    for (int currentIndex = currentResponseIndex;
-        currentIndex < responses.length - 1;
-        currentIndex++) {
-      if (Objects.isNull(responses[currentIndex + 1])) {
-        prefetch(currentIndex + 1);
-        return;
-      }
-    }
-  }
-
-  public void serializeNext() {
-    for (int currentIndex = currentResponseIndex;
-        currentIndex < responses.length - 1;
-        currentIndex++) {
-      if (Objects.nonNull(responses[currentIndex + 1])) {
-        serialize(currentIndex + 1);
-        return;
-      }
-    }
-  }
-
-  private void serialize(final int currentIndex) {
-    if (currentIndex >= responses.length) {
-      return;
-    }
-
-    if (Objects.isNull(responses[currentIndex])) {
-      return;
-    }
-
-    SubscriptionEventBinaryCache.getInstance().trySerialize(responses[currentIndex]);
-  }
-
-  public void fetchNext() throws IOException {
-    prefetchNext();
-    currentResponseIndex++;
-  }
-
-  public void resetCurrentResponseIndex() {
-    currentResponseIndex = 0;
-  }
-
   public File getTsFile() {
     return pipeEvents.getTsFile();
   }
@@ -316,7 +357,7 @@ public class SubscriptionEvent {
         + Arrays.toString(responses)
         + ", responses' byte buffer size="
         + Arrays.stream(byteBuffers)
-            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "null" : byteBuffer.limit())
+            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "<unknown>" : byteBuffer.limit())
             .collect(Collectors.toList())
         + ", currentResponseIndex="
         + currentResponseIndex
