@@ -465,7 +465,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
 

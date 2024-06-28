@@ -1201,7 +1201,7 @@ inner_unseq_performer=fast
 # CROSS_INNER: prioritize cross space compaction, eliminate the unsequence files first
 # BALANCE: alternate two compaction types
 # effectiveMode: restart
-compaction_priority=BALANCE
+compaction_priority=INNER_CROSS
 
 # The size of candidate compaction task queue.
 # effectiveMode: restart
