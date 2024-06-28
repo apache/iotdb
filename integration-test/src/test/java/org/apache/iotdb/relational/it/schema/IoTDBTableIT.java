@@ -57,7 +57,7 @@ public class IoTDBTableIT {
   }
 
   @Test
-  public void testManageDatabase() {
+  public void testManageTable() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
