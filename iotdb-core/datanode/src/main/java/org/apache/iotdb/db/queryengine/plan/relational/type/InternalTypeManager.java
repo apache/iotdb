@@ -28,11 +28,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class InternalTypeManager implements TypeManager {
 
@@ -45,6 +49,10 @@ public class InternalTypeManager implements TypeManager {
     types.put(new TypeSignature(TypeEnum.INT32.name().toLowerCase(Locale.ENGLISH)), INT32);
     types.put(new TypeSignature(TypeEnum.BOOLEAN.name().toLowerCase(Locale.ENGLISH)), BOOLEAN);
     types.put(new TypeSignature(TypeEnum.TEXT.name().toLowerCase(Locale.ENGLISH)), TEXT);
+    types.put(new TypeSignature(TypeEnum.STRING.name().toLowerCase(Locale.ENGLISH)), STRING);
+    types.put(new TypeSignature(TypeEnum.BLOB.name().toLowerCase(Locale.ENGLISH)), BLOB);
+    types.put(new TypeSignature(TypeEnum.DATE.name().toLowerCase(Locale.ENGLISH)), DATE);
+    types.put(new TypeSignature(TypeEnum.TIMESTAMP.name().toLowerCase(Locale.ENGLISH)), TIMESTAMP);
   }
 
   @Override
@@ -83,6 +91,14 @@ public class InternalTypeManager implements TypeManager {
         return TSDataType.BOOLEAN;
       case UNKNOWN:
         return TSDataType.UNKNOWN;
+      case DATE:
+        return TSDataType.DATE;
+      case TIMESTAMP:
+        return TSDataType.TIMESTAMP;
+      case BLOB:
+        return TSDataType.BLOB;
+      case STRING:
+        return TSDataType.STRING;
       default:
         throw new IllegalArgumentException();
     }

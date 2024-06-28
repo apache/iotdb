@@ -80,9 +80,11 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         switch (childType) {
           case INT32:
+          case DATE:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
             break;
           case INT64:
+          case TIMESTAMP:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
             break;
           case FLOAT:
@@ -94,6 +96,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           case BOOLEAN:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
             break;
+          case STRING:
           case TEXT:
             returnType.writeBoolean(
                 columnBuilder,
@@ -125,6 +128,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (String value : values) {
           try {
@@ -161,6 +165,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = values;
         break;
       default:
@@ -175,6 +180,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     String errorMsg = "\"%s\" cannot be cast to [%s]";
     switch (childType) {
       case INT32:
+      case DATE:
         intSet = new HashSet<>();
         for (Literal value : values) {
           try {
@@ -185,6 +191,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (Literal value : values) {
           try {
@@ -221,6 +228,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = new HashSet<>();
         for (Literal value : values) {
           stringSet.add(((StringLiteral) value).getValue());

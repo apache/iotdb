@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 
 public abstract class CompareTernaryColumnTransformer extends TernaryColumnTransformer {
   protected CompareTernaryColumnTransformer(
@@ -38,9 +39,9 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     if (firstColumnTransformer.isReturnTypeNumeric()
             && secondColumnTransformer.isReturnTypeNumeric()
             && thirdColumnTransformer.isReturnTypeNumeric()
-        || firstColumnTransformer.typeEquals(TypeEnum.TEXT)
-            && secondColumnTransformer.typeEquals(TypeEnum.TEXT)
-            && thirdColumnTransformer.typeEquals(TypeEnum.TEXT)) {
+        || isCharType(firstColumnTransformer.getType())
+            && isCharType(secondColumnTransformer.getType())
+            && isCharType(thirdColumnTransformer.getType())) {
       return;
     }
 

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
@@ -164,19 +165,19 @@ public class TableMetadataImpl implements Metadata {
       return DOUBLE;
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
 
-      if (!isTwoTextType(argumentTypes) && !isThreeTextType(argumentTypes)) {
+      if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function: "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }
-      return TEXT;
+      return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
-              && TEXT.equals(argumentTypes.get(0))
+              && isCharType(argumentTypes.get(0))
               && isNumericType(argumentTypes.get(1)))
           && !(argumentTypes.size() == 3
-              && TEXT.equals(argumentTypes.get(0))
+              && isCharType(argumentTypes.get(0))
               && isNumericType(argumentTypes.get(1))
               && isNumericType(argumentTypes.get(2)))) {
         throw new SemanticException(
@@ -184,7 +185,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }
-      return TEXT;
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -368,21 +369,25 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }
 
-  public static boolean isOneTextType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && TEXT.equals(argumentTypes.get(0));
+  public static boolean isOneCharType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 1 && isCharType(argumentTypes.get(0));
   }
 
-  public static boolean isTwoTextType(List<? extends Type> argumentTypes) {
+  public static boolean isTwoCharType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
-        && TEXT.equals(argumentTypes.get(0))
-        && TEXT.equals(argumentTypes.get(1));
+        && isCharType(argumentTypes.get(0))
+        && isCharType(argumentTypes.get(1));
   }
 
-  public static boolean isThreeTextType(List<? extends Type> argumentTypes) {
+  public static boolean isThreeCharType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 3
-        && TEXT.equals(argumentTypes.get(0))
-        && TEXT.equals(argumentTypes.get(1))
-        && TEXT.equals(argumentTypes.get(2));
+        && isCharType(argumentTypes.get(0))
+        && isCharType(argumentTypes.get(1))
+        && isCharType(argumentTypes.get(2));
+  }
+
+  public static boolean isCharType(Type type) {
+    return TEXT.equals(type) || StringType.STRING.equals(type);
   }
 
   public static boolean isNumericType(Type type) {
@@ -400,6 +405,6 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return isNumericType(left) && isNumericType(right);
+    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
   }
 }
