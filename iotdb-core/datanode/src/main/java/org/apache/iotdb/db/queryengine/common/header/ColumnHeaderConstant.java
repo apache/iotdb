@@ -55,6 +55,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_TTL = "TTL(ms)";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String TIME_PARTITION_ORIGIN = "TimePartitionOrigin";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
   public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
@@ -254,6 +255,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
@@ -261,6 +263,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),

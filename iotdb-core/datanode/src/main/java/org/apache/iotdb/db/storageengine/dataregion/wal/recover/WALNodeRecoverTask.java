@@ -107,13 +107,7 @@ public class WALNodeRecoverTask implements Runnable {
     }
 
     try {
-      if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-        // delete this wal node folder
-        FileUtils.deleteFileOrDirectory(logDirectory);
-        logger.info(
-            "Successfully recover WAL node in the directory {}, so delete these wal files.",
-            logDirectory);
-      } else {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // delete checkpoint info to avoid repeated recover
         File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
         for (File checkpointFile : checkpointFiles) {
@@ -123,6 +117,29 @@ public class WALNodeRecoverTask implements Runnable {
             logger.error("error when delete checkpoint file. {}", checkpointFile, e);
           }
         }
+        // register wal node
+        WALManager.getInstance()
+            .registerWALNode(
+                logDirectory.getName(),
+                logDirectory.getAbsolutePath(),
+                lastVersionId + 1,
+                lastSearchIndex);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, add this node to WALManger.",
+            logDirectory);
+      } else {
+        // delete this wal node folder
+        FileUtils.deleteFileOrDirectory(logDirectory);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, so delete these wal files.",
+            logDirectory);
+      }
+
+      // PipeConsensus will not only delete WAL node folder, but also register WAL node.
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
         // register wal node
         WALManager.getInstance()
             .registerWALNode(

@@ -80,6 +80,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
+
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
   TimeUnit getTimestampPrecision();

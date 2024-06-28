@@ -41,6 +41,7 @@ struct TGlobalConfig {
   9: optional string schemaEngineMode
   10: optional i32 tagAttributeTotalSize
   11: optional bool isEnterprise
+  12: optional i64 timePartitionOrigin
 }
 
 struct TRatisConfig {
@@ -206,6 +207,7 @@ struct TDatabaseSchema {
     7: optional i32 maxSchemaRegionGroupNum
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
+    10: optional i64 timePartitionOrigin
 }
 
 // Schema
@@ -397,6 +399,7 @@ struct TClusterParameters {
   16: optional string schemaEngineMode
   17: optional i32 tagAttributeTotalSize
   18: optional i32 databaseLimitThreshold
+  19: optional i64 timePartitionOrigin
 }
 
 struct TConfigNodeRegisterReq {
@@ -577,6 +580,7 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
+  12: optional i64 timePartitionOrigin
 }
 
 struct TGetDatabaseReq {

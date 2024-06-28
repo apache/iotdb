@@ -1097,8 +1097,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        || node.isGeneratedByRemoteConsensusLeader()) {
       // disable updating last cache on follower
       return;
     }
@@ -1142,8 +1141,7 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          && insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
         return tsFileProcessor;
       }
       // disable updating last cache on follower
@@ -1242,8 +1240,7 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          && insertRowsNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      if (insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
         return;
       }
       // disable updating last cache on follower
@@ -3343,8 +3340,7 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && insertRowsOfOneDeviceNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        if (insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
           return;
         }
         // disable updating last cache on follower
@@ -3623,7 +3619,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void acquireDirectBufferMemory() throws DataRegionException {
     long acquireDirectBufferMemCost = 0;
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       acquireDirectBufferMemCost = config.getWalBufferSize();
     } else if (config
         .getDataRegionConsensusProtocolClass()
