@@ -179,9 +179,6 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   public boolean isGeneratedByRemoteConsensusLeader() {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
-        // NOTE: ONLY in IoTConsensus, isSyncFromLeaderWhenUsingIoTConsensus == true means this node
-        // is a follower
-        return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
       case ConsensusFactory.IOT_CONSENSUS_V2:
       case ConsensusFactory.FAST_IOT_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
