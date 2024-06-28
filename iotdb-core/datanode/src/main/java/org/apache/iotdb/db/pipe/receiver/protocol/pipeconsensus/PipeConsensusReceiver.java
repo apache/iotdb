@@ -425,27 +425,8 @@ public class PipeConsensusReceiver {
           loadFileToDataRegion(
               fileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-
+      updateLoadMetrics(req.getPointCount(), fileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
-      if (req.getPointCount() > 0) {
-        updateLoadMetrics(req.getPointCount());
-      } else {
-        // If the point count in the req is 0, we will read the actual point count from the TsFile
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: The point count of TsFile {} is 0, will read actual point count from TsFile.",
-            consensusPipeName,
-            fileAbsolutePath);
-        try (final TsFileInsertionPointCounter counter =
-            new TsFileInsertionPointCounter(new File(fileAbsolutePath), null)) {
-          updateLoadMetrics(counter.count());
-        } catch (IOException e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
-              consensusPipeName,
-              fileAbsolutePath,
-              e);
-        }
-      }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
@@ -564,29 +545,8 @@ public class PipeConsensusReceiver {
           loadFileToDataRegion(
               tsFileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-
+      updateLoadMetrics(req.getPointCounts().get(1), tsFileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
-      // The second file is the TsFile to be recorded in metrics
-      final long writePointCount = req.getPointCounts().get(1);
-      if (writePointCount > 0) {
-        updateLoadMetrics(writePointCount);
-      } else {
-        // If the point count in the req is 0, we will read the actual point count from the TsFile
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: The point count of TsFile {} is 0, will read actual point count from TsFile.",
-            consensusPipeName,
-            tsFileAbsolutePath);
-        try (final TsFileInsertionPointCounter counter =
-            new TsFileInsertionPointCounter(new File(tsFileAbsolutePath), null)) {
-          updateLoadMetrics(counter.count());
-        } catch (IOException e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
-              consensusPipeName,
-              tsFileAbsolutePath,
-              e);
-        }
-      }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
@@ -672,6 +632,28 @@ public class PipeConsensusReceiver {
         .getDataRegion(((DataRegionId) consensusGroupId))
         .loadNewTsFile(generateTsFileResource(filePath, progressIndex), true, false);
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private void updateLoadMetrics(long writePointCountGivenByReq, String tsFileAbsolutePath) {
+    if (writePointCountGivenByReq > 0) {
+      updateLoadMetrics(writePointCountGivenByReq);
+    } else {
+      // If the point count in the req is 0, we will read the actual point count from the TsFile
+      LOGGER.debug(
+          "PipeConsensus-PipeName-{}: The point count of TsFile {} is 0, will read actual point count from TsFile.",
+          consensusPipeName,
+          tsFileAbsolutePath);
+      try (final TsFileInsertionPointCounter counter =
+          new TsFileInsertionPointCounter(new File(tsFileAbsolutePath), null)) {
+        updateLoadMetrics(counter.count());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: Failed to read TsFile when counting points: {}.",
+            consensusPipeName,
+            tsFileAbsolutePath,
+            e);
+      }
+    }
   }
 
   /**
