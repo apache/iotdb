@@ -229,6 +229,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
 
+    config.setTimePartitionOrigin(
+        Long.parseLong(
+            properties.getProperty(
+                "time_partition_origin", String.valueOf(config.getTimePartitionOrigin()))));
+
     config.setTimePartitionInterval(
         Long.parseLong(
             properties.getProperty(
@@ -652,6 +657,9 @@ public class CommonDescriptor {
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setTimestampPrecision(globalConfig.timestampPrecision);
+    config.setTimePartitionOrigin(
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionOrigin, config.getTimestampPrecision()));
     config.setTimePartitionInterval(
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));

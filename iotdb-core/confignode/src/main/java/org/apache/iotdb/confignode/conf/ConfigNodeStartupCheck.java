@@ -182,6 +182,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
       throw new ConfigurationException("The default_data_region_group_num should be positive");
     }
 
+    // Check time partition origin
+    if (COMMON_CONFIG.getTimePartitionOrigin() < 0) {
+      throw new ConfigurationException("The time_partition_origin should be non-negative");
+    }
+
     // Check time partition interval
     if (COMMON_CONFIG.getTimePartitionInterval() <= 0) {
       throw new ConfigurationException("The time_partition_interval should be positive");
