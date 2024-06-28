@@ -127,6 +127,7 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     if (!isEmpty() && beforeChunkWriterFlushCallback != null) {
+      sealCurrentPage();
       beforeChunkWriterFlushCallback.call(this);
     }
     super.writeToFileWriter(tsfileWriter);

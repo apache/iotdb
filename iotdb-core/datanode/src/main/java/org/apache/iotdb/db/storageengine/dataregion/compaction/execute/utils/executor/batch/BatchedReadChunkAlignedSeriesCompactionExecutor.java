@@ -175,7 +175,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     protected void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
         throws IOException {
       ChunkMetadata timeChunkMetadata = timeChunk.getChunkMetadata();
-      batchCompactionPlan.recordChunk(
+      batchCompactionPlan.recordCompactedChunk(
           new CompactChunkPlan(timeChunkMetadata.getStartTime(), timeChunkMetadata.getEndTime()));
       super.compactAlignedChunkByFlush(timeChunk, valueChunks);
     }
@@ -220,7 +220,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       if (!chunkWriter.isEmpty()) {
         CompactChunkPlan compactChunkPlan =
             ((FirstBatchCompactionAlignedChunkWriter) chunkWriter).getCompactedChunkRecord();
-        batchCompactionPlan.recordChunk(compactChunkPlan);
+        batchCompactionPlan.recordCompactedChunk(compactChunkPlan);
       }
       writer.writeChunk(chunkWriter);
     }
@@ -281,7 +281,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       }
       super.flushCurrentChunkWriter();
       currentCompactChunk++;
-      if (currentCompactChunk < batchCompactionPlan.size()) {
+      if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
         CompactChunkPlan chunkRecord = batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
         //        chunkWriter = new FollowingBatchCompactionAlignedChunkWriter(timeSchema,
         // schemaList, chunkRecord);

@@ -34,7 +34,7 @@ public class BatchCompactionPlan {
   private final Map<String, Map<TimeRange, ModifiedStatus>> alignedPageModifiedStatusCache =
       new HashMap<>();
 
-  public void recordChunk(CompactChunkPlan compactChunkPlan) {
+  public void recordCompactedChunk(CompactChunkPlan compactChunkPlan) {
     compactChunkPlans.add(compactChunkPlan);
   }
 
@@ -53,7 +53,7 @@ public class BatchCompactionPlan {
     return alignedPageModifiedStatusCache.getOrDefault(file, Collections.emptyMap()).get(timeRange);
   }
 
-  public int size() {
+  public int compactedChunkNum() {
     return compactChunkPlans.size();
   }
 

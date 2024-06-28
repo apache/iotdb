@@ -120,28 +120,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     return filteredAlignedChunkMetadataList;
   }
 
-  private ModifiedStatus calculateBatchedPageElementModifiedStatus(
-      AlignedPageElement alignedPageElement) {
-    long startTime = alignedPageElement.getStartTime();
-    long endTime = alignedPageElement.getEndTime();
-    IChunkMetadata batchedAlignedChunkMetadata =
-        alignedPageElement.getChunkMetadataElement().chunkMetadata;
-    TsFileResource resource = alignedPageElement.getChunkMetadataElement().fileElement.resource;
-    List<AlignedChunkMetadata> alignedChunkMetadataListOfFile =
-        alignedChunkMetadataCache.get(resource);
-    AlignedChunkMetadata originAlignedChunkMetadata = null;
-    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataListOfFile) {
-      if (alignedChunkMetadata.getOffsetOfChunkHeader()
-          == batchedAlignedChunkMetadata.getOffsetOfChunkHeader()) {
-        originAlignedChunkMetadata = alignedChunkMetadata;
-        break;
-      }
-    }
-
-    return AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
-        startTime, endTime, originAlignedChunkMetadata);
-  }
-
   @Override
   public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
@@ -246,7 +224,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
       firstBatchCompactionAlignedChunkWriter.registerBeforeFlushChunkWriterCallback(
           chunkWriter -> {
-            batchCompactionPlan.recordChunk(
+            batchCompactionPlan.recordCompactedChunk(
                 ((FirstBatchCompactionAlignedChunkWriter) chunkWriter).getCompactedChunkRecord());
           });
 
@@ -264,7 +242,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
-      batchCompactionPlan.recordChunk(
+      batchCompactionPlan.recordCompactedChunk(
           new CompactChunkPlan(
               chunkMetadataElement.chunkMetadata.getStartTime(),
               chunkMetadataElement.chunkMetadata.getEndTime()));
@@ -340,7 +318,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       followingBatchCompactionAlignedChunkWriter.registerAfterFlushChunkWriterCallback(
           (chunkWriter) -> {
             currentCompactChunk++;
-            if (currentCompactChunk < batchCompactionPlan.size()) {
+            if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
               ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter)
                   .setCompactChunkPlan(
                       batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
@@ -427,7 +405,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     @Override
     protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
       currentCompactChunk++;
-      if (currentCompactChunk < batchCompactionPlan.size()) {
+      if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
         followingBatchCompactionAlignedChunkWriter.setCompactChunkPlan(
             batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
       }
