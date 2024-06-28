@@ -216,7 +216,10 @@ public class IoTDBStartCheck {
     properties = systemPropertiesHandler.read();
 
     if (systemPropertiesHandler.isFirstStart()) {
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+              || config
+                  .getDataRegionConsensusProtocolClass()
+                  .equals(ConsensusFactory.IOT_CONSENSUS_V2))
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
             "Configuring the WALMode as disable is not supported under IoTConsensus");

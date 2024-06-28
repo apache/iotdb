@@ -24,7 +24,10 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
@@ -47,6 +50,8 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -72,6 +77,8 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
    * value should start from 1
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
+
+  protected boolean isGeneratedByRemoteConsensusLeader = false;
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
@@ -169,6 +176,24 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     this.searchIndex = searchIndex;
   }
 
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    switch (config.getDataRegionConsensusProtocolClass()) {
+      case ConsensusFactory.IOT_CONSENSUS:
+      case ConsensusFactory.IOT_CONSENSUS_V2:
+      case ConsensusFactory.FAST_IOT_CONSENSUS:
+      case ConsensusFactory.RATIS_CONSENSUS:
+        return isGeneratedByRemoteConsensusLeader;
+      case ConsensusFactory.SIMPLE_CONSENSUS:
+        return false;
+    }
+    return false;
+  }
+
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    isGeneratedByRemoteConsensusLeader = true;
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
@@ -230,15 +255,6 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   }
 
   public abstract long getMinTime();
-
-  /**
-   * Notice: Call this method ONLY when using IOT_CONSENSUS, other consensus protocol cannot
-   * distinguish whether the insertNode sync from leader by this method.
-   * isSyncFromLeaderWhenUsingIoTConsensus == true means this node is a follower
-   */
-  public boolean isSyncFromLeaderWhenUsingIoTConsensus() {
-    return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
-  }
 
   // region partial insert
   @TestOnly
