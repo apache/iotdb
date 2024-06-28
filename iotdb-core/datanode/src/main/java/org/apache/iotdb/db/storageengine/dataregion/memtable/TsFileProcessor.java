@@ -169,8 +169,10 @@ public class TsFileProcessor {
   /** This callback is called before the workMemtable is added into the flushingMemTables. */
   private final DataRegion.UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
-  /** Point count of all flushed memtables, used for metric. */
-  private long flushedMemTablePointCount = 0;
+  public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
+
+  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
 
   /** Wal node. */
   private final IWALNode walNode;
@@ -1363,6 +1365,7 @@ public class TsFileProcessor {
                   storageGroupName,
                   dataRegionInfo.getDataRegion().getDataRegionId());
           flushTask.syncFlushMemTable();
+          memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
           if (writer == null) {
             logger.info(
@@ -1462,8 +1465,6 @@ public class TsFileProcessor {
     } catch (IOException e) {
       logger.error("fsync memTable data to disk error,", e);
     }
-
-    flushedMemTablePointCount += memTableToFlush.getTotalPointsNum();
 
     // Call flushed listener after memtable is released safely
     for (FlushListener flushListener : flushListeners) {
@@ -2104,8 +2105,8 @@ public class TsFileProcessor {
     return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
   }
 
-  public long getFlushedMemTablePointCount() {
-    return flushedMemTablePointCount;
+  public long getMemTableFlushPointCount() {
+    return memTableFlushPointCount;
   }
 
   public boolean isSequence() {

@@ -320,7 +320,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    pipeTsFileInsertionEvent.getPointCount(),
+                    pipeTsFileInsertionEvent.getFlushPointCount(),
                     tCommitId,
                     tConsensusGroupId,
                     pipeTsFileInsertionEvent.getProgressIndex(),
@@ -334,7 +334,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                 PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
                     tsFile.getName(),
                     tsFile.length(),
-                    pipeTsFileInsertionEvent.getPointCount(),
+                    pipeTsFileInsertionEvent.getFlushPointCount(),
                     tCommitId,
                     tConsensusGroupId,
                     pipeTsFileInsertionEvent.getProgressIndex(),

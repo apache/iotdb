@@ -65,10 +65,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
-  // May be updated after it is closed. It is not necessary to be accurate.
-  // Should be negative if not set.
-  private static final long POINT_COUNT_NOT_SET = -1;
-  private long pointCount = POINT_COUNT_NOT_SET;
+  // May be updated after it is flushed. Should be negative if not set.
+  private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
@@ -119,6 +117,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
+
+                // Update flushPointCount after TsFile is closed
+                flushPointCount = processor.getMemTableFlushPointCount();
               }
             });
       }
@@ -157,9 +158,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
           final boolean isClosedNow = resource.isClosed();
           if (isClosedNow) {
-            pointCount = resource.getProcessor().getFlushedMemTablePointCount();
             isClosed.set(true);
             isClosed.notifyAll();
+
+            // Update flushPointCount after TsFile is closed
+            final TsFileProcessor processor = resource.getProcessor();
+            if (processor != null) {
+              flushPointCount = processor.getMemTableFlushPointCount();
+            }
+
             break;
           }
         }
@@ -198,8 +205,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return resource.getFileStartTime();
   }
 
-  public long getPointCount() {
-    return pointCount;
+  /**
+   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * receiver side. The receiver side will count the actual point count from the TsFile.
+   *
+   * <p>If you want to get the actual point count with no risk, you can call {@link
+   * #count(boolean)}.
+   */
+  public long getFlushPointCount() {
+    return flushPointCount;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
