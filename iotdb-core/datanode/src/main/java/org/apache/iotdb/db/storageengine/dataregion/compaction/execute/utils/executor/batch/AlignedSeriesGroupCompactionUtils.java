@@ -20,16 +20,19 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -123,5 +126,50 @@ public class AlignedSeriesGroupCompactionUtils {
     }
     return new AlignedChunkMetadata(
         alignedChunkMetadata.getTimeChunkMetadata(), valueChunkMetadataList);
+  }
+
+  public static ModifiedStatus calculateAlignedPageModifiedStatus(
+      long startTime, long endTime, AlignedChunkMetadata originAlignedChunkMetadata) {
+    ModifiedStatus lastPageStatus = null;
+    for (IChunkMetadata valueChunkMetadata :
+        originAlignedChunkMetadata.getValueChunkMetadataList()) {
+      ModifiedStatus currentPageStatus =
+          valueChunkMetadata == null
+              ? ModifiedStatus.ALL_DELETED
+              : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
+      if (currentPageStatus == ModifiedStatus.PARTIAL_DELETED) {
+        // one of the value pages exist data been deleted partially
+        return ModifiedStatus.PARTIAL_DELETED;
+      }
+      if (lastPageStatus == null) {
+        // first page
+        lastPageStatus = currentPageStatus;
+        continue;
+      }
+      if (!lastPageStatus.equals(currentPageStatus)) {
+        // there are at least two value pages, one is that all data is deleted, the other is that no
+        // data is deleted
+        lastPageStatus = ModifiedStatus.NONE_DELETED;
+      }
+    }
+    return lastPageStatus;
+  }
+
+  public static ModifiedStatus checkIsModified(
+      long startTime, long endTime, Collection<TimeRange> deletions) {
+    ModifiedStatus status = ModifiedStatus.NONE_DELETED;
+    if (deletions != null) {
+      for (TimeRange range : deletions) {
+        if (range.contains(startTime, endTime)) {
+          // all data on this page or chunk has been deleted
+          return ModifiedStatus.ALL_DELETED;
+        }
+        if (range.overlaps(new TimeRange(startTime, endTime))) {
+          // exist data on this page or chunk been deleted
+          status = ModifiedStatus.PARTIAL_DELETED;
+        }
+      }
+    }
+    return status;
   }
 }

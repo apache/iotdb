@@ -184,9 +184,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException, PageException {
-    while (!readerAndChunkMetadataList.isEmpty()) {
-      Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
-          readerAndChunkMetadataList.removeFirst();
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+        readerAndChunkMetadataList) {
       TsFileSequenceReader reader = readerListPair.left;
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
 
@@ -244,7 +243,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       return new InstantChunkLoader();
     }
     Chunk chunk = reader.readMemChunk(chunkMetadata);
-    return new InstantChunkLoader(chunkMetadata, chunk);
+    return new InstantChunkLoader(reader.getFileName(), chunkMetadata, chunk);
   }
 
   protected void flushCurrentChunkWriter() throws IOException {
@@ -303,6 +302,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
+      if (isAllValuePageEmpty(timePage, valuePages)) {
+        continue;
+      }
+
       if (flushController.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);
@@ -313,6 +316,15 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         flushCurrentChunkWriter();
       }
     }
+  }
+
+  protected boolean isAllValuePageEmpty(PageLoader timePage, List<PageLoader> valuePages) {
+    for (PageLoader valuePage : valuePages) {
+      if (!valuePage.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private PageLoader getEmptyPage() {

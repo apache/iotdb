@@ -40,6 +40,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -61,6 +62,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   private final List<TsFileResource> sortedSourceFiles;
 
   private final Map<TsFileResource, List<AlignedChunkMetadata>> alignedChunkMetadataCache;
+  private BatchCompactionPlan batchCompactionPlan;
 
   public BatchedFastAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
@@ -88,6 +90,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     this.compactedMeasurements = new HashSet<>();
     this.sortedSourceFiles = sortedSourceFiles;
     this.alignedChunkMetadataCache = new HashMap<>();
+    this.batchCompactionPlan = new BatchCompactionPlan();
   }
 
   private List<AlignedChunkMetadata> getAlignedChunkMetadataListBySelectedValueColumn(
@@ -131,42 +134,22 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       if (alignedChunkMetadata.getOffsetOfChunkHeader()
           == batchedAlignedChunkMetadata.getOffsetOfChunkHeader()) {
         originAlignedChunkMetadata = alignedChunkMetadata;
+        break;
       }
     }
 
-    ModifiedStatus lastPageStatus = null;
-    for (IChunkMetadata valueChunkMetadata :
-        originAlignedChunkMetadata.getValueChunkMetadataList()) {
-      ModifiedStatus currentPageStatus =
-          valueChunkMetadata == null
-              ? ModifiedStatus.ALL_DELETED
-              : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
-      if (currentPageStatus == ModifiedStatus.PARTIAL_DELETED) {
-        // one of the value pages exist data been deleted partially
-        return ModifiedStatus.PARTIAL_DELETED;
-      }
-      if (lastPageStatus == null) {
-        // first page
-        lastPageStatus = currentPageStatus;
-        continue;
-      }
-      if (!lastPageStatus.equals(currentPageStatus)) {
-        // there are at least two value pages, one is that all data is deleted, the other is that no
-        // data is deleted
-        lastPageStatus = ModifiedStatus.NONE_DELETED;
-      }
-    }
-    return lastPageStatus;
+    return AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+        startTime, endTime, originAlignedChunkMetadata);
   }
 
   @Override
   public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
-    List<CompactChunkPlan> compactChunkPlans = compactFirstBatch();
-    compactLeftBatches(compactChunkPlans);
+    compactFirstBatch();
+    compactLeftBatches();
   }
 
-  private List<CompactChunkPlan> compactFirstBatch()
+  private void compactFirstBatch()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     List<IMeasurementSchema> firstGroupMeasurements =
         AlignedSeriesGroupCompactionUtils.selectColumnGroupToCompact(
@@ -188,11 +171,10 @@ public class BatchedFastAlignedSeriesCompactionExecutor
             currentBatchMeasurementSchemas,
             summary);
     executor.execute();
-    System.out.println(executor.getCompactChunkPlans());
-    return executor.getCompactChunkPlans();
+    System.out.println(batchCompactionPlan);
   }
 
-  private void compactLeftBatches(List<CompactChunkPlan> compactionPlan)
+  private void compactLeftBatches()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     while (compactedMeasurements.size() < valueMeasurementSchemas.size()) {
       List<IMeasurementSchema> selectedValueColumnGroup =
@@ -212,7 +194,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
               deviceId,
               subTaskId,
               currentBatchMeasurementSchemas,
-              compactionPlan,
               summary);
       executor.execute();
     }
@@ -232,8 +213,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private class FirstBatchFastAlignedSeriesCompactionExecutor
       extends FastAlignedSeriesCompactionExecutor {
-
-    private List<CompactChunkPlan> compactionPlan = new ArrayList<>();
 
     public FirstBatchFastAlignedSeriesCompactionExecutor(
         AbstractCompactionWriter compactionWriter,
@@ -265,9 +244,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           new FirstBatchCompactionAlignedChunkWriter(
               this.measurementSchemas.remove(0), this.measurementSchemas);
 
-      firstBatchCompactionAlignedChunkWriter.registerFlushChunkWriterCallback(
+      firstBatchCompactionAlignedChunkWriter.registerBeforeFlushChunkWriterCallback(
           chunkWriter -> {
-            this.compactionPlan.add(
+            batchCompactionPlan.recordChunk(
                 ((FirstBatchCompactionAlignedChunkWriter) chunkWriter).getCompactedChunkRecord());
           });
 
@@ -285,7 +264,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
-      compactionPlan.add(
+      batchCompactionPlan.recordChunk(
           new CompactChunkPlan(
               chunkMetadataElement.chunkMetadata.getStartTime(),
               chunkMetadataElement.chunkMetadata.getEndTime()));
@@ -294,18 +273,35 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected ModifiedStatus isPageModified(PageElement pageElement) {
-      return calculateBatchedPageElementModifiedStatus((AlignedPageElement) pageElement);
-    }
+      AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
+      long startTime = alignedPageElement.getStartTime();
+      long endTime = alignedPageElement.getEndTime();
+      IChunkMetadata batchedAlignedChunkMetadata =
+          alignedPageElement.getChunkMetadataElement().chunkMetadata;
+      TsFileResource resource = alignedPageElement.getChunkMetadataElement().fileElement.resource;
+      List<AlignedChunkMetadata> alignedChunkMetadataListOfFile =
+          alignedChunkMetadataCache.get(resource);
+      AlignedChunkMetadata originAlignedChunkMetadata = null;
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataListOfFile) {
+        if (alignedChunkMetadata.getOffsetOfChunkHeader()
+            == batchedAlignedChunkMetadata.getOffsetOfChunkHeader()) {
+          originAlignedChunkMetadata = alignedChunkMetadata;
+          break;
+        }
+      }
 
-    public List<CompactChunkPlan> getCompactChunkPlans() {
-      return compactionPlan;
+      ModifiedStatus modifiedStatus =
+          AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+              startTime, endTime, originAlignedChunkMetadata);
+      batchCompactionPlan.recordPageModifiedStatus(
+          resource.getTsFile().getName(), new TimeRange(startTime, endTime), modifiedStatus);
+      return modifiedStatus;
     }
   }
 
   private class FollowingBatchFastAlignedSeriesCompactionExecutor
       extends FastAlignedSeriesCompactionExecutor {
 
-    private final List<CompactChunkPlan> compactionPlan;
     private int currentCompactChunk = 0;
     private FollowingBatchCompactionAlignedChunkWriter followingBatchCompactionAlignedChunkWriter;
 
@@ -319,7 +315,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         IDeviceID deviceId,
         int subTaskId,
         List<IMeasurementSchema> measurementSchemas,
-        List<CompactChunkPlan> compactionPlan,
         FastCompactionTaskSummary summary) {
       super(
           compactionWriter,
@@ -331,7 +326,6 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           subTaskId,
           measurementSchemas,
           summary);
-      this.compactionPlan = compactionPlan;
       isFollowedBatch = true;
     }
 
@@ -342,13 +336,14 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           new FollowingBatchCompactionAlignedChunkWriter(
               measurementSchemas.remove(0),
               measurementSchemas,
-              compactionPlan.get(currentCompactChunk));
-      followingBatchCompactionAlignedChunkWriter.registerFlushChunkWriterCallback(
+              batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
+      followingBatchCompactionAlignedChunkWriter.registerAfterFlushChunkWriterCallback(
           (chunkWriter) -> {
             currentCompactChunk++;
-            if (currentCompactChunk < compactionPlan.size()) {
+            if (currentCompactChunk < batchCompactionPlan.size()) {
               ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter)
-                  .setCompactChunkPlan(compactionPlan.get(currentCompactChunk));
+                  .setCompactChunkPlan(
+                      batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
             }
           });
       compactionWriter.startMeasurement(
@@ -359,7 +354,12 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected ModifiedStatus isPageModified(PageElement pageElement) {
-      return calculateBatchedPageElementModifiedStatus((AlignedPageElement) pageElement);
+      String file =
+          pageElement.getChunkMetadataElement().fileElement.resource.getTsFile().getName();
+      long startTime = pageElement.getChunkMetadataElement().chunkMetadata.getStartTime();
+      long endTime = pageElement.getChunkMetadataElement().chunkMetadata.getEndTime();
+      return batchCompactionPlan.getAlignedPageModifiedStatus(
+          file, new TimeRange(startTime, endTime));
     }
 
     @Override
@@ -375,7 +375,10 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           compactionWriter.flushAlignedChunk(
               chunkMetadataElement,
               subTaskId,
-              () -> compactionPlan.get(currentCompactChunk).isCompactedByDirectlyFlush());
+              () ->
+                  batchCompactionPlan
+                      .getCompactChunkPlan(currentCompactChunk)
+                      .isCompactedByDirectlyFlush());
 
       if (success) {
         // flush chunk successfully, then remove this chunk
@@ -424,9 +427,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     @Override
     protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
       currentCompactChunk++;
-      if (currentCompactChunk < compactionPlan.size()) {
+      if (currentCompactChunk < batchCompactionPlan.size()) {
         followingBatchCompactionAlignedChunkWriter.setCompactChunkPlan(
-            compactionPlan.get(currentCompactChunk));
+            batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
       }
       super.successFlushChunk(chunkMetadataElement);
     }

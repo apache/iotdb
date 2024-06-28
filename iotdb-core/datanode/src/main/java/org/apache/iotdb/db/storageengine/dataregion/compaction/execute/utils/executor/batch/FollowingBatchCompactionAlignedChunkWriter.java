@@ -39,7 +39,7 @@ import java.util.List;
 public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
   private int currentPage = 0;
   private CompactChunkPlan compactChunkPlan;
-  private ChunkWriterFlushCallback chunkWriterFlushCallback;
+  private ChunkWriterFlushCallback afterChunkWriterFlushCallback;
 
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
@@ -91,8 +91,14 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
+    if (isEmpty()) {
+      return;
+    }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writeToFileWriter(tsfileWriter);
+    }
+    if (afterChunkWriterFlushCallback != null) {
+      afterChunkWriterFlushCallback.call(this);
     }
   }
 
@@ -135,8 +141,9 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     this.timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
   }
 
-  public void registerFlushChunkWriterCallback(ChunkWriterFlushCallback flushChunkWriterCallback) {
-    this.chunkWriterFlushCallback = flushChunkWriterCallback;
+  public void registerAfterFlushChunkWriterCallback(
+      ChunkWriterFlushCallback flushChunkWriterCallback) {
+    this.afterChunkWriterFlushCallback = flushChunkWriterCallback;
   }
 
   public static class FollowingBatchCompactionTimeChunkWriter extends TimeChunkWriter {

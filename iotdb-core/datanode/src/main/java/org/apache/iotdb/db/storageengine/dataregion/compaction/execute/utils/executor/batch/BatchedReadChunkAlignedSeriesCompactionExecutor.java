@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.utils.Pair;
@@ -40,7 +41,7 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +51,7 @@ import java.util.stream.Collectors;
 public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
   private final Set<String> compactedMeasurements;
+  private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
@@ -65,11 +67,11 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   @Override
   public void execute() throws IOException, PageException {
     AlignedSeriesGroupCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
-    List<CompactChunkPlan> compactChunkPlans = compactFirstColumnGroup();
-    compactLeftColumnGroups(compactChunkPlans);
+    compactFirstColumnGroup();
+    compactLeftColumnGroups();
   }
 
-  private List<CompactChunkPlan> compactFirstColumnGroup() throws IOException, PageException {
+  private void compactFirstColumnGroup() throws IOException, PageException {
     List<IMeasurementSchema> firstGroupMeasurements =
         AlignedSeriesGroupCompactionUtils.selectColumnGroupToCompact(
             schemaList, compactedMeasurements);
@@ -91,11 +93,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             timeSchema,
             firstGroupMeasurements);
     executor.execute();
-    return executor.getCompactedChunkRecords();
   }
 
-  private void compactLeftColumnGroups(List<CompactChunkPlan> compactChunkPlans)
-      throws PageException, IOException {
+  private void compactLeftColumnGroups() throws PageException, IOException {
     while (compactedMeasurements.size() < schemaList.size()) {
       List<IMeasurementSchema> selectedColumnGroup =
           AlignedSeriesGroupCompactionUtils.selectColumnGroupToCompact(
@@ -115,8 +115,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
               writer,
               summary,
               timeSchema,
-              selectedColumnGroup,
-              compactChunkPlans);
+              selectedColumnGroup);
       executor.execute();
     }
   }
@@ -141,10 +140,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     return groupReaderAndChunkMetadataList;
   }
 
-  public static class FirstBatchedReadChunkAlignedSeriesCompactionExecutor
+  public class FirstBatchedReadChunkAlignedSeriesCompactionExecutor
       extends ReadChunkAlignedSeriesCompactionExecutor {
-
-    private final List<CompactChunkPlan> compactChunkPlans = new ArrayList<>();
 
     public FirstBatchedReadChunkAlignedSeriesCompactionExecutor(
         IDeviceID device,
@@ -178,9 +175,43 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     protected void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
         throws IOException {
       ChunkMetadata timeChunkMetadata = timeChunk.getChunkMetadata();
-      compactChunkPlans.add(
+      batchCompactionPlan.recordChunk(
           new CompactChunkPlan(timeChunkMetadata.getStartTime(), timeChunkMetadata.getEndTime()));
       super.compactAlignedChunkByFlush(timeChunk, valueChunks);
+    }
+
+    @Override
+    protected boolean isAllValuePageEmpty(PageLoader timePage, List<PageLoader> valuePages) {
+      long startTime = timePage.getHeader().getStartTime();
+      long endTime = timePage.getHeader().getEndTime();
+      String file = timePage.getFile();
+      ChunkMetadata timeChunkMetadata = timePage.getChunkMetadata();
+
+      List<AlignedChunkMetadata> alignedChunkMetadataList = Collections.emptyList();
+      for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
+          readerAndChunkMetadataList) {
+        TsFileSequenceReader reader = pair.getLeft();
+        if (reader.getFileName().equals(file)) {
+          alignedChunkMetadataList = pair.getRight();
+          break;
+        }
+      }
+
+      AlignedChunkMetadata originAlignedChunkMetadata = null;
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+        if (alignedChunkMetadata.getOffsetOfChunkHeader()
+            == timeChunkMetadata.getOffsetOfChunkHeader()) {
+          originAlignedChunkMetadata = alignedChunkMetadata;
+          break;
+        }
+      }
+
+      ModifiedStatus modifiedStatus =
+          AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+              startTime, endTime, originAlignedChunkMetadata);
+      batchCompactionPlan.recordPageModifiedStatus(
+          file, new TimeRange(startTime, endTime), modifiedStatus);
+      return modifiedStatus == ModifiedStatus.ALL_DELETED;
     }
 
     @Override
@@ -189,13 +220,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       if (!chunkWriter.isEmpty()) {
         CompactChunkPlan compactChunkPlan =
             ((FirstBatchCompactionAlignedChunkWriter) chunkWriter).getCompactedChunkRecord();
-        compactChunkPlans.add(compactChunkPlan);
+        batchCompactionPlan.recordChunk(compactChunkPlan);
       }
       writer.writeChunk(chunkWriter);
-    }
-
-    public List<CompactChunkPlan> getCompactedChunkRecords() {
-      return compactChunkPlans;
     }
 
     @Override
@@ -220,9 +247,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
   }
 
-  public static class FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor
+  public class FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor
       extends ReadChunkAlignedSeriesCompactionExecutor {
-    private final List<CompactChunkPlan> compactionPlan;
     private int currentCompactChunk = 0;
 
     public FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor(
@@ -233,8 +259,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         CompactionTsFileWriter writer,
         CompactionTaskSummary summary,
         IMeasurementSchema timeSchema,
-        List<IMeasurementSchema> valueSchemaList,
-        List<CompactChunkPlan> compactionPlan) {
+        List<IMeasurementSchema> valueSchemaList) {
       super(
           device,
           targetResource,
@@ -243,11 +268,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           summary,
           timeSchema,
           valueSchemaList);
-      this.compactionPlan = compactionPlan;
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
-              timeSchema, schemaList, compactionPlan.get(0));
+              timeSchema, schemaList, batchCompactionPlan.getCompactChunkPlan(0));
     }
 
     @Override
@@ -257,13 +281,23 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       }
       super.flushCurrentChunkWriter();
       currentCompactChunk++;
-      if (currentCompactChunk < compactionPlan.size()) {
-        CompactChunkPlan chunkRecord = compactionPlan.get(currentCompactChunk);
+      if (currentCompactChunk < batchCompactionPlan.size()) {
+        CompactChunkPlan chunkRecord = batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
         //        chunkWriter = new FollowingBatchCompactionAlignedChunkWriter(timeSchema,
         // schemaList, chunkRecord);
         ((FollowingBatchCompactionAlignedChunkWriter) this.chunkWriter)
             .setCompactChunkPlan(chunkRecord);
       }
+    }
+
+    @Override
+    protected boolean isAllValuePageEmpty(PageLoader timePage, List<PageLoader> valuePages) {
+      long startTime = timePage.getHeader().getStartTime();
+      long endTime = timePage.getHeader().getEndTime();
+      String file = timePage.getFile();
+      return batchCompactionPlan.getAlignedPageModifiedStatus(
+              file, new TimeRange(startTime, endTime))
+          == ModifiedStatus.ALL_DELETED;
     }
 
     @Override
@@ -331,7 +365,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       @Override
       public boolean canCompactCurrentChunkByDirectlyFlush(
           ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
-        return compactionPlan.get(currentCompactChunk).isCompactedByDirectlyFlush();
+        return batchCompactionPlan
+            .getCompactChunkPlan(currentCompactChunk)
+            .isCompactedByDirectlyFlush();
       }
 
       @Override
@@ -358,8 +394,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             return false;
           }
         }
-        return compactionPlan
-            .get(currentCompactChunk)
+        return batchCompactionPlan
+            .getCompactChunkPlan(currentCompactChunk)
             .getPageRecords()
             .get(currentPage)
             .isCompactedByDirectlyFlush();

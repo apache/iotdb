@@ -482,6 +482,65 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
+  public void testSimpleCompactionWithDeletedPageAndEmptyPage() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 50000)}
+            },
+            TSEncoding.RLE,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(60000, 70000), new TimeRange(80000, 90000)}
+            },
+            TSEncoding.RLE,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            true);
+    seqResource2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s0"), Long.MAX_VALUE, 75000));
+    seqResource2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s1"), Long.MAX_VALUE, 75000));
+    seqResource2.getModFile().close();
+    seqResources.add(seqResource2);
+    tsFileManager.addAll(seqResources, true);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+
+    ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer();
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    performer.setSummary(summary);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
+    Assert.assertEquals(0, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(7, summary.getDeserializeChunkCount());
+    Assert.assertEquals(11, summary.getDirectlyFlushPageCount());
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+    // this checker util may throw npe when the file contains any empty page
+    Assert.assertEquals(
+        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+        CompactionCheckerUtils.getAllDataByQuery(
+            Collections.singletonList(targetResource), Collections.emptyList()));
+  }
+
+  @Test
   public void testSimpleCompactionWithPartialDeletedPageByWritePoint()
       throws IOException,
           MetadataException,

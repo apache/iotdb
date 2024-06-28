@@ -43,7 +43,7 @@ import java.util.List;
 
 public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
 
-  private ChunkWriterFlushCallback chunkWriterFlushCallback;
+  private ChunkWriterFlushCallback beforeChunkWriterFlushCallback;
 
   public FirstBatchCompactionAlignedChunkWriter(VectorMeasurementSchema schema) {
     timeChunkWriter =
@@ -126,14 +126,15 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
 
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
-    if (!isEmpty()) {
-      chunkWriterFlushCallback.call(this);
+    if (!isEmpty() && beforeChunkWriterFlushCallback != null) {
+      beforeChunkWriterFlushCallback.call(this);
     }
     super.writeToFileWriter(tsfileWriter);
   }
 
-  public void registerFlushChunkWriterCallback(ChunkWriterFlushCallback flushChunkWriterCallback) {
-    this.chunkWriterFlushCallback = flushChunkWriterCallback;
+  public void registerBeforeFlushChunkWriterCallback(
+      ChunkWriterFlushCallback flushChunkWriterCallback) {
+    this.beforeChunkWriterFlushCallback = flushChunkWriterCallback;
   }
 
   public CompactChunkPlan getCompactedChunkRecord() {

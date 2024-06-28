@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.AlignedSeriesGroupCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
@@ -399,27 +400,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     long endTime = pageElement.getEndTime();
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
-    ModifiedStatus lastPageStatus = null;
-    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      ModifiedStatus currentPageStatus =
-          valueChunkMetadata == null
-              ? ModifiedStatus.ALL_DELETED
-              : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
-      if (currentPageStatus == ModifiedStatus.PARTIAL_DELETED) {
-        // one of the value pages exist data been deleted partially
-        return ModifiedStatus.PARTIAL_DELETED;
-      }
-      if (lastPageStatus == null) {
-        // first page
-        lastPageStatus = currentPageStatus;
-        continue;
-      }
-      if (!lastPageStatus.equals(currentPageStatus)) {
-        // there are at least two value pages, one is that all data is deleted, the other is that no
-        // data is deleted
-        lastPageStatus = ModifiedStatus.NONE_DELETED;
-      }
-    }
-    return lastPageStatus;
+    return AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+        startTime, endTime, alignedChunkMetadata);
   }
 }
