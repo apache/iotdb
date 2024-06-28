@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -66,7 +65,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class CreateTableProcedure
@@ -177,12 +175,12 @@ public class CreateTableProcedure
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     PartialPath path = null;
     try {
-      path =
-          new PartialPath(ROOT + PATH_SEPARATOR + database + PATH_SEPARATOR + table.getTableName());
+      path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
-    } catch (IllegalPathException | IOException ignored) {
+    } catch (IOException e) {
+      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
     }
     ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 

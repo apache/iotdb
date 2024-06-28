@@ -97,8 +97,10 @@ public class ErrorHandlingUtils {
       if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
         String message =
             String.format(
-                "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
-        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
+                "Status code: %s, Query Statement: %s failed because %s",
+                status.getCode(), operation, status.getMessage());
+        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
           LOGGER.warn(message);
         } else {
           LOGGER.warn(message, e);
