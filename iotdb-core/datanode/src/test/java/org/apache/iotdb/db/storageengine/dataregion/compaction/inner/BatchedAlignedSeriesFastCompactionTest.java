@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -110,6 +111,151 @@ public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTe
             false);
     unseqResources.add(unseqResource2);
 
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByFlushChunkWithDifferentCompressionType() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(500000, 600000)},
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(300000, 400000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByFlushChunkWithEmptyChunk() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1"),
+            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(500000, 600000)},
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            Arrays.asList(false, false),
+            false);
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(300000, 400000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByFlushPage() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(100, 200), new TimeRange(500, 600)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(300, 400)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByFlushPageWithDifferentCompressionType() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(100, 200), new TimeRange(500, 600)}},
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(300, 400)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByEmptyPage() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(100, 200), new TimeRange(500, 600)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1"),
+            new TimeRange[] {new TimeRange(300, 400)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  private TsFileResource performCompaction() throws Exception {
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(unseqResources, false);
@@ -124,7 +270,10 @@ public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTe
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
+    return targetResource;
+  }
 
+  private void validate(TsFileResource targetResource) throws IllegalPathException, IOException {
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.getDataByQuery(

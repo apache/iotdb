@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -113,6 +115,48 @@ public class BatchedFastAlignedSeriesCompactionExecutor
               alignedChunkMetadata, selectedMeasurements));
     }
     return filteredAlignedChunkMetadataList;
+  }
+
+  private ModifiedStatus calculateBatchedPageElementModifiedStatus(
+      AlignedPageElement alignedPageElement) {
+    long startTime = alignedPageElement.getStartTime();
+    long endTime = alignedPageElement.getEndTime();
+    IChunkMetadata batchedAlignedChunkMetadata =
+        alignedPageElement.getChunkMetadataElement().chunkMetadata;
+    TsFileResource resource = alignedPageElement.getChunkMetadataElement().fileElement.resource;
+    List<AlignedChunkMetadata> alignedChunkMetadataListOfFile =
+        alignedChunkMetadataCache.get(resource);
+    AlignedChunkMetadata originAlignedChunkMetadata = null;
+    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataListOfFile) {
+      if (alignedChunkMetadata.getOffsetOfChunkHeader()
+          == batchedAlignedChunkMetadata.getOffsetOfChunkHeader()) {
+        originAlignedChunkMetadata = alignedChunkMetadata;
+      }
+    }
+
+    ModifiedStatus lastPageStatus = null;
+    for (IChunkMetadata valueChunkMetadata :
+        originAlignedChunkMetadata.getValueChunkMetadataList()) {
+      ModifiedStatus currentPageStatus =
+          valueChunkMetadata == null
+              ? ModifiedStatus.ALL_DELETED
+              : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
+      if (currentPageStatus == ModifiedStatus.PARTIAL_DELETED) {
+        // one of the value pages exist data been deleted partially
+        return ModifiedStatus.PARTIAL_DELETED;
+      }
+      if (lastPageStatus == null) {
+        // first page
+        lastPageStatus = currentPageStatus;
+        continue;
+      }
+      if (!lastPageStatus.equals(currentPageStatus)) {
+        // there are at least two value pages, one is that all data is deleted, the other is that no
+        // data is deleted
+        lastPageStatus = ModifiedStatus.NONE_DELETED;
+      }
+    }
+    return lastPageStatus;
   }
 
   @Override
@@ -248,6 +292,11 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       super.successFlushChunk(chunkMetadataElement);
     }
 
+    @Override
+    protected ModifiedStatus isPageModified(PageElement pageElement) {
+      return calculateBatchedPageElementModifiedStatus((AlignedPageElement) pageElement);
+    }
+
     public List<CompactChunkPlan> getCompactChunkPlans() {
       return compactionPlan;
     }
@@ -306,6 +355,11 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           TsFileConstant.TIME_COLUMN_ID, followingBatchCompactionAlignedChunkWriter, subTaskId);
       compactFiles();
       compactionWriter.endMeasurement(subTaskId);
+    }
+
+    @Override
+    protected ModifiedStatus isPageModified(PageElement pageElement) {
+      return calculateBatchedPageElementModifiedStatus((AlignedPageElement) pageElement);
     }
 
     @Override
