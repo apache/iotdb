@@ -260,14 +260,13 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     try {
       loadNextSegmentV2();
       version = WALFileVersion.V2;
-      return;
     } catch (Throwable e) {
       // failed to load in V2 way, try in V1 way
-      logger.warn("Failed to load WAL segment in V2 way, try in V1 way", e);
       channel.position(originPosition);
+      loadNextSegmentV1();
+      version = WALFileVersion.V1;
+      logger.info("Failed to load WAL segment in V2 way, try in V1 way successfully.");
     }
-    loadNextSegmentV1();
-    version = WALFileVersion.V1;
   }
 
   /**
