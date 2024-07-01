@@ -36,7 +36,7 @@ public class MmapUtil {
 
   /** we do not need to clean heapByteBuffer manually, so we just leave it alone. */
   public static void clean(ByteBuffer byteBuffer) {
-    if (byteBuffer != null & byteBuffer instanceof MappedByteBuffer) {
+    if (byteBuffer instanceof MappedByteBuffer) {
       clean((MappedByteBuffer) byteBuffer);
     }
   }
