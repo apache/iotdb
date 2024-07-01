@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -60,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
@@ -237,6 +239,19 @@ public class AnalyzerTest {
     assertNotNull(tableScanNode.getPushDownPredicate());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertTrue(
+        Stream.of(
+                Symbol.of("tag1"),
+                Symbol.of("tag2"),
+                Symbol.of("tag3"),
+                Symbol.of("attr1"),
+                Symbol.of("attr2"))
+            .allMatch(tableScanNode.getIdAndAttributeIndexMap()::containsKey));
+    assertEquals(0, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag1")));
+    assertEquals(1, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag2")));
+    assertEquals(2, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag3")));
+    assertEquals(0, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr1")));
+    assertEquals(1, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr2")));
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
   }

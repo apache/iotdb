@@ -50,16 +50,16 @@ public class TableDistributionPlanner {
   }
 
   public DistributedQueryPlan plan() {
-    ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(mppQueryContext, analysis);
-    List<PlanNode> distributedPlanNodeResult =
-        new ExchangeNodeGenerator().visitPlan(logicalQueryPlan.getRootNode(), exchangeContext);
+    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
+    List<PlanNode> distributedPlanResult =
+        new DistributedPlanGenerator(mppQueryContext, analysis)
+            .genResult(logicalQueryPlan.getRootNode(), planContext);
 
-    if (distributedPlanNodeResult.size() != 1) {
+    if (distributedPlanResult.size() != 1) {
       throw new IllegalStateException("root node must return only one");
     }
 
-    PlanNode outputNodeWithExchange = distributedPlanNodeResult.get(0);
+    PlanNode outputNodeWithExchange = distributedPlanResult.get(0);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
@@ -69,7 +69,7 @@ public class TableDistributionPlanner {
                   .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e))
                   .collect(Collectors.toList()));
     }
-    adjustUpStream(outputNodeWithExchange, exchangeContext);
+    adjustUpStream(outputNodeWithExchange, planContext);
 
     SubPlan subPlan =
         new SubPlanGenerator()
@@ -124,7 +124,7 @@ public class TableDistributionPlanner {
     rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
-  private void adjustUpStream(PlanNode root, ExchangeNodeGenerator.PlanContext exchangeContext) {
+  private void adjustUpStream(PlanNode root, DistributedPlanGenerator.PlanContext exchangeContext) {
     if (!exchangeContext.hasExchangeNode) {
       return;
     }
@@ -134,7 +134,7 @@ public class TableDistributionPlanner {
 
   private void adjustUpStreamHelper(
       PlanNode root,
-      ExchangeNodeGenerator.PlanContext exchangeContext,
+      DistributedPlanGenerator.PlanContext exchangeContext,
       Map<TRegionReplicaSet, IdentitySinkNode> regionNodemap) {
     for (PlanNode child : root.getChildren()) {
       adjustUpStreamHelper(child, exchangeContext, regionNodemap);

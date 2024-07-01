@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.ExchangeNodeGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.DistributedPlanGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -73,10 +73,11 @@ public class TableModelStatementMemorySourceVisitor
     }
 
     // TODO(beyyes) adapt this logic after optimize ExchangeNodeAdder
-    ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(context.getQueryContext(), context.getAnalysis());
+    DistributedPlanGenerator.PlanContext exchangeContext =
+        new DistributedPlanGenerator.PlanContext();
     List<PlanNode> distributedPlanNodeResult =
-        new ExchangeNodeGenerator().visitPlan(logicalPlan.getRootNode(), exchangeContext);
+        new DistributedPlanGenerator(context.getQueryContext(), context.getAnalysis())
+            .visitPlan(logicalPlan.getRootNode(), exchangeContext);
 
     List<String> lines =
         distributedPlanNodeResult

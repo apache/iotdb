@@ -51,7 +51,12 @@ public class TableScanNode extends SourceNode {
   private Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;
-  private Map<Symbol, Integer> idAndAttributeIndexMap;
+
+  // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
+  // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
+  // `idAndAttributeIndexMap` will
+  // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
+  private final Map<Symbol, Integer> idAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -85,11 +90,13 @@ public class TableScanNode extends SourceNode {
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments) {
+      Map<Symbol, ColumnSchema> assignments,
+      Map<Symbol, Integer> idAndAttributeIndexMap) {
     super(id);
     this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
+    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
   }
 
   public TableScanNode(
@@ -366,10 +373,6 @@ public class TableScanNode extends SourceNode {
 
   public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
     return this.idAndAttributeIndexMap;
-  }
-
-  public void setIdAndAttributeIndexMap(Map<Symbol, Integer> idAndAttributeIndexMap) {
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
   }
 
   public Ordering getScanOrder() {

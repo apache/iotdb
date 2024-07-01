@@ -19,6 +19,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributio
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
@@ -29,7 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
@@ -40,9 +44,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 
-public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenerator.PlanContext> {
+public class DistributedPlanGenerator
+    extends PlanVisitor<List<PlanNode>, DistributedPlanGenerator.PlanContext> {
+  private final MPPQueryContext queryContext;
+  private final Analysis analysis;
+
+  public DistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
+    this.queryContext = queryContext;
+    this.analysis = analysis;
+  }
+
+  public List<PlanNode> genResult(PlanNode node, PlanContext context) {
+    return node.accept(this, context);
+  }
+
+  @Override
+  public List<PlanNode> visitPlan(PlanNode node, DistributedPlanGenerator.PlanContext context) {
+    if (node instanceof WritePlanNode) {
+      return Collections.singletonList(node);
+    }
+
+    List<List<PlanNode>> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(toImmutableList());
+
+    PlanNode newNode = node.clone();
+    for (List<PlanNode> planNodes : children) {
+      planNodes.forEach(newNode::addChild);
+    }
+    return Collections.singletonList(newNode);
+  }
 
   @Override
   public List<PlanNode> visitTableScan(TableScanNode node, PlanContext context) {
@@ -51,8 +86,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          context
-              .analysis
+          analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetWithTimeFilter(
                   node.getQualifiedObjectName().getDatabaseName(),
@@ -65,7 +99,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
                 k -> {
                   TableScanNode scanNode =
                       new TableScanNode(
-                          context.queryContext.getQueryId().genPlanNodeId(),
+                          queryContext.getQueryId().genPlanNodeId(),
                           node.getQualifiedObjectName(),
                           node.getOutputSymbols(),
                           node.getAssignments(),
@@ -90,14 +124,12 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
       OrderingScheme orderingScheme = new OrderingScheme(orderBy, orderings);
       MergeSortNode mergeSortNode =
           new MergeSortNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              orderingScheme,
-              node.getOutputSymbols());
+              queryContext.getQueryId().genPlanNodeId(), orderingScheme, node.getOutputSymbols());
 
       for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
         TRegionReplicaSet regionReplicaSet = entry.getKey();
         TableScanNode subTableScanNode = entry.getValue();
-        subTableScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        subTableScanNode.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
         subTableScanNode.setRegionReplicaSet(regionReplicaSet);
         context.nodeDistributionMap.put(
             subTableScanNode.getPlanNodeId(),
@@ -110,8 +142,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
               mergeSortNode.getPlanNodeId(),
               new NodeDistribution(SAME_WITH_ALL_CHILDREN, regionReplicaSet));
         } else {
-          ExchangeNode exchangeNode =
-              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+          ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
           exchangeNode.addChild(subTableScanNode);
           mergeSortNode.addChild(exchangeNode);
         }
@@ -122,6 +153,46 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
       return Collections.singletonList(tableScanNodeMap.entrySet().iterator().next().getValue());
     }
   }
+
+  @Override
+  public List<PlanNode> visitFilter(FilterNode filterNode, PlanContext context) {
+    List<PlanNode> childrenNodes = filterNode.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      filterNode.setChild(childrenNodes.get(0));
+      return Collections.singletonList(filterNode);
+    }
+
+    List<PlanNode> result = new ArrayList<>();
+    for (PlanNode child : childrenNodes) {
+      FilterNode newFilterNode =
+          new FilterNode(
+              queryContext.getQueryId().genPlanNodeId(), child, filterNode.getPredicate());
+      result.add(newFilterNode);
+    }
+
+    return result;
+  }
+
+  @Override
+  public List<PlanNode> visitProject(ProjectNode projectNode, PlanContext context) {
+    List<PlanNode> childrenNodes = projectNode.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      projectNode.setChild(childrenNodes.get(0));
+      return Collections.singletonList(projectNode);
+    }
+
+    List<PlanNode> result = new ArrayList<>();
+    for (PlanNode child : childrenNodes) {
+      ProjectNode newProjectNode =
+          new ProjectNode(
+              queryContext.getQueryId().genPlanNodeId(), child, projectNode.getAssignments());
+      result.add(newProjectNode);
+    }
+
+    return result;
+  }
+
+  // ------------------- schema related interface ---------------------------------------------
 
   @Override
   public List<PlanNode> visitSchemaQueryMerge(SchemaQueryMergeNode node, PlanContext context) {
@@ -135,8 +206,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
 
     String database = ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
-    context
-        .analysis
+    analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
         .get(database)
@@ -146,7 +216,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
     for (PlanNode child : node.getChildren()) {
       for (TRegionReplicaSet schemaRegion : schemaRegionSet) {
         SourceNode clonedChild = (SourceNode) child.clone();
-        clonedChild.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        clonedChild.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
         clonedChild.setRegionReplicaSet(schemaRegion);
         root.addChild(clonedChild);
       }
@@ -176,7 +246,7 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
                   .getRegion()
                   .equals(context.getNodeDistribution(child.getPlanNodeId()).getRegion())) {
                 ExchangeNode exchangeNode =
-                    new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+                    new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
                 exchangeNode.setChild(child);
                 exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
                 context.hasExchangeNode = true;
@@ -195,17 +265,11 @@ public class ExchangeNodeGenerator extends SimplePlanRewriter<ExchangeNodeGenera
   }
 
   public static class PlanContext {
-    final MPPQueryContext queryContext;
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
-    TRegionReplicaSet mostlyUsedDataRegion;
     boolean hasExchangeNode = false;
 
-    final Analysis analysis;
-
-    public PlanContext(MPPQueryContext queryContext, Analysis analysis) {
-      this.queryContext = queryContext;
+    public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();
-      this.analysis = analysis;
     }
 
     public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {
