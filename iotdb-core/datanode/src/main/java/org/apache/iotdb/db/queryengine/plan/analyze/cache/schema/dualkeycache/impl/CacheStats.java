@@ -28,7 +28,6 @@ class CacheStats implements IDualKeyCacheStats {
   // prepare some buffer for high load scenarios
   private static final double MEMORY_THRESHOLD_RATIO = 0.8;
 
-  private final long memoryCapacity;
   private final long memoryThreshold;
 
   private final AtomicLong memoryUsage = new AtomicLong(0);
@@ -37,7 +36,6 @@ class CacheStats implements IDualKeyCacheStats {
   private final AtomicLong hitCount = new AtomicLong(0);
 
   CacheStats(long memoryCapacity) {
-    this.memoryCapacity = memoryCapacity;
     this.memoryThreshold = (long) (memoryCapacity * MEMORY_THRESHOLD_RATIO);
   }
 

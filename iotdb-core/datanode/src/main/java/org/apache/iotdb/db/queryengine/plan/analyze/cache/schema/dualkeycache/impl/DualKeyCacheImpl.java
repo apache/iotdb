@@ -256,7 +256,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       measurementFilter = m -> true;
     }
     if (deviceFilter == null) {
-      deviceFilter = d -> ((PartialPath) d).equals(devicePath);
+      deviceFilter = d -> d.equals(devicePath);
     }
 
     if (measurementFilter == null) {
