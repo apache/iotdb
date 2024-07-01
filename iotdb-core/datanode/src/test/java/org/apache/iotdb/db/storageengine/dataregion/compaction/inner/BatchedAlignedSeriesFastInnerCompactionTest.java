@@ -49,7 +49,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTest {
+public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompactionTest {
 
   long originTargetChunkSize;
   long originTargetChunkPointNum;
@@ -249,7 +249,7 @@ public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTe
             new TimeRange[] {new TimeRange(300, 450)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false),
+            Arrays.asList(false, false, false),
             false);
     unseqResource2
         .getModFile()
@@ -281,7 +281,7 @@ public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTe
             new TimeRange[] {new TimeRange(300, 400)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false),
             false);
     unseqResources.add(unseqResource2);
 
@@ -339,6 +339,40 @@ public class BatchedAlignedSeriesFastCompactionTest extends AbstractCompactionTe
             CompressionType.LZ4,
             Arrays.asList(false, false),
             false);
+    unseqResources.add(unseqResource2);
+
+    TsFileResource targetResource = performCompaction();
+    validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByDeserializePageWithDeletion() throws Exception {
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(100, 200), new TimeRange(500, 600)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 150));
+    unseqResources.add(unseqResource1);
+
+    TsFileResource unseqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(300, 450)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResource2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 400));
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();
