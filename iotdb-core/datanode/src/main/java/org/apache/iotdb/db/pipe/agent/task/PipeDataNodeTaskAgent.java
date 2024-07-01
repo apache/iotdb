@@ -159,7 +159,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
     } catch (final Exception e) {
-      throw new PipeException("Failed to clear/close schema region listening queue.", e);
+      LOGGER.warn(
+          "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
+          e.getMessage());
+      exceptionMessages.add(
+          new TPushPipeMetaRespExceptionMessage(null, e.getMessage(), System.currentTimeMillis()));
     }
 
     return exceptionMessages;
@@ -231,7 +235,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                           new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
                 } catch (final ConsensusException e) {
                   throw new PipeException(
-                      "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
+                      "Failed to close listening queue for SchemaRegion "
+                          + schemaRegionId
+                          + ", because "
+                          + e.getMessage(),
+                      e);
                 }
               }
             });
