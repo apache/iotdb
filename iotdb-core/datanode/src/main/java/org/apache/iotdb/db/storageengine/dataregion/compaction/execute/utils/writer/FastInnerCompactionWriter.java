@@ -99,11 +99,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       // if there is unsealed chunk which is large enough, then seal chunk
       sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     }
-    // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
-    if (chunkPointNumArray[subTaskId] != 0) {
-      return false;
-    }
-    if (!checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
+    if (chunkPointNumArray[subTaskId] != 0
+        || !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
+      // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
       return false;
     }
     flushAlignedChunkToFileWriter(
@@ -165,11 +163,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    // there is unsealed page or current page is not large enough , then deserialize the page
-    if (!isUnsealedPageOverThreshold) {
-      return false;
-    }
-    if (!checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
+    if (!isUnsealedPageOverThreshold
+        || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
+      // there is unsealed page or current page is not large enough , then deserialize the page
       return false;
     }
 
