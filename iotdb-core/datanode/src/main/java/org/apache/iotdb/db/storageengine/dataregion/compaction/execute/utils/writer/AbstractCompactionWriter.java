@@ -45,7 +45,6 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.function.Supplier;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
@@ -177,9 +176,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;
 
   public abstract boolean flushAlignedChunk(
+      ChunkMetadataElement chunkMetadataElement, int subTaskId) throws IOException;
+
+  public abstract boolean flushBatchedValueChunk(
       ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
-      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
+      AbstractCompactionFlushController flushController)
       throws IOException;
 
   @SuppressWarnings("squid:S2445")
@@ -258,6 +260,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
       throws IOException, PageException;
+
+  public abstract boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement, int subTaskId) throws PageException, IOException;
 
   protected void flushAlignedPageToChunkWriter(
       AlignedChunkWriterImpl alignedChunkWriter,

@@ -38,7 +38,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   // Only used for fast compaction performer
@@ -95,10 +94,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * flush empty value chunk.
    */
   @Override
-  public boolean flushAlignedChunk(
-      ChunkMetadataElement chunkMetadataElement,
-      int subTaskId,
-      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction)
+  public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId)
       throws IOException {
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
@@ -114,14 +110,42 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       // chunk
       return false;
     }
-    boolean isCompactingFollowedBatch = chunkMetadataElement.isFollowedBatch;
-    if (isCompactingFollowedBatch && !shouldDirectlyFlushChunkInBatchCompaction.get()) {
+
+    flushAlignedChunkToFileWriter(
+        targetFileWriters.get(fileIndex),
+        timeChunk,
+        timeChunkMetadata,
+        valueChunks,
+        valueChunkMetadatas,
+        subTaskId);
+
+    isDeviceExistedInTargetFiles[fileIndex] = true;
+    isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    return true;
+  }
+
+  @Override
+  public boolean flushBatchedValueChunk(
+      ChunkMetadataElement chunkMetadataElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
+      throws IOException {
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+    List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
+    List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
+
+    checkTimeAndMayFlushChunkToCurrentFile(timeChunkMetadata.getStartTime(), subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    if (!flushController.shouldCompactChunkByDirectlyFlush(timeChunkMetadata)) {
       return false;
     }
 
     flushAlignedChunkToFileWriter(
         targetFileWriters.get(fileIndex),
-        isCompactingFollowedBatch ? null : timeChunk,
+        null,
         timeChunkMetadata,
         valueChunks,
         valueChunkMetadatas,
@@ -156,9 +180,6 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       return false;
     }
 
-    if (timePageHeader.getStartTime() == 7000) {
-      System.out.println();
-    }
     flushAlignedPageToChunkWriter(
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
         compressedTimePageData,
@@ -175,6 +196,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
     return true;
+  }
+
+  @Override
+  public boolean flushBatchedValuePage(AlignedPageElement alignedPageElement, int subTaskId)
+      throws PageException, IOException {
+    return this.flushAlignedPage(alignedPageElement, subTaskId);
   }
 
   /**

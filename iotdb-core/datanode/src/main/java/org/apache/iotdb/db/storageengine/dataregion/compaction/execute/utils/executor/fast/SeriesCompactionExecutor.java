@@ -189,7 +189,7 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     boolean success;
     if (isAligned) {
-      success = compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId, () -> false);
+      success = compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId);
     } else {
       success =
           compactionWriter.flushNonAlignedChunk(

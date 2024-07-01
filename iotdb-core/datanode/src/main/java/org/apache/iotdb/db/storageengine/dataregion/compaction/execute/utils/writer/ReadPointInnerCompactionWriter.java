@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
@@ -33,7 +34,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.function.Supplier;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -58,10 +58,15 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushAlignedChunk(
+  public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValueChunk(
       ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
-      Supplier<Boolean> shouldDirectlyFlushChunkInBatchCompaction) {
+      AbstractCompactionFlushController flushController) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 
@@ -73,6 +78,12 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValuePage(AlignedPageElement alignedPageElement, int subTaskId)
+      throws PageException, IOException {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 }

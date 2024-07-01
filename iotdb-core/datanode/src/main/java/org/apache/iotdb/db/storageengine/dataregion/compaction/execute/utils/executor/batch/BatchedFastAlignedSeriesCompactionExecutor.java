@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.BatchedCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -280,8 +281,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   private class FollowingBatchFastAlignedSeriesCompactionExecutor
       extends FastAlignedSeriesCompactionExecutor {
 
-    private int currentCompactChunk = 0;
+    //    private int currentCompactChunk = 0;
     private FollowingBatchCompactionAlignedChunkWriter followingBatchCompactionAlignedChunkWriter;
+    private BatchedCompactionFlushController flushController;
 
     public FollowingBatchFastAlignedSeriesCompactionExecutor(
         AbstractCompactionWriter compactionWriter,
@@ -314,16 +316,20 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           new FollowingBatchCompactionAlignedChunkWriter(
               measurementSchemas.remove(0),
               measurementSchemas,
-              batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
+              batchCompactionPlan.getCompactChunkPlan(0));
+      flushController =
+          new BatchedCompactionFlushController(
+              batchCompactionPlan, followingBatchCompactionAlignedChunkWriter);
       followingBatchCompactionAlignedChunkWriter.registerAfterFlushChunkWriterCallback(
           (chunkWriter) -> {
-            currentCompactChunk++;
-            if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
+            flushController.currentCompactChunk++;
+            if (flushController.currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
               ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter)
                   .setCompactChunkPlan(
-                      batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
+                      batchCompactionPlan.getCompactChunkPlan(flushController.currentCompactChunk));
             }
           });
+
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID, followingBatchCompactionAlignedChunkWriter, subTaskId);
       compactFiles();
@@ -350,20 +356,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         throws IOException, PageException, WriteProcessException, IllegalPathException {
       boolean success;
       success =
-          compactionWriter.flushAlignedChunk(
-              chunkMetadataElement,
-              subTaskId,
-              () -> {
-                while (true) {
-                  CompactChunkPlan compactChunkPlan =
-                      batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
-                  if (compactChunkPlan.getTimeRange().getMin() != chunkMetadataElement.startTime) {
-                    currentCompactChunk++;
-                    continue;
-                  }
-                  return compactChunkPlan.isCompactedByDirectlyFlush();
-                }
-              });
+          compactionWriter.flushBatchedValueChunk(chunkMetadataElement, subTaskId, flushController);
 
       if (success) {
         // flush chunk successfully, then remove this chunk
@@ -384,7 +377,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         throws PageException, IOException, WriteProcessException, IllegalPathException {
       boolean success;
       AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success = compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
+      success = compactionWriter.flushBatchedValuePage(alignedPageElement, subTaskId);
       if (success) {
         // flush the page successfully, then remove this page
         checkShouldRemoveFile(pageElement);
@@ -411,10 +404,10 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
-      currentCompactChunk++;
-      if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
+      flushController.currentCompactChunk++;
+      if (flushController.currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
         followingBatchCompactionAlignedChunkWriter.setCompactChunkPlan(
-            batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));
+            batchCompactionPlan.getCompactChunkPlan(flushController.currentCompactChunk));
       }
       super.successFlushChunk(chunkMetadataElement);
     }

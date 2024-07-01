@@ -19,24 +19,27 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.write.chunk.IChunkWriter;
 
-public class AbstractFlushController {
+public abstract class AbstractCompactionFlushController {
 
   // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
-  protected long chunkSizeLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+  protected long chunkSizeLowerBoundInCompaction;
 
   // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
-  protected long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+  protected long chunkPointNumLowerBoundInCompaction;
 
-  public boolean isChunkSatisfied(IChunkWriter chunkWriter, IChunkMetadata chunkToFlush) {
-    return true;
+  public AbstractCompactionFlushController(
+      long chunkSizeLowerBoundInCompaction, long chunkPointNumLowerBoundInCompaction) {
+    this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
+    this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
   }
+
+  public abstract boolean shouldSealChunkWriter();
+
+  public abstract boolean shouldCompactChunkByDirectlyFlush(IChunkMetadata chunkMetadata);
+
+  public abstract void successFlushChunk(IChunkMetadata chunkMetadata);
 }
