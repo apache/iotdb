@@ -156,6 +156,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       return false;
     }
 
+    if (timePageHeader.getStartTime() == 7000) {
+      System.out.println();
+    }
     flushAlignedPageToChunkWriter(
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
         compressedTimePageData,

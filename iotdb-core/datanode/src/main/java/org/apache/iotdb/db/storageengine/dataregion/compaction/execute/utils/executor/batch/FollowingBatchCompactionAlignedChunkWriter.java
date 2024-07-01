@@ -81,8 +81,9 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   @Override
   public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
       throws PageException {
-    if (header.getStatistics().getStartTime()
-        != compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMin()) {
+    if (currentPage >= compactChunkPlan.getPageRecords().size()
+        || header.getStatistics().getStartTime()
+            != compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMin()) {
       throw new RuntimeException();
     }
     super.writePageHeaderAndDataIntoTimeBuff(data, header);

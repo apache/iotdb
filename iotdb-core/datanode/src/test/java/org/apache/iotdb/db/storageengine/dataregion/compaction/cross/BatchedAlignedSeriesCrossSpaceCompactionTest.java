@@ -194,7 +194,9 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(3000, 4000), new TimeRange(7000, 8000)},
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(3000, 4000), new TimeRange(7000, 8000)}
+            },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),

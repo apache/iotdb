@@ -231,6 +231,9 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
       PageElement firstPageElement = getPageFromPageQueue(pageQueue.peek().getStartTime());
+      if (firstPageElement.getStartTime() == 7000 && isFollowedBatch) {
+        System.out.println();
+      }
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
 
       if (modifiedStatus == ModifiedStatus.ALL_DELETED) {

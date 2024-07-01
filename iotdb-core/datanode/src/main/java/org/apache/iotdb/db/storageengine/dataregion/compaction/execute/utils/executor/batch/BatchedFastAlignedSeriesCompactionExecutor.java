@@ -353,10 +353,17 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           compactionWriter.flushAlignedChunk(
               chunkMetadataElement,
               subTaskId,
-              () ->
-                  batchCompactionPlan
-                      .getCompactChunkPlan(currentCompactChunk)
-                      .isCompactedByDirectlyFlush());
+              () -> {
+                while (true) {
+                  CompactChunkPlan compactChunkPlan =
+                      batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
+                  if (compactChunkPlan.getTimeRange().getMin() != chunkMetadataElement.startTime) {
+                    currentCompactChunk++;
+                    continue;
+                  }
+                  return compactChunkPlan.isCompactedByDirectlyFlush();
+                }
+              });
 
       if (success) {
         // flush chunk successfully, then remove this chunk
