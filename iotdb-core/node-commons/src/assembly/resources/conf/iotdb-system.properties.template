@@ -24,7 +24,7 @@
 # Used for indicate cluster name and distinguish different cluster.
 # If you need to modify the cluster name, it's recommended to use 'set configuration "cluster_name=xxx"' sql.
 # Manually modifying configuration file is not recommended, which may cause node restart fail.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: string
 cluster_name=defaultCluster
 
@@ -154,7 +154,6 @@ data_replication_factor=1
 # 1. org.apache.iotdb.consensus.simple.SimpleConsensus   (The data_replication_factor can only be set to 1)
 # 2. org.apache.iotdb.consensus.iot.IoTConsensus
 # 3. org.apache.iotdb.consensus.ratis.RatisConsensus
-# 4. org.apache.iotdb.consensus.iot.FastIoTConsensus
 # effectiveMode: first_start
 # Datatype: string
 data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
@@ -651,6 +650,14 @@ enable_auto_leader_balance_for_iot_consensus=true
 ####################
 ### Cluster management
 ####################
+
+# Time partition origin in milliseconds, default is equal to zero.
+# This origin is set by default to the beginning of Unix time, which is January 1, 1970, at 00:00 UTC (Coordinated Universal Time).
+# This point is known as the Unix epoch, and its timestamp is 0.
+# If you want to specify a different time partition origin, you can set this value to a specific Unix timestamp in milliseconds.
+# effectiveMode: first_start
+# Datatype: long
+time_partition_origin=0
 
 # Time partition interval in milliseconds, and partitioning data inside each data region, default is equal to one week
 # effectiveMode: first_start
@@ -1412,8 +1419,12 @@ iot_consensus_throttle_threshold_in_byte=53687091200
 iot_consensus_cache_window_time_in_ms=-1
 
 # Enable Write Ahead Log compression.
-# Option: true, false
-enable_wal_compression=false
+# With this parameter enabled, IoTDB can save a lot of IO resources at the cost of a small amount
+# of additional CPU resources, which is generally suitable for the scenario
+# where CPU is not the bottleneck but IO is the bottleneck.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_wal_compression=true
 
 ####################
 ### IoTConsensus Configuration
@@ -1465,7 +1476,7 @@ page_size_in_byte=65536
 max_number_of_points_in_page=10000
 
 # The threshold for pattern matching in regex
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 pattern_matching_threshold=1000000
 
@@ -1776,7 +1787,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ### Fast IoTConsensus Configuration
 ####################
 # Default event buffer size for connector and receiver in pipe consensus
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # DataType: int
 fast_iot_consensus_pipeline_size=5
 
@@ -1804,32 +1815,32 @@ procedure_completed_evict_ttl=800
 ####################
 
 # whether to enable the mqtt service.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: boolean
 enable_mqtt_service=false
 
 # the mqtt service binding host.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: String
 mqtt_host=127.0.0.1
 
 # the mqtt service binding port.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_port=1883
 
 # the handler pool size for handing the mqtt messages.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_handler_pool_size=1
 
 # the mqtt message payload formatter.
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: String
 mqtt_payload_formatter=json
 
 # max length of mqtt message in byte
-# effectiveMode: hot_reload
+# effectiveMode: restart
 # Datatype: int
 mqtt_max_message_size=1048576
 

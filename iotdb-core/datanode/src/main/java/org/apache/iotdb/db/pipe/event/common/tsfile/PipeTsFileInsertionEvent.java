@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -63,6 +65,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
+
+  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // May be updated after it is flushed. Should be negative if not set.
+  private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
@@ -113,6 +119,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
+
+                // Update flushPointCount after TsFile is closed
+                flushPointCount = processor.getMemTableFlushPointCount();
               }
             });
       }
@@ -153,6 +162,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           if (isClosedNow) {
             isClosed.set(true);
             isClosed.notifyAll();
+
+            // Update flushPointCount after TsFile is closed
+            final TsFileProcessor processor = resource.getProcessor();
+            if (processor != null) {
+              flushPointCount = processor.getMemTableFlushPointCount();
+            }
+
             break;
           }
         }
@@ -179,7 +195,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
   // can't be set to true
-  public void disableMod4NonTransferPipes(boolean isWithMod) {
+  public void disableMod4NonTransferPipes(final boolean isWithMod) {
     this.isWithMod = isWithMod && this.isWithMod;
   }
 
@@ -189,6 +205,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public long getFileStartTime() {
     return resource.getFileStartTime();
+  }
+
+  /**
+   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * receiver side. The receiver side will count the actual point count from the TsFile.
+   *
+   * <p>If you want to get the actual point count with no risk, you can call {@link
+   * #count(boolean)}.
+   */
+  public long getFlushPointCount() {
+    return flushPointCount;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -293,7 +321,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                  false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
@@ -338,8 +367,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TsFileInsertionDataContainer(
-                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+            new TsFileInsertionDataContainerProvider(
+                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+                .provide();
       }
       return dataContainer;
     } catch (final IOException e) {

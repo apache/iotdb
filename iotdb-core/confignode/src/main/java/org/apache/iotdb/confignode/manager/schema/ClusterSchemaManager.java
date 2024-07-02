@@ -361,6 +361,7 @@ public class ClusterSchemaManager {
       databaseInfo.setName(database);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));

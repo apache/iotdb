@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile;
+package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
+public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> {
 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
@@ -54,12 +54,12 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
 
   private final QueryDataSet queryDataSet;
 
-  public TsFileInsertionDataTabletIterator(
-      TsFileReader tsFileReader,
-      Map<String, TSDataType> measurementDataTypeMap,
-      String deviceId,
-      List<String> measurements,
-      IExpression timeFilterExpression)
+  TsFileInsertionQueryDataTabletIterator(
+      final TsFileReader tsFileReader,
+      final Map<String, TSDataType> measurementDataTypeMap,
+      final String deviceId,
+      final List<String> measurements,
+      final IExpression timeFilterExpression)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
@@ -81,7 +81,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
 
   private QueryDataSet buildQueryDataSet() throws IOException {
     final List<Path> paths = new ArrayList<>();
-    for (String measurement : measurements) {
+    for (final String measurement : measurements) {
       paths.add(new Path(deviceId, measurement, false));
     }
     return tsFileReader.query(QueryExpression.create(paths, timeFilterExpression));
@@ -91,7 +91,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   public boolean hasNext() {
     try {
       return queryDataSet.hasNext();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new PipeException("Failed to check next", e);
     }
   }
@@ -104,7 +104,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
 
     try {
       return buildNextTablet();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new PipeException("Failed to build tablet", e);
     }
   }

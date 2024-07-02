@@ -36,7 +36,7 @@ public class WALTestUtils {
       throws NoSuchFieldException, ClassNotFoundException, IllegalAccessException {
     Class<?> logWriterClass =
         Class.forName("org.apache.iotdb.db.storageengine.dataregion.wal.io.LogWriter");
-    Field minCompressionSizeField = logWriterClass.getDeclaredField("minCompressionSize");
+    Field minCompressionSizeField = logWriterClass.getDeclaredField("MIN_COMPRESSION_SIZE");
     minCompressionSizeField.setAccessible(true);
     minCompressionSizeField.setLong(null, size);
   }
@@ -45,7 +45,7 @@ public class WALTestUtils {
       throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
     Class<?> logWriterClass =
         Class.forName("org.apache.iotdb.db.storageengine.dataregion.wal.io.LogWriter");
-    Field minCompressionSizeField = logWriterClass.getDeclaredField("minCompressionSize");
+    Field minCompressionSizeField = logWriterClass.getDeclaredField("MIN_COMPRESSION_SIZE");
     minCompressionSizeField.setAccessible(true);
     return minCompressionSizeField.getLong(null);
   }

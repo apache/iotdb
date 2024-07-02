@@ -72,7 +72,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFA
 public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
+  public static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();

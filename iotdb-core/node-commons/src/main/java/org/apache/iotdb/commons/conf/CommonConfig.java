@@ -157,6 +157,9 @@ public class CommonConfig {
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
+  /** Time partition origin in milliseconds. */
+  private long timePartitionOrigin = 0;
+
   /** Time partition interval in milliseconds. */
   private long timePartitionInterval = 604_800_000;
 
@@ -241,6 +244,7 @@ public class CommonConfig {
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
+  private double pipeTsFileScanParsingThreshold = 0.05;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -545,6 +549,14 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
+  }
+
+  public long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
+  public void setTimePartitionOrigin(long timePartitionOrigin) {
+    this.timePartitionOrigin = timePartitionOrigin;
   }
 
   public long getTimePartitionInterval() {
@@ -1038,6 +1050,14 @@ public class CommonConfig {
   public void setPipeRemainingTimeCommitRateAverageTime(
       PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
     this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return pipeTsFileScanParsingThreshold;
+  }
+
+  public void setPipeTsFileScanParsingThreshold(double pipeTsFileScanParsingThreshold) {
+    this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
