@@ -34,7 +34,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -274,9 +273,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
     return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS,
-        SubscriptionAgent.consumer()
-            .getTopicsSubscribedByConsumer(
-                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic()
+            .getTopicConfigs(
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
@@ -312,9 +313,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         "Subscription: consumer {} unsubscribe {} successfully", consumerConfig, topicNames);
     return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS,
-        SubscriptionAgent.consumer()
-            .getTopicsSubscribedByConsumer(
-                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic()
+            .getTopicConfigs(
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
@@ -357,17 +360,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           events.parallelStream()
               .map(
                   (event) -> {
-                    final SubscriptionPollResponse response = event.getResponse();
+                    final SubscriptionPollResponse response = event.getCurrentResponse();
+                    if (Objects.isNull(response)) {
+                      throw new SubscriptionException("null response");
+                    }
                     final SubscriptionCommitContext commitContext = response.getCommitContext();
                     try {
-                      final ByteBuffer byteBuffer =
-                          SubscriptionEventBinaryCache.getInstance().serialize(event);
+                      final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
                       SubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(
                               SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                   commitContext.getConsumerGroupId(), commitContext.getTopicName()),
                               byteBuffer.limit());
-                      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
+                      event.resetResponseByteBuffer(false);
                       LOGGER.info(
                           "Subscription: consumer {} poll {} successfully with request: {}",
                           consumerConfig,
@@ -407,7 +412,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final ConsumerConfig consumerConfig, final PollPayload messagePayload) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
-            .getTopicsSubscribedByConsumer(
+            .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
 
     Set<String> topicNames = messagePayload.getTopicNames();
@@ -506,16 +511,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private void closeConsumer(final ConsumerConfig consumerConfig) {
     // unsubscribe all subscribed topics
-    final Set<String> topics =
+    final Set<String> topicNames =
         SubscriptionAgent.consumer()
-            .getTopicsSubscribedByConsumer(
+            .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-    if (!topics.isEmpty()) {
+    if (!topicNames.isEmpty()) {
       LOGGER.info(
           "Subscription: unsubscribe all subscribed topics {} before close consumer {}",
-          topics,
+          topicNames,
           consumerConfig);
-      unsubscribe(consumerConfig, topics);
+      unsubscribe(consumerConfig, topicNames);
     }
 
     // drop consumer if existed

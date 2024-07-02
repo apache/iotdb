@@ -79,7 +79,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private volatile TsFileWriter fileWriter;
 
-  PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+  public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     super(maxDelayInMs);
 
     this.maxSizeInBytes = requestMaxBatchSizeInBytes;

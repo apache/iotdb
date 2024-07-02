@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 public class CommonConfig {
 
   public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
@@ -254,13 +256,15 @@ public class CommonConfig {
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 64;
-  private int subscriptionMaxTabletsSizeInBytesPerPrefetching = 8388608; // 8MB
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
-  private int subscriptionReadFileBufferSize = 8388608; // 8MB
+  private long subscriptionReadFileBufferSize = 8 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1130,22 +1134,42 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return subscriptionMaxTabletsPerPrefetching;
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
-    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  public void setSubscriptionPrefetchTabletBatchMaxDelayInMs(
+      int subscriptionPrefetchTabletBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTabletBatchMaxDelayInMs = subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
-    return subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTabletBatchMaxSizeInBytes;
   }
 
-  public void setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
-      int subscriptionMaxTabletsSizeInBytesPerPrefetching) {
-    this.subscriptionMaxTabletsSizeInBytesPerPrefetching =
-        subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public void setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+      long subscriptionPrefetchTabletBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTabletBatchMaxSizeInBytes =
+        subscriptionPrefetchTabletBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTsFileBatchMaxDelayInMs = subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTsFileBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      long subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTsFileBatchMaxSizeInBytes =
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -1183,11 +1207,11 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public int getSubscriptionReadFileBufferSize() {
+  public long getSubscriptionReadFileBufferSize() {
     return subscriptionReadFileBufferSize;
   }
 
-  public void setSubscriptionReadFileBufferSize(int subscriptionReadFileBufferSize) {
+  public void setSubscriptionReadFileBufferSize(long subscriptionReadFileBufferSize) {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 

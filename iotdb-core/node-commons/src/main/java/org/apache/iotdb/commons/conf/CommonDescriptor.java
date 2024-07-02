@@ -595,16 +595,26 @@ public class CommonDescriptor {
     if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
       config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
     }
-    config.setSubscriptionMaxTabletsPerPrefetching(
+    config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_tablets_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
-    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+                "subscription_prefetch_tablet_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_prefetch_tablet_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxSizeInBytes()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_tablets_size_in_bytes_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
+                "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
@@ -626,7 +636,7 @@ public class CommonDescriptor {
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
     config.setSubscriptionReadFileBufferSize(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
