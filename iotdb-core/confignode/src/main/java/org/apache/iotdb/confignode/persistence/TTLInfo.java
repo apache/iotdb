@@ -66,10 +66,14 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       // check ttl rule capacity
-      if (getTTLCount() >= CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity()) {
+      final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
+      if (getTTLCount() >= tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
-            "The number of TTL stored in the system has reached threshold, please increase the ttl_rule_capacity parameter.");
+            String.format(
+                "The number of TTL rules has reached the limit (%d). Please delete "
+                    + "some existing rules first.",
+                tTlRuleCapacity));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
