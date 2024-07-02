@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -39,15 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class AlignedSeriesGroupCompactionUtils {
+public class AlignedSeriesBatchCompactionUtils {
 
-  private AlignedSeriesGroupCompactionUtils() {}
+  private AlignedSeriesBatchCompactionUtils() {}
 
   public static List<IMeasurementSchema> selectColumnGroupToCompact(
-      List<IMeasurementSchema> schemaList, Set<String> compactedMeasurements) {
-    int compactColumnNum =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
-    List<IMeasurementSchema> selectedColumnGroup = new ArrayList<>(compactColumnNum);
+      List<IMeasurementSchema> schemaList, Set<String> compactedMeasurements, int batchSize) {
+    List<IMeasurementSchema> selectedColumnBatch = new ArrayList<>(batchSize);
     for (IMeasurementSchema schema : schemaList) {
       if (!isLargeDataType(schema.getType())) {
         continue;
@@ -56,25 +53,25 @@ public class AlignedSeriesGroupCompactionUtils {
         continue;
       }
       compactedMeasurements.add(schema.getMeasurementId());
-      selectedColumnGroup.add(schema);
+      selectedColumnBatch.add(schema);
       if (compactedMeasurements.size() == schemaList.size()) {
-        return selectedColumnGroup;
+        return selectedColumnBatch;
       }
     }
     for (IMeasurementSchema schema : schemaList) {
       if (compactedMeasurements.contains(schema.getMeasurementId())) {
         continue;
       }
-      selectedColumnGroup.add(schema);
+      selectedColumnBatch.add(schema);
       compactedMeasurements.add(schema.getMeasurementId());
-      if (selectedColumnGroup.size() == compactColumnNum) {
+      if (selectedColumnBatch.size() == batchSize) {
         break;
       }
       if (compactedMeasurements.size() == schemaList.size()) {
         break;
       }
     }
-    return selectedColumnGroup;
+    return selectedColumnBatch;
   }
 
   private static boolean isLargeDataType(TSDataType dataType) {

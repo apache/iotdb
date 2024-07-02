@@ -53,7 +53,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
   private final Set<String> compactedMeasurements;
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
-  private int maxBatchSize =
+  private int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
@@ -69,25 +69,25 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
   @Override
   public void execute() throws IOException, PageException {
-    if (maxBatchSize <= 0 || maxBatchSize >= schemaList.size()) {
+    if (batchSize <= 0 || batchSize >= schemaList.size()) {
       super.execute();
       return;
     }
-    AlignedSeriesGroupCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
-    compactFirstColumnGroup();
+    AlignedSeriesBatchCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
+    compactFirstBatch();
     if (batchCompactionPlan.compactedChunkNum() == 0) {
       return;
     }
-    compactLeftColumnGroups();
+    compactLeftBatches();
   }
 
-  private void compactFirstColumnGroup() throws IOException, PageException {
+  private void compactFirstBatch() throws IOException, PageException {
     List<IMeasurementSchema> firstGroupMeasurements =
-        AlignedSeriesGroupCompactionUtils.selectColumnGroupToCompact(
-            schemaList, compactedMeasurements);
+        AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+            schemaList, compactedMeasurements, batchSize);
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-        groupReaderAndChunkMetadataList =
+        batchedReaderAndChunkMetadataList =
             filterAlignedChunkMetadataList(
                 readerAndChunkMetadataList,
                 firstGroupMeasurements.stream()
@@ -97,7 +97,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         new FirstBatchedReadChunkAlignedSeriesCompactionExecutor(
             device,
             targetResource,
-            groupReaderAndChunkMetadataList,
+            batchedReaderAndChunkMetadataList,
             writer,
             summary,
             timeSchema,
@@ -105,11 +105,11 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     executor.execute();
   }
 
-  private void compactLeftColumnGroups() throws PageException, IOException {
+  private void compactLeftBatches() throws PageException, IOException {
     while (compactedMeasurements.size() < schemaList.size()) {
       List<IMeasurementSchema> selectedColumnGroup =
-          AlignedSeriesGroupCompactionUtils.selectColumnGroupToCompact(
-              schemaList, compactedMeasurements);
+          AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+              schemaList, compactedMeasurements, batchSize);
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
           groupReaderAndChunkMetadataList =
               filterAlignedChunkMetadataList(
@@ -141,7 +141,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       List<AlignedChunkMetadata> selectedColumnAlignedChunkMetadataList = new LinkedList<>();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         selectedColumnAlignedChunkMetadataList.add(
-            AlignedSeriesGroupCompactionUtils.filterAlignedChunkMetadata(
+            AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadata(
                 alignedChunkMetadata, selectedMeasurements));
       }
       groupReaderAndChunkMetadataList.add(
@@ -217,7 +217,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       }
 
       ModifiedStatus modifiedStatus =
-          AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+          AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
               startTime, endTime, originAlignedChunkMetadata);
       batchCompactionPlan.recordPageModifiedStatus(
           file, new TimeRange(startTime, endTime), modifiedStatus);

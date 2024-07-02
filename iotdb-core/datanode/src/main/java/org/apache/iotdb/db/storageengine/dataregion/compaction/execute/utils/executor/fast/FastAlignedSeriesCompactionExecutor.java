@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.AlignedSeriesGroupCompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
@@ -413,7 +413,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     long endTime = pageElement.getEndTime();
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
-    return AlignedSeriesGroupCompactionUtils.calculateAlignedPageModifiedStatus(
+    return AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
         startTime, endTime, alignedChunkMetadata);
   }
 }

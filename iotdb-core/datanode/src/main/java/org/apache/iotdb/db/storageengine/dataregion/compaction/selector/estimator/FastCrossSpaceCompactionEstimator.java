@@ -54,8 +54,13 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
       return taskInfo.getModificationFileSize();
     }
 
+    int batchSize = config.getCompactionMaxAlignedSeriesNumInOneBatch();
     long maxConcurrentSeriesNum =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+        Math.max(
+            config.getSubCompactionTaskNum(),
+            Math.min(
+                batchSize <= 0 ? Integer.MAX_VALUE : batchSize,
+                taskInfo.getMaxConcurrentSeriesNum()));
     long averageUncompressedChunkSize =
         taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
 
