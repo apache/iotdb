@@ -1131,11 +1131,11 @@ public class LogicalPlanBuilder {
       try {
         storageGroupPath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
-        for (PartialPath pathPattern :
-            patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          // pathPattern has been deduplicated, no need to deduplicate again
-          overlappedPatternTree.appendFullPath(pathPattern);
+        for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+          if (pathPattern.overlapWithFullPathPrefix(storageGroupPath)) {
+            // pathPattern has been deduplicated, no need to deduplicate again
+            overlappedPatternTree.appendFullPath(pathPattern);
+          }
         }
         this.root.addChild(
             new DeviceSchemaFetchScanNode(
@@ -1149,6 +1149,12 @@ public class LogicalPlanBuilder {
       }
     }
     return this;
+  }
+
+  public static void main(String[] args) throws IllegalPathException {
+    PartialPath path = new PartialPath("root.*.b");
+    PartialPath p1 = new PartialPath("root.sg");
+    System.out.println(path.overlapWithFullPathPrefix(p1));
   }
 
   public LogicalPlanBuilder planCountMerge() {
