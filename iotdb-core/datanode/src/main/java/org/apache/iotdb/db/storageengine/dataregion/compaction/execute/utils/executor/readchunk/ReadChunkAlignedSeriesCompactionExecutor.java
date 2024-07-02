@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantPageLoader;
@@ -223,6 +224,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valueChunks.set(idx, valueChunk);
     }
     summary.increaseProcessPointNum(pointNum);
+    if (timeChunk.getChunkMetadata().getStartTime() == 10000) {
+      System.out.println();
+    }
     if (flushController.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
       compactAlignedChunkByFlush(timeChunk, valueChunks);
@@ -306,6 +310,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         continue;
       }
 
+      if (this
+              instanceof
+              BatchedReadChunkAlignedSeriesCompactionExecutor
+                  .FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor
+          && timePage.getChunkMetadata().getStartTime() == 300000) {
+        System.out.println();
+      }
       if (flushController.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);
@@ -405,6 +416,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
     processedPointNum *= schemaList.size();
     summary.increaseRewritePointNum(processedPointNum);
+
+    if (flushController.canFlushCurrentChunkWriter()) {
+      flushCurrentChunkWriter();
+    }
   }
 
   protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {

@@ -69,7 +69,17 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   }
 
   @Override
+  public void sealCurrentPage() {
+    writePageToPageBuffer();
+  }
+
+  @Override
   protected void writePageToPageBuffer() {
+    FollowingBatchCompactionTimeChunkWriter followingBatchCompactionTimeChunkWriter =
+        (FollowingBatchCompactionTimeChunkWriter) timeChunkWriter;
+    if (followingBatchCompactionTimeChunkWriter.pageStatistics.isEmpty()) {
+      return;
+    }
     super.writePageToPageBuffer();
     currentPage++;
   }

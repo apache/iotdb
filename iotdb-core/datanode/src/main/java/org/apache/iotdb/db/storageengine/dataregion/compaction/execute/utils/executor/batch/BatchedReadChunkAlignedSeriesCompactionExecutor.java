@@ -109,6 +109,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             timeSchema,
             firstGroupMeasurements);
     executor.execute();
+    System.out.println(batchCompactionPlan);
   }
 
   private void compactLeftBatches() throws PageException, IOException {
@@ -296,6 +297,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         return;
       }
       super.flushCurrentChunkWriter();
+      nextChunk();
+    }
+
+    private void nextChunk() {
       currentCompactChunk++;
       if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
         CompactChunkPlan chunkRecord = batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
@@ -343,7 +348,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       }
       summary.increaseDirectlyFlushChunkNum(nonEmptyChunkNum);
       writer.markEndingWritingAligned();
-      currentCompactChunk++;
+
+      nextChunk();
     }
 
     @Override
