@@ -310,7 +310,7 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
   }
 
-  static boolean containsDiffFunction(Expression expression) {
+  public static boolean containsDiffFunction(Expression expression) {
     if (expression instanceof FunctionCall
         && "diff".equalsIgnoreCase(((FunctionCall) expression).getName().toString())) {
       return true;
