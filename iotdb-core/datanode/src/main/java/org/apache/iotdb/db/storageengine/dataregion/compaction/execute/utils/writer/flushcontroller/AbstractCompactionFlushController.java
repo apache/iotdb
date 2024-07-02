@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 

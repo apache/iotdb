@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchCompactionPlan;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.CompactChunkPlan;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.FollowingBatchCompactionAlignedChunkWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 

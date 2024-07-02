@@ -324,6 +324,33 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
     validate(targetResources);
   }
 
+  @Test
+  public void testCompactByDeserializePageWithOverlap() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
   private List<TsFileResource> performCompaction() throws Exception {
     tsFileManager.addAll(unseqResources, false);
     List<TsFileResource> targetResources =

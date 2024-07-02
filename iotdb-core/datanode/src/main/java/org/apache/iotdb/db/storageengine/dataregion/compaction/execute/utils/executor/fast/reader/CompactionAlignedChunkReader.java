@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedCompactionAlignedPagePointReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;

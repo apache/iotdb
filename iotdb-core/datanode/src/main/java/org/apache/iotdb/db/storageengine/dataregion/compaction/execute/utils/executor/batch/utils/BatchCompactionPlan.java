@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
@@ -55,6 +55,10 @@ public class BatchCompactionPlan {
 
   public int compactedChunkNum() {
     return compactChunkPlans.size();
+  }
+
+  public boolean isEmpty() {
+    return compactChunkPlans.isEmpty();
   }
 
   @Override

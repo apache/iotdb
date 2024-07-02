@@ -25,12 +25,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FollowedBatchedCompactionFlushController;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.FollowedBatchedCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -63,7 +68,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   private final List<TsFileResource> sortedSourceFiles;
 
   private final Map<TsFileResource, List<AlignedChunkMetadata>> alignedChunkMetadataCache;
-  private BatchCompactionPlan batchCompactionPlan;
+  private final BatchCompactionPlan batchCompactionPlan;
   private final int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
@@ -127,7 +132,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactFirstBatch();
-    if (batchCompactionPlan.compactedChunkNum() == 0) {
+    if (batchCompactionPlan.isEmpty()) {
       return;
     }
     compactLeftBatches();

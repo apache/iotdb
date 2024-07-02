@@ -22,6 +22,12 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.PageLoader;
@@ -53,7 +59,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
   private final Set<String> compactedMeasurements;
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
-  private int batchSize =
+  private final int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
@@ -75,7 +81,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
     AlignedSeriesBatchCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
     compactFirstBatch();
-    if (batchCompactionPlan.compactedChunkNum() == 0) {
+    if (batchCompactionPlan.isEmpty()) {
       return;
     }
     compactLeftBatches();
@@ -339,25 +345,6 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       writer.markEndingWritingAligned();
       currentCompactChunk++;
     }
-
-    //    @Override
-    //    protected void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader>
-    // valuePageLoaders)
-    //        throws PageException, IOException {
-    //      int nonEmptyPage = 0;
-    //      checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-    //      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
-    //      // skip time page
-    //      timePage.clear();
-    //      for (int i = 0; i < valuePageLoaders.size(); i++) {
-    //        PageLoader valuePage = valuePageLoaders.get(i);
-    //        if (!valuePage.isEmpty()) {
-    //          nonEmptyPage++;
-    //        }
-    //        valuePage.flushToValueChunkWriter(chunkWriter, i);
-    //      }
-    //      summary.increaseDirectlyFlushPageNum(nonEmptyPage);
-    //    }
 
     @Override
     protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {

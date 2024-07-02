@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -45,10 +45,6 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
       IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList,
       CompactChunkPlan compactChunkPlan) {
-    //    timeChunkWriter = new TimeChunkWriter("",
-    //        timeSchema.getCompressor(),
-    //        timeSchema.getTimeTSEncoding(),
-    //        timeSchema.getTimeEncoder());
     timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
