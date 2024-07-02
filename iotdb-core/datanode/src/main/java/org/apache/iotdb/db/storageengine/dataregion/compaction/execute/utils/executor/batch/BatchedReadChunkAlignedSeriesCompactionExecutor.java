@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
@@ -52,6 +53,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
   private final Set<String> compactedMeasurements;
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
+  private int maxBatchSize =
+      IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
@@ -66,6 +69,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
   @Override
   public void execute() throws IOException, PageException {
+    if (maxBatchSize <= 0 || maxBatchSize >= schemaList.size()) {
+      super.execute();
+      return;
+    }
     AlignedSeriesGroupCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
     compactFirstColumnGroup();
     if (batchCompactionPlan.compactedChunkNum() == 0) {

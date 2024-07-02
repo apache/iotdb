@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -137,17 +136,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return;
     }
     writer.startChunkGroup(device);
-    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor;
-    if (IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch()
-        <= 0) {
-      compactionExecutor =
-          new ReadChunkAlignedSeriesCompactionExecutor(
-              device, targetResource, readerAndChunkMetadataList, writer, summary);
-    } else {
-      compactionExecutor =
-          new BatchedReadChunkAlignedSeriesCompactionExecutor(
-              device, targetResource, readerAndChunkMetadataList, writer, summary);
-    }
+    BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
+        new BatchedReadChunkAlignedSeriesCompactionExecutor(
+            device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {
