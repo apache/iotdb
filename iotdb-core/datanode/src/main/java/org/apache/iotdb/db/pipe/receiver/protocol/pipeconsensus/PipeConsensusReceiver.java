@@ -418,11 +418,11 @@ public class PipeConsensusReceiver {
       long endPreCheckNanos = System.nanoTime();
       pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
+      updateWritePointCountMetrics(req.getPointCount(), fileAbsolutePath);
       final TSStatus status =
           loadFileToDataRegion(
               fileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-      updateWritePointCountMetrics(req.getPointCount(), fileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -538,11 +538,11 @@ public class PipeConsensusReceiver {
       pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
       final String tsFileAbsolutePath = fileAbsolutePaths.get(1);
+      updateWritePointCountMetrics(req.getPointCounts().get(1), tsFileAbsolutePath);
       final TSStatus status =
           loadFileToDataRegion(
               tsFileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-      updateWritePointCountMetrics(req.getPointCounts().get(1), tsFileAbsolutePath);
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
