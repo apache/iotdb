@@ -25,10 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.junit.After;
@@ -44,7 +43,6 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class TTLInfoTest {
 
@@ -212,16 +210,15 @@ public class TTLInfoTest {
 
   @Test
   public void testTooManyTTL() {
-    final int tTlRuleCapacity =
-        CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
+    final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
     for (int i = 0; i < tTlRuleCapacity - 1; i++) {
       SetTTLPlan setTTLPlan =
           new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d" + i + ".**"), 1000);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
     }
     SetTTLPlan setTTLPlan =
-        new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d" + tTlRuleCapacity + ".**"),
-            1000);
+        new SetTTLPlan(
+            PathNodesGenerator.splitPathToNodes("root.sg1.d" + tTlRuleCapacity + ".**"), 1000);
     final TSStatus status = ttlInfo.setTTL(setTTLPlan);
     assertEquals(TSStatusCode.OVERSIZE_TTL.getStatusCode(), status.code);
     assertEquals(

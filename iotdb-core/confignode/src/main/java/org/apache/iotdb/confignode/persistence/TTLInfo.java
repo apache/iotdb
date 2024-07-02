@@ -70,8 +70,10 @@ public class TTLInfo implements SnapshotProcessor {
       if (getTTLCount() >= tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
-            String.format("The number of TTL rules has reached the limit (%d). Please delete "
-                + "some existing rules first.", tTlRuleCapacity));
+            String.format(
+                "The number of TTL rules has reached the limit (%d). Please delete "
+                    + "some existing rules first.",
+                tTlRuleCapacity));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
