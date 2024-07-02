@@ -83,7 +83,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
   }
 
   @Test
-  public void testCompactionFlushChunkAndSplit()
+  public void testCompactionFlushChunk()
       throws IOException,
           StorageEngineException,
           InterruptedException,
@@ -175,6 +175,46 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
             Arrays.asList("s0", "s1", "s2"),
             new TimeRange[][] {
               new TimeRange[] {new TimeRange(300000, 310000), new TimeRange(320000, 330000)}
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    tsFileManager.addAll(seqResources, true);
+
+    TsFileResource targetResource = performCompaction();
+    consumeChunkDataAndValidate(targetResource);
+  }
+
+  @Test
+  public void testCompactionFlushPageAndSplitByTimePartition()
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
+          PageException {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 120000)}
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            true);
+    seqResources.add(seqResource1);
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {
+                new TimeRange(604799900, 604800020), new TimeRange(604810020, 604820020)
+              }
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,

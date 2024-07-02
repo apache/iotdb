@@ -223,7 +223,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       long endTime = ReadWriteIOUtils.readLong(stream);
       statistics.setStartTime(startTime);
       statistics.setEndTime(endTime);
-      System.out.println("current measurement is " + chunkHeader.getMeasurementID() + ", ");
+      System.out.print("current measurement is " + chunkHeader.getMeasurementID() + ", ");
       System.out.println(
           "write decode value page, start time: " + startTime + ", end time: " + endTime);
 

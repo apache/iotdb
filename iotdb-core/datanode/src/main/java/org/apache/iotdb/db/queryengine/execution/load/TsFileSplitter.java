@@ -438,12 +438,16 @@ public class TsFileSplitter {
     }
 
     Set<ChunkData> allChunkData = new HashSet<>();
+    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
       allChunkData.addAll(new ArrayList<>(entry.getValue()));
       List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
         AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
-        alignedChunkDataList.set(i, new BatchedAlignedValueChunkData(oldChunkData));
+        if (!chunkDataMap.containsKey(oldChunkData)) {
+          chunkDataMap.put(oldChunkData, new BatchedAlignedValueChunkData(oldChunkData));
+        }
+        alignedChunkDataList.set(i, chunkDataMap.get(oldChunkData));
       }
     }
     for (ChunkData chunkData : allChunkData) {
