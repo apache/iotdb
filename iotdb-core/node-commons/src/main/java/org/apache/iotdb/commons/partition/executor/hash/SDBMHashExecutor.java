@@ -49,10 +49,16 @@ public class SDBMHashExecutor extends SeriesPartitionExecutor {
     int segmentNum = deviceID.segmentNum();
 
     for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
-      String segment = (String) deviceID.segment(segmentID);
-      for (int i = 0; i < segment.length(); i++) {
-        hash = ((int) segment.charAt(i) + (hash << 6) + (hash << 16) - hash);
+      Object segment = deviceID.segment(segmentID);
+      if (segment instanceof String) {
+        String segmentStr = (String) segment;
+        for (int i = 0; i < segmentStr.length(); i++) {
+          hash = ((int) segmentStr.charAt(i) + (hash << 6) + (hash << 16) - hash);
+        }
+      } else {
+        hash = (NULL_SEGMENT_HASH_NUM + (hash << 6) + (hash << 16) - hash);
       }
+
       if (segmentID < segmentNum - 1) {
         hash = ((int) PATH_SEPARATOR + (hash << 6) + (hash << 16) - hash);
       }
