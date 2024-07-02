@@ -139,6 +139,10 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     checkTimeAndMayFlushChunkToCurrentFile(timeChunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
+    if (!flushController.shouldSealChunkWriter()) {
+      return false;
+    }
+    sealChunk(targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
     if (!flushController.shouldCompactChunkByDirectlyFlush(timeChunkMetadata)) {
       return false;
     }

@@ -166,7 +166,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
                 resource.getVersion(),
                 i == iChunkMetadataList.size() - 1,
                 fileElement,
-                isFollowedBatch));
+                isBatchedCompaction));
       }
     }
   }

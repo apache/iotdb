@@ -68,6 +68,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   public void execute() throws IOException, PageException {
     AlignedSeriesGroupCompactionUtils.markAlignedChunkHasDeletion(readerAndChunkMetadataList);
     compactFirstColumnGroup();
+    if (batchCompactionPlan.compactedChunkNum() == 0) {
+      return;
+    }
     compactLeftColumnGroups();
   }
 

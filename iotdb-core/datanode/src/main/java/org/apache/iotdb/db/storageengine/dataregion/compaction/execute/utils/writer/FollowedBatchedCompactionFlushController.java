@@ -47,15 +47,9 @@ public class FollowedBatchedCompactionFlushController extends AbstractCompaction
 
   @Override
   public boolean shouldCompactChunkByDirectlyFlush(IChunkMetadata chunkToFlush) {
-    while (true) {
-      CompactChunkPlan compactChunkPlan =
-          batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
-      if (compactChunkPlan.getTimeRange().getMin() < chunkToFlush.getStartTime()) {
-        currentCompactChunk++;
-        continue;
-      }
-      return compactChunkPlan.isCompactedByDirectlyFlush();
-    }
+    CompactChunkPlan compactChunkPlan =
+        batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
+    return compactChunkPlan.isCompactedByDirectlyFlush();
   }
 
   @Override

@@ -124,6 +124,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactFirstBatch();
+    if (batchCompactionPlan.compactedChunkNum() == 0) {
+      return;
+    }
     compactLeftBatches();
   }
 
@@ -213,6 +216,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           subTaskId,
           measurementSchemas,
           summary);
+      isBatchedCompaction = true;
     }
 
     @Override
@@ -307,7 +311,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           subTaskId,
           measurementSchemas,
           summary);
-      isFollowedBatch = true;
+      isBatchedCompaction = true;
     }
 
     @Override

@@ -128,7 +128,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (chunkPointNumArray[subTaskId] != 0 && flushController.shouldSealChunkWriter()) {
       sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     }
-    // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
+    // if there is unsealed chunk, then deserialize the chunk
     if (chunkPointNumArray[subTaskId] != 0) {
       return false;
     }

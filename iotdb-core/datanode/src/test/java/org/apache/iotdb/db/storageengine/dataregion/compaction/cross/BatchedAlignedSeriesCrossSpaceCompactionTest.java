@@ -206,6 +206,124 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
     validate(targetResources);
   }
 
+  @Test
+  public void testFlushEmptyPage() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(1000, 2000), new TimeRange(5000, 6000)}
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(9000, 10000)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            true);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(3000, 4000), new TimeRange(7000, 8000)}
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
+  @Test
+  public void testCompactByDeserializePage() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(90, 100)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(30, 40), new TimeRange(70, 80)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
+  @Test
+  public void testCompactByDeserializePageWithEmpty() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(90, 100)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            true);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(30, 40), new TimeRange(70, 80)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
   private List<TsFileResource> performCompaction() throws Exception {
     tsFileManager.addAll(unseqResources, false);
     List<TsFileResource> targetResources =
