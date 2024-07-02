@@ -25,13 +25,13 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 
-public class BatchedCompactionFlushController extends AbstractCompactionFlushController {
+public class FollowedBatchedCompactionFlushController extends AbstractCompactionFlushController {
 
   public BatchCompactionPlan batchCompactionPlan;
   public FollowingBatchCompactionAlignedChunkWriter chunkWriter;
   public int currentCompactChunk;
 
-  public BatchedCompactionFlushController(
+  public FollowedBatchedCompactionFlushController(
       BatchCompactionPlan batchCompactionPlan,
       FollowingBatchCompactionAlignedChunkWriter chunkWriter) {
     super(0, 0);
@@ -59,7 +59,7 @@ public class BatchedCompactionFlushController extends AbstractCompactionFlushCon
   }
 
   @Override
-  public void successFlushChunk(IChunkMetadata chunkMetadata) {
+  public void nextChunk() {
     currentCompactChunk++;
     if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
       chunkWriter.setCompactChunkPlan(batchCompactionPlan.getCompactChunkPlan(currentCompactChunk));

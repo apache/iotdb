@@ -29,7 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.BatchedCompactionFlushController;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FollowedBatchedCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -39,7 +39,6 @@ import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
@@ -242,12 +241,16 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     }
 
     @Override
-    protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
-      batchCompactionPlan.recordCompactedChunk(
-          new CompactChunkPlan(
-              chunkMetadataElement.chunkMetadata.getStartTime(),
-              chunkMetadataElement.chunkMetadata.getEndTime()));
-      super.successFlushChunk(chunkMetadataElement);
+    protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+        throws IOException {
+      boolean success = super.flushChunkToCompactionWriter(chunkMetadataElement);
+      if (success) {
+        batchCompactionPlan.recordCompactedChunk(
+            new CompactChunkPlan(
+                chunkMetadataElement.chunkMetadata.getStartTime(),
+                chunkMetadataElement.chunkMetadata.getEndTime()));
+      }
+      return success;
     }
 
     @Override
@@ -281,9 +284,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   private class FollowingBatchFastAlignedSeriesCompactionExecutor
       extends FastAlignedSeriesCompactionExecutor {
 
-    //    private int currentCompactChunk = 0;
-    private FollowingBatchCompactionAlignedChunkWriter followingBatchCompactionAlignedChunkWriter;
-    private BatchedCompactionFlushController flushController;
+    private FollowedBatchedCompactionFlushController flushController;
 
     public FollowingBatchFastAlignedSeriesCompactionExecutor(
         AbstractCompactionWriter compactionWriter,
@@ -312,23 +313,16 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     @Override
     public void execute()
         throws PageException, IllegalPathException, IOException, WriteProcessException {
-      followingBatchCompactionAlignedChunkWriter =
+      FollowingBatchCompactionAlignedChunkWriter followingBatchCompactionAlignedChunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
               measurementSchemas.remove(0),
               measurementSchemas,
               batchCompactionPlan.getCompactChunkPlan(0));
       flushController =
-          new BatchedCompactionFlushController(
+          new FollowedBatchedCompactionFlushController(
               batchCompactionPlan, followingBatchCompactionAlignedChunkWriter);
       followingBatchCompactionAlignedChunkWriter.registerAfterFlushChunkWriterCallback(
-          (chunkWriter) -> {
-            flushController.currentCompactChunk++;
-            if (flushController.currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
-              ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter)
-                  .setCompactChunkPlan(
-                      batchCompactionPlan.getCompactChunkPlan(flushController.currentCompactChunk));
-            }
-          });
+          (chunkWriter) -> flushController.nextChunk());
 
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID, followingBatchCompactionAlignedChunkWriter, subTaskId);
@@ -352,64 +346,22 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
     }
 
-    protected void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
-        throws IOException, PageException, WriteProcessException, IllegalPathException {
-      boolean success;
-      success =
+    @Override
+    protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+        throws IOException {
+      boolean success =
           compactionWriter.flushBatchedValueChunk(chunkMetadataElement, subTaskId, flushController);
-
       if (success) {
-        // flush chunk successfully, then remove this chunk
-        successFlushChunk(chunkMetadataElement);
-        updateSummary(chunkMetadataElement, ChunkStatus.DIRECTORY_FLUSH);
-        checkShouldRemoveFile(chunkMetadataElement);
-      } else {
-        // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize
-        // chunk
-        summary.chunkNoneOverlapButDeserialize += 1;
-        deserializeChunkIntoPageQueue(chunkMetadataElement);
-        compactPages();
+        flushController.nextChunk();
       }
+      return success;
     }
 
     @Override
-    protected void compactWithNonOverlapPage(PageElement pageElement)
-        throws PageException, IOException, WriteProcessException, IllegalPathException {
-      boolean success;
+    protected boolean flushPageToCompactionWriter(PageElement pageElement)
+        throws PageException, IOException {
       AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success = compactionWriter.flushBatchedValuePage(alignedPageElement, subTaskId);
-      if (success) {
-        // flush the page successfully, then remove this page
-        checkShouldRemoveFile(pageElement);
-      } else {
-        // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
-        summary.pageNoneOverlapButDeserialize += 1;
-        if (!pointPriorityReader.addNewPageIfPageNotEmpty(pageElement)) {
-          return;
-        }
-
-        // write data points of the current page into chunk writer
-        TimeValuePair point;
-        while (pointPriorityReader.hasNext()) {
-          point = pointPriorityReader.currentPoint();
-          if (point.getTimestamp() > pageElement.getEndTime()) {
-            // finish writing this page
-            break;
-          }
-          compactionWriter.write(point, subTaskId);
-          pointPriorityReader.next();
-        }
-      }
-    }
-
-    @Override
-    protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {
-      flushController.currentCompactChunk++;
-      if (flushController.currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
-        followingBatchCompactionAlignedChunkWriter.setCompactChunkPlan(
-            batchCompactionPlan.getCompactChunkPlan(flushController.currentCompactChunk));
-      }
-      super.successFlushChunk(chunkMetadataElement);
+      return compactionWriter.flushBatchedValuePage(alignedPageElement, subTaskId);
     }
   }
 }

@@ -228,6 +228,21 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
     }
   }
 
+  @Override
+  protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
+    return compactionWriter.flushNonAlignedChunk(
+        chunkMetadataElement.chunk, (ChunkMetadata) chunkMetadataElement.chunkMetadata, subTaskId);
+  }
+
+  @Override
+  protected boolean flushPageToCompactionWriter(PageElement pageElement)
+      throws PageException, IOException {
+    NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
+    return compactionWriter.flushNonAlignedPage(
+        nonAlignedPageElement.getPageData(), nonAlignedPageElement.getPageHeader(), subTaskId);
+  }
+
   /**
    * NONE_DELETED means that no data on this page has been deleted. <br>
    * PARTIAL_DELETED means that there is data on this page been deleted. <br>

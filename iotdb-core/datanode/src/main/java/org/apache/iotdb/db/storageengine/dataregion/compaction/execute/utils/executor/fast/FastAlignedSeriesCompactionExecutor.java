@@ -361,6 +361,12 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     setForceDecoding(chunkMetadataElement);
   }
 
+  @Override
+  protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
+    return compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId);
+  }
+
   void setForceDecoding(ChunkMetadataElement chunkMetadataElement) {
     if (timeColumnMeasurementSchema.getCompressor()
             != chunkMetadataElement.chunk.getHeader().getCompressionType()
@@ -385,6 +391,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         return;
       }
     }
+  }
+
+  @Override
+  protected boolean flushPageToCompactionWriter(PageElement pageElement)
+      throws PageException, IOException {
+    AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
+    return compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
   }
 
   /**

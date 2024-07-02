@@ -25,10 +25,8 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.NonAlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -39,7 +37,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -185,21 +182,11 @@ public abstract class SeriesCompactionExecutor {
    * Flush chunk to target file directly. If the end time of chunk exceeds the end time of file or
    * the unsealed chunk is too small, then deserialize it.
    */
-  protected void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
+  private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    boolean success;
-    if (isAligned) {
-      success = compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId);
-    } else {
-      success =
-          compactionWriter.flushNonAlignedChunk(
-              chunkMetadataElement.chunk,
-              (ChunkMetadata) chunkMetadataElement.chunkMetadata,
-              subTaskId);
-    }
+    boolean success = flushChunkToCompactionWriter(chunkMetadataElement);
     if (success) {
       // flush chunk successfully, then remove this chunk
-      successFlushChunk(chunkMetadataElement);
       updateSummary(chunkMetadataElement, ChunkStatus.DIRECTORY_FLUSH);
       checkShouldRemoveFile(chunkMetadataElement);
     } else {
@@ -210,7 +197,8 @@ public abstract class SeriesCompactionExecutor {
     }
   }
 
-  protected void successFlushChunk(ChunkMetadataElement chunkMetadataElement) {}
+  protected abstract boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+      throws IOException;
 
   protected abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
@@ -227,13 +215,10 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, IllegalPathException;
 
   /** Compact pages in page queue. */
-  protected void compactPages()
+  private void compactPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
       PageElement firstPageElement = getPageFromPageQueue(pageQueue.peek().getStartTime());
-      if (firstPageElement.getStartTime() == 7000 && isFollowedBatch) {
-        System.out.println();
-      }
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
 
       if (modifiedStatus == ModifiedStatus.ALL_DELETED) {
@@ -262,20 +247,9 @@ public abstract class SeriesCompactionExecutor {
     }
   }
 
-  protected void compactWithNonOverlapPage(PageElement pageElement)
+  private void compactWithNonOverlapPage(PageElement pageElement)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    boolean success;
-    if (isAligned) {
-      AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success = compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
-    } else {
-      NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
-      success =
-          compactionWriter.flushNonAlignedPage(
-              nonAlignedPageElement.getPageData(),
-              nonAlignedPageElement.getPageHeader(),
-              subTaskId);
-    }
+    boolean success = flushPageToCompactionWriter(pageElement);
     if (success) {
       // flush the page successfully, then remove this page
       checkShouldRemoveFile(pageElement);
@@ -299,6 +273,9 @@ public abstract class SeriesCompactionExecutor {
       }
     }
   }
+
+  protected abstract boolean flushPageToCompactionWriter(PageElement pageElement)
+      throws PageException, IOException;
 
   /**
    * Compact a series of pages that overlap with each other. Eg: The parameters are page 1 and page

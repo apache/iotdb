@@ -41,5 +41,5 @@ public abstract class AbstractCompactionFlushController {
 
   public abstract boolean shouldCompactChunkByDirectlyFlush(IChunkMetadata chunkMetadata);
 
-  public abstract void successFlushChunk(IChunkMetadata chunkMetadata);
+  public abstract void nextChunk();
 }
