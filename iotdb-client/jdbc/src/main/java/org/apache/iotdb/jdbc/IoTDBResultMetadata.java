@@ -162,7 +162,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case DATE:
         return Date.class.getName();
       case BLOB:
-        return byte[].class.getName();
+        return "byte[]";
       default:
         break;
     }
@@ -281,6 +281,10 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case BLOB:
       case STRING:
         return Integer.MAX_VALUE;
+      case TIMESTAMP:
+        return 3;
+      case DATE:
+        return 0;
       default:
         break;
     }
