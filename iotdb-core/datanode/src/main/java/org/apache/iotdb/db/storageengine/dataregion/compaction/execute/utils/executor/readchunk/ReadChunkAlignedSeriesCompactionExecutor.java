@@ -224,9 +224,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valueChunks.set(idx, valueChunk);
     }
     summary.increaseProcessPointNum(pointNum);
-    if (timeChunk.getChunkMetadata().getStartTime() == 10000) {
-      System.out.println();
-    }
     if (flushController.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
       compactAlignedChunkByFlush(timeChunk, valueChunks);
@@ -310,13 +307,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         continue;
       }
 
-      if (this
-              instanceof
-              BatchedReadChunkAlignedSeriesCompactionExecutor
-                  .FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor
-          && timePage.getChunkMetadata().getStartTime() == 300000) {
-        System.out.println();
-      }
       if (flushController.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);

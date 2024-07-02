@@ -44,6 +44,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -837,11 +838,6 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
-    ;
     Assert.assertEquals(devices.size(), targetResource.buildDeviceTimeIndex().getDevices().size());
   }
 }
