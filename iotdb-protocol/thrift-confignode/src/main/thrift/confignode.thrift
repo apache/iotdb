@@ -388,18 +388,17 @@ struct TClusterParameters {
   5: required string schemaRegionConsensusProtocolClass
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
-  8: required i64 defaultTTL
-  9: required string readConsistencyLevel
-  10: required double schemaRegionPerDataNode
-  11: required double dataRegionPerDataNode
-  12: required i32 seriesPartitionSlotNum
-  13: required string seriesPartitionExecutorClass
-  14: required double diskSpaceWarningThreshold
-  15: required string timestampPrecision
-  16: optional string schemaEngineMode
-  17: optional i32 tagAttributeTotalSize
-  18: optional i32 databaseLimitThreshold
-  19: optional i64 timePartitionOrigin
+  8: required string readConsistencyLevel
+  9: required double schemaRegionPerDataNode
+  10: required double dataRegionPerDataNode
+  11: required i32 seriesPartitionSlotNum
+  12: required string seriesPartitionExecutorClass
+  13: required double diskSpaceWarningThreshold
+  14: required string timestampPrecision
+  15: optional string schemaEngineMode
+  16: optional i32 tagAttributeTotalSize
+  17: optional i32 databaseLimitThreshold
+  18: optional i64 timePartitionOrigin
 }
 
 struct TConfigNodeRegisterReq {

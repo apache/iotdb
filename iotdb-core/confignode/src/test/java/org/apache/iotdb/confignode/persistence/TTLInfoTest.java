@@ -78,7 +78,7 @@ public class TTLInfoTest {
     Map<String, Long> ttlMap = resp.getPathTTLMap();
 
     Map<String, Long> resultMap = new HashMap<>();
-    resultMap.put("root.**", ttl);
+    resultMap.put("root.**", Long.MAX_VALUE);
     Assert.assertEquals(resultMap, ttlMap);
     Assert.assertEquals(1, ttlInfo.getTTLCount());
 
@@ -175,7 +175,7 @@ public class TTLInfoTest {
     // unset ttl
     path = new PartialPath("root.**");
     ttlInfo.unsetTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), -1));
-    resultMap.put(path.getFullPath(), ttl);
+    resultMap.put(path.getFullPath(), Long.MAX_VALUE);
     Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(8, ttlInfo.getTTLCount());
 

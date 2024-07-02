@@ -112,10 +112,6 @@ public class ShowVariablesTask implements IConfigTask {
             TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DEFAULT_TTL, TSFileConfig.STRING_CHARSET),
-        new Binary(String.valueOf(clusterParameters.getDefaultTTL()), TSFileConfig.STRING_CHARSET));
-    buildTSBlock(
-        builder,
         new Binary(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL, TSFileConfig.STRING_CHARSET),
         new Binary(
             String.valueOf(clusterParameters.getReadConsistencyLevel()),
