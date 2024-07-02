@@ -105,13 +105,6 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
-    int ttlRuleCapacity =
-        Integer.parseInt(
-            properties.getProperty(
-                "ttl_rule_capacity", String.valueOf(config.getTTlRuleCapacity())));
-    ttlRuleCapacity = ttlRuleCapacity < 0 ? Integer.MAX_VALUE : ttlRuleCapacity;
-    config.setTTlRuleCapacity(ttlRuleCapacity);
-
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
