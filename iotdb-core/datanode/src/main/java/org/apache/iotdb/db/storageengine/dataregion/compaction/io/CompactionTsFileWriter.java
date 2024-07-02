@@ -56,6 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
+    setGenerateTableSchema(true);
   }
 
   public void markStartingWritingAligned() {

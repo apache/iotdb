@@ -268,6 +268,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -2934,8 +2935,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTables(String database) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<TsTable> tableList = DataNodeTableCache.getInstance().getTables(database);
-    ShowTablesTask.buildTsBlock(tableList, future);
+
+    Optional<List<TsTable>> tableList = DataNodeTableCache.getInstance().getTables(database);
+    if (tableList.isPresent()) {
+      ShowTablesTask.buildTsBlock(tableList.get(), future);
+    } else {
+      future.setException(
+          new IoTDBException(
+              String.format("Database %s doesn't exists.", database),
+              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+    }
     return future;
   }
 

@@ -43,7 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
@@ -77,11 +77,11 @@ public class TestMatadata implements Metadata {
   private static final String S2 = "s2";
   private static final String S3 = "s3";
   private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, INT64);
-  private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, BinaryType.TEXT);
-  private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, BinaryType.TEXT);
-  private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, BinaryType.TEXT);
-  private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, BinaryType.TEXT);
-  private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, BinaryType.TEXT);
+  private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
+  private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
+  private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, StringType.STRING);
+  private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, StringType.STRING);
+  private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, StringType.STRING);
   private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
   private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
   private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);

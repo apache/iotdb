@@ -45,7 +45,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
@@ -54,11 +57,26 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
+
+  private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+
+  private static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
+
+  static {
+    TABLE_ALLOWED_PROPERTIES.add(COLUMN_TTL.toLowerCase(Locale.ENGLISH));
+  }
 
   private final IClientSession clientSession;
 
@@ -107,9 +125,23 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getName().getPrefix().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     TsTable table = new TsTable(node.getName().getSuffix());
+    Map<String, String> map = new HashMap<>();
+    for (Property property : node.getProperties()) {
+      String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (TABLE_ALLOWED_PROPERTIES.contains(key) && !property.isSetToDefault()) {
+        Expression value = property.getNonDefaultValue();
+        if (!(value instanceof LongLiteral)) {
+          throw new SemanticException(
+              "TTL' value must be a LongLiteral, but now is: " + value.toString());
+        }
+        map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+      }
+    }
+    table.setProps(map);
+
     for (ColumnDefinition columnDefinition : node.getElements()) {
       TsTableColumnCategory category = columnDefinition.getColumnCategory();
       String columnName = columnDefinition.getName().getValue();
@@ -120,9 +152,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       TSDataType dataType = getDataType(columnDefinition.getType());
       switch (category) {
         case ID:
+          if (!TSDataType.STRING.equals(dataType)) {
+            throw new SemanticException(
+                "DataType of ID Column should only be STRING, current is " + dataType);
+          }
           table.addColumnSchema(new IdColumnSchema(columnName, dataType));
           break;
         case ATTRIBUTE:
+          if (!TSDataType.STRING.equals(dataType)) {
+            throw new SemanticException(
+                "DataType of ATTRIBUTE Column should only be STRING, current is " + dataType);
+          }
           table.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
           break;
         case TIME:
@@ -163,7 +203,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getDbName().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return new ShowTablesTask(database);
   }
@@ -176,7 +216,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getTable().getPrefix().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return new DescribeTableTask(database, node.getTable().getSuffix());
   }

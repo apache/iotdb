@@ -187,7 +187,16 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public boolean execute(String sql) throws SQLException {
-    return writeStatement.execute(sql);
+    sql = sql.trim();
+    boolean result = writeStatement.execute(sql);
+    // if use XXXX, sendRequest to all statements
+    if (sql.length() > 4 && "use ".equalsIgnoreCase(sql.substring(0, 4))) {
+      for (Statement readStatement : readStatements) {
+        boolean tmp = readStatement.execute(sql);
+        result = result && tmp;
+      }
+    }
+    return result;
   }
 
   @Override

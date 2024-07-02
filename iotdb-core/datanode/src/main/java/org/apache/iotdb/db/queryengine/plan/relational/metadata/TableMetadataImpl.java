@@ -169,7 +169,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function: "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text data type.");
+                + " only supports text or string data type.");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -183,7 +183,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function"
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text data type.");
+                + " only supports text or string data type.");
       }
       return argumentTypes.get(0);
     }

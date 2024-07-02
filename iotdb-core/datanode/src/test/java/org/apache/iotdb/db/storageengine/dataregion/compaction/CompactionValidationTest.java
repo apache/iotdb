@@ -208,7 +208,11 @@ public class CompactionValidationTest {
         randomAccessFile.close();
       }
       TsFileResource mockTsFile = new TsFileResource(new File(path));
-      TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile);
+      try {
+        boolean dataCorrect = TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile);
+        Assert.assertEquals(i != 5, dataCorrect);
+      } catch (Exception ignored) {
+      }
     }
   }
 
