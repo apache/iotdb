@@ -523,13 +523,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
-          planBuilder
-              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
-              .planLimit(limit)
-              .planOffset(offset);
+          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
       if (showTimeSeriesStatement.hasOrderByComponent()) {
         planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
       }
+      planBuilder.planLimit(limit).planOffset(offset);
       return planBuilder.getRoot();
     }
 
@@ -571,13 +569,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       hasOrderBy = false;
     }
 
+    if (hasOrderBy) {
+      planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
+    }
     if (!canPushDownOffsetLimit) {
       planBuilder
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit());
-    }
-    if (hasOrderBy) {
-      planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
     }
 
     return planBuilder.getRoot();
@@ -593,14 +591,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 .getTypeProvider()
                 .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     if (showDevicesStatement.hasTimeCondition()) {
-      planBuilder =
-          planBuilder
-              .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+      planBuilder.planDeviceRegionScan(analysis.getDevicePathToContextMap(), false);
       if (showDevicesStatement.hasOrderByComponent()) {
         planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
       }
+      planBuilder
+          .planLimit(showDevicesStatement.getLimit())
+          .planOffset(showDevicesStatement.getOffset());
       return planBuilder.getRoot();
     }
 
@@ -629,14 +626,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showDevicesStatement.getAuthorityScope())
             .planSchemaQueryMerge(false);
 
+    if (showDevicesStatement.hasOrderByComponent()) {
+      planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
+    }
     if (!canPushDownOffsetLimit) {
       planBuilder
           .planOffset(showDevicesStatement.getOffset())
           .planLimit(showDevicesStatement.getLimit());
     }
-    if (showDevicesStatement.hasOrderByComponent()) {
-      planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
-    }
+
     return planBuilder.getRoot();
   }
 
