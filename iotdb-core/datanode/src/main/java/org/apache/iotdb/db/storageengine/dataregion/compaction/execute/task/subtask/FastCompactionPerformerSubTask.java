@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedFastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.NonAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastNonAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -125,8 +125,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
   public Void call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (!isAligned) {
-      NonAlignedSeriesCompactionExecutor seriesCompactionExecutor =
-          new NonAlignedSeriesCompactionExecutor(
+      FastNonAlignedSeriesCompactionExecutor seriesCompactionExecutor =
+          new FastNonAlignedSeriesCompactionExecutor(
               compactionWriter,
               readerCacheMap,
               modificationCacheMap,

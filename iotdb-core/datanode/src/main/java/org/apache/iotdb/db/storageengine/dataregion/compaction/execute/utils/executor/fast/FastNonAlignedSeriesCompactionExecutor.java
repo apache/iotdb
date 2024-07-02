@@ -55,7 +55,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
+public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   private boolean hasStartMeasurement = false;
 
   private CompressionType seriesCompressionType = null;
@@ -69,7 +69,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   // it is used to initialize the fileList when compacting a new series
   private final List<TsFileResource> sortResources;
 
-  public NonAlignedSeriesCompactionExecutor(
+  public FastNonAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
