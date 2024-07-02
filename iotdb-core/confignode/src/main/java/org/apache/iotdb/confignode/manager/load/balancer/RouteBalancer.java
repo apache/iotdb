@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.GreedyLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFlowLeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.RandomLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.GreedyPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.LeaderPriorityBalancer;
@@ -124,6 +125,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     switch (CONF.getLeaderDistributionPolicy()) {
       case AbstractLeaderBalancer.GREEDY_POLICY:
         this.leaderBalancer = new GreedyLeaderBalancer();
+        break;
+      case AbstractLeaderBalancer.RANDOM_POLICY:
+        this.leaderBalancer = new RandomLeaderBalancer();
         break;
       case AbstractLeaderBalancer.CFD_POLICY:
       default:

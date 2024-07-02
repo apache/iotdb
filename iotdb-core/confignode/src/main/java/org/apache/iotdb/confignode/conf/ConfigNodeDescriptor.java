@@ -318,7 +318,8 @@ public class ConfigNodeDescriptor {
             .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
             .trim();
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)) {
+        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.RANDOM_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
