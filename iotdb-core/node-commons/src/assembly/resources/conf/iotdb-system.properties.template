@@ -1011,12 +1011,6 @@ merge_threshold_of_explain_analyze=10
 ### TTL Configuration
 ####################
 
-# The maximum number of TTL rules stored in the system, the default is 1000.
-# effectiveMode: restart
-# Negative value means the threshold is unlimited.
-# Datatype: int
-ttl_rule_capacity=1000
-
 # The interval of TTL check task in each database. The TTL check task will inspect and select files with a higher volume of expired data for compaction. Default is 2 hours.
 # Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
 # effectiveMode: restart
