@@ -30,7 +30,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -75,7 +74,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   protected void setUpConfig() {
     super.setUpConfig();
 
-    // Shorten heartbeat and sync interval to avoid timeout of query mode test
+    // Shorten heartbeat and sync interval to avoid timeout of snapshot mode test
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -531,31 +530,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicInvalidPathConfig() throws Exception {
-    // Test invalid path when using tsfile format
-    // NOTE: Delete this test after the restriction "on path/time range/processor when subscribing
-    // to tsfile" is removed.
-    final Properties config = new Properties();
-    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-    config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-    testTopicInvalidRuntimeConfigTemplate("topic9", config);
-  }
-
-  @Test
-  public void testTopicInvalidProcessorConfig() throws Exception {
-    // Test invalid processor when using tsfile format
-    // NOTE: Delete this test after the restriction "on path/time range/processor when subscribing
-    // to tsfile" is removed.
-    final Properties config = new Properties();
-    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-    config.put("processor", "tumbling-time-sampling-processor");
-    config.put("processor.tumbling-time.interval-seconds", "1");
-    config.put("processor.down-sampling.split-file", "true");
-    testTopicInvalidRuntimeConfigTemplate("topic10", config);
-  }
-
-  @Test
-  public void testTopicWithQueryMode() throws Exception {
+  public void testTopicWithSnapshotMode() throws Exception {
     // Insert some historical data
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -576,7 +551,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       session.createTopic(topicName, config);
     } catch (final Exception e) {
       e.printStackTrace();
@@ -680,7 +655,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_TIME_AND_PATH_VALUE);
+      config.put(TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_ALL_VALUE);
       config.put(TopicConstant.PATH_KEY, "root.db.d1.at1");
       config.put(TopicConstant.START_TIME_KEY, "1500");
       config.put(TopicConstant.END_TIME_KEY, "2500");
@@ -693,7 +668,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     final AtomicBoolean dataPrepared = new AtomicBoolean(false);
     final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
-    final AtomicBoolean result = new AtomicBoolean(false);
+    final AtomicBoolean finished = new AtomicBoolean(false);
     final List<Thread> threads = new ArrayList<>();
 
     // Subscribe on sender
@@ -712,7 +687,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
                 topicSubscribed.set(true);
-                while (!result.get()) {
+                while (!finished.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   if (dataPrepared.get()) {
                     final List<SubscriptionMessage> messages =
@@ -781,105 +756,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   }));
     }
 
-    result.set(true);
-    for (final Thread thread : threads) {
-      thread.join();
-    }
-  }
-
-  private void testTopicInvalidRuntimeConfigTemplate(
-      final String topicName, final Properties config) throws Exception {
-    // Create topic
-    final String host = senderEnv.getIP();
-    final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
-      session.open();
-      session.createTopic(topicName, config);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    assertTopicCount(1);
-
-    final AtomicBoolean dataPrepared = new AtomicBoolean(false);
-    final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
-    final AtomicBoolean result = new AtomicBoolean(false);
-    final List<Thread> threads = new ArrayList<>();
-
-    // Subscribe on sender
-    threads.add(
-        new Thread(
-            () -> {
-              final AtomicInteger retryCount = new AtomicInteger();
-              final int maxRetryTimes = 32;
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
-                      .host(host)
-                      .port(port)
-                      .consumerId("c1")
-                      .consumerGroupId("cg1")
-                      .autoCommit(false)
-                      .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
-                      .buildPullConsumer()) {
-                consumer.open();
-                consumer.subscribe(topicName);
-                topicSubscribed.set(true);
-                while (retryCount.getAndIncrement() < maxRetryTimes) {
-                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
-                  if (dataPrepared.get()) {
-                    final List<SubscriptionMessage> messages =
-                        consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
-                    consumer.commitSync(messages);
-                  }
-                }
-                consumer.unsubscribe(topicName);
-              } catch (final SubscriptionRuntimeCriticalException e) {
-                result.set(true);
-              } catch (final Exception e) {
-                e.printStackTrace();
-                // Avoid failure
-              } finally {
-                LOGGER.info("consumer exiting...");
-              }
-            },
-            String.format("%s - consumer", testName.getMethodName())));
-
-    // Insert some realtime data on sender
-    threads.add(
-        new Thread(
-            () -> {
-              while (!topicSubscribed.get()) {
-                LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
-              }
-              try (final ISession session = senderEnv.getSessionConnection()) {
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-                }
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d2(time, s) values (%s, 1)", i));
-                }
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d3(time, t) values (%s, 1)", i));
-                }
-                session.executeNonQueryStatement("flush");
-              } catch (final Exception e) {
-                e.printStackTrace();
-                fail(e.getMessage());
-              }
-              dataPrepared.set(true);
-            },
-            String.format("%s - data inserter", testName.getMethodName())));
-
-    for (final Thread thread : threads) {
-      thread.start();
-    }
-
-    // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
-    AWAIT.untilTrue(result);
-
+    finished.set(true);
     for (final Thread thread : threads) {
       thread.join();
     }
