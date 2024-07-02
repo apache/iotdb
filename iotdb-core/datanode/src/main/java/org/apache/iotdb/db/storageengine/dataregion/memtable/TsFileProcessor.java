@@ -554,13 +554,24 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
 
+    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+        insertTabletNode.splitByDevice(start, end);
     tsFileResource.updateStartTime(
-        insertTabletNode.getDeviceID(), insertTabletNode.getTimes()[start]);
-    // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
-    // For unsequence tsfile, we have to update the endTime for each insertion.
+        deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
     if (!sequence) {
+      // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
+      // For unsequence tsfile, we have to update the endTime for each insertion.
       tsFileResource.updateEndTime(
-          insertTabletNode.getDeviceID(), insertTabletNode.getTimes()[end - 1]);
+          deviceEndOffsetPairs.get(0).left,  deviceEndOffsetPairs.get(0).right);
+    }
+    for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
+      // the end offset of i - 1 is the start offset of i
+      tsFileResource.updateStartTime(
+          deviceEndOffsetPairs.get(i).left, deviceEndOffsetPairs.get(i - 1).right);
+      if (!sequence) {
+        tsFileResource.updateEndTime(
+            deviceEndOffsetPairs.get(i).left,  deviceEndOffsetPairs.get(i).right);
+      }
     }
 
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
@@ -914,7 +925,7 @@ public class TsFileProcessor {
     } else {
       incomingPointNum = end - start;
       for (TSStatus result : results) {
-        if (result != null) {
+        if (result != null && result.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           incomingPointNum--;
         }
       }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -745,7 +746,8 @@ public abstract class AlignedTVList extends TVList {
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
-                || results != null && results[idx + i] != null) {
+                || results != null && results[idx + i] != null && results[idx
+                 + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -762,7 +764,8 @@ public abstract class AlignedTVList extends TVList {
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
-                || results != null && results[idx + i] != null) {
+                || results != null && results[idx + i] != null && results[idx
+                + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }

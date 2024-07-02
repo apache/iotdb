@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -100,7 +101,7 @@ public class MemUtils {
     long memSize = 0;
     memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
-      if (results == null || results[i] == null) {
+      if (results == null || results[i] == null || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         memSize += RamUsageEstimator.sizeOf(column[i].getValues());
       }
     }
@@ -141,7 +142,9 @@ public class MemUtils {
         memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
       } else {
         for (int j = start; j < end; j++) {
-          memSize += insertTabletNode.getDataTypes()[i].getDataTypeSize();
+          if (results[j] == null || results[j].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            memSize += insertTabletNode.getDataTypes()[i].getDataTypeSize();
+          }
         }
       }
     }

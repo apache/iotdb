@@ -19,18 +19,23 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
+
+import java.util.Arrays;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -42,6 +47,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -113,6 +121,10 @@ public class DataRegionTest {
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
+    DataNodeTableCache.getInstance().preCreateTable(dataRegion.getDatabaseName(),
+        StatementTestUtils.genTsTable());
+    DataNodeTableCache.getInstance().commitCreateTable(dataRegion.getDatabaseName(),
+        StatementTestUtils.tableName());
   }
 
   @After
@@ -244,6 +256,43 @@ public class DataRegionTest {
             null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testRelationalTabletWriteAndSyncClose()
+      throws QueryProcessException, WriteProcessException {
+    RelationalInsertTabletNode insertTabletNode1 = genInsertTabletNode(10, 0);
+    dataRegion.insertTablet(insertTabletNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    RelationalInsertTabletNode insertTabletNode2 = genInsertTabletNode(10, 10);
+    dataRegion.insertTablet(insertTabletNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    String measurementName = "m1";
+    MeasurementSchema measurementSchema = new MeasurementSchema(measurementName, TSDataType.DOUBLE);
+    final IDeviceID deviceID1 = insertTabletNode1.getDeviceID(0);
+    final IDeviceID deviceID2 = insertTabletNode2.getDeviceID(0);
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new AlignedFullPath(deviceID1,
+                Collections.singletonList(measurementName), Collections.singletonList(measurementSchema))),
+            deviceID1, context, null, null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+
+    queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new AlignedFullPath(deviceID2,
+                Collections.singletonList(measurementName), Collections.singletonList(measurementSchema))),
+            deviceID2, context, null, null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }

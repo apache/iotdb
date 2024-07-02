@@ -254,8 +254,8 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
 
     @Override
-    public PlanNode visitRelationalInsertTablet(RelationalInsertTabletNode node,
-        RewriterContext context) {
+    public PlanNode visitRelationalInsertTablet(
+        RelationalInsertTabletNode node, RewriterContext context) {
       return node;
     }
 

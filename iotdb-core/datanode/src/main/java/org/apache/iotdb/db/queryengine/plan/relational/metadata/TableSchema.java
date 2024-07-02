@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
@@ -65,6 +66,9 @@ public class TableSchema {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     List<ColumnType> columnTypes = new ArrayList<>();
     for (ColumnSchema column : columns) {
+      if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
+        continue;
+      }
       measurementSchemas.add(
           new MeasurementSchema(
               column.getName(), InternalTypeManager.getTSDataType(column.getType())));
