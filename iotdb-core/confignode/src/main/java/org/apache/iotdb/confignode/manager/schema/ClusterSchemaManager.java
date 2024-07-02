@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -394,7 +393,7 @@ public class ClusterSchemaManager {
     for (String database : databases) {
       try {
         long ttl = getDatabaseSchemaByName(database).getTTL();
-        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+        if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }
         infoMap.put(database, ttl);

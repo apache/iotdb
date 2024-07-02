@@ -94,7 +94,7 @@ public class CommonDescriptor {
     }
     tierTTLStr =
         properties
-            .getProperty("default_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
+            .getProperty("tier_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
             .split(IoTDBConstant.TIER_SEPARATOR);
     long[] tierTTL = new long[tierTTLStr.length];
     for (int i = 0; i < tierTTL.length; ++i) {

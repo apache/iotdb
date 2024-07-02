@@ -137,7 +137,6 @@ public class ColumnHeaderConstant {
       "SchemaRegionConsensusProtocolClass";
   public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
   public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
-  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
   public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
   public static final String DATA_REGION_PER_DATA_NODE = "DataRegionPerDataNode";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";

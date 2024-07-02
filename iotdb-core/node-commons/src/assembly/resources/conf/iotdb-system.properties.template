@@ -1008,6 +1008,30 @@ sort_buffer_size_in_bytes=1048576
 merge_threshold_of_explain_analyze=10
 
 ####################
+### TTL Configuration
+####################
+
+# The interval of TTL check task in each database. The TTL check task will inspect and select files with a higher volume of expired data for compaction. Default is 2 hours.
+# Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
+# effectiveMode: restart
+# Unit: ms
+# Datatype: int
+ttl_check_interval=7200000
+
+# The maximum expiring time of device which has a ttl. Default is 1 month.
+# If the data elapsed time (current timestamp minus the maximum data timestamp of the device in the file) of such devices exceeds this value, then the file will be cleaned by compaction.
+# Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
+# effectiveMode: restart
+# Unit: ms
+# Datatype: int
+max_expired_time=2592000000
+
+# The expired device ratio. If the ratio of expired devices in one file exceeds this value, then expired data of this file will be cleaned by compaction.
+# effectiveMode: restart
+# Datatype: float
+expired_data_ratio=0.3
+
+####################
 ### Storage Engine Configuration
 ####################
 
@@ -1021,34 +1045,6 @@ timestamp_precision=ms
 # effectiveMode: first_start
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
-
-# Default TTL for databases that are not set TTL by statements, If not set (default), the TTL will be unlimited.
-# Negative value means the TTL is unlimited.
-# Notice: if this property is changed, previous created database which are not set TTL will also be affected.
-# effectiveMode: restart
-# Datatype: long
-# Unit: ms
-default_ttl_in_ms=-1
-
-# The interval of TTL check task in each database. The TTL check task will inspect and select files with a higher volume of expired data for compaction. Default is 2 hours.
-# Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
-# effectiveMode: restart
-# Unit: ms
-# Datatype: int
-ttl_check_interval=7200000
-
-# The maximum expiring time of devices that have a ttl. Default is 1 month.
-# If the data elapsed time (current timestamp minus the maximum data timestamp of the device in the file) of such devices exceeds this value, then the file will be cleaned by compaction.
-# Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
-# effectiveMode: restart
-# Unit: ms
-# Datatype: int
-max_expired_time=2592000000
-
-# The expired device ratio. If the ratio of expired devices in one file exceeds this value, then expired data of this file will be cleaned by compaction.
-# effectiveMode: restart
-# Datatype: float
-expired_data_ratio=0.3
 
 # When the waiting time (in ms) of an inserting exceeds this, throw an exception. 10000 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger
@@ -1148,6 +1144,13 @@ recovery_log_interval_in_ms=5000
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_tsfile_validation=false
+
+# Default tier TTL. When the survival time of the data exceeds the threshold, it will be migrated to the next tier.
+# Negative value means the tier TTL is unlimited.
+# effectiveMode: restart
+# Datatype: long
+# Unit: ms
+tier_ttl_in_ms=-1
 
 ####################
 ### Compaction Configurations

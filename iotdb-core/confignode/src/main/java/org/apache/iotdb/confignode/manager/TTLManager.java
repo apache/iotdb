@@ -57,7 +57,7 @@ public class TTLManager {
   public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe)
       throws IllegalPathException {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
-    if (ttl <= 0) {
+    if (ttl < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
       errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
@@ -79,7 +79,7 @@ public class TTLManager {
               path.getFullPath()));
       return errorStatus;
     }
-    if (setTTLPlan.getTTL() <= 0) {
+    if (setTTLPlan.getTTL() < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
       errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
