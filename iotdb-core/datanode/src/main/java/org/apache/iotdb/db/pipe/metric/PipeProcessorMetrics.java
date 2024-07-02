@@ -167,9 +167,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!processorMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe processor metrics, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      // Allow calls from schema region tasks
       return;
     }
     if (Objects.nonNull(metricService)) {
