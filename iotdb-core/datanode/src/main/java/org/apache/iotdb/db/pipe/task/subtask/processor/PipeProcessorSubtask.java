@@ -221,6 +221,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   public void close() {
+    // Always deregister the metrics to avoid the deletion of the data region
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
