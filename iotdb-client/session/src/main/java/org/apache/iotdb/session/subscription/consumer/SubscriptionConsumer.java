@@ -545,10 +545,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
-      if (Math.random() < 1.0 / 2.0) {
-        throw new SubscriptionRuntimeNonCriticalException("random crash");
-      }
-
       switch (SubscriptionPollResponseType.valueOf(responseType)) {
         case FILE_PIECE:
           {
