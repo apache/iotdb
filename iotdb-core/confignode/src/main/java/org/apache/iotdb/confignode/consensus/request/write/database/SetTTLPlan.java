@@ -119,13 +119,4 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   public void setDataBase(boolean dataBase) {
     isDataBase = dataBase;
   }
-
-  @Override
-  public String toString() {
-    return "SetTTLPlan{" +
-        "pathPattern=" + Arrays.toString(pathPattern) +
-        ", isDataBase=" + isDataBase +
-        ", TTL=" + TTL +
-        '}';
-  }
 }
