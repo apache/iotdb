@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -36,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -54,7 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.HashMap;
@@ -66,7 +63,6 @@ import java.util.Set;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
@@ -150,34 +146,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       TSDataType dataType = getDataType(columnDefinition.getType());
-      switch (category) {
-        case ID:
-          if (!TSDataType.STRING.equals(dataType)) {
-            throw new SemanticException(
-                "DataType of ID Column should only be STRING, current is " + dataType);
-          }
-          table.addColumnSchema(new IdColumnSchema(columnName, dataType));
-          break;
-        case ATTRIBUTE:
-          if (!TSDataType.STRING.equals(dataType)) {
-            throw new SemanticException(
-                "DataType of ATTRIBUTE Column should only be STRING, current is " + dataType);
-          }
-          table.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
-          break;
-        case TIME:
-          break;
-        case MEASUREMENT:
-          table.addColumnSchema(
-              new MeasurementColumnSchema(
-                  columnName,
-                  dataType,
-                  getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor()));
-          break;
-        default:
-          throw new IllegalArgumentException();
-      }
+      TableHeaderSchemaValidator.generateColumnSchema(table, category, columnName, dataType);
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
