@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -46,7 +47,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
@@ -423,5 +426,52 @@ public class CommonUtils {
    */
   public static boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  }
+
+  public static Object createValueColumnOfDataType(
+      TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
+    Object valueColumn;
+    switch (dataType) {
+      case INT32:
+        valueColumn = new int[rowNum];
+        break;
+      case INT64:
+      case TIMESTAMP:
+        valueColumn = new long[rowNum];
+        break;
+      case FLOAT:
+        valueColumn = new float[rowNum];
+        break;
+      case DOUBLE:
+        valueColumn = new double[rowNum];
+        break;
+      case BOOLEAN:
+        valueColumn = new boolean[rowNum];
+        break;
+      case TEXT:
+      case STRING:
+        if (columnCategory.equals(TsTableColumnCategory.MEASUREMENT)) {
+          valueColumn = new Binary[rowNum];
+        } else {
+          valueColumn = new String[rowNum];
+        }
+        break;
+      case BLOB:
+        valueColumn = new Binary[rowNum];
+        break;
+      case DATE:
+        valueColumn = new LocalDate[rowNum];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+    return valueColumn;
+  }
+
+  public static void swapArray(Object[] array, int i, int j) {
+    Object tmp = array[i];
+    array[i] = array[j];
+    array[j] = tmp;
   }
 }

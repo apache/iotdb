@@ -33,7 +33,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -406,6 +409,47 @@ public abstract class InsertBaseStatement extends Statement {
         }
       }
     }
+  }
+
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    if (measurementSchemas != null) {
+      MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
+      System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
+      tmp[pos] =
+          new MeasurementSchema(
+              columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
+      System.arraycopy(measurementSchemas, pos, tmp, pos + 1, measurementSchemas.length - pos);
+      measurementSchemas = tmp;
+    }
+
+    String[] tmpMeasurements = new String[measurements.length + 1];
+    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
+    tmpMeasurements[pos] = columnSchema.getName();
+    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
+    measurements = tmpMeasurements;
+
+    TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
+    System.arraycopy(dataTypes, 0, tmpTypes, 0, pos);
+    tmpTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
+    System.arraycopy(dataTypes, pos, tmpTypes, pos + 1, dataTypes.length - pos);
+    dataTypes = tmpTypes;
+
+    TsTableColumnCategory[] tmpCategories = new TsTableColumnCategory[columnCategories.length + 1];
+    System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
+    tmpCategories[pos] = columnSchema.getColumnCategory();
+    System.arraycopy(columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
+    columnCategories = tmpCategories;
+    idColumnIndices = null;
+  }
+
+  public void swapColumn(int src, int target) {
+    if (measurementSchemas != null) {
+      CommonUtils.swapArray(measurementSchemas, src, target);
+    }
+    CommonUtils.swapArray(measurements, src, target);
+    CommonUtils.swapArray(dataTypes, src, target);
+    CommonUtils.swapArray(columnCategories, src, target);
+    idColumnIndices = null;
   }
   // endregion
 }

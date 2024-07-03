@@ -31,8 +31,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -467,5 +469,43 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     return deviceIDs[rowIdx];
+  }
+
+  @Override
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    super.insertColumn(pos, columnSchema);
+
+    if (bitMaps != null) {
+      BitMap[] tmpBitmaps = new BitMap[bitMaps.length + 1];
+      System.arraycopy(bitMaps, 0, tmpBitmaps, 0, pos);
+      tmpBitmaps[pos] = new BitMap(rowCount);
+      for (int i = 0; i < rowCount; i++) {
+        tmpBitmaps[pos].mark(i);
+      }
+      System.arraycopy(bitMaps, pos, tmpBitmaps, pos + 1, bitMaps.length - pos);
+      bitMaps = tmpBitmaps;
+    }
+
+    Object[] tmpColumns = new Object[columns.length + 1];
+    System.arraycopy(columns, 0, tmpColumns, 0, pos);
+    tmpColumns[pos] =
+        CommonUtils.createValueColumnOfDataType(
+            InternalTypeManager.getTSDataType(columnSchema.getType()),
+            columnSchema.getColumnCategory(),
+            rowCount);
+    System.arraycopy(columns, pos, tmpColumns, pos + 1, columns.length - pos);
+    columns = tmpColumns;
+
+    deviceIDs = null;
+  }
+
+  @Override
+  public void swapColumn(int src, int target) {
+    super.swapColumn(src, target);
+    if (bitMaps != null) {
+      CommonUtils.swapArray(bitMaps, src, target);
+    }
+    CommonUtils.swapArray(columns, src, target);
+    deviceIDs = null;
   }
 }

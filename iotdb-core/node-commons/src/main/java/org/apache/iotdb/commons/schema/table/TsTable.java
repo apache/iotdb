@@ -160,4 +160,17 @@ public class TsTable {
   public int hashCode() {
     return Objects.hash(tableName);
   }
+
+  @Override
+  public String toString() {
+    return "TsTable{"
+        + "tableName='"
+        + tableName
+        + '\''
+        + ", columnSchemaMap="
+        + columnSchemaMap
+        + ", props="
+        + props
+        + '}';
+  }
 }

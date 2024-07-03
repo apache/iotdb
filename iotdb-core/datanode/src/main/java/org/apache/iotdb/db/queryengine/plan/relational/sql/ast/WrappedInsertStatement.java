@@ -84,23 +84,25 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     }
     // incoming schema should contain all id columns in real schema and have consistent order
     final List<ColumnSchema> realIdColumns = realSchema.getIdColumns();
-    final List<ColumnSchema> incomingIdColumns = incomingTableSchema.getIdColumns();
-    if (realIdColumns.size() > incomingIdColumns.size()) {
-      throw new QueryProcessException(
-          new SemanticException(
-              String.format(
-                  "The incoming id columns " + "conflicts " + "with existing ones: %s v.s. %s",
-                  incomingIdColumns, realIdColumns)));
-    }
-    for (int i = 0; i < realIdColumns.size(); i++) {
-      if (!realIdColumns.get(i).equals(incomingIdColumns.get(i))) {
-        throw new QueryProcessException(
-            new SemanticException(
-                String.format(
-                    "The incoming id columns " + "conflicts " + "with existing ones: %s v.s. %s",
-                    incomingIdColumns, realIdColumns)));
+    adjustIdColumns(realIdColumns);
+  }
+
+  public void adjustIdColumns(List<ColumnSchema> realColumnSchemas) {
+    List<ColumnSchema> incomingColumnSchemas = getTableSchema().getIdColumns();
+    final InsertBaseStatement baseStatement = getInnerTreeStatement();
+    for (int realIdColPos = 0; realIdColPos < realColumnSchemas.size(); realIdColPos++) {
+      ColumnSchema realColumn = realColumnSchemas.get(realIdColPos);
+      int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
+      if (incomingIdColPos == -1) {
+        // if the realIdColPos-th id column in the table is missing, insert an empty column in the
+        // tablet
+        baseStatement.insertColumn(realIdColPos, realColumn);
+      } else {
+        // move the id column in the tablet to the proper position
+        baseStatement.swapColumn(incomingIdColPos, realIdColPos);
       }
     }
+    tableSchema = null;
   }
 
   public static void validate(ColumnSchema incoming, ColumnSchema real) {
