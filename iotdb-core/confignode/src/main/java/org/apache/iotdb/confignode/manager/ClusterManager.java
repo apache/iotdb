@@ -206,7 +206,7 @@ public class ClusterManager {
         (AsyncRequestContext<Object, TSStatus, CnToCnNodeRequestType, TConfigNodeLocation>
                 handler) ->
             CnToCnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+                .sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> badConfigNodeConnectionResult(
@@ -230,7 +230,7 @@ public class ClusterManager {
         CnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation> handler) ->
             CnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+                .sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> badDataNodeConnectionResult(
