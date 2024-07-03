@@ -140,9 +140,20 @@ public class DataPartition extends Partition {
    * <p>The device id shall be [table, seg1, ....]
    */
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceID, Filter timeFilter) {
-    // TODO implement this interface, @Potato
-    throw new UnsupportedOperationException();
+      String database, IDeviceID deviceId, Filter timeFilter) {
+    // TODO perfect this interface, @Potato
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
+    if (!dataPartitionMap.containsKey(database)
+        || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+    return dataPartitionMap.get(database).get(seriesPartitionSlot).entrySet().stream()
+        .filter(
+            entry ->
+                TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
+        .flatMap(entry -> entry.getValue().stream())
+        .distinct()
+        .collect(toList());
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSet(

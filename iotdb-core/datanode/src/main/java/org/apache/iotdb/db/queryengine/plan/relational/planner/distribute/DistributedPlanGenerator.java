@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType;
@@ -44,15 +45,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 
 public class DistributedPlanGenerator
@@ -90,6 +94,7 @@ public class DistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitOutput(OutputNode outputNode, PlanContext context) {
+    // TODO only consider the order of IDs
     context.expectedOrderingScheme =
         new OrderingScheme(
             outputNode.getOutputSymbols(),
@@ -152,6 +157,7 @@ public class DistributedPlanGenerator
   @Override
   public List<PlanNode> visitSort(SortNode sortNode, PlanContext context) {
     context.expectedOrderingScheme = sortNode.getOrderingScheme();
+    context.hasSortNode = true;
 
     List<PlanNode> childrenNodes = sortNode.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
@@ -234,43 +240,100 @@ public class DistributedPlanGenerator
       }
     }
 
-    int i = 0;
-    if (tableScanNodeMap.size() > 1) {
-      context.hasExchangeNode = true;
-      List<Symbol> orderBy = node.getOutputSymbols().subList(0, 1);
-      Map<Symbol, SortOrder> orderings =
-          Collections.singletonMap(node.getOutputSymbols().get(0), SortOrder.ASC_NULLS_LAST);
-      OrderingScheme orderingScheme = new OrderingScheme(orderBy, orderings);
-      MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              queryContext.getQueryId().genPlanNodeId(), orderingScheme, node.getOutputSymbols());
+    context.hasExchangeNode = tableScanNodeMap.size() > 1;
 
-      for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
-        TRegionReplicaSet regionReplicaSet = entry.getKey();
-        TableScanNode subTableScanNode = entry.getValue();
-        subTableScanNode.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
-        subTableScanNode.setRegionReplicaSet(regionReplicaSet);
-        context.nodeDistributionMap.put(
-            subTableScanNode.getPlanNodeId(),
-            new NodeDistribution(SAME_WITH_ALL_CHILDREN, regionReplicaSet));
+    List<PlanNode> tableScanNodeList = new ArrayList<>();
+    TRegionReplicaSet mostUsedDataRegion = null;
+    int maxDeviceEntrySizeOfTableScan = 0;
+    for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
+      TRegionReplicaSet regionReplicaSet = entry.getKey();
+      TableScanNode subTableScanNode = entry.getValue();
+      subTableScanNode.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
+      subTableScanNode.setRegionReplicaSet(regionReplicaSet);
+      tableScanNodeList.add(subTableScanNode);
 
-        // TODO not use 0 replica set as root replica?
-        if (i == 0) {
-          mergeSortNode.addChild(subTableScanNode);
-          context.nodeDistributionMap.put(
-              mergeSortNode.getPlanNodeId(),
-              new NodeDistribution(SAME_WITH_ALL_CHILDREN, regionReplicaSet));
-        } else {
-          ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
-          exchangeNode.addChild(subTableScanNode);
-          mergeSortNode.addChild(exchangeNode);
-        }
-        i++;
+      if (mostUsedDataRegion == null
+          || subTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
+        mostUsedDataRegion = regionReplicaSet;
+        maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
       }
-      return Collections.singletonList(mergeSortNode);
-    } else {
-      return Collections.singletonList(tableScanNodeMap.entrySet().iterator().next().getValue());
     }
+    context.mostUsedDataRegion = mostUsedDataRegion;
+
+    List<Symbol> newOrderingSymbols = new ArrayList<>();
+    List<SortOrder> newSortOrders = new ArrayList<>();
+    OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
+
+    for (Symbol symbol : expectedOrderingScheme.getOrderBy()) {
+      if (!context.hasSortNode && TIME.equalsIgnoreCase(symbol.getName())) {
+        continue;
+      }
+
+      if (!node.getIdAndAttributeIndexMap().containsKey(symbol)) {
+        break;
+      }
+
+      newOrderingSymbols.add(symbol);
+      newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
+    }
+
+    List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
+    for (Symbol symbol : newOrderingSymbols) {
+      int idx = node.getIdAndAttributeIndexMap().get(symbol);
+      if (node.getAssignments().get(symbol).getColumnCategory() == TsTableColumnCategory.ID) {
+        // segments[0] is always tableName
+        orderingRules.add(deviceEntry -> (String) deviceEntry.getDeviceID().getSegments()[idx + 1]);
+      } else {
+        orderingRules.add(deviceEntry -> deviceEntry.getAttributeColumnValues().get(idx));
+      }
+    }
+
+    Comparator<DeviceEntry> comparator;
+    if (newSortOrders.get(0).isNullsFirst()) {
+      if (newSortOrders.get(0).isAscending()) {
+        comparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0)));
+      } else {
+        comparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0))).reversed();
+      }
+    } else {
+      if (newSortOrders.get(0).isAscending()) {
+        comparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(0)));
+      } else {
+        comparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(0))).reversed();
+      }
+    }
+    for (int i = 1; i < orderingRules.size(); i++) {
+      Comparator<DeviceEntry> thenComparator;
+      if (newSortOrders.get(i).isNullsFirst()) {
+        if (newSortOrders.get(i).isAscending()) {
+          thenComparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i)));
+        } else {
+          thenComparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
+        }
+      } else {
+        if (newSortOrders.get(i).isAscending()) {
+          thenComparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(i)));
+        } else {
+          thenComparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
+        }
+      }
+      comparator = comparator.thenComparing(thenComparator);
+    }
+
+    OrderingScheme newOrderingScheme =
+        new OrderingScheme(
+            newOrderingSymbols,
+            IntStream.range(0, newOrderingSymbols.size())
+                .boxed()
+                .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
+    for (PlanNode planNode : tableScanNodeList) {
+      TableScanNode tableScanNode = (TableScanNode) planNode;
+      planNodeOrderingSchemeMap.put(tableScanNode.getPlanNodeId(), newOrderingScheme);
+      List<DeviceEntry> deviceEntries = tableScanNode.getDeviceEntries();
+      deviceEntries.sort(comparator);
+    }
+
+    return tableScanNodeList;
   }
 
   private List<PlanNode> connectViaMergeSort(
@@ -363,7 +426,9 @@ public class DistributedPlanGenerator
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
     boolean hasExchangeNode = false;
+    boolean hasSortNode = false;
     OrderingScheme expectedOrderingScheme;
+    TRegionReplicaSet mostUsedDataRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

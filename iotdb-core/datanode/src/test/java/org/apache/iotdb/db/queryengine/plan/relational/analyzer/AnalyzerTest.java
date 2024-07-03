@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -41,11 +42,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -61,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
@@ -214,12 +218,34 @@ public class AnalyzerTest {
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
     assertEquals(9, tableScanNode.getAssignments().size());
-    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
-    assertEquals("(\"time\" > 1)", tableScanNode.getTimePredicate().get().toString());
+    assertEquals(
+        "(\"time\" > 1)", tableScanNode.getTimePredicate().map(Expression::toString).orElse(null));
     assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertTrue(
+        distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0)
+            instanceof OutputNode);
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof MergeSortNode);
+    MergeSortNode mergeSortNode = (MergeSortNode) outputNode.getChildren().get(0);
+    assertEquals(
+        Arrays.asList("tag1", "tag2", "tag3", "attr1", "attr2"),
+        mergeSortNode.getOrderingScheme().getOrderBy().stream()
+            .map(Symbol::getName)
+            .collect(Collectors.toList()));
+    assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof TableScanNode);
+    assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
+    TableScanNode tableScanNode = (TableScanNode) mergeSortNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(Arrays.asList(), tableScanNode.getDeviceEntries().stream().map(d -> d.getDeviceID().toString()));
   }
 
   @Test
@@ -378,7 +404,7 @@ public class AnalyzerTest {
   @Test
   public void singleTableProjectTest() {
     // 1. project without filter
-    sql = "SELECT tag1, attr1, s1 FROM table1";
+    sql = "SELECT time, tag1, attr1, s1 FROM table1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
