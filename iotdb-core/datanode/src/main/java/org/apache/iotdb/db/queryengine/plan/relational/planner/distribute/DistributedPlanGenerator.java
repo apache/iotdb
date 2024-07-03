@@ -308,13 +308,15 @@ public class DistributedPlanGenerator
         if (newSortOrders.get(i).isAscending()) {
           thenComparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i)));
         } else {
-          thenComparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
+          thenComparator =
+              Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
         }
       } else {
         if (newSortOrders.get(i).isAscending()) {
           thenComparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(i)));
         } else {
-          thenComparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
+          thenComparator =
+              Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
         }
       }
       comparator = comparator.thenComparing(thenComparator);

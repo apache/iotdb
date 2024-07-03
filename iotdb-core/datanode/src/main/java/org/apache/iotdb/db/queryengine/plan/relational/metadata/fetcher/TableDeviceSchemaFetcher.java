@@ -184,8 +184,11 @@ public class TableDeviceSchemaFetcher {
     // expressions inner each element are and-concat representing conditions of different column
     List<List<Expression>> idPredicateList =
         SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(idDeterminedPredicateList);
+    // List<Expression> in idPredicateList contains all id columns comparison which can use
+    // SchemaCache
     List<Integer> idSingleMatchIndexList =
         SchemaPredicateUtil.extractIdSingleMatchExpressionCases(idPredicateList, tableInstance);
+    // store missing cache index in idSingleMatchIndexList
     List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
 
     if (!idSingleMatchIndexList.isEmpty()) {
@@ -214,18 +217,22 @@ public class TableDeviceSchemaFetcher {
     }
 
     if (idSingleMatchIndexList.size() < idPredicateList.size()
-        || idSingleMatchPredicateNotInCache.size() > 0) {
+        || !idSingleMatchPredicateNotInCache.isEmpty()) {
       List<List<Expression>> idPredicateForFetch =
           new ArrayList<>(
               idPredicateList.size()
                   - idSingleMatchIndexList.size()
                   + idSingleMatchPredicateNotInCache.size());
-      for (int i = 0, idx1 = 0, idx2 = 0; i < idPredicateList.size(); i++) {
-        if (i != idSingleMatchIndexList.get(idx1)) {
+      int idx1 = 0;
+      int idx2 = 0;
+      for (int i = 0; i < idPredicateList.size(); i++) {
+        //
+        if (idx1 >= idSingleMatchIndexList.size() || i != idSingleMatchIndexList.get(idx1)) {
           idPredicateForFetch.add(idPredicateList.get(i));
         } else {
           idx1++;
-          if (i == idSingleMatchPredicateNotInCache.get(idx2)) {
+          if (idx2 >= idSingleMatchPredicateNotInCache.size()
+              || i == idSingleMatchPredicateNotInCache.get(idx2)) {
             idPredicateForFetch.add(idPredicateList.get(i));
             idx2++;
           }

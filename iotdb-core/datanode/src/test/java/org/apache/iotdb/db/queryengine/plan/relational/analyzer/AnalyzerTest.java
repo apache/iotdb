@@ -245,7 +245,9 @@ public class AnalyzerTest {
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
     TableScanNode tableScanNode = (TableScanNode) mergeSortNode.getChildren().get(1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
-    assertEquals(Arrays.asList(), tableScanNode.getDeviceEntries().stream().map(d -> d.getDeviceID().toString()));
+    assertEquals(
+        Arrays.asList(),
+        tableScanNode.getDeviceEntries().stream().map(d -> d.getDeviceID().toString()));
   }
 
   @Test
