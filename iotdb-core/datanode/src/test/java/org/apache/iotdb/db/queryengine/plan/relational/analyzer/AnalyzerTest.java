@@ -85,7 +85,7 @@ public class AnalyzerTest {
 
   private static final NopAccessControl nopAccessControl = new NopAccessControl();
 
-  QueryId queryId = new QueryId("tmp_query");
+  QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
       new SessionInfo(
           1L,
@@ -246,8 +246,14 @@ public class AnalyzerTest {
     TableScanNode tableScanNode = (TableScanNode) mergeSortNode.getChildren().get(1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(
-        Arrays.asList(),
-        tableScanNode.getDeviceEntries().stream().map(d -> d.getDeviceID().toString()));
+        Arrays.asList(
+            "table1.shanghai.A3.YY",
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
   }
 
   @Test
@@ -671,18 +677,6 @@ public class AnalyzerTest {
     assertEquals(5, limitNode.getCount());
     offsetNode = (OffsetNode) limitNode.getChild();
     assertEquals(3, offsetNode.getCount());
-  }
-
-  @Test
-  public void sortTest() {
-    // when TableScan locates multi regions, use default MergeSortNode
-    sql = "SELECT * FROM table1 ";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
-    logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
-            .plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

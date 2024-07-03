@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -94,20 +95,13 @@ public class DistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitOutput(OutputNode outputNode, PlanContext context) {
-    // TODO only consider the order of IDs
-    context.expectedOrderingScheme =
-        new OrderingScheme(
-            outputNode.getOutputSymbols(),
-            outputNode.getOutputSymbols().stream()
-                .collect(Collectors.toMap(symbol -> symbol, symbol -> SortOrder.ASC_NULLS_LAST)));
-
     List<PlanNode> childrenNodes = outputNode.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       outputNode.setChild(childrenNodes.get(0));
       return Collections.singletonList(outputNode);
     }
 
-    return connectViaMergeSort(outputNode, childrenNodes);
+    return connectViaCollectSort(outputNode, childrenNodes);
   }
 
   @Override
@@ -118,7 +112,7 @@ public class DistributedPlanGenerator
       return Collections.singletonList(limitNode);
     }
 
-    return connectViaMergeSort(limitNode, childrenNodes);
+    return connectViaCollectSort(limitNode, childrenNodes);
   }
 
   @Override
@@ -129,7 +123,7 @@ public class DistributedPlanGenerator
       return Collections.singletonList(offsetNode);
     }
 
-    return connectViaMergeSort(offsetNode, childrenNodes);
+    return connectViaCollectSort(offsetNode, childrenNodes);
   }
 
   @Override
@@ -142,7 +136,7 @@ public class DistributedPlanGenerator
 
     for (Expression expression : projectNode.getAssignments().getMap().values()) {
       if (containsDiffFunction(expression)) {
-        return connectViaMergeSort(projectNode, childrenNodes);
+        return connectViaCollectSort(projectNode, childrenNodes);
       }
     }
 
@@ -193,7 +187,7 @@ public class DistributedPlanGenerator
     }
 
     if (containsDiffFunction(filterNode.getPredicate())) {
-      return connectViaMergeSort(filterNode, childrenNodes);
+      return connectViaCollectSort(filterNode, childrenNodes);
     }
 
     return childrenNodes.stream()
@@ -338,18 +332,11 @@ public class DistributedPlanGenerator
     return tableScanNodeList;
   }
 
-  private List<PlanNode> connectViaMergeSort(
+  private List<PlanNode> connectViaCollectSort(
       SingleChildProcessNode node, List<PlanNode> childrenNodes) {
-    OrderingScheme childrenOrderingScheme =
-        planNodeOrderingSchemeMap.get(childrenNodes.get(0).getPlanNodeId());
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            queryContext.getQueryId().genPlanNodeId(),
-            childrenOrderingScheme,
-            node.getOutputSymbols());
-    childrenNodes.forEach(mergeSortNode::addChild);
-    node.setChild(mergeSortNode);
-    planNodeOrderingSchemeMap.put(node.getPlanNodeId(), childrenOrderingScheme);
+    CollectNode collectNode = new CollectNode(queryContext.getQueryId().genPlanNodeId());
+    childrenNodes.forEach(collectNode::addChild);
+    node.setChild(collectNode);
     return Collections.singletonList(node);
   }
 
