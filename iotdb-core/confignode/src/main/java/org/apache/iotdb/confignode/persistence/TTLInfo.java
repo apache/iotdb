@@ -64,6 +64,7 @@ public class TTLInfo implements SnapshotProcessor {
 
   public TSStatus setTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
+    LOGGER.info("Setting TTL {}", plan);
     try {
       // check ttl rule capacity
       final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
