@@ -274,47 +274,46 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-
                     final short messageType = message.getMessageType();
-                    if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
-                      switch (SubscriptionMessageType.valueOf(messageType)) {
-                        case SESSION_DATA_SETS_HANDLER:
-                          for (final SubscriptionSessionDataSet dataSet :
-                              message.getSessionDataSetsHandler()) {
-                            while (dataSet.hasNext()) {
-                              final RowRecord record = dataSet.next();
-                              Assert.assertEquals(type.toString(), dataSet.getColumnTypes().get(1));
-                              Assert.assertEquals(type, record.getFields().get(0).getDataType());
-                              Assert.assertEquals(
-                                  expectedData, getValue(type, dataSet.getTablet()));
-                              Assert.assertEquals(
-                                  expectedData, record.getFields().get(0).getObjectValue(type));
-                              rowCount.addAndGet(1);
-                            }
+                    if (!SubscriptionMessageType.isValidatedMessageType(messageType)) {
+                      LOGGER.warn("unexpected message type: {}", messageType);
+                      continue;
+                    }
+                    switch (SubscriptionMessageType.valueOf(messageType)) {
+                      case SESSION_DATA_SETS_HANDLER:
+                        for (final SubscriptionSessionDataSet dataSet :
+                            message.getSessionDataSetsHandler()) {
+                          while (dataSet.hasNext()) {
+                            final RowRecord record = dataSet.next();
+                            Assert.assertEquals(type.toString(), dataSet.getColumnTypes().get(1));
+                            Assert.assertEquals(type, record.getFields().get(0).getDataType());
+                            Assert.assertEquals(expectedData, getValue(type, dataSet.getTablet()));
+                            Assert.assertEquals(
+                                expectedData, record.getFields().get(0).getObjectValue(type));
+                            rowCount.addAndGet(1);
                           }
-                          break;
-                        case TS_FILE_HANDLER:
-                          try (final TsFileReader tsFileReader =
-                              message.getTsFileHandler().openReader()) {
-                            final QueryDataSet dataSet =
-                                tsFileReader.query(
-                                    QueryExpression.create(
-                                        Collections.singletonList(
-                                            new Path("root.db.d1", "s1", true)),
-                                        null));
-                            while (dataSet.hasNext()) {
-                              final RowRecord record = dataSet.next();
-                              Assert.assertEquals(type, record.getFields().get(0).getDataType());
-                              Assert.assertEquals(
-                                  expectedData, record.getFields().get(0).getObjectValue(type));
-                              rowCount.addAndGet(1);
-                            }
+                        }
+                        break;
+                      case TS_FILE_HANDLER:
+                        try (final TsFileReader tsFileReader =
+                            message.getTsFileHandler().openReader()) {
+                          final QueryDataSet dataSet =
+                              tsFileReader.query(
+                                  QueryExpression.create(
+                                      Collections.singletonList(new Path("root.db.d1", "s1", true)),
+                                      null));
+                          while (dataSet.hasNext()) {
+                            final RowRecord record = dataSet.next();
+                            Assert.assertEquals(type, record.getFields().get(0).getDataType());
+                            Assert.assertEquals(
+                                expectedData, record.getFields().get(0).getObjectValue(type));
+                            rowCount.addAndGet(1);
                           }
-                          break;
-                        default:
-                          LOGGER.warn("unexpected message type: {}", messageType);
-                          break;
-                      }
+                        }
+                        break;
+                      default:
+                        LOGGER.warn("unexpected message type: {}", messageType);
+                        break;
                     }
                   }
                   consumer.commitSync(messages);

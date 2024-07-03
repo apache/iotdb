@@ -33,6 +33,9 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -84,7 +87,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicPathSubscription() throws Exception {
+  public void testTabletTopicWithPath() throws Exception {
+    testTopicWithPathTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithPath() throws Exception {
+    testTopicWithPathTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithPathTemplate(final String topicFormat) throws Exception {
     // Insert some historical data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -110,6 +122,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       session.createTopic(topicName, config);
     } catch (final Exception e) {
@@ -138,14 +151,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
-                  for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
-                        it.hasNext(); ) {
-                      final Tablet tablet = it.next();
-                      session.insertTablet(tablet);
-                    }
-                  }
+                  insertData(messages, session);
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe(topicName);
@@ -185,7 +191,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicTimeSubscription() throws Exception {
+  public void testTabletTopicWithTime() throws Exception {
+    testTopicWithTimeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithTime() throws Exception {
+    testTopicWithTimeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithTimeTemplate(final String topicFormat) throws Exception {
     // Insert some historical data on sender
     final long currentTime = System.currentTimeMillis();
     try (final ISession session = senderEnv.getSessionConnection()) {
@@ -208,6 +223,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
       config.put(TopicConstant.START_TIME_KEY, currentTime);
       session.createTopic(topicName, config);
     } catch (final Exception e) {
@@ -236,14 +252,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
-                  for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
-                        it.hasNext(); ) {
-                      final Tablet tablet = it.next();
-                      session.insertTablet(tablet);
-                    }
-                  }
+                  insertData(messages, session);
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe(topicName);
@@ -282,7 +291,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicProcessorSubscription() throws Exception {
+  public void testTabletTopicWithProcessor() throws Exception {
+    testTopicWithProcessorTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithProcessor() throws Exception {
+    testTopicWithProcessorTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithProcessorTemplate(final String topicFormat) throws Exception {
     // Insert some history data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
@@ -300,6 +318,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
       config.put("processor", "tumbling-time-sampling-processor");
       config.put("processor.tumbling-time.interval-seconds", "1");
       config.put("processor.down-sampling.split-file", "true");
@@ -330,14 +349,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
-                  for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
-                        it.hasNext(); ) {
-                      final Tablet tablet = it.next();
-                      session.insertTablet(tablet);
-                    }
-                  }
+                  insertData(messages, session);
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe(topicName);
@@ -500,7 +512,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicInvalidTimeRangeConfig() throws Exception {
+  public void testTopicWithInvalidTimeConfig() throws Exception {
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
 
@@ -530,7 +542,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicWithSnapshotMode() throws Exception {
+  public void testTabletTopicWithSnapshotMode() throws Exception {
+    testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithSnapshotMode() throws Exception {
+    testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithSnapshotModeTemplate(final String topicFormat) throws Exception {
     // Insert some historical data
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -550,7 +571,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       session.createTopic(topicName, config);
     } catch (final Exception e) {
@@ -580,16 +601,37 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    try (final TsFileReader tsFileReader =
-                        message.getTsFileHandler().openReader()) {
-                      final Path path = new Path("root.db.d1", "s1", true);
-                      final QueryDataSet dataSet =
-                          tsFileReader.query(
-                              QueryExpression.create(Collections.singletonList(path), null));
-                      while (dataSet.hasNext()) {
-                        dataSet.next();
-                        rowCount.addAndGet(1);
-                      }
+                    final short messageType = message.getMessageType();
+                    if (!SubscriptionMessageType.isValidatedMessageType(messageType)) {
+                      LOGGER.warn("unexpected message type: {}", messageType);
+                      continue;
+                    }
+                    switch (SubscriptionMessageType.valueOf(messageType)) {
+                      case SESSION_DATA_SETS_HANDLER:
+                        for (final SubscriptionSessionDataSet dataSet :
+                            message.getSessionDataSetsHandler()) {
+                          while (dataSet.hasNext()) {
+                            dataSet.next();
+                            rowCount.addAndGet(1);
+                          }
+                        }
+                        break;
+                      case TS_FILE_HANDLER:
+                        try (final TsFileReader tsFileReader =
+                            message.getTsFileHandler().openReader()) {
+                          final Path path = new Path("root.db.d1", "s1", true);
+                          final QueryDataSet dataSet =
+                              tsFileReader.query(
+                                  QueryExpression.create(Collections.singletonList(path), null));
+                          while (dataSet.hasNext()) {
+                            dataSet.next();
+                            rowCount.addAndGet(1);
+                          }
+                        }
+                        break;
+                      default:
+                        LOGGER.warn("unexpected message type: {}", messageType);
+                        break;
                     }
                   }
                   consumer.commitSync(messages);
@@ -633,7 +675,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicWithLooseRange() throws Exception {
+  public void testTabletTopicWithLooseRange() throws Exception {
+    testTopicWithLooseRangeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithLooseRange() throws Exception {
+    testTopicWithLooseRangeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithLooseRangeTemplate(final String topicFormat) throws Exception {
     // Insert some historical data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
@@ -655,6 +706,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
       config.put(TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_ALL_VALUE);
       config.put(TopicConstant.PATH_KEY, "root.db.d1.at1");
       config.put(TopicConstant.START_TIME_KEY, "1500");
@@ -692,14 +744,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   if (dataPrepared.get()) {
                     final List<SubscriptionMessage> messages =
                         consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
-                    for (final SubscriptionMessage message : messages) {
-                      for (final Iterator<Tablet> it =
-                              message.getSessionDataSetsHandler().tabletIterator();
-                          it.hasNext(); ) {
-                        final Tablet tablet = it.next();
-                        session.insertTablet(tablet);
-                      }
-                    }
+                    insertData(messages, session);
                     consumer.commitSync(messages);
                   }
                 }
@@ -762,12 +807,42 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  /////////////////////////////// utility ///////////////////////////////
+
   private void assertTopicCount(final int count) throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowTopicInfo> showTopicResult =
           client.showTopic(new TShowTopicReq()).topicInfoList;
       Assert.assertEquals(count, showTopicResult.size());
+    }
+  }
+
+  private void insertData(final List<SubscriptionMessage> messages, final ISession session)
+      throws Exception {
+    for (final SubscriptionMessage message : messages) {
+      final short messageType = message.getMessageType();
+      if (!SubscriptionMessageType.isValidatedMessageType(messageType)) {
+        LOGGER.warn("unexpected message type: {}", messageType);
+        continue;
+      }
+      switch (SubscriptionMessageType.valueOf(messageType)) {
+        case SESSION_DATA_SETS_HANDLER:
+          for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
+              it.hasNext(); ) {
+            final Tablet tablet = it.next();
+            session.insertTablet(tablet);
+          }
+          break;
+        case TS_FILE_HANDLER:
+          final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+          session.executeNonQueryStatement(
+              String.format("load '%s'", tsFileHandler.getFile().getAbsolutePath()));
+          break;
+        default:
+          LOGGER.warn("unexpected message type: {}", messageType);
+          break;
+      }
     }
   }
 }
