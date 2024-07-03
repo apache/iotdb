@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.iotdb.session.Session;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
@@ -67,6 +68,60 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("DROP DATABASE db1");
     }
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  public static void main(String[] args)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session =
+        new Session.Builder().host("127.0.0.1").port(6667).sqlDialect(TABLE_SQL_DIALECT).build()) {
+      session.open();
+      try {
+        session.executeNonQueryStatement("DROP DATABASE db1");
+      } catch (Exception ignored) {
+
+      }
+      session.executeNonQueryStatement("CREATE DATABASE db1");
+      session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 10);
+
+      long timestamp = System.currentTimeMillis();
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+        timestamp++;
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from table1");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+      }
+    }
   }
 
   @Test

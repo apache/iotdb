@@ -459,10 +459,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIDs = new IDeviceID[rowCount];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
       deviceIdSegments[0] = this.devicePath.getFullPath();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
+      for (int i = 0; i < getIdColumnIndices().size(); i++) {
+        final Integer columnIndex = getIdColumnIndices().get(i);
         deviceIdSegments[i + 1] = ((Object[]) columns[columnIndex])[rowIdx].toString();
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);

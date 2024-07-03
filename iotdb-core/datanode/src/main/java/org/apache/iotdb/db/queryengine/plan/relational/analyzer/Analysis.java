@@ -593,7 +593,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isFailed() {
-    return false;
+    return failStatus != null;
   }
 
   @Override

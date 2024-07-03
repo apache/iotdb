@@ -110,8 +110,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
-/** Convert SQL and RPC requests to {@link Statement}. */
+/**
+ * Convert SQL and RPC requests to {@link Statement}.
+ */
 public class StatementGenerator {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -347,7 +350,8 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.deserialize(insertTabletReq.getColumnCategories().get(i));
+            TsTableColumnCategory.fromTsFileColumnType(
+                ColumnType.values()[insertTabletReq.getColumnCategories().get(i)]);
       }
       insertStatement.setColumnCategories(columnCategories);
     }

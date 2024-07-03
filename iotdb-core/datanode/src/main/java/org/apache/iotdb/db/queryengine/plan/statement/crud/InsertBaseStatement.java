@@ -262,6 +262,14 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   public List<Integer> getIdColumnIndices() {
+    if (idColumnIndices == null && columnCategories != null) {
+      idColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+          idColumnIndices.add(i);
+        }
+      }
+    }
     return idColumnIndices;
   }
 

@@ -88,4 +88,17 @@ public enum TsTableColumnCategory {
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
   }
+
+  public static TsTableColumnCategory fromTsFileColumnType(ColumnType columnType) {
+    switch (columnType) {
+      case MEASUREMENT:
+        return MEASUREMENT;
+      case ID:
+        return ID;
+      case ATTRIBUTE:
+        return ATTRIBUTE;
+      default:
+        throw new IllegalArgumentException("Unknown column type: " + columnType);
+    }
+  }
 }
