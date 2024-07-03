@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
+import javax.sql.DataSource;
 
 public class IoTDBConnection implements Connection {
 
@@ -499,6 +500,7 @@ public class IoTDBConnection implements Connection {
     openReq.setZoneId(getTimeZone());
     openReq.putToConfiguration(Config.VERSION, params.getVersion().toString());
     openReq.putToConfiguration(Config.SQL_DIALECT, params.getSqlDialect());
+    params.getDb().ifPresent(db -> openReq.putToConfiguration(Config.DATABASE, db));
 
     TSOpenSessionResp openResp = null;
     try {

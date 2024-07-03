@@ -107,12 +107,15 @@ public class SessionConnection {
 
   private final String sqlDialect;
 
+  private final String database;
+
   // TestOnly
   public SessionConnection() {
     availableNodes = Collections::emptyList;
     this.maxRetryCount = Math.max(0, SessionConfig.MAX_RETRY_COUNT);
     this.retryIntervalInMs = Math.max(0, SessionConfig.RETRY_INTERVAL_IN_MS);
     this.sqlDialect = "tree";
+    database = null;
   }
 
   public SessionConnection(
@@ -122,7 +125,8 @@ public class SessionConnection {
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
       long retryIntervalInMs,
-      String sqlDialect)
+      String sqlDialect,
+      String database)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -132,6 +136,7 @@ public class SessionConnection {
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     this.sqlDialect = sqlDialect;
+    this.database = database;
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (StatementExecutionException e) {
@@ -147,7 +152,8 @@ public class SessionConnection {
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
       long retryIntervalInMs,
-      String sqlDialect)
+      String sqlDialect,
+      String database)
       throws IoTDBConnectionException {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
@@ -156,6 +162,7 @@ public class SessionConnection {
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     this.sqlDialect = sqlDialect;
+    this.database = database;
     initClusterConn();
   }
 
@@ -198,6 +205,9 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    if (database != null) {
+      openReq.putToConfiguration("database", database);
+    }
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);

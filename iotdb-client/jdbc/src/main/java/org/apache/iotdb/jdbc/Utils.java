@@ -120,6 +120,9 @@ public class Utils {
     if (info.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
     }
+    if (info.containsKey(Config.DATABASE)) {
+      params.setDb(info.getProperty(Config.DATABASE));
+    }
 
     return params;
   }
@@ -159,6 +162,7 @@ public class Utils {
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
         case Config.SQL_DIALECT:
+        case Config.DATABASE:
           info.put(key, value);
           break;
         case Config.TIME_ZONE:

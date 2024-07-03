@@ -155,6 +155,8 @@ public class SessionPool implements ISessionPool {
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
 
+  protected String database;
+
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
 
   private static final String INSERT_RECORD_ERROR_MSG = "unexpected error in insertRecord";
@@ -490,6 +492,7 @@ public class SessionPool implements ISessionPool {
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
+    this.database = builder.defaultDatabase;
     this.queryTimeoutInMs = builder.queryTimeoutInMs;
 
     if (enableAutoFetch) {
@@ -546,6 +549,7 @@ public class SessionPool implements ISessionPool {
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     } else {
@@ -568,6 +572,7 @@ public class SessionPool implements ISessionPool {
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     }
@@ -3541,6 +3546,8 @@ public class SessionPool implements ISessionPool {
     private String sqlDialect = SessionConfig.SQL_DIALECT;
     private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
+    private String defaultDatabase;
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3658,6 +3665,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
       this.queryTimeoutInMs = queryTimeoutInMs;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.defaultDatabase = database;
       return this;
     }
 

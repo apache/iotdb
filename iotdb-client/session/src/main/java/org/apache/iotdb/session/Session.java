@@ -176,6 +176,8 @@ public class Session implements ISession {
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
 
+  protected String database;
+
   private static final String REDIRECT_TWICE = "redirect twice";
 
   private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
@@ -440,6 +442,7 @@ public class Session implements ISession {
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
+    this.database = builder.database;
   }
 
   @Override
@@ -600,10 +603,10 @@ public class Session implements ISession {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
   }
 
   @Override
@@ -3852,6 +3855,8 @@ public class Session implements ISession {
 
     private String sqlDialect = SessionConfig.SQL_DIALECT;
 
+    private String database;
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3951,6 +3956,11 @@ public class Session implements ISession {
 
     public Builder sqlDialect(String sqlDialect) {
       this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.database = database;
       return this;
     }
 
