@@ -25,31 +25,10 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.*;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -111,6 +90,29 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowDB(ShowDB node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowCluster(ShowCluster node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowClusterTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowRegions(ShowRegions node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowRegionsTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowDataNodes(ShowDataNodes node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowDataNodesTask(node);
+  }
+
+  protected IConfigTask visitShowConfigNodes(ShowConfigNodes node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowConfigNodesTask(node);
   }
 
   @Override

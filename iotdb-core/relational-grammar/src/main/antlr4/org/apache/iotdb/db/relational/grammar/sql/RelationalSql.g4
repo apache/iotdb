@@ -252,16 +252,16 @@ showClusterStatement
     : SHOW CLUSTER (DETAILS)?
     ;
 
-showRegionsStatement
-    : SHOW (SCHEMA | DATA)? REGIONS (OF DATABASE identifier? (',' identifier)*)?
-          (ON NODEID INTEGER_VALUE (',' INTEGER_VALUE)*)?
+showRegionsStatement // TODO: Implement this ...
+    : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
+          // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
-showDataNodesStatement
+showDataNodesStatement // TODO: Implement this ...
     : SHOW DATANODES
     ;
 
-showConfigNodesStatement
+showConfigNodesStatement // TODO: Implement this ...
     : SHOW CONFIGNODES
     ;
 
