@@ -23,14 +23,14 @@ import org.apache.iotdb.commons.schema.MemUsageUtil;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TableDeviceCacheEntry {
 
+  // should use a Map implementation that allows null for value
   private final Map<String, String> attributeMap;
 
   public TableDeviceCacheEntry() {
-    attributeMap = new ConcurrentHashMap<>();
+    attributeMap = new HashMap<>();
   }
 
   public TableDeviceCacheEntry(Map<String, String> attributeMap) {

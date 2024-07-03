@@ -24,19 +24,20 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.SchemaPredicateUtil.getColumnName;
 
 // return whether input expression has attribute column predicate
 public class CheckSchemaPredicateVisitor
@@ -59,7 +60,12 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
-    return visitExpression(node, context);
+    String columnName = ((SymbolReference) node.getValue()).getName();
+    return context
+        .table
+        .getColumnSchema(columnName)
+        .getColumnCategory()
+        .equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   @Override
@@ -69,8 +75,12 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitLogicalExpression(LogicalExpression node, Context context) {
-    return node.getTerms().get(0).accept(this, context)
-        || node.getTerms().get(1).accept(this, context);
+    for (Expression expression : node.getTerms()) {
+      if (this.process(expression, context)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
@@ -80,20 +90,7 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitComparisonExpression(ComparisonExpression node, Context context) {
-    String columnName;
-    if (node.getLeft() instanceof Literal) {
-      if (node.getRight() instanceof Identifier) {
-        columnName = ((Identifier) (node.getRight())).getValue();
-      } else {
-        columnName = ((SymbolReference) (node.getRight())).getName();
-      }
-    } else {
-      if (node.getLeft() instanceof Identifier) {
-        columnName = ((Identifier) (node.getLeft())).getValue();
-      } else {
-        columnName = ((SymbolReference) (node.getLeft())).getName();
-      }
-    }
+    String columnName = getColumnName(node);
     return context
         .table
         .getColumnSchema(columnName)
