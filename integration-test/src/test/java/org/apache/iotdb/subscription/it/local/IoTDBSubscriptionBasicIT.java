@@ -318,6 +318,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
 
     // Create topic
+    final String topicName3 = "topic3";
+    final String topicName4 = "topic4";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -325,12 +327,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
       {
         final Properties properties = new Properties();
         properties.put(TopicConstant.END_TIME_KEY, 99);
-        session.createTopic("topic3", properties);
+        session.createTopic(topicName3, properties);
       }
       {
         final Properties properties = new Properties();
         properties.put(TopicConstant.START_TIME_KEY, 100);
-        session.createTopic("topic4", properties);
+        session.createTopic(topicName4, properties);
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -353,7 +355,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                       .autoCommit(false)
                       .buildPullConsumer()) {
                 consumer.open();
-                consumer.subscribe("topic2"); // only subscribe topic2
+                consumer.subscribe(topicName4); // only subscribe topic4
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =

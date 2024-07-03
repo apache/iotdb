@@ -216,6 +216,8 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         new Binary("a", TSFileConfig.STRING_CHARSET));
   }
 
+  /////////////////////////////// utility ///////////////////////////////
+
   private void testPullConsumerSubscribeDataTemplate(
       final String topicFormat,
       final TSDataType type,
