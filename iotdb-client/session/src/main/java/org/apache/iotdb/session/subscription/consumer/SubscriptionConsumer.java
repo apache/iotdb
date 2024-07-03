@@ -209,6 +209,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public synchronized void open() throws SubscriptionException {
     checkIfHasBeenClosed();
+
     if (!isClosed.get()) {
       return;
     }
@@ -496,6 +497,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, file, fileWriter));
     } catch (final IOException e) {
+      // delete file anyway
+      try {
+        Files.delete(filePath);
+      } catch (final Exception ignored) {
+      }
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -537,6 +543,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         final String errorMessage = String.format("unexpected response type: %s", responseType);
         LOGGER.warn(errorMessage);
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      if (Math.random() < 1.0 / 2.0) {
+        throw new SubscriptionRuntimeNonCriticalException("random crash");
       }
 
       switch (SubscriptionPollResponseType.valueOf(responseType)) {

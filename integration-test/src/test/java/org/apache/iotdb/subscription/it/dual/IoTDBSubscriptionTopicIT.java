@@ -544,7 +544,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // Create topic
-    final String topicName = "topic11";
+    final String topicName = "topic9";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -649,7 +649,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // Create topic
-    final String topicName = "topic12";
+    final String topicName = "topic10";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {

@@ -114,6 +114,10 @@ public class SubscriptionEvent {
     currentResponseIndex = 0;
   }
 
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
+  }
+
   //////////////////////////// commit ////////////////////////////
 
   public void recordCommittedTimestamp() {
