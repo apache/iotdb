@@ -1419,12 +1419,15 @@ public class PipeConsensusReceiver {
     public void setStartApplyNanos(long startApplyNanos) {
       // Notice that a tsFileInsertionEvent will enter RequestExecutor multiple times, we only need
       // to record the time of the first apply
-      if (startApplyNanos == 0) {
+      if (this.startApplyNanos == 0) {
         this.startApplyNanos = startApplyNanos;
       }
     }
 
     public long getStartApplyNanos() {
+      if (startApplyNanos == 0) {
+        return System.nanoTime();
+      }
       return startApplyNanos;
     }
 
