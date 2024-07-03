@@ -1425,6 +1425,9 @@ public class PipeConsensusReceiver {
     }
 
     public long getStartApplyNanos() {
+      if (startApplyNanos == 0) {
+        return System.nanoTime();
+      }
       return startApplyNanos;
     }
 
