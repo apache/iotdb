@@ -31,6 +31,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TableSchema {
 
@@ -98,5 +99,11 @@ public class TableSchema {
   @Override
   public String toString() {
     return "TableSchema{" + "tableName='" + tableName + '\'' + ", columns=" + columns + '}';
+  }
+
+  public List<ColumnSchema> getIdColumns() {
+    return columns.stream()
+        .filter(c -> c.getColumnCategory() == TsTableColumnCategory.ID)
+        .collect(Collectors.toList());
   }
 }

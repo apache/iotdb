@@ -71,6 +71,7 @@ public class TableHeaderSchemaValidator {
       String database, TableSchema tableSchema, MPPQueryContext context) {
     List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+    LOGGER.info("Get TsTable from cache: {}", table);
     List<ColumnSchema> missingColumnList = new ArrayList<>();
     List<ColumnSchema> resultColumnList = new ArrayList<>();
 
@@ -125,6 +126,7 @@ public class TableHeaderSchemaValidator {
 
     // auto create missing table or columns
     if (table == null) {
+      LOGGER.info("Trying to auto-create table: {}", tableSchema);
       autoCreateTable(database, tableSchema, context);
       table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     } else if (inputColumnList == null) {

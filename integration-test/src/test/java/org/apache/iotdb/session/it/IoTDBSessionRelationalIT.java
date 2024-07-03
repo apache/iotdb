@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
@@ -73,13 +75,19 @@ public class IoTDBSessionRelationalIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
 
-      Tablet tablet = new Tablet("table1", schemaList, 10);
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 10);
 
       long timestamp = System.currentTimeMillis();
 

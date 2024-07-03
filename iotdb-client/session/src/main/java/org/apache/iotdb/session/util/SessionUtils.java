@@ -32,6 +32,7 @@ import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.nio.ByteBuffer;
@@ -260,6 +261,19 @@ public class SessionUtils {
         break;
       case TEXT:
       case STRING:
+        if (tablet.getColumnTypes().get(i) == ColumnType.MEASUREMENT) {
+          Binary[] binaryValues = (Binary[]) tablet.values[i];
+          for (int index = 0; index < tablet.rowSize; index++) {
+            valueBuffer.putInt(binaryValues[index].getLength());
+            valueBuffer.put(binaryValues[index].getValues());
+          }
+        } else {
+          String[] stringValues = (String[]) tablet.values[i];
+          for (int index = 0; index < tablet.rowSize; index++) {
+            ReadWriteIOUtils.write(stringValues[index], valueBuffer);
+          }
+        }
+        break;
       case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {

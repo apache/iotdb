@@ -72,13 +72,34 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public void validate(TableSchema realSchema) throws QueryProcessException {
-    final List<ColumnSchema> incomingSchemaColumns = getTableSchema().getColumns();
+    final TableSchema incomingTableSchema = getTableSchema();
+    final List<ColumnSchema> incomingSchemaColumns = incomingTableSchema.getColumns();
     Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
     realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
 
+    // incoming schema should be consistent with real schema
     for (ColumnSchema incomingSchemaColumn : incomingSchemaColumns) {
       final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
       validate(incomingSchemaColumn, realSchemaColumn);
+    }
+    // incoming schema should contain all id columns in real schema and have consistent order
+    final List<ColumnSchema> realIdColumns = realSchema.getIdColumns();
+    final List<ColumnSchema> incomingIdColumns = incomingTableSchema.getIdColumns();
+    if (realIdColumns.size() > incomingIdColumns.size()) {
+      throw new QueryProcessException(
+          new SemanticException(
+              String.format(
+                  "The incoming id columns " + "conflicts " + "with existing ones: %s v.s. %s",
+                  incomingIdColumns, realIdColumns)));
+    }
+    for (int i = 0; i < realIdColumns.size(); i++) {
+      if (!realIdColumns.get(i).equals(incomingIdColumns.get(i))) {
+        throw new QueryProcessException(
+            new SemanticException(
+                String.format(
+                    "The incoming id columns " + "conflicts " + "with existing ones: %s v.s. %s",
+                    incomingIdColumns, realIdColumns)));
+      }
     }
   }
 
