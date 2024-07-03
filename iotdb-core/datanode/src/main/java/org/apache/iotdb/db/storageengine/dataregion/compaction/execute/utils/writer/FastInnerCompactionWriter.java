@@ -184,7 +184,10 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   @Override
-  public boolean flushBatchedValuePage(AlignedPageElement alignedPageElement, int subTaskId)
+  public boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
       throws PageException, IOException {
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
     List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
@@ -192,6 +195,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
 
     checkPreviousTimestamp(timePageHeader.getStartTime(), subTaskId);
+    if (flushController.shouldSealChunkWriter()) {
+      sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+    }
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);

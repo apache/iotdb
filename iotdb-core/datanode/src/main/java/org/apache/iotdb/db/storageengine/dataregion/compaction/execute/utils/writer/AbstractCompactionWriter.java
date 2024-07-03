@@ -263,7 +263,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       throws IOException, PageException;
 
   public abstract boolean flushBatchedValuePage(
-      AlignedPageElement alignedPageElement, int subTaskId) throws PageException, IOException;
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
+      throws PageException, IOException;
 
   protected void flushAlignedPageToChunkWriter(
       AlignedChunkWriterImpl alignedChunkWriter,

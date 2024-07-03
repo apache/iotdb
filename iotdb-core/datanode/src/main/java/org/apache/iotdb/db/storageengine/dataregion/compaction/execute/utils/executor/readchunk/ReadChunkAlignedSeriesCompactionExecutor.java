@@ -223,8 +223,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valueChunks.set(idx, valueChunk);
     }
     summary.increaseProcessPointNum(pointNum);
-    if (flushController.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
+    if (flushController.canFlushCurrentChunkWriter()) {
       flushCurrentChunkWriter();
+    }
+    if (flushController.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       compactAlignedChunkByFlush(timeChunk, valueChunks);
     } else {
       compactAlignedChunkByDeserialize(timeChunk, valueChunks);
@@ -306,14 +308,14 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         continue;
       }
 
+      if (flushController.canFlushCurrentChunkWriter()) {
+        flushCurrentChunkWriter();
+      }
       if (flushController.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);
       } else {
         compactAlignedPageByDeserialize(timePage, valuePages);
-      }
-      if (flushController.canFlushCurrentChunkWriter()) {
-        flushCurrentChunkWriter();
       }
     }
   }

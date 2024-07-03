@@ -373,7 +373,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     protected boolean flushPageToCompactionWriter(PageElement pageElement)
         throws PageException, IOException {
       AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      return compactionWriter.flushBatchedValuePage(alignedPageElement, subTaskId);
+      return compactionWriter.flushBatchedValuePage(alignedPageElement, subTaskId, flushController);
     }
   }
 }

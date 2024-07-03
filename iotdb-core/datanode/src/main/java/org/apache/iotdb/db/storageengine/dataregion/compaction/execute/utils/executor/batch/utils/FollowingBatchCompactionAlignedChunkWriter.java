@@ -115,7 +115,9 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     if (compactChunkPlan.isCompactedByDirectlyFlush()) {
       return true;
     }
-    return currentPage >= compactChunkPlan.getPageRecords().size();
+    return currentPage >= compactChunkPlan.getPageRecords().size()
+        || ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).chunkStatistics.getEndTime()
+            == compactChunkPlan.getTimeRange().getMax();
   }
 
   @Override

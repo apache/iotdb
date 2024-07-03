@@ -204,9 +204,42 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   }
 
   @Override
-  public boolean flushBatchedValuePage(AlignedPageElement alignedPageElement, int subTaskId)
+  public boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
       throws PageException, IOException {
-    return this.flushAlignedPage(alignedPageElement, subTaskId);
+    PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
+    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
+    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
+    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
+
+    checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    if (flushController.shouldSealChunkWriter()) {
+      sealChunk(targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
+    }
+    if (!checkIsPageSatisfied(timePageHeader, fileIndex, subTaskId)) {
+      // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
+      return false;
+    }
+
+    flushAlignedPageToChunkWriter(
+        (AlignedChunkWriterImpl) chunkWriters[subTaskId],
+        compressedTimePageData,
+        timePageHeader,
+        compressedValuePageDatas,
+        valuePageHeaders,
+        subTaskId);
+
+    // check chunk size and may open a new chunk
+    checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
+
+    isDeviceExistedInTargetFiles[fileIndex] = true;
+    isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = timePageHeader.getEndTime();
+    return true;
   }
 
   /**

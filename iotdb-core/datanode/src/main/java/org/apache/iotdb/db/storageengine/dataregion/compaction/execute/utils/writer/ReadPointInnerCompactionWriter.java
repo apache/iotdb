@@ -83,7 +83,10 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushBatchedValuePage(AlignedPageElement alignedPageElement, int subTaskId)
+  public boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
       throws PageException, IOException {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
