@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
-
-import java.util.Arrays;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -35,7 +32,6 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -93,6 +89,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
+
 public class DataRegionTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -121,10 +119,10 @@ public class DataRegionTest {
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
-    DataNodeTableCache.getInstance().preCreateTable(dataRegion.getDatabaseName(),
-        StatementTestUtils.genTsTable());
-    DataNodeTableCache.getInstance().commitCreateTable(dataRegion.getDatabaseName(),
-        StatementTestUtils.tableName());
+    DataNodeTableCache.getInstance()
+        .preCreateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
+    DataNodeTableCache.getInstance()
+        .commitCreateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName());
   }
 
   @After
@@ -280,17 +278,29 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new AlignedFullPath(deviceID1,
-                Collections.singletonList(measurementName), Collections.singletonList(measurementSchema))),
-            deviceID1, context, null, null);
+            Collections.singletonList(
+                new AlignedFullPath(
+                    deviceID1,
+                    Collections.singletonList(measurementName),
+                    Collections.singletonList(measurementSchema))),
+            deviceID1,
+            context,
+            null,
+            null);
     Assert.assertEquals(1, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
 
     queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new AlignedFullPath(deviceID2,
-                Collections.singletonList(measurementName), Collections.singletonList(measurementSchema))),
-            deviceID2, context, null, null);
+            Collections.singletonList(
+                new AlignedFullPath(
+                    deviceID2,
+                    Collections.singletonList(measurementName),
+                    Collections.singletonList(measurementSchema))),
+            deviceID2,
+            context,
+            null,
+            null);
     Assert.assertEquals(1, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {

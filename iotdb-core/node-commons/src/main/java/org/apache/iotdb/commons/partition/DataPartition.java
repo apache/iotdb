@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +40,8 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 public class DataPartition extends Partition {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataPartition.class);
   public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -170,6 +174,9 @@ public class DataPartition extends Partition {
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
       IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList, String databaseName) {
+    if (databaseName == null) {
+      databaseName = getStorageGroupByDevice(deviceID);
+    }
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
@@ -179,6 +186,7 @@ public class DataPartition extends Partition {
     List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    LOGGER.info("DataPartitionMap {} and database name {}", dataPartitionMap, databaseName);
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {

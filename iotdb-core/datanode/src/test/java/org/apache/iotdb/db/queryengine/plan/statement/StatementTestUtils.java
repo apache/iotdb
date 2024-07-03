@@ -35,10 +35,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 public class StatementTestUtils {
 
@@ -51,24 +51,24 @@ public class StatementTestUtils {
   }
 
   public static String[] genColumnNames() {
-    return new String[]{"id1", "attr1", "m1"};
+    return new String[] {"id1", "attr1", "m1"};
   }
 
   public static TSDataType[] genDataTypes() {
-    return new TSDataType[]{TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE};
+    return new TSDataType[] {TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE};
   }
 
   public static MeasurementSchema[] genMeasurementSchemas() {
-    return new MeasurementSchema[]{
-        new MeasurementSchema("id1", TSDataType.STRING),
-        new MeasurementSchema("attr1", TSDataType.STRING),
-        new MeasurementSchema("m1", TSDataType.DOUBLE)
+    return new MeasurementSchema[] {
+      new MeasurementSchema("id1", TSDataType.STRING),
+      new MeasurementSchema("attr1", TSDataType.STRING),
+      new MeasurementSchema("m1", TSDataType.DOUBLE)
     };
   }
 
   public static TsTableColumnCategory[] genColumnCategories() {
-    return new TsTableColumnCategory[]{
-        TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.MEASUREMENT
+    return new TsTableColumnCategory[] {
+      TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.MEASUREMENT
     };
   }
 
@@ -104,9 +104,7 @@ public class StatementTestUtils {
       values[i] = (i + offset) * 1.0;
     }
 
-    return new Object[]{
-        ids, attrs, values
-    };
+    return new Object[] {ids, attrs, values};
   }
 
   public static long[] genTimestamps() {
@@ -121,8 +119,8 @@ public class StatementTestUtils {
     return timestamps;
   }
 
-  public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable, int rowCnt,
-      int offset) {
+  public static InsertTabletStatement genInsertTabletStatement(
+      boolean writeToTable, int rowCnt, int offset) {
     String[] measurements = genColumnNames();
     TSDataType[] dataTypes = genDataTypes();
     TsTableColumnCategory[] columnCategories = genColumnCategories();
@@ -131,7 +129,7 @@ public class StatementTestUtils {
     long[] timestamps = genTimestamps(rowCnt, offset);
 
     InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-    insertTabletStatement.setDevicePath(new PartialPath(new String[]{tableName()}));
+    insertTabletStatement.setDevicePath(new PartialPath(new String[] {tableName()}));
     insertTabletStatement.setMeasurements(measurements);
     insertTabletStatement.setDataTypes(dataTypes);
     insertTabletStatement.setColumnCategories(columnCategories);
@@ -143,8 +141,7 @@ public class StatementTestUtils {
     return insertTabletStatement;
   }
 
-  public static RelationalInsertTabletNode genInsertTabletNode(int rowCnt,
-      int offset) {
+  public static RelationalInsertTabletNode genInsertTabletNode(int rowCnt, int offset) {
     String[] measurements = genColumnNames();
     TSDataType[] dataTypes = genDataTypes();
     TsTableColumnCategory[] columnCategories = genColumnCategories();
@@ -153,11 +150,18 @@ public class StatementTestUtils {
     Object[] columns = genColumns(rowCnt, offset);
     long[] timestamps = genTimestamps(rowCnt, offset);
 
-    return
-        new RelationalInsertTabletNode(new PlanNodeId(offset + "-" + rowCnt),
-            new PartialPath(new String[]{tableName()}),
-            true,
-            measurements, dataTypes, measurementSchemas, timestamps, null, columns, rowCnt, columnCategories);
+    return new RelationalInsertTabletNode(
+        new PlanNodeId(offset + "-" + rowCnt),
+        new PartialPath(new String[] {tableName()}),
+        true,
+        measurements,
+        dataTypes,
+        measurementSchemas,
+        timestamps,
+        null,
+        columns,
+        rowCnt,
+        columnCategories);
   }
 
   public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable) {
@@ -179,8 +183,9 @@ public class StatementTestUtils {
           break;
         case MEASUREMENT:
         default:
-          tsTable.addColumnSchema(new MeasurementColumnSchema(measurements[i], dataTypes[i],
-              TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+          tsTable.addColumnSchema(
+              new MeasurementColumnSchema(
+                  measurements[i], dataTypes[i], TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
           break;
       }
     }

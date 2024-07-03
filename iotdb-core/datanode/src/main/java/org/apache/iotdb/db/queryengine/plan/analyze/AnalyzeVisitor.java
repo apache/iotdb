@@ -246,7 +246,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
     analysis.setRealStatement(explainStatement);
     analysis.setFinishQueryAfterAnalyze(true);
-    analysis.setDatabaseName(context.getSession().getDatabaseName().get());
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     return analysis;
   }
 
@@ -261,7 +261,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             Collections.singletonList(
                 new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT, null)),
             true));
-    analysis.setDatabaseName(context.getSession().getDatabaseName().get());
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     return analysis;
   }
 
@@ -2795,7 +2795,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitPipeEnrichedStatement(
       PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
     Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
-    analysis.setDatabaseName(context.getSession().getDatabaseName().get());
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
 
     // statement may be changed because of logical view
     pipeEnrichedStatement.setInnerStatement(analysis.getTreeStatement());

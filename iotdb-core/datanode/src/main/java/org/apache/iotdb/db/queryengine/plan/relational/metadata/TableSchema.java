@@ -94,4 +94,9 @@ public class TableSchema {
   public int hashCode() {
     return Objects.hash(tableName, columns);
   }
+
+  @Override
+  public String toString() {
+    return "TableSchema{" + "tableName='" + tableName + '\'' + ", columns=" + columns + '}';
+  }
 }

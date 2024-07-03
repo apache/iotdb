@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import java.nio.charset.StandardCharsets;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -62,6 +60,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1198,7 +1197,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
         String[] stringValues = (String[]) columns[measurementIndex];
         value =
-            new TsPrimitiveType.TsBinary(new Binary(stringValues[lastIdx].getBytes(StandardCharsets.UTF_8)));
+            new TsPrimitiveType.TsBinary(
+                new Binary(stringValues[lastIdx].getBytes(StandardCharsets.UTF_8)));
         break;
       default:
         throw new UnSupportedDataTypeException(
@@ -1208,6 +1208,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public IDeviceID getDeviceID(int rowIdx) {
+    if (deviceID != null) {
+      return deviceID;
+    }
+    deviceID = devicePath.getIDeviceID();
     return deviceID;
   }
 

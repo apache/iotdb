@@ -94,7 +94,7 @@ public class AnalyzeUtils {
             .add(insertTabletStatement.getTimePartitionSlot(i));
       }
       return computeDataPartitionParams(
-          timePartitionSlotMap, context.getSession().getDatabaseName().get());
+          timePartitionSlotMap, context.getSession().getDatabaseName().orElse(null));
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
@@ -108,7 +108,7 @@ public class AnalyzeUtils {
         }
       }
       return computeDataPartitionParams(
-          timePartitionSlotMap, context.getSession().getDatabaseName().get());
+          timePartitionSlotMap, context.getSession().getDatabaseName().orElse(null));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
@@ -122,7 +122,7 @@ public class AnalyzeUtils {
           insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
           insertTabletStatement.getTimePartitionSlots());
-      dataPartitionQueryParam.setDatabaseName(context.getSession().getDatabaseName().get());
+      dataPartitionQueryParam.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
       return Collections.singletonList(dataPartitionQueryParam);
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
@@ -137,7 +137,7 @@ public class AnalyzeUtils {
         timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
       }
       return computeDataPartitionParams(
-          dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
+          dataPartitionQueryParamMap, context.getSession().getDatabaseName().orElse(null));
     } else if (statement instanceof InsertRowsStatement) {
       final InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
       Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
@@ -150,7 +150,7 @@ public class AnalyzeUtils {
         timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
       }
       return computeDataPartitionParams(
-          dataPartitionQueryParamMap, context.getSession().getDatabaseName().get());
+          dataPartitionQueryParamMap, context.getSession().getDatabaseName().orElse(null));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
