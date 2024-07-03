@@ -90,13 +90,16 @@ public class InsertTablet extends WrappedInsertStatement {
   @Override
   public List<Object[]> getAttributeValueList() {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    List<Object[]> result = new ArrayList<>();
-    for (int i = 0; i < insertTabletStatement.getColumnCategories().length; i++) {
-      if (insertTabletStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-        result.add(((Object[]) insertTabletStatement.getColumns()[i]));
+    List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
+    final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      Object[] attrValues = new Object[attrColumnIndices.size()];
+      for (int j = 0; j < attrColumnIndices.size(); j++) {
+        final int columnIndex = attrColumnIndices.get(j);
+        attrValues[j] = ((Object[]) insertTabletStatement.getColumns()[columnIndex])[i];
       }
+      result.add(attrValues);
     }
-
     return result;
   }
 }

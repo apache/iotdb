@@ -74,6 +74,7 @@ public abstract class InsertBaseStatement extends Statement {
 
   protected TsTableColumnCategory[] columnCategories;
   protected List<Integer> idColumnIndices;
+  protected List<Integer> attrColumnIndices;
 
   // region params used by analyzing logical views.
 
@@ -271,6 +272,18 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     return idColumnIndices;
+  }
+
+  public List<Integer> getAttrColumnIndices() {
+    if (attrColumnIndices == null && columnCategories != null) {
+      attrColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+          attrColumnIndices.add(i);
+        }
+      }
+    }
+    return attrColumnIndices;
   }
 
   public boolean hasFailedMeasurements() {

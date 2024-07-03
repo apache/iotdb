@@ -93,8 +93,10 @@ public class LogicalPlanner {
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
-    relationalPlanOptimizers.forEach(
-        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
+    if (analysis.getStatement() instanceof Query) {
+      relationalPlanOptimizers.forEach(
+          optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
+    }
 
     return new LogicalQueryPlan(context, planNode);
   }

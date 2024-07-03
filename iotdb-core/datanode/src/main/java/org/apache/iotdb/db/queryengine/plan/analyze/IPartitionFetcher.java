@@ -94,6 +94,7 @@ public interface IPartitionFetcher {
   void invalidAllCache();
 
   // ======================== Table Model Schema Partition Interface ========================
+
   /**
    * Get or create schema partition, used in data insertion with enable_auto_create_schema is true.
    * if schemaPartition does not exist, then automatically create.
@@ -103,7 +104,7 @@ public interface IPartitionFetcher {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName);
+      String database, List<IDeviceID> deviceIDs, String userName);
 
   /**
    * For data query with completed id.
@@ -112,7 +113,7 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
+  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDs);
 
   /**
    * For data query with partial device id conditions.

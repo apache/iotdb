@@ -84,7 +84,7 @@ public class PartitionCacheTest {
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
       // init each database
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       storageGroups.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
         schemaPartitionTable.put(storageGroupName, new HashMap<>());
@@ -137,7 +137,7 @@ public class PartitionCacheTest {
     }
   }
 
-  private static String getStorageGroupName(int storageGroupNumber) {
+  private static String getDatabaseName(int storageGroupNumber) {
     return STORAGE_GROUP_PREFIX + storageGroupNumber;
   }
 
@@ -148,7 +148,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateStorageCache(storageGroups);
+    partitionCache.updateDatabaseCache(storageGroups);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
@@ -174,14 +174,14 @@ public class PartitionCacheTest {
                 Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
     for (List<IDeviceID> searchDevices : existedDevicesInOneStorageGroup) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(1, storageGroupToDeviceMap.size());
       for (List<IDeviceID> devices : storageGroupToDeviceMap.values()) {
         assertEquals(2, devices.size());
       }
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
@@ -196,14 +196,14 @@ public class PartitionCacheTest {
                 Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
     for (List<IDeviceID> searchDevices : existedDevicesInMultiStorageGroup) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, storageGroupToDeviceMap.size());
       for (List<IDeviceID> devices : storageGroupToDeviceMap.values()) {
         assertEquals(1, devices.size());
       }
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
@@ -221,11 +221,11 @@ public class PartitionCacheTest {
                 Factory.DEFAULT_FACTORY.create("root.sg4.**")));
     for (List<IDeviceID> searchDevices : nonExistedDevices) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, storageGroupToDeviceMap.size());
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, deviceToStorageGroupMap.size());
     }
@@ -234,11 +234,11 @@ public class PartitionCacheTest {
     List<IDeviceID> oneDeviceList =
         Collections.singletonList(Factory.DEFAULT_FACTORY.create("root.sg1.d1"));
     storageGroupToDeviceMap =
-        partitionCache.getStorageGroupToDevice(
+        partitionCache.getDatabaseToDevice(
             oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, storageGroupToDeviceMap.size());
     deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(
+        partitionCache.getDeviceToDatabase(
             oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, deviceToStorageGroupMap.size());
   }
@@ -287,7 +287,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
@@ -322,7 +322,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = DEVICE_PER_STORAGE_GROUP;
           deviceNumber < 2 * DEVICE_PER_STORAGE_GROUP;
           deviceNumber++) {
@@ -339,7 +339,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
@@ -356,7 +356,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
             IDeviceID.Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
@@ -402,7 +402,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = DEVICE_PER_STORAGE_GROUP;
           deviceNumber < 2 * DEVICE_PER_STORAGE_GROUP;
           deviceNumber++) {
@@ -419,7 +419,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
@@ -435,7 +435,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));

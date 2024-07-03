@@ -301,17 +301,17 @@ public class TestMatadata implements Metadata {
       @Override
       public SchemaPartition getOrCreateSchemaPartition(
           String database, List<IDeviceID> deviceIDList, String userName) {
-        return null;
+        return SCHEMA_PARTITION;
       }
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return null;
+        return SCHEMA_PARTITION;
       }
 
       @Override
       public SchemaPartition getSchemaPartition(String database) {
-        return null;
+        return SCHEMA_PARTITION;
       }
     };
   }
