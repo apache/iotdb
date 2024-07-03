@@ -496,12 +496,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, file, fileWriter));
-    } catch (final IOException e) {
-      // delete file anyway
+    } catch (final Exception e) {
+      // make every effort to delete stale intermediate file
       try {
         Files.delete(filePath);
       } catch (final Exception ignored) {
       }
+      // nack
+      commitInternal(commitContext.getDataNodeId(), Collections.singletonList(commitContext), true);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }

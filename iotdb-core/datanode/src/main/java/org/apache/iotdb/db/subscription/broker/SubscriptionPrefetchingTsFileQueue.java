@@ -418,7 +418,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
       consumerIdToSubscriptionEventMap.remove(entry.getKey());
 
-      event.resetCurrentResponseIndex();
+      event.nack();
       consumerIdToSubscriptionEventMap.put(consumerId, event);
 
       event.recordLastPolledConsumerId(consumerId);
