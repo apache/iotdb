@@ -116,10 +116,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.utils.RegexUtils.compileRegex;
 import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
@@ -287,7 +288,20 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitBinaryLiteral(BinaryLiteral node, Context context) {
-    throw new UnsupportedOperationException();
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  new ConstantColumnTransformer(
+                      BLOB,
+                      new BinaryColumn(
+                          1, Optional.empty(), new Binary[] {new Binary(node.getValue())}));
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
@@ -298,7 +312,7 @@ public class ColumnTransformerBuilder
             e -> {
               ConstantColumnTransformer columnTransformer =
                   new ConstantColumnTransformer(
-                      TEXT,
+                      STRING,
                       new BinaryColumn(
                           1,
                           Optional.empty(),
@@ -424,7 +438,7 @@ public class ColumnTransformerBuilder
                         e -> {
                           ConstantColumnTransformer columnTransformer =
                               new ConstantColumnTransformer(
-                                  TEXT,
+                                  STRING,
                                   new BinaryColumn(
                                       1,
                                       Optional.empty(),
@@ -459,7 +473,7 @@ public class ColumnTransformerBuilder
             e -> {
               ConstantColumnTransformer columnTransformer =
                   new ConstantColumnTransformer(
-                      TEXT,
+                      STRING,
                       new BinaryColumn(
                           1,
                           Optional.empty(),
@@ -528,57 +542,56 @@ public class ColumnTransformerBuilder
       return new RoundFunctionColumnTransformer(
           DOUBLE, this.process(children.get(0), context), places);
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
           return new ReplaceFunctionColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
-              ((StringLiteral) children.get(1)).getValue(),
-              "");
+              first.getType(), first, ((StringLiteral) children.get(1)).getValue(), "");
         } else {
           return new Replace2ColumnTransformer(
-              TEXT, this.process(children.get(0), context), this.process(children.get(1), context));
+              first.getType(), first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isStringLiteral(children.get(1)) && isStringLiteral(children.get(2))) {
           return new ReplaceFunctionColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
+              first.getType(),
+              first,
               ((StringLiteral) children.get(1)).getValue(),
               ((StringLiteral) children.get(2)).getValue());
         } else {
           return new Replace3ColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
+              first.getType(),
+              first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
         }
       }
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
           return new SubStringFunctionColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
+              first.getType(),
+              first,
               (int) ((LongLiteral) children.get(1)).getParsedValue(),
               Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
-              TEXT, this.process(children.get(0), context), this.process(children.get(1), context));
+              first.getType(), first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
           return new SubStringFunctionColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
+              first.getType(),
+              first,
               (int) ((LongLiteral) children.get(1)).getParsedValue(),
               (int) ((LongLiteral) children.get(2)).getParsedValue());
         } else {
           return new SubString3ColumnTransformer(
-              TEXT,
-              this.process(children.get(0), context),
+              first.getType(),
+              first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
         }

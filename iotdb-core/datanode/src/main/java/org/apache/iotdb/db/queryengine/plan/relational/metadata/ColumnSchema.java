@@ -22,9 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.UnknownType;
@@ -138,6 +142,14 @@ public class ColumnSchema {
         return DoubleType.DOUBLE;
       case TEXT:
         return BinaryType.TEXT;
+      case STRING:
+        return StringType.STRING;
+      case BLOB:
+        return BlobType.BLOB;
+      case TIMESTAMP:
+        return TimestampType.TIMESTAMP;
+      case DATE:
+        return DateType.DATE;
       default:
         return UnknownType.UNKNOWN;
     }

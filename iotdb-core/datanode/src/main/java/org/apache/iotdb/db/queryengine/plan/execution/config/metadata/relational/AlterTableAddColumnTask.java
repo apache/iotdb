@@ -33,7 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.StringType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,16 +69,16 @@ public class AlterTableAddColumnTask implements IConfigTask {
     for (ColumnSchema inputColumn : inputColumnList) {
       switch (inputColumn.getColumnCategory()) {
         case ID:
-          if (!inputColumn.getType().equals(BinaryType.TEXT)) {
-            throw new SemanticException("Id column only support data type TEXT.");
+          if (!inputColumn.getType().equals(StringType.STRING)) {
+            throw new SemanticException("Id column only support data type STRING.");
           }
-          columnSchemaList.add(new IdColumnSchema(inputColumn.getName(), TSDataType.TEXT));
+          columnSchemaList.add(new IdColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
         case ATTRIBUTE:
-          if (!inputColumn.getType().equals(BinaryType.TEXT)) {
-            throw new SemanticException("Attribute column only support data type TEXT.");
+          if (!inputColumn.getType().equals(StringType.STRING)) {
+            throw new SemanticException("Attribute column only support data type STRING.");
           }
-          columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.TEXT));
+          columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
         case MEASUREMENT:
           TSDataType dataType = InternalTypeManager.getTSDataType(inputColumn.getType());

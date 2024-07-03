@@ -50,9 +50,6 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +59,7 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
@@ -140,8 +138,7 @@ public class LogicalPlanner {
       outputs.add(symbol);
 
       if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(name)) {
-        columnHeaders.add(
-            new ColumnHeader(symbol.getName(), transferTypeToTsDataType(field.getType())));
+        columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
       }
 
       columnNumber++;
@@ -167,26 +164,6 @@ public class LogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(analysis, symbolAllocator, context, sessionInfo, ImmutableMap.of());
-  }
-
-  public TSDataType transferTypeToTsDataType(Type type) {
-    switch (type.getTypeEnum()) {
-      case INT32:
-        return TSDataType.INT32;
-      case INT64:
-        return TSDataType.INT64;
-      case BOOLEAN:
-        return TSDataType.BOOLEAN;
-      case FLOAT:
-        return TSDataType.FLOAT;
-      case DOUBLE:
-        return TSDataType.DOUBLE;
-      case TEXT:
-        return TSDataType.TEXT;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Cannot transfer type: %s to TSDataType.", type.getTypeEnum()));
-    }
   }
 
   private enum Stage {

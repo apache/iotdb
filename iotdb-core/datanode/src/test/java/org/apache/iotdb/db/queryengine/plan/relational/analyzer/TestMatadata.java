@@ -43,7 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
@@ -54,11 +54,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class TestMatadata implements Metadata {
@@ -77,11 +77,11 @@ public class TestMatadata implements Metadata {
   private static final String S2 = "s2";
   private static final String S3 = "s3";
   private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, INT64);
-  private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, BinaryType.TEXT);
-  private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, BinaryType.TEXT);
-  private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, BinaryType.TEXT);
-  private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, BinaryType.TEXT);
-  private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, BinaryType.TEXT);
+  private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
+  private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
+  private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, StringType.STRING);
+  private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, StringType.STRING);
+  private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, StringType.STRING);
   private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
   private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
   private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);
@@ -239,42 +239,6 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
-  }
-
-  public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 2
-        && isNumericType(argumentTypes.get(0))
-        && isNumericType(argumentTypes.get(1));
-  }
-
-  public static boolean isOneNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
-  }
-
-  public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
-  }
-
-  public static boolean isOneTextType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && TEXT.equals(argumentTypes.get(0));
-  }
-
-  public static boolean isNumericType(Type type) {
-    return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
-  }
-
-  public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
-    if (argumentTypes.size() != 2) {
-      return false;
-    }
-    Type left = argumentTypes.get(0);
-    Type right = argumentTypes.get(1);
-    if (left.equals(right)) {
-      return true;
-    }
-
-    // Boolean type and Binary Type can not be compared with other types
-    return isNumericType(left) && isNumericType(right);
   }
 
   private static final DataPartition DATA_PARTITION = MockTablePartition.constructDataPartition();

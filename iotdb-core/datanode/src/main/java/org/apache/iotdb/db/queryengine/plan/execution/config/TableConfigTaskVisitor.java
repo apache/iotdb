@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -36,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -45,20 +43,36 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
+
+  private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+
+  private static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
+
+  static {
+    TABLE_ALLOWED_PROPERTIES.add(COLUMN_TTL.toLowerCase(Locale.ENGLISH));
+  }
 
   private final IClientSession clientSession;
 
@@ -107,9 +121,23 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getName().getPrefix().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     TsTable table = new TsTable(node.getName().getSuffix());
+    Map<String, String> map = new HashMap<>();
+    for (Property property : node.getProperties()) {
+      String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (TABLE_ALLOWED_PROPERTIES.contains(key) && !property.isSetToDefault()) {
+        Expression value = property.getNonDefaultValue();
+        if (!(value instanceof LongLiteral)) {
+          throw new SemanticException(
+              "TTL' value must be a LongLiteral, but now is: " + value.toString());
+        }
+        map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+      }
+    }
+    table.setProps(map);
+
     for (ColumnDefinition columnDefinition : node.getElements()) {
       TsTableColumnCategory category = columnDefinition.getColumnCategory();
       String columnName = columnDefinition.getName().getValue();
@@ -118,26 +146,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       TSDataType dataType = getDataType(columnDefinition.getType());
-      switch (category) {
-        case ID:
-          table.addColumnSchema(new IdColumnSchema(columnName, dataType));
-          break;
-        case ATTRIBUTE:
-          table.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
-          break;
-        case TIME:
-          break;
-        case MEASUREMENT:
-          table.addColumnSchema(
-              new MeasurementColumnSchema(
-                  columnName,
-                  dataType,
-                  getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor()));
-          break;
-        default:
-          throw new IllegalArgumentException();
-      }
+      TableHeaderSchemaValidator.generateColumnSchema(table, category, columnName, dataType);
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
@@ -163,7 +172,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getDbName().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return new ShowTablesTask(database);
   }
@@ -176,7 +185,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       database = node.getTable().getPrefix().get().toString();
     }
     if (database == null) {
-      throw new SemanticException("unknown database");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return new DescribeTableTask(database, node.getTable().getSuffix());
   }
