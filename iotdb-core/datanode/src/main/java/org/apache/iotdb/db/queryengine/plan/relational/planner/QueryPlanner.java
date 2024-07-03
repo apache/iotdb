@@ -146,7 +146,8 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+      // TODO this appendProjections may be removed
+      // builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
@@ -162,11 +163,8 @@ public class QueryPlanner {
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    // TODO this appendProjections may be removed
-    if (orderBy.size() > 0) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+    if (!orderBy.isEmpty()) {
+      builder = builder.appendProjections(orderBy, analysis, symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
