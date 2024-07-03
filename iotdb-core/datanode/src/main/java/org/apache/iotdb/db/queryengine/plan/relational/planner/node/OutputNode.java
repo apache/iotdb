@@ -108,6 +108,7 @@ public class OutputNode extends SingleChildProcessNode {
     return this.columnNames;
   }
 
+  @Override
   public List<Symbol> getOutputSymbols() {
     return outputs;
   }
