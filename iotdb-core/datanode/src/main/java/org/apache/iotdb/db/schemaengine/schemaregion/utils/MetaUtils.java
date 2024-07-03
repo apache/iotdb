@@ -52,14 +52,14 @@ public class MetaUtils {
   private MetaUtils() {}
 
   /**
-   * Get database path when creating schema automatically is enable
+   * Get database path when creating schema automatically is enabled
    *
    * <p>e.g., path = root.a.b.c and level = 1, return root.a
    *
    * @param path path
    * @param level level
    */
-  public static PartialPath getStorageGroupPathByLevel(PartialPath path, int level)
+  public static PartialPath getDatabasePathByLevel(PartialPath path, int level)
       throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
