@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -45,6 +50,23 @@ public class ArithmeticUnaryExpression extends Expression {
 
     this.value = value;
     this.sign = sign;
+  }
+
+  public ArithmeticUnaryExpression(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+    this.sign = Sign.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.ARITHMETIC_UNARY;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
+    ReadWriteIOUtils.write(sign.ordinal(), stream);
   }
 
   public static ArithmeticUnaryExpression positive(

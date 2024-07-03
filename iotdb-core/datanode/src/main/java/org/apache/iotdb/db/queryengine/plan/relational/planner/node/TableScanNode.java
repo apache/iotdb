@@ -45,8 +45,8 @@ public class TableScanNode extends SourceNode {
 
   // db.tablename
   private final String qualifiedTableName;
-  private final List<Symbol> outputSymbols;
-  private final Map<Symbol, ColumnSchema> assignments;
+  private List<Symbol> outputSymbols;
+  private Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;
   private Map<Symbol, Integer> idAndAttributeIndexMap;
@@ -69,6 +69,8 @@ public class TableScanNode extends SourceNode {
   private TRegionReplicaSet regionReplicaSet;
 
   private List<TRegionReplicaSet> regionReplicaSetList;
+
+  private boolean pushLimitToEachDevice;
 
   public TableScanNode(
       PlanNodeId id,
@@ -162,6 +164,13 @@ public class TableScanNode extends SourceNode {
     }
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(pushDownPredicate, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -192,6 +201,13 @@ public class TableScanNode extends SourceNode {
     }
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(pushDownPredicate, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   public static TableScanNode deserialize(ByteBuffer byteBuffer) {
@@ -224,6 +240,12 @@ public class TableScanNode extends SourceNode {
 
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
+    Expression pushDownPredicate = null;
+    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasPushDownPredicate) {
+      pushDownPredicate = Expression.deserialize(byteBuffer);
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TableScanNode(
@@ -234,7 +256,7 @@ public class TableScanNode extends SourceNode {
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
-        null);
+        pushDownPredicate);
   }
 
   @Override
@@ -274,6 +296,18 @@ public class TableScanNode extends SourceNode {
     return this.qualifiedTableName;
   }
 
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
+    this.outputSymbols = outputSymbols;
+  }
+
+  public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
+    this.assignments = assignments;
+  }
+
+  public Map<Symbol, ColumnSchema> getAssignments() {
+    return this.assignments;
+  }
+
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
   }
@@ -286,10 +320,6 @@ public class TableScanNode extends SourceNode {
     this.idAndAttributeIndexMap = idAndAttributeIndexMap;
   }
 
-  public Map<Symbol, ColumnSchema> getAssignments() {
-    return this.assignments;
-  }
-
   public Ordering getScanOrder() {
     return this.scanOrder;
   }
@@ -298,16 +328,24 @@ public class TableScanNode extends SourceNode {
     return deviceEntries;
   }
 
-  public Expression getPushDownPredicate() {
-    return this.pushDownPredicate;
-  }
-
   public long getPushDownLimit() {
     return this.pushDownLimit;
   }
 
   public long getPushDownOffset() {
     return this.pushDownOffset;
+  }
+
+  public Expression getPushDownPredicate() {
+    return this.pushDownPredicate;
+  }
+
+  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
+    this.pushDownPredicate = pushDownPredicate;
+  }
+
+  public boolean isPushLimitToEachDevice() {
+    return pushLimitToEachDevice;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {

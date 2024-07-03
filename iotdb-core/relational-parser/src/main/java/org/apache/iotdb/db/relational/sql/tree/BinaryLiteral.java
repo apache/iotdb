@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.parser.ParsingException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.io.BaseEncoding;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import static java.util.Locale.ENGLISH;
@@ -102,5 +106,28 @@ public class BinaryLiteral extends Literal {
     }
 
     return Arrays.equals(value, ((BinaryLiteral) other).value);
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.BINARY_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value.length, stream);
+    for (byte b : value) {
+      ReadWriteIOUtils.write(b, stream);
+    }
+  }
+
+  public BinaryLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    int length = ReadWriteIOUtils.readInt(byteBuffer);
+    this.value = new byte[length];
+    for (int i = 0; i < length; i++) {
+      value[i] = ReadWriteIOUtils.readByte(byteBuffer);
+    }
   }
 }

@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -64,6 +69,25 @@ public class ArithmeticBinaryExpression extends Expression {
     this.operator = operator;
     this.left = left;
     this.right = right;
+  }
+
+  public ArithmeticBinaryExpression(ByteBuffer byteBuffer) {
+    super(null);
+    this.operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    this.left = Expression.deserialize(byteBuffer);
+    this.right = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.ARITHMETIC_BINARY;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(operator.ordinal(), stream);
+    Expression.serialize(left, stream);
+    Expression.serialize(right, stream);
   }
 
   public Operator getOperator() {

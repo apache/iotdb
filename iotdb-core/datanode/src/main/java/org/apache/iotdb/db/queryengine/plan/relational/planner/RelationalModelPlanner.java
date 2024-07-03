@@ -24,10 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
@@ -107,18 +107,18 @@ public class RelationalModelPlanner implements IPlanner {
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
-    try {
-      return new LogicalPlanner(context, metadata, context.getSession(), warningCollector)
-          .plan((Analysis) analysis);
-    } catch (IoTDBException e) {
-      throw new RuntimeException(e);
-    }
+    return new LogicalPlanner(
+            context,
+            metadata,
+            context.getSession(),
+            ClusterPartitionFetcher.getInstance(),
+            warningCollector)
+        .plan((Analysis) analysis);
   }
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    return new RelationalDistributionPlanner(
-            (Analysis) analysis, logicalPlan, logicalPlan.getContext())
+    return new TableDistributionPlanner((Analysis) analysis, logicalPlan, logicalPlan.getContext())
         .plan();
   }
 

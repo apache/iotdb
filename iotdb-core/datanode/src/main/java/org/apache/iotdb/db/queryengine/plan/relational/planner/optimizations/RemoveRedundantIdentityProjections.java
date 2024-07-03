@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
@@ -34,12 +35,14 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
+      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
     return planNode.accept(new Rewriter(), new RewriterContext());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       PlanNode newNode = node.clone();
@@ -53,7 +56,8 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
     @Override
     public PlanNode visitProject(ProjectNode projectNode, RewriterContext context) {
       // TODO change the impl using the method of context.getParent()
-      if (projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
+      if (projectNode.getChild() instanceof ProjectNode
+          && projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
         if (context.getParent() instanceof SingleChildProcessNode) {
           ((SingleChildProcessNode) context.getParent()).setChild(projectNode.getChild());
         } else {

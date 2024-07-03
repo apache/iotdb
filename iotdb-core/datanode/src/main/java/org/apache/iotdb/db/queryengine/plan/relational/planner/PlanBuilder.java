@@ -97,6 +97,8 @@ public class PlanBuilder {
     ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(expression));
 
     if (field != null) {
+      // TODO(beyyes) use RelationFieldIndex or HierarchyFieldIndex?
+      // return Optional.of(fieldSymbols[field.getRelationFieldIndex()]);
       return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
     }
 
@@ -131,6 +133,10 @@ public class PlanBuilder {
         projections.put(symbol, translate(expression));
         mappings.put(expression, symbol);
       }
+    }
+
+    if (mappings.isEmpty()) {
+      return this;
     }
 
     return new PlanBuilder(

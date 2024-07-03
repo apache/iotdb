@@ -21,6 +21,9 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,6 +41,21 @@ public class IsNotNullPredicate extends Expression {
   public IsNotNullPredicate(NodeLocation location, Expression value) {
     super(requireNonNull(location, "location is null"));
     this.value = requireNonNull(value, "value is null");
+  }
+
+  public IsNotNullPredicate(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.IS_NOT_NULL_PREDICATE;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
   }
 
   public Expression getValue() {

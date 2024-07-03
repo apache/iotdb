@@ -165,7 +165,8 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
           measurements[measurementIndex] = measurement;
           valueList[measurementIndex] = measurementColumnMap.get(measurement);
           schemas[measurementIndex] =
-              ((MeasurementColumnSchema) table.getColumnList().get(i)).getMeasurementSchema();
+              (MeasurementSchema)
+                  ((MeasurementColumnSchema) table.getColumnList().get(i)).getMeasurementSchema();
           dataTypes[measurementIndex] = schemas[measurementIndex].getType();
           measurementIndex++;
         }

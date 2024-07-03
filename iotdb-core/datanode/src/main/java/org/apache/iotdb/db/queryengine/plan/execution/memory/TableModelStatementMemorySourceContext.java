@@ -17,12 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.relational.sql.tree;
+package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
-import javax.annotation.Nullable;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
-public abstract class DataType extends Expression {
-  DataType(@Nullable NodeLocation location) {
-    super(location);
+public class TableModelStatementMemorySourceContext {
+  private final MPPQueryContext queryContext;
+  private final Analysis analysis;
+
+  public TableModelStatementMemorySourceContext(MPPQueryContext queryContext, Analysis analysis) {
+    this.queryContext = queryContext;
+    this.analysis = analysis;
+  }
+
+  public MPPQueryContext getQueryContext() {
+    return queryContext;
+  }
+
+  public Analysis getAnalysis() {
+    return analysis;
   }
 }

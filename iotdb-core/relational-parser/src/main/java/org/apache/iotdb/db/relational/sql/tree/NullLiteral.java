@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 import static java.util.Objects.requireNonNull;
 
 public class NullLiteral extends Literal {
@@ -56,5 +60,17 @@ public class NullLiteral extends Literal {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.NULL_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {}
+
+  public NullLiteral(ByteBuffer byteBuffer) {
+    super(null);
   }
 }

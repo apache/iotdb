@@ -295,8 +295,8 @@ public class PredicatePushDownTest {
   }
 
   @Test
-  public void testCannotPushDownAlignByTime() {
-    checkCannotPushDown(
+  public void testCannotPushDownToOperatorAlignByTime() {
+    checkCannotPushDownToOperator(
         "select s1, s2 from root.sg.d1 where time > 100 and (s1 > 10 or s2 > 10)",
         new TestPlanBuilder()
             .fullOuterTimeJoin(
@@ -312,7 +312,7 @@ public class PredicatePushDownTest {
                 false)
             .getRoot());
 
-    checkCannotPushDown(
+    checkCannotPushDownToOperator(
         "select a.s1, a.s2 from root.sg.d2 where time > 100 and (a.s1 > 10 or s2 > 10)",
         new TestPlanBuilder()
             .fullOuterTimeJoin(
@@ -443,7 +443,7 @@ public class PredicatePushDownTest {
     OptimizationTestUtil.checkPushDown(new PredicatePushDown(), sql, rawPlan, optPlan);
   }
 
-  private void checkCannotPushDown(String sql, PlanNode rawPlan) {
+  private void checkCannotPushDownToOperator(String sql, PlanNode rawPlan) {
     OptimizationTestUtil.checkCannotPushDown(new PredicatePushDown(), sql, rawPlan);
   }
 }

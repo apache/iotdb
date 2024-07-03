@@ -127,6 +127,6 @@ public class OrderingScheme {
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("orderBy", orderBy).add("orderings", orderings).toString();
+    return toStringHelper("").add("orderBy", orderBy).add("orderings", orderings).toString();
   }
 }

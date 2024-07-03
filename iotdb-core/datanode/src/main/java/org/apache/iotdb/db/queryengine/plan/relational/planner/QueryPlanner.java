@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -40,7 +41,6 @@ import com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -146,27 +146,25 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
+      // TODO this appendProjections may be removed
+      // builder = builder.appendProjections(outputs, analysis, symbolAllocator, queryContext);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
-      List<Symbol> newFields = new ArrayList<>();
+      // List<Symbol> newFields = new ArrayList<>();
       // newFields.addAll(builder.getTranslations().getFieldSymbols());
 
       //            outputs.stream()
       //                    .map(builder::translate)
       //                    .forEach(newFields::add);
 
-      builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
+      // builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    // TODO this appendProjections may be removed
-    if (orderBy.size() > 0) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, queryContext);
+    if (!orderBy.isEmpty()) {
+      builder = builder.appendProjections(orderBy, analysis, symbolAllocator, queryContext);
     }
 
     Optional<OrderingScheme> orderingScheme =
@@ -250,12 +248,16 @@ public class QueryPlanner {
     if (resultPair.left != null) {
       globalTimePredicate =
           ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
+
+      queryContext.setGlobalTimeFilter(
+          globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
     }
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
     boolean hasValueFilter = resultPair.right;
     if (!hasValueFilter) {
       return planBuilder;
     }
+    analysis.setHasValueFilter(true);
     // TODO if predicate equals TrueConstant, no need filter
 
     return planBuilder.withNewRoot(

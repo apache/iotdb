@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
@@ -76,6 +77,11 @@ public class MPPQueryContext {
   QueryPlanStatistics queryPlanStatistics = null;
 
   private boolean skipSchemaValidate = false;
+
+  // splits predicate expression in table model into three parts,
+  // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
+  // index 2 represents expressionsCannotPushDownToOperator
+  private List<List<Expression>> tableModelPredicateExpressions;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -205,9 +211,15 @@ public class MPPQueryContext {
     }
   }
 
+  // used for tree model
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
         PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
+  }
+
+  // used for table model
+  public void setGlobalTimeFilter(Filter globalTimeFilter) {
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   public Filter getGlobalTimeFilter() {
@@ -295,6 +307,28 @@ public class MPPQueryContext {
 
   public boolean isSkipSchemaValidate() {
     return skipSchemaValidate;
+  }
+
+  public List<List<Expression>> getTableModelPredicateExpressions() {
+    return tableModelPredicateExpressions;
+  }
+
+  public void setTableModelPredicateExpressions(
+      List<List<Expression>> tableModelPredicateExpressions) {
+    this.tableModelPredicateExpressions = tableModelPredicateExpressions;
+  }
+
+  // region =========== FE memory related, make sure its not called concurrently ===========
+
+  /**
+   * This method does not require concurrency control because the query plan is generated in a
+   * single-threaded manner.
+   */
+  public void reserveMemoryForFrontEnd(final long bytes) {
+    //    this.bytesToBeReservedForFrontEnd += bytes;
+    //    if (this.bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
+    //      reserveMemoryForFrontEndImmediately();
+    //    }
   }
 
   public void setSkipSchemaValidate(boolean skipSchemaValidate) {

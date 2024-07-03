@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
-public class RelationalDistributionPlanner {
+public class TableDistributionPlanner {
   private final Analysis analysis;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
 
-  public RelationalDistributionPlanner(
+  public TableDistributionPlanner(
       Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;

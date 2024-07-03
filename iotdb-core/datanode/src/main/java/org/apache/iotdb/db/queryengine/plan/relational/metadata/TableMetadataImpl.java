@@ -125,6 +125,10 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
+    return getFunctionType(functionName, argumentTypes);
+  }
+
+  public static Type getFunctionType(String functionName, List<? extends Type> argumentTypes) {
 
     // builtin scalar function
     if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -137,7 +141,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
       }
-      return argumentTypes.get(0);
+      return DOUBLE;
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(

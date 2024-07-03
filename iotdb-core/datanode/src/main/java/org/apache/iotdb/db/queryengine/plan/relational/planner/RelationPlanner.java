@@ -13,7 +13,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -41,7 +40,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -94,12 +92,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings());
     }
 
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     Scope scope = analysis.getScope(table);
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     Collection<Field> fields = scope.getRelationType().getAllFields();
-    int IDIdx = 0, attributeIdx = 0;
+
     for (Field field : fields) {
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
@@ -107,12 +104,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           symbol,
           new ColumnSchema(
               field.getName().get(), field.getType(), field.isHidden(), field.getColumnCategory()));
-
-      if (TsTableColumnCategory.ID.equals(field.getColumnCategory())) {
-        idAndAttributeIndexMap.put(symbol, IDIdx++);
-      } else if (TsTableColumnCategory.ATTRIBUTE.equals(field.getColumnCategory())) {
-        idAndAttributeIndexMap.put(symbol, attributeIdx++);
-      }
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
@@ -123,7 +114,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             outputSymbols,
             symbolToColumnSchema.build());
 
-    tableScanNode.setIdAndAttributeIndexMap(idAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);

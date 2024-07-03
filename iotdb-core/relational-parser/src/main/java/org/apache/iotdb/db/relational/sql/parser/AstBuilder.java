@@ -53,6 +53,7 @@ import org.apache.iotdb.db.relational.sql.tree.DropIndex;
 import org.apache.iotdb.db.relational.sql.tree.DropTable;
 import org.apache.iotdb.db.relational.sql.tree.Except;
 import org.apache.iotdb.db.relational.sql.tree.ExistsPredicate;
+import org.apache.iotdb.db.relational.sql.tree.Explain;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.GenericDataType;
@@ -106,6 +107,7 @@ import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SimpleGroupBy;
 import org.apache.iotdb.db.relational.sql.tree.SingleColumn;
 import org.apache.iotdb.db.relational.sql.tree.SortItem;
+import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
@@ -497,7 +499,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitExplain(RelationalSqlParser.ExplainContext ctx) {
-    return super.visitExplain(ctx);
+    return new Explain(getLocation(ctx), (Statement) visit(ctx.query()));
   }
 
   @Override

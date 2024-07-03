@@ -14,12 +14,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -27,11 +27,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.FilterScanCombine;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneTableScanColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
+import org.apache.iotdb.db.relational.sql.tree.Explain;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.Table;
@@ -50,7 +52,6 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
@@ -59,46 +60,54 @@ public class LogicalPlanner {
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
   private final List<RelationalPlanOptimizer> relationalPlanOptimizers;
   private final Metadata metadata;
+  private final IPartitionFetcher partitionFetcher;
   private final WarningCollector warningCollector;
 
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
       SessionInfo sessionInfo,
+      IPartitionFetcher partitionFetcher,
       WarningCollector warningCollector) {
     this.context = context;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.partitionFetcher = requireNonNull(partitionFetcher, "partitionFetcher is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
 
     this.relationalPlanOptimizers =
         Arrays.asList(
             new SimplifyExpressions(),
+            new PruneUnUsedColumns(),
+            new FilterScanCombine(),
             new RemoveRedundantIdentityProjections(),
-            new PruneTableScanColumns(),
             new IndexScan());
   }
 
-  public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
+  public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     relationalPlanOptimizers.forEach(
-        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
+        optimizer ->
+            optimizer.optimize(
+                planNode, analysis, metadata, partitionFetcher, sessionInfo, context));
 
     return new LogicalQueryPlan(context, planNode);
   }
 
-  private PlanNode planStatement(Analysis analysis, Statement statement) throws IoTDBException {
+  private PlanNode planStatement(Analysis analysis, Statement statement) {
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
 
-  private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement)
-      throws IoTDBException {
+  private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement) {
     if (statement instanceof Query) {
       return createRelationPlan(analysis, (Query) statement);
     }
-    throw new IoTDBException(
-        "Unsupported statement type " + statement.getClass().getSimpleName(), -1);
+    if (statement instanceof Explain) {
+      return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
+    }
+    throw new IllegalStateException(
+        "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
 
   private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis) {

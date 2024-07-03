@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -115,5 +121,29 @@ public class LogicalExpression extends Expression {
     }
 
     return operator == ((LogicalExpression) other).operator;
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.LOGICAL_EXPRESSION;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.operator.ordinal(), stream);
+    ReadWriteIOUtils.write(this.terms.size(), stream);
+    for (Expression term : terms) {
+      Expression.serialize(term, stream);
+    }
+  }
+
+  public LogicalExpression(ByteBuffer byteBuffer) {
+    super(null);
+    this.operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.terms = new ArrayList<>(size);
+    while (size-- > 0) {
+      this.terms.add(Expression.deserialize(byteBuffer));
+    }
   }
 }

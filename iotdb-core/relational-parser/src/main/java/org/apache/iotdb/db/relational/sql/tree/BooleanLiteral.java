@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -83,5 +88,20 @@ public class BooleanLiteral extends Literal {
     }
 
     return value == ((BooleanLiteral) other).value;
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.BOOLEAN_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value, stream);
+  }
+
+  public BooleanLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }

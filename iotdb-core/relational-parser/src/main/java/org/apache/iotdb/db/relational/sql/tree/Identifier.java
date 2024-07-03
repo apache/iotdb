@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -142,5 +147,23 @@ public class Identifier extends Expression {
     // We've already checked that first char does not contain digits,
     // so to avoid copying we are checking whole string.
     return ALLOWED_CHARS_MATCHER.matchesAllOf(value);
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.IDENTIFIER;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value, stream);
+    ReadWriteIOUtils.write(this.delimited, stream);
+  }
+
+  public Identifier(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
+    this.delimited = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }

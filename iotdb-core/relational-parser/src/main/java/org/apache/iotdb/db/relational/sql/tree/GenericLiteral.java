@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.parser.ParsingException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -99,5 +103,22 @@ public class GenericLiteral extends Literal {
     GenericLiteral otherLiteral = (GenericLiteral) other;
 
     return value.equals(otherLiteral.value) && type.equals(otherLiteral.type);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.GENERIC_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.type, stream);
+    ReadWriteIOUtils.write(this.value, stream);
+  }
+
+  public GenericLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    this.type = ReadWriteIOUtils.readString(byteBuffer);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
   }
 }

@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,6 +66,19 @@ public class QualifiedName {
     checkArgument(!isEmpty(originalParts), "originalParts is empty");
 
     return new QualifiedName(ImmutableList.copyOf(originalParts));
+  }
+
+  public QualifiedName(
+      List<Identifier> originalParts,
+      List<String> parts,
+      String name,
+      @Nullable QualifiedName prefix,
+      String suffix) {
+    this.originalParts = ImmutableList.copyOf(originalParts);
+    this.parts = ImmutableList.copyOf(parts);
+    this.name = requireNonNull(name, "name is null");
+    this.prefix = prefix;
+    this.suffix = suffix;
   }
 
   private QualifiedName(List<Identifier> originalParts) {
@@ -135,5 +154,54 @@ public class QualifiedName {
   @Override
   public String toString() {
     return name;
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(originalParts.size(), stream);
+    for (Identifier identifier : originalParts) {
+      Expression.serialize(identifier, stream);
+    }
+
+    ReadWriteIOUtils.write(parts.size(), stream);
+    for (String part : parts) {
+      ReadWriteIOUtils.write(part, stream);
+    }
+
+    ReadWriteIOUtils.write(name, stream);
+
+    if (prefix != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      prefix.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    ReadWriteIOUtils.write(suffix, stream);
+  }
+
+  public static QualifiedName deserialize(ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Identifier> originalParts = new ArrayList<>(size);
+    while (size-- > 0) {
+      originalParts.add((Identifier) Expression.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> parts = new ArrayList<>(size);
+    while (size-- > 0) {
+      parts.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+
+    String name = ReadWriteIOUtils.readString(byteBuffer);
+
+    byte hasPrefixByte = ReadWriteIOUtils.readByte(byteBuffer);
+    QualifiedName prefix = null;
+    if (hasPrefixByte == 1) {
+      prefix = QualifiedName.deserialize(byteBuffer);
+    }
+
+    String suffix = ReadWriteIOUtils.readString(byteBuffer);
+
+    return new QualifiedName(originalParts, parts, name, prefix, suffix);
   }
 }
