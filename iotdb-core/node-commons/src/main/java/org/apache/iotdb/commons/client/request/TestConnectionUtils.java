@@ -101,8 +101,11 @@ public class TestConnectionUtils {
   }
 
   public static int calculateCnLeaderToAllNodeMaxTime() {
-    return calculateCnLeaderToAllCnMaxTime()
-        + calculateCnLeaderToAllDnMaxTime()
-        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS / 4;
+    return (int) ((calculateCnLeaderToAllCnMaxTime() + calculateCnLeaderToAllDnMaxTime()) * 1.1);
+  }
+
+  public static int calculateDnToCnLeaderMaxTime() {
+    return calculateCnLeaderToAllDnMaxTime()
+        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
   }
 }
