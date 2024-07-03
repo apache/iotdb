@@ -166,6 +166,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   public void close() throws IOException {
     channel.close();
     MmapUtil.clean(dataBuffer);
+    MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
   }
 
@@ -212,9 +213,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.uncompressedSize
           || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean(dataBuffer);
-        }
+        MmapUtil.clean(dataBuffer);
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
       }
       dataBuffer.clear();
@@ -222,9 +221,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(compressedBuffer)
           || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
           || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(compressedBuffer)) {
-          MmapUtil.clean(compressedBuffer);
-        }
+        MmapUtil.clean(compressedBuffer);
         compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
       }
       compressedBuffer.clear();
@@ -241,9 +238,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.dataInDiskSize
           || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        if (!Objects.isNull(dataBuffer)) {
-          MmapUtil.clean(dataBuffer);
-        }
+        MmapUtil.clean(dataBuffer);
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
       }
       dataBuffer.clear();
