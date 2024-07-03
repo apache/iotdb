@@ -73,7 +73,7 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (!outputCount) {
+    if (!outputCount || !needMerge) {
       return children.get(0).getOutputColumnNames();
     }
     if (children.get(0) instanceof DeviceRegionScanNode) {

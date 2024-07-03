@@ -628,6 +628,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try {
         statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
+        Assert.fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             "516: Cannot set device template [t1] to path [root.sg1.d1] since there's timeseries under path [root.sg1.d1].",
@@ -652,6 +653,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d2.tmp.m");
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d2 INT32");
+        Assert.fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             "516: Cannot create timeseries [root.sg1.d2] since device template [t1] already set on path [root.sg1.d2.tmp.m].",
@@ -659,6 +661,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d2.s(tmp) INT32");
+        Assert.fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             "516: Cannot create timeseries [root.sg1.d2.s] since device template [t1] already set on path [root.sg1.d2.tmp.m].",
