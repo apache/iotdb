@@ -25,6 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -34,7 +38,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class Utils {
+public class TestConnectionUtils {
   public static <ServiceProviderLocation, RequestType>
       List<TTestConnectionResult> testConnectionsImpl(
           List<ServiceProviderLocation> nodeLocations,
@@ -74,5 +78,31 @@ public class Utils {
               results.add(result);
             });
     return results;
+  }
+
+  public static int calculateCnLeaderToAllCnMaxTime() {
+    return
+    // SUBMIT_TEST_CONNECTION_TASK rpc timeout
+    AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        // CN test timeout
+        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        + AsyncDataNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
+  }
+
+  public static int calculateCnLeaderToAllDnMaxTime() {
+    return
+    // SUBMIT_TEST_CONNECTION_TASK rpc timeout
+    AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        // DN test timeout
+        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        + AsyncDataNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        + AsyncDataNodeExternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
+        + AsyncDataNodeMPPDataExchangeServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
+  }
+
+  public static int calculateCnLeaderToAllNodeMaxTime() {
+    return calculateCnLeaderToAllCnMaxTime()
+        + calculateCnLeaderToAllDnMaxTime()
+        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS / 4;
   }
 }

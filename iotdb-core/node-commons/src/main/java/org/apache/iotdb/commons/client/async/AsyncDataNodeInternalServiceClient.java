@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
@@ -42,6 +43,9 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeInternalServiceClient.class);
+
+  public static final int DEFAULT_CONNECTION_TIMEOUT_IN_MS =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
 
   private final boolean printLogWhenEncounterException;
 
@@ -110,6 +114,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
    * RPC is finished.
    */
   private void returnSelf() {
+    setTimeout(DEFAULT_CONNECTION_TIMEOUT_IN_MS);
     clientManager.returnClient(endpoint, this);
   }
 

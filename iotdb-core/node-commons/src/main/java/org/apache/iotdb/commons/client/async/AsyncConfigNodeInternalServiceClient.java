@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -41,6 +42,9 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
+
+  public static final int DEFAULT_CONNECTION_TIMEOUT_IN_MS =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -98,6 +102,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
    * RPC is finished.
    */
   private void returnSelf() {
+    setTimeout(DEFAULT_CONNECTION_TIMEOUT_IN_MS);
     clientManager.returnClient(endpoint, this);
   }
 
