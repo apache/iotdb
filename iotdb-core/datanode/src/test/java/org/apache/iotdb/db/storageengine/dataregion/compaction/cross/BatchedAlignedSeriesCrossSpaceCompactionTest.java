@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -138,6 +140,48 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(700000, 800000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(500000, 600000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
+  @Test
+  public void testFlushChunkWithDeletion() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 400000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    seqResource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "*"), Long.MAX_VALUE, 200000));
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -287,6 +331,50 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
   }
 
   @Test
+  public void testCompactByDeserializePageWithPartialDeletion() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s0"), Long.MAX_VALUE, 15));
+    seqResource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 20));
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(90, 100)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(30, 40), new TimeRange(70, 80)}},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
+  @Test
   public void testCompactByDeserializePageWithEmpty() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -325,12 +413,16 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
   }
 
   @Test
-  public void testCompactByDeserializePageWithOverlap() throws Exception {
+  public void testCompactByDeserialize() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(50, 60)}},
+            new TimeRange[][] {
+              new TimeRange[] {
+                new TimeRange(1000, 2000), new TimeRange(50000, 60000), new TimeRange(60001, 60002)
+              }
+            },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
