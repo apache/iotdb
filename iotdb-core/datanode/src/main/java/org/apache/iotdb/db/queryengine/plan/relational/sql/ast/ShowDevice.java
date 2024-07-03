@@ -84,14 +84,14 @@ public class ShowDevice extends Statement {
 
   public List<List<Expression>> getIdDeterminedPredicateList() {
     if (idDeterminedPredicateList == null) {
-      // todo process raw expression input by show device sql
+      // TODO table metadata: process raw expression input by show device sql
     }
     return idDeterminedPredicateList;
   }
 
   public Expression getIdFuzzyPredicate() {
     if (idFuzzyPredicate == null) {
-      // todo process raw expression input by show device sql
+      // TODO table metadata: process raw expression input by show device sql
     }
     return idFuzzyPredicate;
   }
@@ -106,7 +106,7 @@ public class ShowDevice extends Statement {
 
   public List<IDeviceID> getPartitionKeyList() {
     if (partitionKeyList == null) {
-      // todo parse idDeterminedFilterList to IDeviceID list
+      // TODO table metadata: parse idDeterminedFilterList to IDeviceID list
     }
     return partitionKeyList;
   }
