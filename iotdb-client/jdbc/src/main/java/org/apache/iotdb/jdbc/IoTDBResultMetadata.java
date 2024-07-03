@@ -263,7 +263,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   public int getPrecision(int column) throws SQLException {
     checkColumnIndex(column);
     if (column == 1 && !ignoreTimestamp) {
-      return 13;
+      return 3;
     }
     String columnType = columnTypeList.get(column - 1);
     switch (columnType.toUpperCase()) {
