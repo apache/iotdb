@@ -222,6 +222,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(compressedBuffer)
           || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
           || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+        if (!Objects.isNull(compressedBuffer)) {
+          MmapUtil.clean(compressedBuffer);
+        }
         compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
       }
       compressedBuffer.clear();
@@ -233,7 +236,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       compressedBuffer.flip();
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
       unCompressor.uncompress(compressedBuffer, dataBuffer);
-      MmapUtil.clean(compressedBuffer);
     } else {
       // An uncompressed segment
       if (Objects.isNull(dataBuffer)
