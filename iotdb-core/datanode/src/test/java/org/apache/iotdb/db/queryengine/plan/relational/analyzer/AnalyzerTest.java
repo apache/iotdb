@@ -40,9 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -136,28 +136,6 @@ public class AnalyzerTest {
             metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
         .thenReturn(Optional.of(tableSchema));
 
-    //    ResolvedFunction lLessThanI =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
-    //            new FunctionId("l<i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    ResolvedFunction iAddi =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
-    //            new FunctionId("l+i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    Mockito.when(
-    //            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64,
-    // INT32))))
-    //        .thenReturn(lLessThanI);
-    //    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32,
-    // INT32))))
-    //        .thenReturn(iAddi);
-
     Mockito.when(
             metadata.getOperatorReturnType(
                 eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
@@ -192,7 +170,7 @@ public class AnalyzerTest {
         tableScanNode.getOutputColumnNames());
     assertEquals(9, tableScanNode.getOutputSymbols().size());
     assertEquals(9, tableScanNode.getAssignments().size());
-    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
 
@@ -233,24 +211,19 @@ public class AnalyzerTest {
     OutputNode outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
-    assertTrue(outputNode.getChildren().get(0) instanceof MergeSortNode);
-    MergeSortNode mergeSortNode = (MergeSortNode) outputNode.getChildren().get(0);
-    assertEquals(
-        Arrays.asList("tag1", "tag2", "tag3", "attr1", "attr2"),
-        mergeSortNode.getOrderingScheme().getOrderBy().stream()
-            .map(Symbol::getName)
-            .collect(Collectors.toList()));
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof TableScanNode);
-    assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    TableScanNode tableScanNode = (TableScanNode) mergeSortNode.getChildren().get(1);
+    assertTrue(outputNode.getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0);
+    assertTrue(collectNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    assertTrue(collectNode.getChildren().get(2) instanceof ExchangeNode);
+    TableScanNode tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(
         Arrays.asList(
-            "table1.shanghai.A3.YY",
             "table1.shanghai.B3.YY",
             "table1.shenzhen.B1.XX",
-            "table1.shenzhen.B2.ZZ"),
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
         tableScanNode.getDeviceEntries().stream()
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
@@ -482,7 +455,7 @@ public class AnalyzerTest {
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
-    assertEquals(2, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
   @Test

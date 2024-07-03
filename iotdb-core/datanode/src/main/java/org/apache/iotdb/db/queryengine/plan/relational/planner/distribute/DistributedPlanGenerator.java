@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,8 +58,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
+import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
 public class DistributedPlanGenerator
     extends PlanVisitor<List<PlanNode>, DistributedPlanGenerator.PlanContext> {
@@ -236,7 +237,7 @@ public class DistributedPlanGenerator
 
     context.hasExchangeNode = tableScanNodeMap.size() > 1;
 
-    List<PlanNode> tableScanNodeList = new ArrayList<>();
+    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
     for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
@@ -244,7 +245,7 @@ public class DistributedPlanGenerator
       TableScanNode subTableScanNode = entry.getValue();
       subTableScanNode.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
       subTableScanNode.setRegionReplicaSet(regionReplicaSet);
-      tableScanNodeList.add(subTableScanNode);
+      resultTableScanNodeList.add(subTableScanNode);
 
       if (mostUsedDataRegion == null
           || subTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
@@ -254,16 +255,40 @@ public class DistributedPlanGenerator
     }
     context.mostUsedDataRegion = mostUsedDataRegion;
 
+    if (!context.hasSortNode) {
+      return resultTableScanNodeList;
+    }
+
+    processSortProperty(node, resultTableScanNodeList, context);
+    return resultTableScanNodeList;
+  }
+
+  private List<PlanNode> connectViaCollectSort(
+      SingleChildProcessNode node, List<PlanNode> childrenNodes) {
+    CollectNode collectNode = new CollectNode(queryContext.getQueryId().genPlanNodeId());
+    childrenNodes.forEach(collectNode::addChild);
+    node.setChild(collectNode);
+    return Collections.singletonList(node);
+  }
+
+  private void processSortProperty(
+      TableScanNode tableScanNode, List<PlanNode> resultTableScanNodeList, PlanContext context) {
     List<Symbol> newOrderingSymbols = new ArrayList<>();
     List<SortOrder> newSortOrders = new ArrayList<>();
     OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
 
+    Ordering scanOrder = Ordering.ASC;
     for (Symbol symbol : expectedOrderingScheme.getOrderBy()) {
-      if (!context.hasSortNode && TIME.equalsIgnoreCase(symbol.getName())) {
+      if (TIMESTAMP_STR.equalsIgnoreCase(symbol.getName())) {
+        if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()
+            && scanOrder == Ordering.ASC) {
+          // TODO(beyyes) move this judgement into logical plan
+          scanOrder = Ordering.DESC;
+          resultTableScanNodeList.forEach(
+              node -> ((TableScanNode) node).setScanOrder(Ordering.DESC));
+        }
         continue;
-      }
-
-      if (!node.getIdAndAttributeIndexMap().containsKey(symbol)) {
+      } else if (!tableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
         break;
       }
 
@@ -271,10 +296,16 @@ public class DistributedPlanGenerator
       newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
     }
 
+    // no sort property can be pushed down into TableScanNode
+    if (newOrderingSymbols.isEmpty()) {
+      return;
+    }
+
     List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (Symbol symbol : newOrderingSymbols) {
-      int idx = node.getIdAndAttributeIndexMap().get(symbol);
-      if (node.getAssignments().get(symbol).getColumnCategory() == TsTableColumnCategory.ID) {
+      int idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
+      if (tableScanNode.getAssignments().get(symbol).getColumnCategory()
+          == TsTableColumnCategory.ID) {
         // segments[0] is always tableName
         orderingRules.add(deviceEntry -> (String) deviceEntry.getDeviceID().getSegments()[idx + 1]);
       } else {
@@ -284,34 +315,28 @@ public class DistributedPlanGenerator
 
     Comparator<DeviceEntry> comparator;
     if (newSortOrders.get(0).isNullsFirst()) {
-      if (newSortOrders.get(0).isAscending()) {
-        comparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0)));
-      } else {
-        comparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0))).reversed();
-      }
+      comparator =
+          newSortOrders.get(0).isAscending()
+              ? Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0)))
+              : Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0))).reversed();
     } else {
-      if (newSortOrders.get(0).isAscending()) {
-        comparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(0)));
-      } else {
-        comparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(0))).reversed();
-      }
+      comparator =
+          newSortOrders.get(0).isAscending()
+              ? Comparator.nullsLast(Comparator.comparing(orderingRules.get(0)))
+              : Comparator.nullsLast(Comparator.comparing(orderingRules.get(0))).reversed();
     }
     for (int i = 1; i < orderingRules.size(); i++) {
       Comparator<DeviceEntry> thenComparator;
       if (newSortOrders.get(i).isNullsFirst()) {
-        if (newSortOrders.get(i).isAscending()) {
-          thenComparator = Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i)));
-        } else {
-          thenComparator =
-              Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
-        }
+        thenComparator =
+            newSortOrders.get(i).isAscending()
+                ? Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i)))
+                : Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
       } else {
-        if (newSortOrders.get(i).isAscending()) {
-          thenComparator = Comparator.nullsLast(Comparator.comparing(orderingRules.get(i)));
-        } else {
-          thenComparator =
-              Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
-        }
+        thenComparator =
+            newSortOrders.get(i).isAscending()
+                ? Comparator.nullsLast(Comparator.comparing(orderingRules.get(i)))
+                : Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
       }
       comparator = comparator.thenComparing(thenComparator);
     }
@@ -322,22 +347,11 @@ public class DistributedPlanGenerator
             IntStream.range(0, newOrderingSymbols.size())
                 .boxed()
                 .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
-    for (PlanNode planNode : tableScanNodeList) {
-      TableScanNode tableScanNode = (TableScanNode) planNode;
-      planNodeOrderingSchemeMap.put(tableScanNode.getPlanNodeId(), newOrderingScheme);
-      List<DeviceEntry> deviceEntries = tableScanNode.getDeviceEntries();
-      deviceEntries.sort(comparator);
+    for (PlanNode planNode : resultTableScanNodeList) {
+      TableScanNode scanNode = (TableScanNode) planNode;
+      planNodeOrderingSchemeMap.put(scanNode.getPlanNodeId(), newOrderingScheme);
+      scanNode.getDeviceEntries().sort(comparator);
     }
-
-    return tableScanNodeList;
-  }
-
-  private List<PlanNode> connectViaCollectSort(
-      SingleChildProcessNode node, List<PlanNode> childrenNodes) {
-    CollectNode collectNode = new CollectNode(queryContext.getQueryId().genPlanNodeId());
-    childrenNodes.forEach(collectNode::addChild);
-    node.setChild(collectNode);
-    return Collections.singletonList(node);
   }
 
   // ------------------- schema related interface ---------------------------------------------

@@ -375,6 +375,10 @@ public class TableScanNode extends SourceNode {
     return this.idAndAttributeIndexMap;
   }
 
+  public void setScanOrder(Ordering scanOrder) {
+    this.scanOrder = scanOrder;
+  }
+
   public Ordering getScanOrder() {
     return this.scanOrder;
   }
