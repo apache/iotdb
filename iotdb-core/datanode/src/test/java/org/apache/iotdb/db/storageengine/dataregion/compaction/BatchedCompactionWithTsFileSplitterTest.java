@@ -92,21 +92,21 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[] {new TimeRange(100000, 200000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource1);
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[] {new TimeRange(300000, 600000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -126,21 +126,21 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[] {new TimeRange(100000, 200000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource1);
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[] {new TimeRange(604700000, 604800020)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -160,25 +160,25 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[][] {
               new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 120000)}
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, true),
+            Arrays.asList(false, false, true, false, true),
             true);
     seqResources.add(seqResource1);
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[][] {
               new TimeRange[] {new TimeRange(300000, 310000), new TimeRange(320000, 330000)}
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -198,19 +198,19 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[][] {
               new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 120000)}
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, true),
+            Arrays.asList(false, false, false, false, true),
             true);
     seqResources.add(seqResource1);
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1", "s2", "s3", "s4"),
             new TimeRange[][] {
               new TimeRange[] {
                 new TimeRange(604799900, 604800020), new TimeRange(604810020, 604820020)
@@ -218,7 +218,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, false, false, false),
             true);
     seqResources.add(seqResource2);
 

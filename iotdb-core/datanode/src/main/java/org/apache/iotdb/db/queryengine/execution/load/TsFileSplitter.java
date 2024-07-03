@@ -103,6 +103,11 @@ public class TsFileSplitter {
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       getChunkMetadata(reader, offset2ChunkMetadata);
       byte marker;
+      // It should be noted that time chunk and its corresponding value chunk are not necessarily
+      // consecutive in the file.
+      // Therefore, every time after consuming a set of AlignedChunkData, we still need to retain
+      // some structural information
+      // for the corresponding value chunk that may appear later.
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -437,20 +442,20 @@ public class TsFileSplitter {
       return;
     }
 
-    Set<ChunkData> allChunkData = new HashSet<>();
     Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
-      allChunkData.addAll(new ArrayList<>(entry.getValue()));
       List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
         AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
         if (!chunkDataMap.containsKey(oldChunkData)) {
           chunkDataMap.put(oldChunkData, new BatchedAlignedValueChunkData(oldChunkData));
         }
-        alignedChunkDataList.set(i, chunkDataMap.get(oldChunkData));
+        BatchedAlignedValueChunkData chunkData =
+            chunkDataMap.computeIfAbsent(oldChunkData, BatchedAlignedValueChunkData::new);
+        alignedChunkDataList.set(i, chunkData);
       }
     }
-    for (ChunkData chunkData : allChunkData) {
+    for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
