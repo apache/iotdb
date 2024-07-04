@@ -62,4 +62,7 @@ public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEsti
     }
     return cost;
   }
+
+  public abstract long roughEstimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException;
 }

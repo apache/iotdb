@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -93,6 +95,13 @@ public class CompactionEstimateUtils {
         maxAlignedSeriesNumInDevice,
         maxDeviceChunkNum,
         averageChunkMetadataSize);
+  }
+
+  public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
+    return roughEstimatedMemCost > 0
+        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                * roughEstimatedMemCost
+            < SystemInfo.getInstance().getMemorySizeForCompaction();
   }
 
   public static boolean addReadLock(List<TsFileResource> resources) {
