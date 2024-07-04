@@ -16,10 +16,14 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+
+import com.google.common.base.Objects;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -27,8 +31,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class SortNode extends SingleChildProcessNode {
-  private final OrderingScheme orderingScheme;
-  private final boolean partial;
+  protected final OrderingScheme orderingScheme;
+  protected final boolean partial;
 
   public SortNode(PlanNodeId id, PlanNode child, OrderingScheme scheme, boolean partial) {
     super(id, child);
@@ -52,13 +56,24 @@ public class SortNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_SORT_NODE.serialize(byteBuffer);
+    orderingScheme.serialize(byteBuffer);
+    ReadWriteIOUtils.write(partial, byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_SORT_NODE.serialize(stream);
+    orderingScheme.serialize(stream);
+    ReadWriteIOUtils.write(partial, stream);
+  }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
+    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new SortNode(planNodeId, null, orderingScheme, partial);
   }
 
   @Override
@@ -68,5 +83,24 @@ public class SortNode extends SingleChildProcessNode {
 
   public OrderingScheme getOrderingScheme() {
     return orderingScheme;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    SortNode sortNode = (SortNode) o;
+    return Objects.equal(orderingScheme, sortNode.orderingScheme);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), orderingScheme);
+  }
+
+  @Override
+  public String toString() {
+    return "SortNode-" + this.getPlanNodeId();
   }
 }

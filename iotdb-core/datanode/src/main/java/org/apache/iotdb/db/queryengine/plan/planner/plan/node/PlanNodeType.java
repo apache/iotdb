@@ -239,7 +239,8 @@ public enum PlanNodeType {
   TABLE_SORT_NODE((short) 1006),
   TABLE_MERGESORT_NODE((short) 1007),
   TABLE_TOPK_NODE((short) 1008),
-  TABLE_COLLECT_NODE((short) 1009);
+  TABLE_COLLECT_NODE((short) 1009),
+  TABLE_STREAM_SORT_NODE((short) 1010);
 
   public static final int BYTES = Short.BYTES;
 

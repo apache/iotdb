@@ -329,28 +329,6 @@ public class TableScanNode extends SourceNode {
   @Override
   public void close() throws Exception {}
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    TableScanNode that = (TableScanNode) o;
-    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
-        && Objects.equals(outputSymbols, that.outputSymbols)
-        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), qualifiedObjectName, outputSymbols, regionReplicaSet);
-  }
-
   public QualifiedObjectName getQualifiedObjectName() {
     return this.qualifiedObjectName;
   }
@@ -433,5 +411,32 @@ public class TableScanNode extends SourceNode {
 
   public void setTimeFilter(Filter timeFilter) {
     this.timeFilter = timeFilter;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TableScanNode that = (TableScanNode) o;
+    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
+        && Objects.equals(outputSymbols, that.outputSymbols)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), qualifiedObjectName, outputSymbols, regionReplicaSet);
+  }
+
+  @Override
+  public String toString() {
+    return "TableScanNode-" + this.getPlanNodeId();
   }
 }

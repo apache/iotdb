@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Abst
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -63,12 +63,12 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
 public class DistributedPlanGenerator
     extends PlanVisitor<List<PlanNode>, DistributedPlanGenerator.PlanContext> {
-  private final MPPQueryContext queryContext;
+  private final QueryId queryId;
   private final Analysis analysis;
-  Map<PlanNodeId, OrderingScheme> planNodeOrderingSchemeMap = new HashMap<>();
+  Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
 
   public DistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
-    this.queryContext = queryContext;
+    this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
   }
 
@@ -95,108 +95,137 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitOutput(OutputNode outputNode, PlanContext context) {
-    List<PlanNode> childrenNodes = outputNode.getChild().accept(this, context);
+  public List<PlanNode> visitOutput(OutputNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    nodeOrderingMap.put(
+        node.getPlanNodeId(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()));
+
     if (childrenNodes.size() == 1) {
-      outputNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(outputNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
-    return connectViaCollectSort(outputNode, childrenNodes);
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childrenNodes));
+    return Collections.singletonList(node);
   }
 
   @Override
-  public List<PlanNode> visitLimit(LimitNode limitNode, PlanContext context) {
-    List<PlanNode> childrenNodes = limitNode.getChild().accept(this, context);
+  public List<PlanNode> visitLimit(LimitNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    nodeOrderingMap.put(
+        node.getPlanNodeId(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()));
+
     if (childrenNodes.size() == 1) {
-      limitNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(limitNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
-    return connectViaCollectSort(limitNode, childrenNodes);
+    // push down LimitNode in distributed plan optimize rule
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childrenNodes));
+    return Collections.singletonList(node);
   }
 
   @Override
-  public List<PlanNode> visitOffset(OffsetNode offsetNode, PlanContext context) {
-    List<PlanNode> childrenNodes = offsetNode.getChild().accept(this, context);
+  public List<PlanNode> visitOffset(OffsetNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    nodeOrderingMap.put(
+        node.getPlanNodeId(), nodeOrderingMap.get(node.getChildren().get(0).getPlanNodeId()));
+
     if (childrenNodes.size() == 1) {
-      offsetNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(offsetNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
-    return connectViaCollectSort(offsetNode, childrenNodes);
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childrenNodes));
+    return Collections.singletonList(node);
   }
 
   @Override
-  public List<PlanNode> visitProject(ProjectNode projectNode, PlanContext context) {
-    List<PlanNode> childrenNodes = projectNode.getChild().accept(this, context);
+  public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme orderingScheme = nodeOrderingMap.get(node.getChildren().get(0).getPlanNodeId());
+    nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme);
+
     if (childrenNodes.size() == 1) {
-      projectNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(projectNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
-    for (Expression expression : projectNode.getAssignments().getMap().values()) {
+    for (Expression expression : node.getAssignments().getMap().values()) {
       if (containsDiffFunction(expression)) {
-        return connectViaCollectSort(projectNode, childrenNodes);
+        node.setChild(mergeChildrenViaCollectOrMergeSort(childrenNodes));
+        return Collections.singletonList(node);
       }
     }
 
-    return childrenNodes.stream()
-        .map(
-            child ->
-                new ProjectNode(
-                    queryContext.getQueryId().genPlanNodeId(), child, projectNode.getAssignments()))
-        .collect(Collectors.toList());
+    // TODO(beyyes) if child of ProjectNode is SortNode, some outputSymbols in SortNode may be
+    // eliminated
+    List<PlanNode> resultNodeList = new ArrayList<>();
+    for (int i = 0; i < childrenNodes.size(); i++) {
+      PlanNode child = childrenNodes.get(i);
+      ProjectNode subProjectNode =
+          new ProjectNode(queryId.genPlanNodeId(), child, node.getAssignments());
+      resultNodeList.add(subProjectNode);
+      if (i == 0) {
+        nodeOrderingMap.put(subProjectNode.getPlanNodeId(), orderingScheme);
+      }
+    }
+    return resultNodeList;
   }
 
   @Override
-  public List<PlanNode> visitSort(SortNode sortNode, PlanContext context) {
-    context.expectedOrderingScheme = sortNode.getOrderingScheme();
+  public List<PlanNode> visitSort(SortNode node, PlanContext context) {
+    context.expectedOrderingScheme = node.getOrderingScheme();
     context.hasSortNode = true;
+    nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
-    List<PlanNode> childrenNodes = sortNode.getChild().accept(this, context);
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
-      sortNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(sortNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
+    // may have ProjectNode above SortNode later, so use MergeSortNode but not return SortNode list
     MergeSortNode mergeSortNode =
         new MergeSortNode(
-            queryContext.getQueryId().genPlanNodeId(),
-            sortNode.getOrderingScheme(),
-            sortNode.getOutputSymbols());
+            queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
       SortNode subSortNode =
-          new SortNode(
-              queryContext.getQueryId().genPlanNodeId(),
-              child,
-              sortNode.getOrderingScheme(),
-              false);
+          new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false);
       mergeSortNode.addChild(subSortNode);
-      planNodeOrderingSchemeMap.put(subSortNode.getPlanNodeId(), sortNode.getOrderingScheme());
     }
-    planNodeOrderingSchemeMap.put(mergeSortNode.getPlanNodeId(), sortNode.getOrderingScheme());
+    nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
+
     return Collections.singletonList(mergeSortNode);
   }
 
   @Override
-  public List<PlanNode> visitFilter(FilterNode filterNode, PlanContext context) {
-    List<PlanNode> childrenNodes = filterNode.getChild().accept(this, context);
+  public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme orderingScheme = nodeOrderingMap.get(node.getChildren().get(0).getPlanNodeId());
+    nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme);
+
     if (childrenNodes.size() == 1) {
-      filterNode.setChild(childrenNodes.get(0));
-      return Collections.singletonList(filterNode);
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
     }
 
-    if (containsDiffFunction(filterNode.getPredicate())) {
-      return connectViaCollectSort(filterNode, childrenNodes);
+    if (containsDiffFunction(node.getPredicate())) {
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childrenNodes));
+      return Collections.singletonList(node);
     }
 
-    return childrenNodes.stream()
-        .map(
-            child ->
-                new FilterNode(
-                    queryContext.getQueryId().genPlanNodeId(), child, filterNode.getPredicate()))
-        .collect(Collectors.toList());
+    List<PlanNode> resultNodeList = new ArrayList<>();
+    for (int i = 0; i < childrenNodes.size(); i++) {
+      PlanNode child = childrenNodes.get(i);
+      FilterNode subFilterNode =
+          new FilterNode(queryId.genPlanNodeId(), child, node.getPredicate());
+      resultNodeList.add(subFilterNode);
+      if (i == 0) {
+        nodeOrderingMap.put(subFilterNode.getPlanNodeId(), orderingScheme);
+      }
+    }
+    return resultNodeList;
   }
 
   @Override
@@ -219,7 +248,7 @@ public class DistributedPlanGenerator
                 k -> {
                   TableScanNode scanNode =
                       new TableScanNode(
-                          queryContext.getQueryId().genPlanNodeId(),
+                          queryId.genPlanNodeId(),
                           node.getQualifiedObjectName(),
                           node.getOutputSymbols(),
                           node.getAssignments(),
@@ -243,7 +272,7 @@ public class DistributedPlanGenerator
     for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
       TableScanNode subTableScanNode = entry.getValue();
-      subTableScanNode.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
+      subTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
       subTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subTableScanNode);
 
@@ -263,12 +292,23 @@ public class DistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
-  private List<PlanNode> connectViaCollectSort(
-      SingleChildProcessNode node, List<PlanNode> childrenNodes) {
-    CollectNode collectNode = new CollectNode(queryContext.getQueryId().genPlanNodeId());
+  private PlanNode mergeChildrenViaCollectOrMergeSort(List<PlanNode> childrenNodes) {
+    PlanNode firstChild = childrenNodes.get(0);
+
+    // children has sort property, use MergeSort to merge children
+    if (nodeOrderingMap.containsKey(firstChild.getPlanNodeId())) {
+      OrderingScheme orderingScheme = nodeOrderingMap.get(firstChild.getPlanNodeId());
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(queryId.genPlanNodeId(), orderingScheme, firstChild.getOutputSymbols());
+      childrenNodes.forEach(mergeSortNode::addChild);
+      nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), orderingScheme);
+      return mergeSortNode;
+    }
+
+    // children has no sort property, use CollectNode to merge children
+    CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
     childrenNodes.forEach(collectNode::addChild);
-    node.setChild(collectNode);
-    return Collections.singletonList(node);
+    return collectNode;
   }
 
   private void processSortProperty(
@@ -349,7 +389,7 @@ public class DistributedPlanGenerator
                 .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
     for (PlanNode planNode : resultTableScanNodeList) {
       TableScanNode scanNode = (TableScanNode) planNode;
-      planNodeOrderingSchemeMap.put(scanNode.getPlanNodeId(), newOrderingScheme);
+      nodeOrderingMap.put(scanNode.getPlanNodeId(), newOrderingScheme);
       scanNode.getDeviceEntries().sort(comparator);
     }
   }
@@ -378,7 +418,7 @@ public class DistributedPlanGenerator
     for (PlanNode child : node.getChildren()) {
       for (TRegionReplicaSet schemaRegion : schemaRegionSet) {
         SourceNode clonedChild = (SourceNode) child.clone();
-        clonedChild.setPlanNodeId(queryContext.getQueryId().genPlanNodeId());
+        clonedChild.setPlanNodeId(queryId.genPlanNodeId());
         clonedChild.setRegionReplicaSet(schemaRegion);
         root.addChild(clonedChild);
       }
@@ -407,8 +447,7 @@ public class DistributedPlanGenerator
               if (!nodeDistribution
                   .getRegion()
                   .equals(context.getNodeDistribution(child.getPlanNodeId()).getRegion())) {
-                ExchangeNode exchangeNode =
-                    new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+                ExchangeNode exchangeNode = new ExchangeNode(queryId.genPlanNodeId());
                 exchangeNode.setChild(child);
                 exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
                 context.hasExchangeNode = true;

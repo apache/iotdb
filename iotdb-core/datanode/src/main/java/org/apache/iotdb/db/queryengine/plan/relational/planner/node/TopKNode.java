@@ -21,14 +21,19 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TopKNode extends MultiChildProcessNode {
@@ -70,13 +75,40 @@ public class TopKNode extends MultiChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_TOPK_NODE.serialize(byteBuffer);
+    orderingScheme.serialize(byteBuffer);
+    ReadWriteIOUtils.write(count, byteBuffer);
+    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+    for (Symbol symbol : outputSymbols) {
+      Symbol.serialize(symbol, byteBuffer);
+    }
+    ReadWriteIOUtils.write(childrenDataInOrder, byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_TOPK_NODE.serialize(stream);
+    orderingScheme.serialize(stream);
+    ReadWriteIOUtils.write(count, stream);
+    ReadWriteIOUtils.write(outputSymbols.size(), stream);
+    for (Symbol symbol : outputSymbols) {
+      Symbol.serialize(symbol, stream);
+    }
+    ReadWriteIOUtils.write(childrenDataInOrder, stream);
+  }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
+    int count = ReadWriteIOUtils.readInt(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> outputSymbols = new ArrayList<>();
+    while (size-- > 0) {
+      outputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+    boolean childrenDataInOrder = ReadWriteIOUtils.readBool(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
   }
 
   @Override
@@ -94,5 +126,26 @@ public class TopKNode extends MultiChildProcessNode {
 
   public boolean isChildrenDataInOrder() {
     return childrenDataInOrder;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    TopKNode sortNode = (TopKNode) o;
+    return Objects.equal(orderingScheme, sortNode.orderingScheme)
+        && Objects.equal(outputSymbols, sortNode.outputSymbols)
+        && Objects.equal(count, sortNode.count);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), orderingScheme, outputSymbols, count);
+  }
+
+  @Override
+  public String toString() {
+    return "TopKNode-" + this.getPlanNodeId();
   }
 }
