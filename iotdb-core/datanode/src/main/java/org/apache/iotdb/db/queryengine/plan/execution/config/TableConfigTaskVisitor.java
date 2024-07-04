@@ -122,24 +122,28 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowCluster(ShowCluster showClusterStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowCluster(
+      ShowCluster showClusterStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowClusterTask(showClusterStatement);
   }
 
   @Override
-  protected IConfigTask visitShowRegions(ShowRegions showRegionsStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowRegions(
+      ShowRegions showRegionsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowRegionsTask(showRegionsStatement);
   }
 
   @Override
-  protected IConfigTask visitShowDataNodes(ShowDataNodes showDataNodesStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowDataNodes(
+      ShowDataNodes showDataNodesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDataNodesTask(showDataNodesStatement);
   }
 
-  protected IConfigTask visitShowConfigNodes(ShowConfigNodes showConfigNodesStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowConfigNodes(
+      ShowConfigNodes showConfigNodesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowConfigNodesTask(showConfigNodesStatement);
   }
