@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.commons.schema.MemUsageUtil;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 
+// The reason that we don't use IDeviceID is TableDeviceId doesn't contain table name in segment 0.
 public class TableDeviceId {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableDeviceId.class);
 
   private final String[] idValues;
 
@@ -40,11 +44,7 @@ public class TableDeviceId {
   }
 
   public int estimateSize() {
-    int size = 8 + 8 + 8 + 4; // object header + reference + String[] header + String.length
-    for (String node : idValues) {
-      size += (int) MemUsageUtil.computeStringMemUsage(node);
-    }
-    return size;
+    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(idValues));
   }
 
   @Override

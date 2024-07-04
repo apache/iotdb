@@ -1139,7 +1139,9 @@ public class ClusterSchemaManager {
 
     List<TsTableColumnSchema> copiedList = new ArrayList<>();
     for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (targetTable.getColumnSchema(columnSchema.getColumnName()) == null) {
+      TsTableColumnSchema existingColumnSchema =
+          targetTable.getColumnSchema(columnSchema.getColumnName());
+      if (existingColumnSchema == null) {
         copiedList.add(columnSchema);
       }
     }

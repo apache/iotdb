@@ -99,16 +99,13 @@ public class TableDeviceSchemaValidator {
       Object[] deviceAttributeValueList = attributeValueList.get(i);
       for (int j = 0; j < attributeKeyList.size(); j++) {
         String value = attributeMap.get(attributeKeyList.get(j));
+        if (deviceAttributeValueList[j] == null) {
+          continue;
+        }
         if (value == null) {
-          if (deviceAttributeValueList[j] == null) {
-            continue;
-          }
           result.attributeMissingInCacheDeviceIndexList.add(i);
           break;
         } else {
-          if (deviceAttributeValueList[j] == null) {
-            continue;
-          }
           if (!value.equals(String.valueOf(deviceAttributeValueList[j]))) {
             result.attributeUpdateDeviceIndexList.add(i);
             break;

@@ -27,19 +27,23 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+@ThreadSafe
 public class TsTable {
 
   private static final String TIME_COLUMN_NAME = "Time";
@@ -48,8 +52,9 @@ public class TsTable {
 
   private final String tableName;
 
-  private final Map<String, TsTableColumnSchema> columnSchemaMap =
-      Collections.synchronizedMap(new LinkedHashMap<>());
+  private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+
+  private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private Map<String, String> props = null;
 
@@ -65,45 +70,85 @@ public class TsTable {
   }
 
   public TsTableColumnSchema getColumnSchema(String columnName) {
-    return columnSchemaMap.get(columnName);
+    readWriteLock.readLock().lock();
+    try {
+      return columnSchemaMap.get(columnName);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public void addColumnSchema(TsTableColumnSchema columnSchema) {
-    columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
-    if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-      idNums++;
+    readWriteLock.writeLock().lock();
+    try {
+      columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        idNums++;
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
     }
   }
 
   public void removeColumnSchema(String columnName) {
-    columnSchemaMap.remove(columnName);
+    readWriteLock.writeLock().lock();
+    try {
+      TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
+      if (columnSchema != null
+          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        idNums--;
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 
   public int getColumnNum() {
-    return columnSchemaMap.size();
+    readWriteLock.readLock().lock();
+    try {
+      return columnSchemaMap.size();
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public int getIdNums() {
-    return idNums;
+    readWriteLock.readLock().lock();
+    try {
+      return idNums;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public List<TsTableColumnSchema> getColumnList() {
-    return new ArrayList<>(columnSchemaMap.values());
+    readWriteLock.readLock().lock();
+    try {
+      return new ArrayList<>(columnSchemaMap.values());
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public String getPropValue(String propKey) {
-    return props == null ? null : props.get(propKey);
+    readWriteLock.readLock().lock();
+    try {
+      return props == null ? null : props.get(propKey);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public void addProp(String key, String value) {
-    if (props == null) {
-      synchronized (this) {
-        if (props == null) {
-          props = new ConcurrentHashMap<>();
-        }
+    readWriteLock.writeLock().lock();
+    try {
+      if (props == null) {
+        props = new HashMap<>();
       }
+      props.put(key, value);
+    } finally {
+      readWriteLock.writeLock().unlock();
     }
-    props.put(key, value);
   }
 
   public byte[] serialize() {
@@ -148,7 +193,12 @@ public class TsTable {
   }
 
   public void setProps(Map<String, String> props) {
-    this.props = props;
+    readWriteLock.writeLock().lock();
+    try {
+      this.props = props;
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 
   @Override
