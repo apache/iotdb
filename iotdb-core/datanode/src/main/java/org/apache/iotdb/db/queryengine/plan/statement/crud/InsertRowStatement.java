@@ -32,12 +32,16 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -71,6 +75,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    * views.
    */
   private boolean[] measurementIsAligned;
+
+  private boolean isWriteToTable = false;
+  private IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -443,5 +450,32 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+  }
+
+  public boolean isWriteToTable() {
+    return isWriteToTable;
+  }
+
+  public void setWriteToTable(boolean writeToTable) {
+    isWriteToTable = writeToTable;
+  }
+
+  public IDeviceID getTableDeviceID() {
+    if (deviceID == null) {
+      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      deviceIdSegments[0] = this.devicePath.getFullPath();
+      for (int i = 0; i < getIdColumnIndices().size(); i++) {
+        final Integer columnIndex = getIdColumnIndices().get(i);
+        deviceIdSegments[i + 1] =  values[columnIndex].toString();
+      }
+      deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceID;
+  }
+
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return new InsertRow(this, context);
   }
 }

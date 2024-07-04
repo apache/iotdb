@@ -116,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -510,6 +511,11 @@ public abstract class PlanVisitor<R, C> {
   public R visitInsertRow(InsertRowNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
 
   public R visitInsertTablet(InsertTabletNode node, C context) {
     return visitPlan(node, context);

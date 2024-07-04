@@ -212,6 +212,14 @@ public interface ISession extends AutoCloseable {
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void insertRelationalRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void insertRecord(
       String deviceId,
       long time,

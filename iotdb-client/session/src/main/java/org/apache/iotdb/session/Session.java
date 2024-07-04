@@ -1186,6 +1186,36 @@ public class Session implements ISession {
     insertRecord(deviceId, request);
   }
 
+  /**
+   * insert data in one row to the table model, if you want to improve your performance, please use insertRecords
+   * method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  @Override
+  public void insertRelationalRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordReq(
+              deviceId, time, measurements, types, Arrays.asList(values), false);
+      request.setIsWriteToTable(true);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
+      return;
+    }
+
+    insertRecord(deviceId, request);
+  }
+
+
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     try {

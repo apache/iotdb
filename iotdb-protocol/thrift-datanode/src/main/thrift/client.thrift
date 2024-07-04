@@ -212,6 +212,8 @@ struct TSInsertRecordReq {
   4: required binary values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional bool isWriteToTable
+  8: optional list<byte> columnCategoryies
 }
 
 struct TSInsertStringRecordReq {

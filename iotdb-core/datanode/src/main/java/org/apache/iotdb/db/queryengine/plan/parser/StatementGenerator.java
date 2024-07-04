@@ -284,6 +284,7 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
+    insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }

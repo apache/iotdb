@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import com.google.common.collect.ImmutableList;
@@ -52,6 +55,7 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
+
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final MPPQueryContext queryContext;
@@ -82,7 +86,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuery(Query node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+        analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -137,7 +141,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+        analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -206,6 +210,18 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertTabletStatement.getRowCount(),
             insertTabletStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
+    return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
+  }
+
+  protected RelationPlan visitInsertRow(InsertRow node, Void context) {
+    InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
+    RelationalInsertRowNode insertNode =
+        new RelationalInsertRowNode(idAllocator.genPlanNodeId(), insertRowStatement.getDevicePath(),
+            insertRowStatement.isAligned(),
+            insertRowStatement.getMeasurements(), insertRowStatement.getDataTypes(),
+            insertRowStatement.getTime(), insertRowStatement.getValues(),
+            insertRowStatement.isNeedInferType(), insertRowStatement.getColumnCategories());
+    insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
     return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
   }
 }

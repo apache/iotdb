@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -55,6 +56,10 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitPlan(PlanNode node, DataRegion context) {
     return null;
+  }
+
+  public TSStatus visitRelationalInsertRow(RelationalInsertRowNode node, DataRegion context) {
+    return visitInsertRow(node, context);
   }
 
   @Override
