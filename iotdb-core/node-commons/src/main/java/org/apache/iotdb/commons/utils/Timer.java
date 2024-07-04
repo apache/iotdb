@@ -30,7 +30,7 @@ public class Timer {
 
   private static final Logger logger = LoggerFactory.getLogger(Timer.class);
 
-  public static final boolean ENABLE_INSTRUMENTING = true;
+  public static final boolean ENABLE_INSTRUMENTING = false;
 
   private static final String COORDINATOR = "Coordinator";
   private static final String META_GROUP_MEMBER = "Meta group member";

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.utils.Timer.Statistic;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -29,25 +30,34 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 public class EntrySerialization {
 
   private static final Logger logger = LoggerFactory.getLogger(EntrySerialization.class);
+  private static final ExecutorService serializationExecutor =
+      IoTDBThreadPoolFactory.newFixedThreadPool(32, "Raft-LogSerialization");
   private volatile byte[] recycledBuffer;
-  private volatile ByteBuffer preSerializationCache;
   private volatile ByteBuffer serializationCache;
   private volatile ByteBuffer compressionCache;
   private CompressionType compressionType = CompressionType.UNCOMPRESSED;
   private int uncompressedSize;
+  private Future<ByteBuffer> serializeFuture;
 
   public void preSerialize(Entry entry) {
-    if (preSerializationCache != null || serializationCache != null) {
+    if (serializeFuture != null || serializationCache != null) {
       return;
     }
-    long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
-    ByteBuffer byteBuffer = entry.serializeInternal(recycledBuffer);
-    Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
-    preSerializationCache = byteBuffer;
+    serializeFuture =
+        serializationExecutor.submit(
+            () -> {
+              long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
+              ByteBuffer byteBuffer = entry.serializeInternal(recycledBuffer);
+              Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
+              return byteBuffer;
+            });
   }
 
   public ByteBuffer serialize(Entry entry) {
@@ -55,15 +65,23 @@ public class EntrySerialization {
     if (cache != null) {
       return cache.slice();
     }
-    if (preSerializationCache != null) {
-      ByteBuffer slice = preSerializationCache.slice();
+    if (serializeFuture != null) {
+      ByteBuffer slice = null;
+      try {
+        slice = serializeFuture.get().slice();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
       slice.position(1);
       slice.putLong(entry.getCurrLogIndex());
       slice.putLong(entry.getCurrLogTerm());
       slice.putLong(entry.getPrevTerm());
       slice.position(0);
       serializationCache = slice;
-      preSerializationCache = null;
+      serializeFuture = null;
     } else {
       long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
       ByteBuffer byteBuffer = entry.serializeInternal(recycledBuffer);
@@ -80,15 +98,23 @@ public class EntrySerialization {
       return cache.slice();
     }
 
-    if (preSerializationCache != null) {
-      ByteBuffer slice = preSerializationCache.slice();
+    if (serializeFuture != null) {
+      ByteBuffer slice = null;
+      try {
+        slice = serializeFuture.get().slice();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
       slice.position(1);
       slice.putLong(entry.getCurrLogIndex());
       slice.putLong(entry.getCurrLogTerm());
       slice.putLong(entry.getPrevTerm());
       slice.position(0);
       serializationCache = slice;
-      preSerializationCache = null;
+      serializeFuture = null;
     } else {
       long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
       ByteBuffer byteBuffer = entry.serializeInternal(recycledBuffer);
@@ -149,16 +175,31 @@ public class EntrySerialization {
     ByteBuffer cache;
     if ((cache = serializationCache) != null) {
       return cache.remaining();
-    } else if ((cache = preSerializationCache) != null) {
+    } else if ((serializeFuture) != null) {
+      try {
+        cache = serializeFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
       return cache.remaining();
     }
     return 0;
   }
 
   public void clear() {
-    if (preSerializationCache != null) {
-      recycledBuffer = preSerializationCache.array();
-      preSerializationCache = null;
+    if (serializeFuture != null) {
+      try {
+        recycledBuffer = serializeFuture.get().array();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+      serializeFuture = null;
     }
     if (serializationCache != null) {
       recycledBuffer = serializationCache.array();
@@ -175,14 +216,6 @@ public class EntrySerialization {
 
   public void setRecycledBuffer(byte[] recycledBuffer) {
     this.recycledBuffer = recycledBuffer;
-  }
-
-  public ByteBuffer getPreSerializationCache() {
-    return preSerializationCache;
-  }
-
-  public void setPreSerializationCache(ByteBuffer preSerializationCache) {
-    this.preSerializationCache = preSerializationCache;
   }
 
   public ByteBuffer getSerializationCache() {

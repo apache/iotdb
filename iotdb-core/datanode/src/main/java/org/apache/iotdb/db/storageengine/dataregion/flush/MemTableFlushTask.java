@@ -76,10 +76,7 @@ public class MemTableFlushTask {
 
   private final LinkedBlockingQueue<Task> sortTaskQueue = new LinkedBlockingQueue<>();
   private final LinkedBlockingQueue<Task> encodingTaskQueue = new LinkedBlockingQueue<>();
-  private final LinkedBlockingQueue<Task> ioTaskQueue =
-      (SystemInfo.getInstance().isEncodingFasterThanIo())
-          ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
-          : new LinkedBlockingQueue<>();
+  private final LinkedBlockingQueue<Task> ioTaskQueue = new LinkedBlockingQueue<>();
 
   private String storageGroup;
   private String dataRegionId;

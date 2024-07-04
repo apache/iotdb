@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
@@ -219,11 +221,14 @@ public class DataRegionConsensusImpl {
                               CONF.getDataRegionConsensusProtocolClass())));
     }
 
-    private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
+    private static IStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
       DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
       if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
         return new IoTConsensusDataRegionStateMachine(dataRegion);
       } else {
+        if (CONF.isIgnoreStateMachine()) {
+          return new EmptyStateMachine();
+        }
         return new DataRegionStateMachine(dataRegion);
       }
     }
