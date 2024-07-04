@@ -162,8 +162,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LOGGER.warn(
           "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
           e.getMessage());
+      // Do not use null pipe name to retain the field "required" to be compatible with the lower
+      // versions
       exceptionMessages.add(
-          new TPushPipeMetaRespExceptionMessage(null, e.getMessage(), System.currentTimeMillis()));
+          new TPushPipeMetaRespExceptionMessage("", e.getMessage(), System.currentTimeMillis()));
     }
 
     return exceptionMessages;
@@ -222,25 +224,24 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    PipeDataNodeAgent.runtime()
-        .listeningSchemaRegionIds()
+    PipeDataNodeAgent.runtime().listeningSchemaRegionIds().stream()
+        .filter(
+            schemaRegionId ->
+                !validSchemaRegionIds.contains(schemaRegionId.getId())
+                    && PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId))
         .forEach(
             schemaRegionId -> {
-              if (!validSchemaRegionIds.contains(schemaRegionId.getId())
-                  && PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
-                try {
-                  SchemaRegionConsensusImpl.getInstance()
-                      .write(
-                          schemaRegionId,
-                          new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                } catch (final ConsensusException e) {
-                  throw new PipeException(
-                      "Failed to close listening queue for SchemaRegion "
-                          + schemaRegionId
-                          + ", because "
-                          + e.getMessage(),
-                      e);
-                }
+              try {
+                SchemaRegionConsensusImpl.getInstance()
+                    .write(
+                        schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
+              } catch (final ConsensusException e) {
+                throw new PipeException(
+                    "Failed to close listening queue for SchemaRegion "
+                        + schemaRegionId
+                        + ", because "
+                        + e.getMessage(),
+                    e);
               }
             });
   }
