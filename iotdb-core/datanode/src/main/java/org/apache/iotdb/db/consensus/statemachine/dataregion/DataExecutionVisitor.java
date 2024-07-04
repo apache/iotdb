@@ -77,7 +77,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
-      LOGGER.info("insert tablet success, {}", node.getSearchIndex());
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());

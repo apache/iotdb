@@ -283,15 +283,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
         break;
       }
     }
-    if (planNode instanceof InsertNode) {
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        InsertNode insertNode = (InsertNode) planNode;
-        logger.info(
-            "plan node {} executed success, {}",
-            insertNode.getClass(),
-            insertNode.getSearchIndex());
-      }
-    }
     return result;
   }
 

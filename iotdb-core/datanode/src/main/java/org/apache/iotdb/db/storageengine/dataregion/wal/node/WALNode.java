@@ -128,7 +128,7 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
-    logger.info(
+    logger.debug(
         "WAL node-{} logs insertRowNode, the search index is {}.",
         identifier,
         insertRowNode.getSearchIndex());
@@ -138,7 +138,7 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
-    logger.info(
+    logger.debug(
         "WAL node-{} logs insertRowsNode, the search index is {}.",
         identifier,
         insertRowsNode.getSearchIndex());
@@ -149,7 +149,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
-    logger.info(
+    logger.debug(
         "WAL node-{} logs insertTabletNode, the search index is {}.",
         identifier,
         insertTabletNode.getSearchIndex());
@@ -159,7 +159,7 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
-    logger.info(
+    logger.debug(
         "WAL node-{} logs deleteDataNode, the search index is {}.",
         identifier,
         deleteDataNode.getSearchIndex());
