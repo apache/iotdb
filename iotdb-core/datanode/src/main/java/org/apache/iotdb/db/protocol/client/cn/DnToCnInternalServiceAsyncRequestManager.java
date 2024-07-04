@@ -53,11 +53,9 @@ public class DnToCnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      DnToCnRequestType dnToCnRequestType,
-      AsyncConfigNodeInternalServiceClient asyncConfigNodeInternalServiceClient) {
+      DnToCnRequestType dnToCnRequestType, AsyncConfigNodeInternalServiceClient client) {
     if (DnToCnRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(dnToCnRequestType)) {
-      asyncConfigNodeInternalServiceClient.setTimeout(
-          TestConnectionUtils.calculateCnLeaderToAllNodeMaxTime());
+      client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllNodeMaxTime());
     }
   }
 

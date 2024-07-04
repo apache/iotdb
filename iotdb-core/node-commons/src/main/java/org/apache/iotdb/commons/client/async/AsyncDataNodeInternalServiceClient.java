@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.AsyncClient
     implements ThriftClient {
@@ -46,6 +47,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
 
   public static final int DEFAULT_CONNECTION_TIMEOUT_IN_MS =
       CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+  public final AtomicLong originalTimeout = new AtomicLong(-1);
 
   private final boolean printLogWhenEncounterException;
 
@@ -114,8 +116,36 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
    * RPC is finished.
    */
   private void returnSelf() {
-    setTimeout(DEFAULT_CONNECTION_TIMEOUT_IN_MS);
+    if (originalTimeout.get() != -1) {
+      recoverTimeout();
+    }
     clientManager.returnClient(endpoint, this);
+  }
+
+  /**
+   * Call this method when needed to temporarily modify the timeout period. The original timeout
+   * will be saved and automatically restored when the client is returned.
+   */
+  public void setTimeoutTemporarily(long timeout) {
+    synchronized (originalTimeout) {
+      if (originalTimeout.get() != -1) {
+        logger.warn(
+            "This client's timeout has been set to {}. If you need to set it to {}, please call the recoverTimeout() first.",
+            originalTimeout.get(),
+            timeout);
+      }
+      originalTimeout.set(getTimeout());
+      setTimeout(timeout);
+    }
+  }
+
+  private void recoverTimeout() {
+    synchronized (originalTimeout) {
+      if (originalTimeout.get() == -1) {
+        logger.warn("This client's timeout has not been modified, cannot reset");
+      }
+      setTimeout(originalTimeout.getAndSet(-1));
+    }
   }
 
   private void close() {
