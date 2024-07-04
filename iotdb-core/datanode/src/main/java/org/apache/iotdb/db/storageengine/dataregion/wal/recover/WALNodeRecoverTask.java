@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -190,7 +191,9 @@ public class WALNodeRecoverTask implements Runnable {
           }
         }
         metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
-        metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
+        if (walEntry.getMemTableId() != TsFileProcessor.MEMTABLE_NOT_EXIST) {
+          metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
+        }
       }
     } catch (Exception e) {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);

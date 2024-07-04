@@ -2177,6 +2177,9 @@ public class DataRegion implements IDataRegionForQuery {
         walFlushListeners.add(walFlushListener);
       }
     }
+    if (walFlushListeners.isEmpty()) {
+      walFlushListeners.add(getWALNode().log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode));
+    }
     return walFlushListeners;
   }
 
