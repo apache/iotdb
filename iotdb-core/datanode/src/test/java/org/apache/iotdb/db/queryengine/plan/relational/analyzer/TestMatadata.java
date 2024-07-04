@@ -202,7 +202,7 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public TableSchema validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context) {
     throw new UnsupportedOperationException();
   }

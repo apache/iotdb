@@ -89,6 +89,9 @@ public class AlterTableAddColumnTask implements IConfigTask {
                   getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor()));
           break;
+        default:
+          throw new IllegalStateException(
+              "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());
       }
     }
     return columnSchemaList;

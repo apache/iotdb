@@ -85,7 +85,7 @@ public class TableDeviceSchemaFetcher {
     return TableDeviceSchemaFetcherHolder.INSTANCE;
   }
 
-  TableDeviceSchemaCache getTableDeviceCache() {
+  public TableDeviceSchemaCache getTableDeviceCache() {
     return cache;
   }
 

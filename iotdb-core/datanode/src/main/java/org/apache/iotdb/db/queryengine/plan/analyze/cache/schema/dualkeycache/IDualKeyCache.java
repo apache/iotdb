@@ -95,4 +95,17 @@ public interface IDualKeyCache<FK, SK, V> {
 
   @TestOnly
   void evictOneEntry();
+
+  /** remove all entries for firstKey */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(FK firstKey);
+
+  /**
+   * remove all entries of specified database, and for the reason that table model's first key is
+   * different from tree model, we add this new method which only be used for table model.
+   *
+   * <p>FK must be TableId in such case
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidateForTable(String database);
 }

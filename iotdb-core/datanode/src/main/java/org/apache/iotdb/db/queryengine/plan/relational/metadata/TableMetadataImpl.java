@@ -312,7 +312,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public TableSchema validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context) {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(database, tableSchema, context);

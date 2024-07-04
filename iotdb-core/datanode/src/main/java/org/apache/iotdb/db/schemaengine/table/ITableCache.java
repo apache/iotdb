@@ -42,4 +42,9 @@ public interface ITableCache {
 
   void rollbackAddColumn(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+
+  /**
+   * @param database shouldn't start with `root.`
+   */
+  void invalid(String database);
 }

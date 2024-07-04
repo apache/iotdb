@@ -94,14 +94,15 @@ public class AddTableColumnProcedure
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
           break;
-        case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
-          commitRelease(env);
-          break;
         case ADD_COLUMN:
           LOGGER.info("Add column to table {}.{}", database, tableName);
           addColumn(env);
+          break;
+        case COMMIT_RELEASE:
+          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          commitRelease(env);
           return Flow.NO_MORE_STATE;
+
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
           return Flow.NO_MORE_STATE;
@@ -154,7 +155,7 @@ public class AddTableColumnProcedure
         return;
       }
     }
-    setNextState(AddTableColumnState.COMMIT_RELEASE);
+    setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
   private void commitRelease(ConfigNodeProcedureEnv env) {
@@ -187,6 +188,8 @@ public class AddTableColumnProcedure
             .addTableColumn(database, tableName, inputColumnList);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    } else {
+      setNextState(AddTableColumnState.ADD_COLUMN);
     }
   }
 
