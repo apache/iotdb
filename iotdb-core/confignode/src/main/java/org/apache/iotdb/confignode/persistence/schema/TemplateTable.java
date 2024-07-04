@@ -72,8 +72,8 @@ public class TemplateTable {
   }
 
   public Template getTemplate(String name) throws MetadataException {
+    templateReadWriteLock.readLock().lock();
     try {
-      templateReadWriteLock.readLock().lock();
       Template template = templateMap.get(name);
       if (template == null) {
         throw new MetadataException(String.format("Template %s does not exist", name));
@@ -85,8 +85,8 @@ public class TemplateTable {
   }
 
   public Template getTemplate(int templateId) throws MetadataException {
+    templateReadWriteLock.readLock().lock();
     try {
-      templateReadWriteLock.readLock().lock();
       Template template = templateIdMap.get(templateId);
       if (template == null) {
         throw new MetadataException(
@@ -99,8 +99,8 @@ public class TemplateTable {
   }
 
   public List<Template> getAllTemplate() {
+    templateReadWriteLock.readLock().lock();
     try {
-      templateReadWriteLock.readLock().lock();
       return new ArrayList<>(templateMap.values());
     } finally {
       templateReadWriteLock.readLock().unlock();
@@ -108,8 +108,8 @@ public class TemplateTable {
   }
 
   public void createTemplate(Template template) throws MetadataException {
+    templateReadWriteLock.writeLock().lock();
     try {
-      templateReadWriteLock.writeLock().lock();
       Template temp = this.templateMap.get(template.getName());
       if (temp != null) {
         LOGGER.error(
@@ -125,8 +125,8 @@ public class TemplateTable {
   }
 
   public void dropTemplate(String templateName) throws MetadataException {
+    templateReadWriteLock.writeLock().lock();
     try {
-      templateReadWriteLock.writeLock().lock();
       Template temp = this.templateMap.remove(templateName);
       if (temp == null) {
         LOGGER.error("Undefined template {}", templateName);
