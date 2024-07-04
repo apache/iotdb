@@ -30,13 +30,13 @@ import static java.util.Objects.requireNonNull;
 public class StatementAnalyzerFactory {
 
   private final Metadata metadata;
-  private SqlParser sqlParser;
+  private final SqlParser sqlParser;
   private final AccessControl accessControl;
 
   public StatementAnalyzerFactory(
       Metadata metadata, SqlParser sqlParser, AccessControl accessControl) {
     this.metadata = requireNonNull(metadata, "plannerContext is null");
-    // this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
+    this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
   }
 

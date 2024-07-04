@@ -102,7 +102,7 @@ public class TopKNode extends MultiChildProcessNode {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
     int count = ReadWriteIOUtils.readInt(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Symbol> outputSymbols = new ArrayList<>();
+    List<Symbol> outputSymbols = new ArrayList<>(size);
     while (size-- > 0) {
       outputSymbols.add(Symbol.deserialize(byteBuffer));
     }

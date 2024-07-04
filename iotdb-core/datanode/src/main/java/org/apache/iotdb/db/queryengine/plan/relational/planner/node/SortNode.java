@@ -91,12 +91,12 @@ public class SortNode extends SingleChildProcessNode {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     SortNode sortNode = (SortNode) o;
-    return Objects.equal(orderingScheme, sortNode.orderingScheme);
+    return Objects.equal(orderingScheme, sortNode.orderingScheme) && partial == sortNode.partial;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), orderingScheme);
+    return Objects.hashCode(super.hashCode(), orderingScheme, partial);
   }
 
   @Override

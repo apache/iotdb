@@ -140,15 +140,15 @@ public class TableDistributionPlanner {
   private void adjustUpStreamHelper(
       PlanNode root,
       DistributedPlanGenerator.PlanContext context,
-      Map<TRegionReplicaSet, IdentitySinkNode> regionNodemap) {
+      Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
     for (PlanNode child : root.getChildren()) {
-      adjustUpStreamHelper(child, context, regionNodemap);
+      adjustUpStreamHelper(child, context, regionNodeMap);
 
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
 
         IdentitySinkNode identitySinkNode =
-            regionNodemap.computeIfAbsent(
+            regionNodeMap.computeIfAbsent(
                 context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
                 k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
         identitySinkNode.addChild(exchangeNode.getChild());
