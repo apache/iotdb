@@ -189,7 +189,7 @@ public class AddTableColumnProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
-      setNextState(AddTableColumnState.ADD_COLUMN);
+      setNextState(AddTableColumnState.COMMIT_RELEASE);
     }
   }
 
