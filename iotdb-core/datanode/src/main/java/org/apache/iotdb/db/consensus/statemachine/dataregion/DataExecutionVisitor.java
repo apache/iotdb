@@ -236,7 +236,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
       }
       PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
-      LOGGER.info("delete data success, {}", node.getSearchIndex());
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);

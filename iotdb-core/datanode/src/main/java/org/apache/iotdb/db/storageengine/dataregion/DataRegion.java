@@ -936,7 +936,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       if (deleted) {
         logger.info(
-            "won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
+            "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
         return;
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
@@ -1066,7 +1066,8 @@ public class DataRegion implements IDataRegionForQuery {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
       logger.info(
-          "return true, because {}",
+          "Won't insert tablet {}, because {}",
+          insertTabletNode.getSearchIndex(),
           start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
       return true;
     }
@@ -1084,9 +1085,6 @@ public class DataRegion implements IDataRegionForQuery {
 
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
-      logger.info(
-          "tsFileProcessor insert tablet success, the search index is {}",
-          insertTabletNode.getSearchIndex());
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
