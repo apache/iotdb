@@ -252,16 +252,16 @@ showClusterStatement
     : SHOW CLUSTER (DETAILS)?
     ;
 
-showRegionsStatement // TODO: Implement this ...
+showRegionsStatement
     : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
           // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
-showDataNodesStatement // TODO: Implement this ...
+showDataNodesStatement
     : SHOW DATANODES
     ;
 
-showConfigNodesStatement // TODO: Implement this ...
+showConfigNodesStatement
     : SHOW CONFIGNODES
     ;
 
