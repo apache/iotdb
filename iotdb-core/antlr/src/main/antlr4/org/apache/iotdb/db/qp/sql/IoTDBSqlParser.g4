@@ -47,7 +47,7 @@ ddlStatement
     | setSchemaTemplate | unsetSchemaTemplate
     | alterSchemaTemplate
     // TTL
-    | setTTL | unsetTTL | showAllTTL
+    | setTTL | unsetTTL | showTTL | showAllTTL
     // Function
     | createFunction | dropFunction | showFunctions
     // Trigger
@@ -64,7 +64,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -322,7 +322,12 @@ setTTL
 
 // ---- Unset TTL
 unsetTTL
-    : UNSET TTL TO path=prefixPath
+    : UNSET TTL (TO | FROM) path=prefixPath
+    ;
+
+// ---- Show TTL
+showTTL
+    : SHOW TTL ON prefixPath (COMMA prefixPath)*
     ;
 
 // ---- Show All TTL
@@ -522,6 +527,10 @@ getSeriesSlotList
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    ;
+
+verifyConnection
+    : VERIFY CONNECTION (DETAILS)?
     ;
 
 // Pipe Task =========================================================================================

@@ -20,19 +20,25 @@
 package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,6 +69,19 @@ import static org.junit.Assert.fail;
 public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
+
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    // Shorten heartbeat and sync interval to avoid timeout of snapshot mode test
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(30);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerInitialSyncDelayMinutes(1);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerSyncIntervalMinutes(1);
+  }
 
   @Test
   public void testTopicPathSubscription() throws Exception {
@@ -510,32 +530,135 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicInvalidPathConfig() throws Exception {
-    // Test invalid path when using tsfile format
-    final Properties config = new Properties();
-    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-    config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-    testTopicInvalidRuntimeConfigTemplate("topic9", config);
-  }
+  public void testTopicWithSnapshotMode() throws Exception {
+    // Insert some historical data
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
-  @Test
-  public void testTopicInvalidProcessorConfig() throws Exception {
-    // Test invalid processor when using tsfile format
-    final Properties config = new Properties();
-    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-    config.put("processor", "tumbling-time-sampling-processor");
-    config.put("processor.tumbling-time.interval-seconds", "1");
-    config.put("processor.down-sampling.split-file", "true");
-    testTopicInvalidRuntimeConfigTemplate("topic10", config);
-  }
-
-  private void testTopicInvalidRuntimeConfigTemplate(
-      final String topicName, final Properties config) throws Exception {
     // Create topic
+    final String topicName = "topic11";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertTopicCount(1);
+
+    // Subscription
+    final AtomicInteger rowCount = new AtomicInteger();
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumer =
+                  new SubscriptionPullConsumer.Builder()
+                      .host(host)
+                      .port(port)
+                      .consumerId("c1")
+                      .consumerGroupId("cg1")
+                      .autoCommit(false)
+                      .buildPullConsumer()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  for (final SubscriptionMessage message : messages) {
+                    try (final TsFileReader tsFileReader =
+                        message.getTsFileHandler().openReader()) {
+                      final Path path = new Path("root.db.d1", "s1", true);
+                      final QueryDataSet dataSet =
+                          tsFileReader.query(
+                              QueryExpression.create(Collections.singletonList(path), null));
+                      while (dataSet.hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                // Exiting the loop represents passing the awaitility test, at this point the result
+                // of 'show subscription' is empty, so there is no need to explicitly unsubscribe.
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            },
+            String.format("%s - consumer", testName.getMethodName()));
+    thread.start();
+
+    try {
+      // Keep retrying if there are execution failures
+      AWAIT.untilAsserted(
+          () -> {
+            // Check row count
+            Assert.assertEquals(100, rowCount.get());
+            // Check empty subscription
+            try (final SyncConfigNodeIServiceClient client =
+                (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+              final TShowSubscriptionResp showSubscriptionResp =
+                  client.showSubscription(new TShowSubscriptionReq());
+              Assert.assertEquals(
+                  RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+              Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+              Assert.assertEquals(0, showSubscriptionResp.subscriptionInfoList.size());
+            }
+          });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTopicWithLooseRange() throws Exception {
+    // Insert some historical data on sender
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      session.executeNonQueryStatement(
+          "insert into root.db.d1 (time, at1, at2) values (1000, 1, 2), (2000, 3, 4)");
+      session.executeNonQueryStatement(
+          "insert into root.db1.d1 (time, at1, at2) values (1000, 1, 2), (2000, 3, 4)");
+      session.executeNonQueryStatement(
+          "insert into root.db.d1 (time, at1, at2) values (3000, 1, 2), (4000, 3, 4)");
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String topicName = "topic12";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_ALL_VALUE);
+      config.put(TopicConstant.PATH_KEY, "root.db.d1.at1");
+      config.put(TopicConstant.START_TIME_KEY, "1500");
+      config.put(TopicConstant.END_TIME_KEY, "2500");
       session.createTopic(topicName, config);
     } catch (final Exception e) {
       e.printStackTrace();
@@ -545,38 +668,42 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     final AtomicBoolean dataPrepared = new AtomicBoolean(false);
     final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
-    final AtomicBoolean result = new AtomicBoolean(false);
+    final AtomicBoolean finished = new AtomicBoolean(false);
     final List<Thread> threads = new ArrayList<>();
 
     // Subscribe on sender
     threads.add(
         new Thread(
             () -> {
-              final AtomicInteger retryCount = new AtomicInteger();
-              final int maxRetryTimes = 32;
               try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
-                      .host(host)
-                      .port(port)
-                      .consumerId("c1")
-                      .consumerGroupId("cg1")
-                      .autoCommit(false)
-                      .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
-                      .buildPullConsumer()) {
+                      new SubscriptionPullConsumer.Builder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .autoCommit(false)
+                          .buildPullConsumer();
+                  final ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe(topicName);
                 topicSubscribed.set(true);
-                while (retryCount.getAndIncrement() < maxRetryTimes) {
+                while (!finished.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   if (dataPrepared.get()) {
                     final List<SubscriptionMessage> messages =
                         consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                    for (final SubscriptionMessage message : messages) {
+                      for (final Iterator<Tablet> it =
+                              message.getSessionDataSetsHandler().tabletIterator();
+                          it.hasNext(); ) {
+                        final Tablet tablet = it.next();
+                        session.insertTablet(tablet);
+                      }
+                    }
                     consumer.commitSync(messages);
                   }
                 }
                 consumer.unsubscribe(topicName);
-              } catch (final SubscriptionRuntimeCriticalException e) {
-                result.set(true);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -594,18 +721,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
               }
               try (final ISession session = senderEnv.getSessionConnection()) {
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-                }
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d2(time, s) values (%s, 1)", i));
-                }
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d3(time, t) values (%s, 1)", i));
-                }
+                session.executeNonQueryStatement(
+                    "insert into root.db.d1 (time, at1, at2) values (1001, 1, 2), (2001, 3, 4)");
+                session.executeNonQueryStatement(
+                    "insert into root.db1.d1 (time, at1, at2) values (1001, 1, 2), (2001, 3, 4)");
+                session.executeNonQueryStatement(
+                    "insert into root.db.d1 (time, at1, at2) values (3001, 1, 2), (4001, 3, 4)");
                 session.executeNonQueryStatement("flush");
               } catch (final Exception e) {
                 e.printStackTrace();
@@ -619,9 +740,23 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       thread.start();
     }
 
-    // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
-    AWAIT.untilTrue(result);
+    try (final Connection connection = receiverEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      AWAIT.untilAsserted(
+          () ->
+              TestUtils.assertSingleResultSetEqual(
+                  TestUtils.executeQueryWithRetry(
+                      statement,
+                      "select count(at1) from root.db.d1 where time >= 1500 and time <= 2500"),
+                  new HashMap<String, String>() {
+                    {
+                      put("count(root.db.d1.at1)", "2");
+                    }
+                  }));
+    }
 
+    finished.set(true);
     for (final Thread thread : threads) {
       thread.join();
     }

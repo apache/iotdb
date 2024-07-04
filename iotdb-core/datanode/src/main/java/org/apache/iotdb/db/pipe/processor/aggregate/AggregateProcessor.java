@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeE
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
@@ -250,7 +250,7 @@ public class AggregateProcessor implements PipeProcessor {
     // Load the useful aggregators' and their corresponding intermediate results' computational
     // logic.
     final Set<String> declaredIntermediateResultSet = new HashSet<>();
-    final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
+    final PipeDataRegionPluginAgent agent = PipeDataNodeAgent.plugin().dataRegion();
     for (final String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic

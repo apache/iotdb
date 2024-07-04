@@ -71,9 +71,13 @@ public class WALRecoverWriterTest {
     // recover
     WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
     walRecoverWriter.recover(walMetaData);
-    // verify file, marker + metadata(search index + size number) + metadata size + magic string
+    // verify file, marker + metadata(search index + size number) + metadata size + head magic
+    // string + tail magic string
     Assert.assertEquals(
-        Byte.BYTES + (Long.BYTES + Integer.BYTES) + Integer.BYTES + WALWriter.MAGIC_STRING_BYTES,
+        Byte.BYTES
+            + (Long.BYTES + Integer.BYTES)
+            + Integer.BYTES
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -95,7 +99,10 @@ public class WALRecoverWriterTest {
     walRecoverWriter.recover(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + magic string
     Assert.assertEquals(
-        Byte.BYTES + (Long.BYTES + Integer.BYTES) + Integer.BYTES + WALWriter.MAGIC_STRING_BYTES,
+        Byte.BYTES
+            + (Long.BYTES + Integer.BYTES)
+            + Integer.BYTES
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -162,6 +169,7 @@ public class WALRecoverWriterTest {
     walMetaData.add(size, 1, walEntry.getMemTableId());
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
+      walMetaData.setTruncateOffSet(walWriter.getOffset());
     }
     long len = logFile.length();
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {

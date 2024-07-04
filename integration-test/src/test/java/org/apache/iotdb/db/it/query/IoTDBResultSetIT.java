@@ -125,7 +125,7 @@ public class IoTDBResultSetIT {
         assertEquals(2, metaData.getColumnCount());
         assertEquals("Time", metaData.getColumnName(1));
         assertEquals(Types.TIMESTAMP, metaData.getColumnType(1));
-        assertEquals("TIME", metaData.getColumnTypeName(1));
+        assertEquals("TIMESTAMP", metaData.getColumnTypeName(1));
         assertEquals("root.sg.dev.status", metaData.getColumnName(2));
         assertEquals(Types.VARCHAR, metaData.getColumnType(2));
         assertEquals("TEXT", metaData.getColumnTypeName(2));

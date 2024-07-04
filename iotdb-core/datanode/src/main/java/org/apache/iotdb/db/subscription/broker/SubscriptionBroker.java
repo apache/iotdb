@@ -65,6 +65,14 @@ public class SubscriptionBroker {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
+        // before determining if it is closed
+        if (prefetchingQueue.isCompleted()) {
+          LOGGER.info(
+              "Subscription: prefetching queue bound to topic [{}] is completed, return termination response to client",
+              topicName);
+          events.add(prefetchingQueue.generateSubscriptionPollTerminationResponse());
+          continue;
+        }
         if (prefetchingQueue.isClosed()) {
           LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
           continue;
@@ -161,7 +169,7 @@ public class SubscriptionBroker {
       topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTabletsQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTabletQueue(brokerId, topicName, inputPendingQueue);
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     }
@@ -178,13 +186,23 @@ public class SubscriptionBroker {
     // mark prefetching queue closed first
     prefetchingQueue.markClosed();
 
-    // clean up events in prefetching queue, this operation is idempotent
-    prefetchingQueue.cleanup();
+    // mark prefetching queue completed only for topic of snapshot mode
+    if (SubscriptionAgent.topic()
+        .getTopicMode(topicName)
+        .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
+      prefetchingQueue.markCompleted();
+    }
 
     if (doRemove) {
-      topicNameToPrefetchingQueue.remove(topicName);
+      // clean up events in prefetching queue
+      prefetchingQueue.cleanup();
+
+      // deregister metrics
       SubscriptionPrefetchingQueueMetrics.getInstance()
           .deregister(prefetchingQueue.getPrefetchingQueueId());
+
+      // remove prefetching queue
+      topicNameToPrefetchingQueue.remove(topicName);
     }
   }
 

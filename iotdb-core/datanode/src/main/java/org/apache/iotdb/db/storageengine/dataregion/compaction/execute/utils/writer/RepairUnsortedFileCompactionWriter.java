@@ -63,22 +63,20 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
         mergeTimeValuePair(timeValuePair, previousTimeValuePair);
         continue;
       }
-      writeDataPoint(
-          previousTimeValuePair.getTimestamp(),
-          previousTimeValuePair.getValue(),
-          chunkWriters[subTaskId]);
-      chunkPointNumArray[subTaskId]++;
+      writeToChunkWriter(previousTimeValuePair, subTaskId);
       previousTimeValuePair = timeValuePair;
     }
     // write last time value pair
-    writeDataPoint(
-        previousTimeValuePair.getTimestamp(),
-        previousTimeValuePair.getValue(),
-        chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeToChunkWriter(previousTimeValuePair, subTaskId);
 
     dataOfCurrentSeriesArr[subTaskId] = null;
     super.endMeasurement(subTaskId);
+  }
+
+  private void writeToChunkWriter(TimeValuePair timeValuePair, int subTaskId) throws IOException {
+    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
+    chunkPointNumArray[subTaskId]++;
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
   }
 
   private void mergeTimeValuePair(TimeValuePair from, TimeValuePair to) {

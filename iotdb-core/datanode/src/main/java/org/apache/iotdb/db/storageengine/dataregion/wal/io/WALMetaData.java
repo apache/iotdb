@@ -22,10 +22,14 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.utils.SerializedSize;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +40,8 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+
+  private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 
@@ -45,6 +51,7 @@ public class WALMetaData implements SerializedSize {
   private final List<Integer> buffersSize;
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
+  private long truncateOffSet = 0;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -123,13 +130,20 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic(channel).equals(WALWriter.MAGIC_STRING)) {
+    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
       throw new IOException(String.format("Broken wal file %s", logFile));
     }
+
     // load metadata size
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
+    long position;
+    WALFileVersion version = WALFileVersion.getVersion(channel);
+    position =
+        channel.size()
+            - Integer.BYTES
+            - (version == WALFileVersion.V2
+                ? WALWriter.MAGIC_STRING_V2_BYTES
+                : WALWriter.MAGIC_STRING_V1_BYTES);
     channel.read(metadataSizeBuf, position);
     metadataSizeBuf.flip();
     // load metadata
@@ -153,10 +167,20 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static String readTailMagic(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+  private static boolean isValidMagicString(FileChannel channel) throws IOException {
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
+    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
     magicStringBytes.flip();
-    return new String(magicStringBytes.array());
+    String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
+    return magicString.equals(WALWriter.MAGIC_STRING_V2)
+        || magicString.contains(WALWriter.MAGIC_STRING_V1);
+  }
+
+  public void setTruncateOffSet(long offset) {
+    this.truncateOffSet = offset;
+  }
+
+  public long getTruncateOffSet() {
+    return truncateOffSet;
   }
 }

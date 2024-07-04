@@ -22,12 +22,15 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -332,6 +335,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The dataReplicationFactor should be positive.");
     }
 
+    if (!databaseSchema.isSetTimePartitionOrigin()) {
+      databaseSchema.setTimePartitionOrigin(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
+    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+    }
+
     if (!databaseSchema.isSetTimePartitionInterval()) {
       databaseSchema.setTimePartitionInterval(
           CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
@@ -406,6 +419,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage(
                   "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
     }
+
+    if (databaseSchema.isSetTimePartitionOrigin()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+    }
+
     if (databaseSchema.isSetTimePartitionInterval()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
@@ -492,8 +513,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowTTLResp showAllTTL() {
-    ShowTTLResp showTTLResp = (ShowTTLResp) configManager.showAllTTL(new ShowTTLPlan());
+  public TShowTTLResp showTTL(TShowTTLReq req) {
+    ShowTTLResp showTTLResp =
+        (ShowTTLResp)
+            configManager.showTTL(new ShowTTLPlan(req.getPathPattern().toArray(new String[0])));
     return showTTLResp.convertToRPCTShowTTLResp();
   }
 
@@ -826,6 +849,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus submitLoadConfigurationTask() throws TException {
+    return configManager.submitLoadConfigurationTask();
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }
@@ -891,6 +919,25 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
     return configManager.showDatabase(req);
+  }
+
+  /** Call by ConfigNode leader */
+  @Override
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return configManager.getClusterManager().doConnectionTest(nodeLocations);
+  }
+
+  /** Call by client connected DataNode */
+  @Override
+  public TTestConnectionResp submitTestConnectionTaskToLeader() throws TException {
+    return configManager.getClusterManager().submitTestConnectionTaskToEveryNode();
+  }
+
+  /** Call by every other nodes */
+  @Override
+  public TSStatus testConnectionEmptyRPC() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

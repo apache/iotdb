@@ -76,6 +76,9 @@ public abstract class ChunkLoader {
       return this.modifiedStatus;
     }
     ModifiedStatus pageModifiedStatus = ModifiedStatus.NONE_DELETED;
+    if (pageHeader.getStatistics() == null || pageHeader.getStatistics().getCount() == 0) {
+      return pageModifiedStatus;
+    }
     List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
     long startTime = pageHeader.getStartTime();
     long endTime = pageHeader.getEndTime();

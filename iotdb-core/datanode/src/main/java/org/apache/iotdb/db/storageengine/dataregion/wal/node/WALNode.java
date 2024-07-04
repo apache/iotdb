@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -107,13 +108,13 @@ public class WALNode implements IWALNode {
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
-  public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
+  public WALNode(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, 0, 0L);
   }
 
   public WALNode(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
-      throws FileNotFoundException {
+      throws IOException {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
@@ -485,7 +486,7 @@ public class WALNode implements IWALNode {
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
           || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
-        WRITING_METRICS.recordWalFlushMemTableCount(dataRegion.getDataRegionId(), 1);
+        WRITING_METRICS.recordWalFlushMemTableCount(1);
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);

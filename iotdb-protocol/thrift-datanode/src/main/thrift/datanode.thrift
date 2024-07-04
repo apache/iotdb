@@ -999,6 +999,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
 
 service MPPDataExchangeService {
@@ -1011,4 +1016,7 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,6 +128,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
 
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return COMMON_CONFIG.getPipeEndPointRateLimiterDropCheckIntervalMs();
+  }
+
   public float getPipeLeaderCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
@@ -139,8 +144,16 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
-  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
-    return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
+  public long getPipeRemainingTimeCommitAutoSwitchSeconds() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAutoSwitchSeconds();
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -328,8 +341,11 @@ public class PipeConfig {
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
     LOGGER.info(
-        "PipeRemainingTimeCommitRateSmoothingFactor: {}",
-        getPipeRemainingTimeCommitRateSmoothingFactor());
+        "PipeRemainingTimeCommitAutoSwitchSeconds: {}",
+        getPipeRemainingTimeCommitAutoSwitchSeconds());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
@@ -337,6 +353,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
+    LOGGER.info(
+        "PipeEndPointRateLimiterDropCheckIntervalMs: {}",
+        getPipeEndPointRateLimiterDropCheckIntervalMs());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(

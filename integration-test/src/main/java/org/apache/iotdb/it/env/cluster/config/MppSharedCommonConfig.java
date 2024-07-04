@@ -232,6 +232,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    cnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    dnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     cnConfig.setTimestampPrecision(timestampPrecision);
     dnConfig.setTimestampPrecision(timestampPrecision);
@@ -443,6 +450,31 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
     dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
     cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    dnConfig.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+        pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+    cnConfig.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+        pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    dnConfig.setPipeMetaSyncerInitialSyncDelayMinutes(pipeMetaSyncerInitialSyncDelayMinutes);
+    cnConfig.setPipeMetaSyncerInitialSyncDelayMinutes(pipeMetaSyncerInitialSyncDelayMinutes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    dnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    cnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
     return this;
   }
 }

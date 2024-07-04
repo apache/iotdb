@@ -103,11 +103,11 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     try {
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
       trySubmitCount +=
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
       trySubmitCount +=
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
+      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
       trySubmitCount +=
           tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary, false);
     } catch (InterruptedException e) {
@@ -256,6 +256,9 @@ public class CompactionScheduler {
       TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
+      return 0;
+    }
+    if (!CompactionTaskManager.getInstance().shouldSelectCrossSpaceCompactionTask()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();

@@ -206,16 +206,19 @@ public class DataNodeSchemaCacheTest {
         new MeasurementSchema("s1", TSDataType.INT32),
         s1TagMap,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
+        null,
         null,
         null,
         false);
@@ -231,16 +234,19 @@ public class DataNodeSchemaCacheTest {
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
+        null,
         null,
         null,
         false);

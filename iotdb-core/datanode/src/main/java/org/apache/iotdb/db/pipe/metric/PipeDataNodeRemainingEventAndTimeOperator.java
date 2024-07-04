@@ -19,61 +19,60 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.metrics.core.IoTDBMetricManager;
+import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
 
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
-class PipeDataNodeRemainingEventAndTimeOperator {
+class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+  private final Set<IoTDBDataRegionExtractor> dataRegionExtractors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<PipeProcessorSubtask> dataRegionProcessors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<PipeConnectorSubtask> dataRegionConnectors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
+  private final IoTDBHistogram collectInvocationHistogram =
+      (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram(null);
 
-  private static final long DATA_NODE_REMAINING_MAX_SECONDS = 365 * 24 * 60 * 60L; // 1 year
-
-  private String pipeName;
-  private long creationTime = 0;
-
-  private final ConcurrentMap<IoTDBDataRegionExtractor, IoTDBDataRegionExtractor>
-      dataRegionExtractors = new ConcurrentHashMap<>();
-  private final ConcurrentMap<PipeConnectorSubtask, PipeConnectorSubtask> dataRegionConnectors =
-      new ConcurrentHashMap<>();
-  private final ConcurrentMap<IoTDBSchemaRegionExtractor, IoTDBSchemaRegionExtractor>
-      schemaRegionExtractors = new ConcurrentHashMap<>();
-  private final Meter dataRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
-  private final Meter schemaRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
-
-  private double lastDataRegionCommitSmoothingValue = Long.MIN_VALUE;
-  private double lastSchemaRegionCommitSmoothingValue = Long.MIN_VALUE;
-
-  //////////////////////////// Tags ////////////////////////////
-
-  String getPipeName() {
-    return pipeName;
-  }
-
-  long getCreationTime() {
-    return creationTime;
-  }
+  private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
+  private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
   long getRemainingEvents() {
-    return dataRegionExtractors.keySet().stream()
+    return dataRegionExtractors.stream()
             .map(IoTDBDataRegionExtractor::getEventCount)
             .reduce(Integer::sum)
             .orElse(0)
-        + dataRegionConnectors.keySet().stream()
+        + dataRegionProcessors.stream()
+            .map(processorSubtask -> processorSubtask.getEventCount(false))
+            .reduce(Integer::sum)
+            .orElse(0)
+        + dataRegionConnectors.stream()
             .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
             .reduce(Integer::sum)
             .orElse(0)
-        + schemaRegionExtractors.keySet().stream()
+        + schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
@@ -82,39 +81,47 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   /**
    * This will calculate the estimated remaining time of pipe.
    *
-   * <p>Note: The events in pipe assigner are omitted.
+   * <p>Note: The {@link Event}s in pipe assigner are omitted.
    *
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final double pipeRemainingTimeCommitRateSmoothingFactor =
-        PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
+    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
+    final double invocationValue = collectInvocationHistogram.getMean();
     // Do not take heartbeat event into account
-    final int totalDataRegionWriteEventCount =
-        dataRegionExtractors.keySet().stream()
-                .map(IoTDBDataRegionExtractor::getEventCount)
+    final double totalDataRegionWriteEventCount =
+        (dataRegionExtractors.stream()
+                        .map(IoTDBDataRegionExtractor::getEventCount)
+                        .reduce(Integer::sum)
+                        .orElse(0)
+                    - dataRegionExtractors.stream()
+                        .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
+                        .reduce(Integer::sum)
+                        .orElse(0))
+                * Math.max(invocationValue, 1)
+            + dataRegionProcessors.stream()
+                .map(processorSubtask -> processorSubtask.getEventCount(true))
                 .reduce(Integer::sum)
                 .orElse(0)
-            + dataRegionConnectors.keySet().stream()
+            + dataRegionConnectors.stream()
                 .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
                 .reduce(Integer::sum)
                 .orElse(0)
-            - dataRegionExtractors.keySet().stream()
-                .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
-                .reduce(Integer::sum)
-                .orElse(0)
-            - dataRegionConnectors.keySet().stream()
+            - dataRegionConnectors.stream()
                 .map(PipeConnectorSubtask::getPipeHeartbeatEventCount)
                 .reduce(Integer::sum)
                 .orElse(0);
 
-    lastDataRegionCommitSmoothingValue =
-        lastDataRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? dataRegionCommitMeter.getOneMinuteRate()
-            : pipeRemainingTimeCommitRateSmoothingFactor * dataRegionCommitMeter.getOneMinuteRate()
-                + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
-                    * lastDataRegionCommitSmoothingValue;
+    dataRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            lastDataRegionCommitSmoothingValue =
+                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
+          }
+          return meter;
+        });
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount <= 0) {
       dataRegionRemainingTime = 0;
@@ -126,18 +133,19 @@ class PipeDataNodeRemainingEventAndTimeOperator {
     }
 
     final long totalSchemaRegionWriteEventCount =
-        schemaRegionExtractors.keySet().stream()
+        schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
-    lastSchemaRegionCommitSmoothingValue =
-        lastSchemaRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? schemaRegionCommitMeter.getOneMinuteRate()
-            : pipeRemainingTimeCommitRateSmoothingFactor
-                    * schemaRegionCommitMeter.getOneMinuteRate()
-                + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
-                    * lastSchemaRegionCommitSmoothingValue;
+    schemaRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            lastSchemaRegionCommitSmoothingValue =
+                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
+          }
+          return meter;
+        });
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
@@ -148,40 +156,87 @@ class PipeDataNodeRemainingEventAndTimeOperator {
               : totalSchemaRegionWriteEventCount / lastSchemaRegionCommitSmoothingValue;
     }
 
+    if (totalDataRegionWriteEventCount + totalSchemaRegionWriteEventCount == 0) {
+      notifyEmpty();
+    } else {
+      notifyNonEmpty();
+    }
+
     final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);
-    return result >= DATA_NODE_REMAINING_MAX_SECONDS ? DATA_NODE_REMAINING_MAX_SECONDS : result;
+    return result >= REMAINING_MAX_SECONDS ? REMAINING_MAX_SECONDS : result;
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
   void register(final IoTDBDataRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
-    dataRegionExtractors.put(extractor, extractor);
+    dataRegionExtractors.add(extractor);
+  }
+
+  void register(final PipeProcessorSubtask processorSubtask) {
+    setNameAndCreationTime(processorSubtask.getPipeName(), processorSubtask.getCreationTime());
+    dataRegionProcessors.add(processorSubtask);
   }
 
   void register(
       final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
     setNameAndCreationTime(pipeName, creationTime);
-    dataRegionConnectors.put(connectorSubtask, connectorSubtask);
+    dataRegionConnectors.add(connectorSubtask);
   }
 
   void register(final IoTDBSchemaRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
-    schemaRegionExtractors.put(extractor, extractor);
-  }
-
-  private void setNameAndCreationTime(final String pipeName, final long creationTime) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
+    schemaRegionExtractors.add(extractor);
   }
 
   //////////////////////////// Rate ////////////////////////////
 
   void markDataRegionCommit() {
-    dataRegionCommitMeter.mark();
+    dataRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            meter.mark();
+          }
+          return meter;
+        });
   }
 
   void markSchemaRegionCommit() {
-    schemaRegionCommitMeter.mark();
+    schemaRegionCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            meter.mark();
+          }
+          return meter;
+        });
+  }
+
+  void markCollectInvocationCount(final long collectInvocationCount) {
+    // If collectInvocationCount == 0, the event will still be committed once
+    collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
+  }
+
+  //////////////////////////// Switch ////////////////////////////
+
+  // Thread-safe & Idempotent
+  @Override
+  public synchronized void thawRate(final boolean isStartPipe) {
+    super.thawRate(isStartPipe);
+    // The stopped pipe's rate should only be thawed by "startPipe" command
+    if (isStopped) {
+      return;
+    }
+    dataRegionCommitMeter.compareAndSet(
+        null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+    schemaRegionCommitMeter.compareAndSet(
+        null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+  }
+
+  // Thread-safe & Idempotent
+  @Override
+  public synchronized void freezeRate(final boolean isStopPipe) {
+    super.freezeRate(isStopPipe);
+    dataRegionCommitMeter.set(null);
+    schemaRegionCommitMeter.set(null);
   }
 }

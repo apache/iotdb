@@ -59,7 +59,7 @@
         <checker-qual.version>3.38.0</checker-qual.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
-        <commons-codec.version>1.16.0</commons-codec.version>
+        <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-io.version>2.13.0</commons-io.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
@@ -135,7 +135,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.0-d09cbac-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.0</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>
@@ -166,7 +166,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <tsfile.version>1.0.1-e1207ba-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.0.1-bf6a2f3-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1033,7 +1033,7 @@
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
                         <artifactId>jaxb-core</artifactId>
-                        <version>2.3.0</version>
+                        <version>2.3.0.1</version>
                     </dependency>
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>

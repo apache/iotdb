@@ -35,8 +35,9 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -167,6 +168,11 @@ public class TsFileProcessor {
 
   /** This callback is called before the workMemtable is added into the flushingMemTables. */
   private final DataRegion.UpdateEndTimeCallBack updateLatestFlushTimeCallback;
+
+  public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
+
+  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
 
   /** Wal node. */
   private final IWALNode walNode;
@@ -300,7 +306,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -374,7 +380,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -485,7 +491,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -1009,8 +1015,7 @@ public class TsFileProcessor {
           "The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
-      WritingMetrics.getInstance()
-          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
       return true;
     }
     return false;
@@ -1360,6 +1365,7 @@ public class TsFileProcessor {
                   storageGroupName,
                   dataRegionInfo.getDataRegion().getDataRegionId());
           flushTask.syncFlushMemTable();
+          memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
           if (writer == null) {
             logger.info(
@@ -1883,7 +1889,7 @@ public class TsFileProcessor {
    * get the related ChunkMetadata of data on disk.
    */
   public void queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
     long startTime = System.nanoTime();
@@ -1893,9 +1899,9 @@ public class TsFileProcessor {
           new HashMap<>();
       flushQueryLock.readLock().lock();
       try {
-        for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
+        for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
           IDeviceID deviceID = entry.getKey();
-          boolean isAligned = entry.getValue();
+          boolean isAligned = entry.getValue().isAligned();
           long timeLowerBound =
               getQueryTimeLowerBound(
                   PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
@@ -2097,6 +2103,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableUpdateTime() {
     return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
+  }
+
+  public long getMemTableFlushPointCount() {
+    return memTableFlushPointCount;
   }
 
   public boolean isSequence() {

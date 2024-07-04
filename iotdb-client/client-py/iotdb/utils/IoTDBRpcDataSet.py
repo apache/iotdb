@@ -151,7 +151,7 @@ class IoTDBRpcDataSet(object):
             self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
-            time_array = time_array.byteswap().newbyteorder("<")
+            time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
         result[0] = time_array
         total_length = len(time_array)
         for i in range(self.column_size):
@@ -205,7 +205,9 @@ class IoTDBRpcDataSet(object):
             else:
                 raise RuntimeError("unsupported data type {}.".format(data_type))
             if data_array.dtype.byteorder == ">":
-                data_array = data_array.byteswap().newbyteorder("<")
+                data_array = data_array.byteswap().view(
+                    data_array.dtype.newbyteorder("<")
+                )
             # self.__query_data_set.valueList[location] = None
             if len(data_array) < total_length:
                 # INT32 or INT64 or boolean
@@ -258,7 +260,9 @@ class IoTDBRpcDataSet(object):
                 self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
             )
             if time_array.dtype.byteorder == ">":
-                time_array = time_array.byteswap().newbyteorder("<")
+                time_array = time_array.byteswap().view(
+                    time_array.dtype.newbyteorder("<")
+                )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[IoTDBRpcDataSet.TIMESTAMP_STR].append(time_array)
 
@@ -317,7 +321,9 @@ class IoTDBRpcDataSet(object):
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
                 if data_array.dtype.byteorder == ">":
-                    data_array = data_array.byteswap().newbyteorder("<")
+                    data_array = data_array.byteswap().view(
+                        data_array.dtype.newbyteorder("<")
+                    )
                 self.__query_data_set.valueList[location] = None
                 tmp_array = []
                 if len(data_array) < total_length:
@@ -355,7 +361,7 @@ class IoTDBRpcDataSet(object):
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
             elif v[0].dtype == "Int64":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
-            elif v[0].dtype == "boolean":
+            elif v[0].dtype == bool:
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
             else:
                 result[k] = np.concatenate(v, axis=0)
