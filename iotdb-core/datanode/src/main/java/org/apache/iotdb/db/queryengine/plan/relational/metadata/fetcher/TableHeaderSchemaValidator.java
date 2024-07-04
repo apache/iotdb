@@ -122,15 +122,18 @@ public class TableHeaderSchemaValidator {
           // check and validate column data type and category
           if (!columnSchema.getType().equals(UnknownType.UNKNOWN)
               && !TypeFactory.getType(existingColumn.getDataType())
-              .equals(columnSchema.getType())) {
+                  .equals(columnSchema.getType())) {
             throw new SemanticException(
                 String.format("Wrong data type at column %s.", columnSchema.getName()));
           }
           if (columnSchema.getColumnCategory() != null
               && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
             throw new SemanticException(
-                String.format("Wrong category at column %s : %s/%s", columnSchema.getName(),
-                    columnSchema.getColumnCategory(), existingColumn.getColumnCategory()));
+                String.format(
+                    "Wrong category at column %s : %s/%s",
+                    columnSchema.getName(),
+                    columnSchema.getColumnCategory(),
+                    existingColumn.getColumnCategory()));
           }
         }
       }

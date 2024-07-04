@@ -101,6 +101,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -110,11 +111,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 
-/**
- * Convert SQL and RPC requests to {@link Statement}.
- */
+/** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =

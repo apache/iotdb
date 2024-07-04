@@ -34,7 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
@@ -82,6 +85,8 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.BitMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -100,8 +105,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.schemaengine.template.TemplateQueryType.SHOW_MEASUREMENTS;
 import static org.apache.tsfile.file.metadata.enums.CompressionType.SNAPPY;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -227,6 +234,150 @@ public class StatementGeneratorTest {
     assertEquals(dataTypes, Arrays.asList(statement.getDataTypes()));
     assertEquals(columnCategories, Arrays.asList(statement.getColumnCategories()));
     assertTrue(statement.isWriteToTable());
+  }
+
+  @Test
+  public void testTabletInsertColumn() {
+    final InsertTabletStatement insertTabletStatement =
+        StatementTestUtils.genInsertTabletStatement(false);
+    // insert at head
+    int insertPos = 0;
+
+    ColumnSchema columnSchema =
+        new ColumnSchema(
+            "s1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID);
+    insertTabletStatement.insertColumn(insertPos, columnSchema);
+    assertEquals(4, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
+    assertEquals(
+        InternalTypeManager.getTSDataType(columnSchema.getType()),
+        insertTabletStatement.getDataType(insertPos));
+    assertEquals(
+        columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
+    final Object[] column1 = (Object[]) insertTabletStatement.getColumns()[insertPos];
+    for (Object o : column1) {
+      assertNull(o);
+    }
+
+    // insert at middle
+    insertPos = 2;
+    columnSchema =
+        new ColumnSchema(
+            "s2", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.ATTRIBUTE);
+    insertTabletStatement.insertColumn(insertPos, columnSchema);
+    assertEquals(5, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
+    assertEquals(
+        InternalTypeManager.getTSDataType(columnSchema.getType()),
+        insertTabletStatement.getDataType(insertPos));
+    assertEquals(
+        columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
+    final long[] column2 = (long[]) insertTabletStatement.getColumns()[insertPos];
+    for (long o : column2) {
+      assertEquals(0, o);
+    }
+
+    // insert at last
+    insertPos = 5;
+    columnSchema =
+        new ColumnSchema(
+            "s3",
+            TypeFactory.getType(TSDataType.BOOLEAN),
+            false,
+            TsTableColumnCategory.MEASUREMENT);
+    insertTabletStatement.insertColumn(insertPos, columnSchema);
+    assertEquals(6, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
+    assertEquals(
+        InternalTypeManager.getTSDataType(columnSchema.getType()),
+        insertTabletStatement.getDataType(insertPos));
+    assertEquals(
+        columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
+    final boolean[] column3 = (boolean[]) insertTabletStatement.getColumns()[insertPos];
+    for (boolean o : column3) {
+      assertFalse(o);
+    }
+
+    // illegal insertion
+    ColumnSchema finalColumnSchema = columnSchema;
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class,
+        () -> insertTabletStatement.insertColumn(-1, finalColumnSchema));
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class,
+        () -> insertTabletStatement.insertColumn(7, finalColumnSchema));
+  }
+
+  @Test
+  public void testInsertTabletSwapColumn() {
+    final String[] columnNames = StatementTestUtils.genColumnNames();
+    final Object[] columns = StatementTestUtils.genColumns();
+    final TSDataType[] tsDataTypes = StatementTestUtils.genDataTypes();
+    final TsTableColumnCategory[] columnCategories = StatementTestUtils.genColumnCategories();
+
+    final InsertTabletStatement insertTabletStatement =
+        StatementTestUtils.genInsertTabletStatement(false);
+    BitMap[] bitMaps = new BitMap[columnNames.length];
+    for (int i = 0; i < bitMaps.length; i++) {
+      bitMaps[i] = new BitMap(3);
+      bitMaps[i].mark(i);
+    }
+    insertTabletStatement.setBitMaps(bitMaps);
+
+    // [0, 1, 2] -> [2, 1, 0]
+    insertTabletStatement.swapColumn(0, 2);
+    assertEquals(3, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnNames[0], insertTabletStatement.getMeasurements()[2]);
+    assertEquals(columnNames[2], insertTabletStatement.getMeasurements()[0]);
+    assertEquals(tsDataTypes[0], insertTabletStatement.getDataType(2));
+    assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(0));
+    assertEquals(columnCategories[0], insertTabletStatement.getColumnCategories()[2]);
+    assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[0]);
+    assertArrayEquals(
+        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[0]), 0.0001);
+    assertArrayEquals(((String[]) columns[0]), ((String[]) insertTabletStatement.getColumns()[2]));
+    assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(2));
+    assertTrue(insertTabletStatement.getBitMaps()[2].isMarked(0));
+
+    // [2, 1, 0] -> [1, 2, 0]
+    insertTabletStatement.swapColumn(0, 1);
+    assertEquals(3, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnNames[1], insertTabletStatement.getMeasurements()[0]);
+    assertEquals(columnNames[2], insertTabletStatement.getMeasurements()[1]);
+    assertEquals(tsDataTypes[1], insertTabletStatement.getDataType(0));
+    assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
+    assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
+    assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
+    assertArrayEquals(((String[]) columns[1]), ((String[]) insertTabletStatement.getColumns()[0]));
+    assertArrayEquals(
+        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
+    assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
+    assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));
+
+    // [1, 2, 0] -> [1, 2, 0]
+    insertTabletStatement.swapColumn(1, 1);
+    assertEquals(3, insertTabletStatement.getMeasurements().length);
+    assertEquals(columnNames[1], insertTabletStatement.getMeasurements()[0]);
+    assertEquals(columnNames[2], insertTabletStatement.getMeasurements()[1]);
+    assertEquals(tsDataTypes[1], insertTabletStatement.getDataType(0));
+    assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
+    assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
+    assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
+    assertArrayEquals(((String[]) columns[1]), ((String[]) insertTabletStatement.getColumns()[0]));
+    assertArrayEquals(
+        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
+    assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
+    assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));
+
+    // illegal
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class, () -> insertTabletStatement.swapColumn(-1, 1));
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class, () -> insertTabletStatement.swapColumn(3, 1));
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class, () -> insertTabletStatement.swapColumn(1, -1));
+    assertThrows(
+        ArrayIndexOutOfBoundsException.class, () -> insertTabletStatement.swapColumn(1, 3));
   }
 
   @Test
@@ -529,6 +680,7 @@ public class StatementGeneratorTest {
 
   @FunctionalInterface
   interface grantRevokeCheck {
+
     void checkParser(String privilege, String name, boolean isuser, String path, boolean grantOpt);
   }
 

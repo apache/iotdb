@@ -433,6 +433,10 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   public void insertColumn(int pos, ColumnSchema columnSchema) {
+    if (pos < 0 || pos > measurements.length) {
+      throw new ArrayIndexOutOfBoundsException(pos);
+    }
+
     if (measurementSchemas != null) {
       MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
       System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
@@ -464,6 +468,9 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   public void swapColumn(int src, int target) {
+    if (src < 0 || src >= measurements.length || target < 0 || target >= measurements.length) {
+      throw new ArrayIndexOutOfBoundsException(src + "/" + target);
+    }
     if (measurementSchemas != null) {
       CommonUtils.swapArray(measurementSchemas, src, target);
     }
