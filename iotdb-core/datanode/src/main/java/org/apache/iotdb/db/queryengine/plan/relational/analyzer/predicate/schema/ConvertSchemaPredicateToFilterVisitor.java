@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -82,6 +81,10 @@ public class ConvertSchemaPredicateToFilterVisitor
 
   @Override
   protected SchemaFilter visitLogicalExpression(LogicalExpression node, Context context) {
+    if (node.getOperator() != LogicalExpression.Operator.OR || node.getTerms().size() != 2) {
+      throw new IllegalStateException(
+          "Operator is " + node.getOperator() + ", operand size is " + node.getTerms().size());
+    }
     // the operator of the logical expression shall be OR
     return new OrFilter(
         node.getTerms().get(0).accept(this, context), node.getTerms().get(1).accept(this, context));
@@ -98,18 +101,16 @@ public class ConvertSchemaPredicateToFilterVisitor
     String value;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      if (node.getRight() instanceof Identifier) {
-        columnName = ((Identifier) (node.getRight())).getValue();
-      } else {
-        columnName = ((SymbolReference) (node.getRight())).getName();
+      if (!(node.getRight() instanceof SymbolReference)) {
+        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
       }
+      columnName = ((SymbolReference) (node.getRight())).getName();
     } else {
       value = ((StringLiteral) (node.getRight())).getValue();
-      if (node.getLeft() instanceof Identifier) {
-        columnName = ((Identifier) (node.getLeft())).getValue();
-      } else {
-        columnName = ((SymbolReference) (node.getLeft())).getName();
+      if (!(node.getLeft() instanceof SymbolReference)) {
+        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
       }
+      columnName = ((SymbolReference) (node.getLeft())).getName();
     }
     if (context
         .table

@@ -40,6 +40,11 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
+/**
+ * only the following predicate will return true: 1. tagColumn = 'XXX' 2. 'XXX' = tagColumn 3.
+ * attributeColumn = 'XXX' 4. 'XXX' = attributeColumn 5. tagColumn/attributeColumn IS NULL 6. using
+ * or to combine the above expression
+ */
 public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, Void> {
 
   private final Set<String> idOrAttributeColumnNames;
@@ -64,7 +69,7 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
@@ -173,10 +175,16 @@ public class TableDeviceSchemaFetcher {
     List<DeviceEntry> deviceEntryList = new ArrayList<>();
 
     TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
+    if (tableInstance == null) {
+      throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
+    }
     Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(expressionList, tableInstance);
     List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
     List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
+
+    // here we use binary tree way, because the following SchemaFilter only support binary OrFilter
+    // TODO table metadata: add multi way OrFilter for SchemaFilter
     Expression compactedIdFuzzyPredicate =
         SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyPredicateList);
 
@@ -184,8 +192,8 @@ public class TableDeviceSchemaFetcher {
     // expressions inner each element are and-concat representing conditions of different column
     List<List<Expression>> idPredicateList =
         SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(idDeterminedPredicateList);
-    // List<Expression> in idPredicateList contains all id columns comparison which can use
-    // SchemaCache
+    // if List<Expression> in idPredicateList contains all id columns comparison which can use
+    // SchemaCache, we store its index.
     List<Integer> idSingleMatchIndexList =
         SchemaPredicateUtil.extractIdSingleMatchExpressionCases(idPredicateList, tableInstance);
     // store missing cache index in idSingleMatchIndexList
@@ -197,7 +205,7 @@ public class TableDeviceSchemaFetcher {
       ConvertSchemaPredicateToFilterVisitor.Context context =
           new ConvertSchemaPredicateToFilterVisitor.Context(tableInstance);
       DeviceInCacheFilterVisitor filterVisitor = new DeviceInCacheFilterVisitor(attributeColumns);
-      SchemaFilter attributeFilter =
+      SchemaFilter fuzzyFilter =
           compactedIdFuzzyPredicate == null
               ? null
               : compactedIdFuzzyPredicate.accept(visitor, context);
@@ -209,7 +217,7 @@ public class TableDeviceSchemaFetcher {
             idPredicateList.get(index).stream()
                 .map(o -> o.accept(visitor, context))
                 .collect(Collectors.toList()),
-            o -> attributeFilter == null || filterVisitor.process(attributeFilter, o),
+            o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
             attributeColumns)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
@@ -226,7 +234,6 @@ public class TableDeviceSchemaFetcher {
       int idx1 = 0;
       int idx2 = 0;
       for (int i = 0; i < idPredicateList.size(); i++) {
-        //
         if (idx1 >= idSingleMatchIndexList.size() || i != idSingleMatchIndexList.get(idx1)) {
           idPredicateForFetch.add(idPredicateList.get(i));
         } else {
@@ -248,8 +255,9 @@ public class TableDeviceSchemaFetcher {
           idSingleMatchIndexList.size() == idPredicateList.size());
     }
 
-    // todo implement deduplicate during schemaRegion execution
-    // todo need further process on input predicates and transform them into disjoint sets
+    // TODO table metadata:  implement deduplicate during schemaRegion execution
+    // TODO table metadata:  need further process on input predicates and transform them into
+    // disjoint sets
     Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
     return new ArrayList<>(set);
   }
@@ -276,18 +284,16 @@ public class TableDeviceSchemaFetcher {
     List<String> attributeValues = new ArrayList<>(attributeColumns.size());
     for (String attributeKey : attributeColumns) {
       String value = attributeMap.get(attributeKey);
-      if (value == null) {
-        return false;
-      } else {
-        attributeValues.add(value);
-      }
+      // TODO table metadata: what if the value is null?
+      attributeValues.add(value);
     }
     String[] deviceIdNodes = new String[idValues.length + 1];
     deviceIdNodes[0] = tableInstance.getTableName();
     System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
     DeviceEntry deviceEntry =
         new DeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes), attributeValues);
-    // todo process cases that selected attr columns different from those used for predicate
+    // TODO table metadata: process cases that selected attr columns different from those used for
+    // predicate
     if (check.test(deviceEntry)) {
       deviceEntryList.add(deviceEntry);
     }
@@ -356,18 +362,22 @@ public class TableDeviceSchemaFetcher {
               if (columns[j].isNull(i)) {
                 nodes[idIndex + 1] = null;
               } else {
-                nodes[idIndex + 1] = columns[j].getBinary(i).toString();
+                nodes[idIndex + 1] =
+                    columns[j].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
               }
               idIndex++;
             } else {
               if (columns[j].isNull(i)) {
                 attributeMap.put(columnSchema.getColumnName(), null);
               } else {
-                attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
+                attributeMap.put(
+                    columnSchema.getColumnName(),
+                    columns[j].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
               }
             }
           }
           IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
+          // TODO table metadata: add memory control
           deviceEntryList.add(
               new DeviceEntry(
                   deviceID,
