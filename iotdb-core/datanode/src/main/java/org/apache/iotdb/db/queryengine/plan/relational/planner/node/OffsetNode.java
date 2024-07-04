@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -76,5 +77,24 @@ public class OffsetNode extends SingleChildProcessNode {
 
   public long getCount() {
     return count;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    OffsetNode offsetNode = (OffsetNode) o;
+    return Objects.equal(count, offsetNode.count);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), count);
+  }
+
+  @Override
+  public String toString() {
+    return "OffsetNode-" + this.getPlanNodeId();
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -37,7 +38,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -45,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -60,6 +64,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
@@ -79,7 +85,7 @@ public class AnalyzerTest {
 
   private static final NopAccessControl nopAccessControl = new NopAccessControl();
 
-  QueryId queryId = new QueryId("tmp_query");
+  QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
       new SessionInfo(
           1L,
@@ -130,28 +136,6 @@ public class AnalyzerTest {
             metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
         .thenReturn(Optional.of(tableSchema));
 
-    //    ResolvedFunction lLessThanI =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
-    //            new FunctionId("l<i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    ResolvedFunction iAddi =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
-    //            new FunctionId("l+i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    Mockito.when(
-    //            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64,
-    // INT32))))
-    //        .thenReturn(lLessThanI);
-    //    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32,
-    // INT32))))
-    //        .thenReturn(iAddi);
-
     Mockito.when(
             metadata.getOperatorReturnType(
                 eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
@@ -186,11 +170,23 @@ public class AnalyzerTest {
         tableScanNode.getOutputColumnNames());
     assertEquals(9, tableScanNode.getOutputSymbols().size());
     assertEquals(9, tableScanNode.getAssignments().size());
-    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertTrue(
+        distributedQueryPlan
+                .getFragments()
+                .get(0)
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof CollectNode);
   }
 
   @Test
@@ -212,12 +208,36 @@ public class AnalyzerTest {
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
     assertEquals(9, tableScanNode.getAssignments().size());
-    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
-    assertEquals("(\"time\" > 1)", tableScanNode.getTimePredicate().get().toString());
+    assertEquals(
+        "(\"time\" > 1)", tableScanNode.getTimePredicate().map(Expression::toString).orElse(null));
     assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
+
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    TableScanNode tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
   }
 
   @Test
@@ -237,8 +257,44 @@ public class AnalyzerTest {
     assertNotNull(tableScanNode.getPushDownPredicate());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertTrue(
+        Stream.of(
+                Symbol.of("tag1"),
+                Symbol.of("tag2"),
+                Symbol.of("tag3"),
+                Symbol.of("attr1"),
+                Symbol.of("attr2"))
+            .allMatch(tableScanNode.getIdAndAttributeIndexMap()::containsKey));
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
+    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
   }
 
   @Test
@@ -317,6 +373,21 @@ public class AnalyzerTest {
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
   }
 
+  /*
+   * IdentitySinkNode-15
+   *   └──OutputNode-3
+   *       └──FilterNode-2
+   *           └──CollectNode-10
+   *               ├──ExchangeNode-11: [SourceAddress:192.0.12.1/test_query.2.0/13]
+   *               ├──TableScanNode-8
+   *               └──ExchangeNode-12: [SourceAddress:192.0.10.1/test_query.3.0/14]
+   *
+   *  IdentitySinkNode-13
+   *   └──TableScanNode-7
+   *
+   *  IdentitySinkNode-14
+   *   └──TableScanNode-9
+   */
   @Test
   public void singleTableWithFilterTest6() {
     // value filter which can not be pushed down
@@ -333,6 +404,33 @@ public class AnalyzerTest {
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
 
     sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) + 1 > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -363,7 +461,7 @@ public class AnalyzerTest {
   @Test
   public void singleTableProjectTest() {
     // 1. project without filter
-    sql = "SELECT tag1, attr1, s1 FROM table1";
+    sql = "SELECT time, tag1, attr1, s1 FROM table1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
@@ -433,7 +531,7 @@ public class AnalyzerTest {
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
-    assertEquals(2, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
   @Test
@@ -554,6 +652,37 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof CollectNode);
+    CollectNode collectNode =
+        (CollectNode) outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
 
     // 2. diff with time filter, tag filter and measurement filter
     sql = "SELECT s1 FROM table1 WHERE DIFF(s2) > 0 and time > 5 and tag1 = 'A' and s1 = 1";
@@ -628,18 +757,6 @@ public class AnalyzerTest {
     assertEquals(5, limitNode.getCount());
     offsetNode = (OffsetNode) limitNode.getChild();
     assertEquals(3, offsetNode.getCount());
-  }
-
-  @Test
-  public void sortTest() {
-    // when TableScan locates multi regions, use default MergeSortNode
-    sql = "SELECT * FROM table1 ";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
-    logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
-            .plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

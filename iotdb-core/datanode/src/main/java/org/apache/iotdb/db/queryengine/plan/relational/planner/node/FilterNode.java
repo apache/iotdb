@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import com.google.common.base.Objects;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -84,5 +86,24 @@ public class FilterNode extends SingleChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    FilterNode filterNode = (FilterNode) o;
+    return Objects.equal(predicate, filterNode.predicate);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), predicate);
+  }
+
+  @Override
+  public String toString() {
+    return "FilterNode-" + this.getPlanNodeId();
   }
 }

@@ -218,7 +218,7 @@ public abstract class PlanNode implements IConsensusRequest {
     return Objects.hash(id);
   }
 
-  // =========================== Used for Relational Model ============================
+  // =========================== Used for Table Model ============================
   public List<Symbol> getOutputSymbols() {
     throw new UnsupportedOperationException("This planNode does not support getOutputSymbols().");
   }
