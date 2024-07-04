@@ -49,7 +49,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
  * attr1, s1`, but the output columns of TableScanNode in `select s1 from table1` query can only be
  * `s1`.
  */
-public class PruneUnUsedColumns implements RelationalPlanOptimizer {
+public class PruneUnUsedColumns implements TablePlanOptimizer {
 
   @Override
   public PlanNode optimize(

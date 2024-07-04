@@ -71,7 +71,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
  *     <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule
  *     need to be adapted.
  */
-public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
+public class PushPredicateIntoTableScan implements TablePlanOptimizer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

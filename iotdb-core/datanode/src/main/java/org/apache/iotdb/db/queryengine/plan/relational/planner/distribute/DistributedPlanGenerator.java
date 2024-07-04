@@ -320,14 +320,12 @@ public class DistributedPlanGenerator
     Ordering scanOrder = Ordering.ASC;
     for (Symbol symbol : expectedOrderingScheme.getOrderBy()) {
       if (TIMESTAMP_STR.equalsIgnoreCase(symbol.getName())) {
-        if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()
-            && scanOrder == Ordering.ASC) {
-          // TODO(beyyes) move this judgement into logical plan
-          scanOrder = Ordering.DESC;
+        if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
+          // TODO(beyyes) move scan order judgement into logical plan optimizer
           resultTableScanNodeList.forEach(
               node -> ((TableScanNode) node).setScanOrder(Ordering.DESC));
         }
-        continue;
+        break;
       } else if (!tableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
         break;
       }
