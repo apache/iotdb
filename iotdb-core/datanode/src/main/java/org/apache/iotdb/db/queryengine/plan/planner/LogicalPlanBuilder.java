@@ -1151,12 +1151,6 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public static void main(String[] args) throws IllegalPathException {
-    PartialPath path = new PartialPath("root.*.b");
-    PartialPath p1 = new PartialPath("root.sg");
-    System.out.println(path.overlapWithFullPathPrefix(p1));
-  }
-
   public LogicalPlanBuilder planCountMerge() {
     CountSchemaMergeNode countMergeNode =
         new CountSchemaMergeNode(context.getQueryId().genPlanNodeId());
