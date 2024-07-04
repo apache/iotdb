@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 public class PipeEndPointRateLimiter {
 
   // The task agent is used to check if the pipe is still alive
-  private static volatile PipeTaskAgent taskAgent;
+  private static PipeTaskAgent taskAgent;
 
   private final String pipeName;
   private final long creationTime;

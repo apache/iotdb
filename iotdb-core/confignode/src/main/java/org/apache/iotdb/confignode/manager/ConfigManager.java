@@ -1502,6 +1502,9 @@ public class ConfigManager implements IManager {
       properties.putAll(req.getConfigs());
       try {
         ConfigurationFileUtils.updateConfigurationFile(file, properties);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
@@ -1900,7 +1903,7 @@ public class ConfigManager implements IManager {
       PathPatternTree rawPatternTree =
           PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
       boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
-      /**
+      /*
        * If delete pattern is prefix path (such as root.db.**), it may be optimized to delete
        * database plus create database. We need to determine two conditions: whether the pattern
        * ends in **, and that the device is a full path and is matched in the ConfigMTree.

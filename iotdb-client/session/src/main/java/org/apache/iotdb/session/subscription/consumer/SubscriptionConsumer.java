@@ -101,7 +101,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
-  protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
+  protected Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
     return subscribedTopics.values().stream()
@@ -1038,31 +1038,27 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("isClosed", isClosed.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("subscribedTopicNames", subscribedTopics.keySet().toString());
-      }
-    };
+    Map<String, String> reportMessage = new HashMap<>();
+    reportMessage.put("consumerId", consumerId);
+    reportMessage.put("consumerGroupId", consumerGroupId);
+    reportMessage.put("isClosed", isClosed.toString());
+    reportMessage.put("fileSaveDir", fileSaveDir);
+    reportMessage.put("subscribedTopicNames", subscribedTopics.keySet().toString());
+    return reportMessage;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
-        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
-        put("providers", providers.toString());
-        put("isClosed", isClosed.toString());
-        put("isReleased", isReleased.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("fileSaveFsync", String.valueOf(fileSaveFsync));
-        put("subscribedTopics", subscribedTopics.toString());
-      }
-    };
+    Map<String, String> reportMessage = new HashMap<>();
+    reportMessage.put("consumerId", consumerId);
+    reportMessage.put("consumerGroupId", consumerGroupId);
+    reportMessage.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+    reportMessage.put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+    reportMessage.put("providers", providers.toString());
+    reportMessage.put("isClosed", isClosed.toString());
+    reportMessage.put("isReleased", isReleased.toString());
+    reportMessage.put("fileSaveDir", fileSaveDir);
+    reportMessage.put("fileSaveFsync", String.valueOf(fileSaveFsync));
+    reportMessage.put("subscribedTopics", subscribedTopics.toString());
+    return reportMessage;
   }
 }

@@ -339,30 +339,26 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    Map<String, String> reportMessage = new HashMap<>();
+    reportMessage.put("brokerId", brokerId);
+    reportMessage.put("topicName", topicName);
+    reportMessage.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+    reportMessage.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    reportMessage.put("isCompleted", String.valueOf(isCompleted));
+    reportMessage.put("isClosed", String.valueOf(isClosed));
+    return reportMessage;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
-        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
-        put("uncommittedEvents", uncommittedEvents.toString());
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    Map<String, String> reportMessage = new HashMap<>();
+    reportMessage.put("brokerId", brokerId);
+    reportMessage.put("topicName", topicName);
+    reportMessage.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+    reportMessage.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+    reportMessage.put("uncommittedEvents", uncommittedEvents.toString());
+    reportMessage.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    reportMessage.put("isCompleted", String.valueOf(isCompleted));
+    reportMessage.put("isClosed", String.valueOf(isClosed));
+    return reportMessage;
   }
 }

@@ -50,7 +50,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   protected volatile boolean isSubmitted = false;
 
   // For cleaning up the last event when the pipe is dropped
-  protected volatile Event lastExceptionEvent;
+  protected Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeConnector) {

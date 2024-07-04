@@ -26,6 +26,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,12 +59,7 @@ public class TopicConfig extends PipeParameters {
 
   private static final Set<String> LOOSE_RANGE_KEY_SET =
       Collections.unmodifiableSet(
-          new HashSet<String>() {
-            {
-              add("history.loose-range");
-              add("realtime.loose-range");
-            }
-          });
+          new HashSet<>(Arrays.asList("history.loose-range", "realtime.loose-range")));
 
   /////////////////////////////// de/ser ///////////////////////////////
 

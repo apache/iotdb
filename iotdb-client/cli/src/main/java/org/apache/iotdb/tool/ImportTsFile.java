@@ -406,7 +406,11 @@ public class ImportTsFile extends AbstractTsFileTool {
           if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
             ioTPrinter.println(
                 "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
-            tsfileQueue.put(filePath);
+            try {
+              tsfileQueue.put(filePath);
+            } catch (InterruptedException exception) {
+              Thread.currentThread().interrupt();
+            }
             continue;
           }
 

@@ -21,16 +21,11 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 
 public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConfigNodeSystemPropertiesHandler.class);
 
-  private static ConfigNodeSystemPropertiesHandler INSTANCE;
+  private static volatile ConfigNodeSystemPropertiesHandler INSTANCE;
 
   private ConfigNodeSystemPropertiesHandler(String filePath) {
     super(filePath);

@@ -77,7 +77,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
-  private volatile TsFileWriter fileWriter;
+  private TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     super(maxDelayInMs);

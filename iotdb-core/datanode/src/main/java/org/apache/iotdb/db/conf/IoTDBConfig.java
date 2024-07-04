@@ -1334,6 +1334,15 @@ public class IoTDBConfig {
   void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
     // format data directories
     formulateDataDirs(tierDataDirs);
+    // make sure the tiers number not reduced
+    if (this.tierDataDirs.length > tierDataDirs.length) {
+      String msg =
+          String.format(
+              "The tiers number is reduced from %d from %d please add it back.",
+              this.tierDataDirs.length, tierDataDirs.length);
+      logger.error(msg);
+      throw new LoadConfigurationException(msg);
+    }
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
       List<String> newDirs = Arrays.asList(tierDataDirs[i]);
