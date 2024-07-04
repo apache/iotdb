@@ -175,6 +175,18 @@ public class AnalyzerTest {
     assertEquals(ASC, tableScanNode.getScanOrder());
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertTrue(
+        distributedQueryPlan
+                .getFragments()
+                .get(0)
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof CollectNode);
   }
 
   @Test
@@ -202,20 +214,19 @@ public class AnalyzerTest {
         "(\"time\" > 1)", tableScanNode.getTimePredicate().map(Expression::toString).orElse(null));
     assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
+
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
-    assertTrue(
-        distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0)
-            instanceof OutputNode);
     OutputNode outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
     assertTrue(outputNode.getChildren().get(0) instanceof CollectNode);
     CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0);
-    assertTrue(collectNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
-    assertTrue(collectNode.getChildren().get(2) instanceof ExchangeNode);
     TableScanNode tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(
@@ -254,13 +265,36 @@ public class AnalyzerTest {
                 Symbol.of("attr1"),
                 Symbol.of("attr2"))
             .allMatch(tableScanNode.getIdAndAttributeIndexMap()::containsKey));
-    assertEquals(0, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag1")));
-    assertEquals(1, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag2")));
-    assertEquals(2, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("tag3")));
-    assertEquals(0, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr1")));
-    assertEquals(1, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr2")));
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
+    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
   }
 
   @Test
@@ -339,6 +373,21 @@ public class AnalyzerTest {
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
   }
 
+  /*
+   * IdentitySinkNode-15
+   *   └──OutputNode-3
+   *       └──FilterNode-2
+   *           └──CollectNode-10
+   *               ├──ExchangeNode-11: [SourceAddress:192.0.12.1/test_query.2.0/13]
+   *               ├──TableScanNode-8
+   *               └──ExchangeNode-12: [SourceAddress:192.0.10.1/test_query.3.0/14]
+   *
+   *  IdentitySinkNode-13
+   *   └──TableScanNode-7
+   *
+   *  IdentitySinkNode-14
+   *   └──TableScanNode-9
+   */
   @Test
   public void singleTableWithFilterTest6() {
     // value filter which can not be pushed down
@@ -355,6 +404,33 @@ public class AnalyzerTest {
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof CollectNode);
+    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
 
     sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) + 1 > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -576,6 +652,37 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    OutputNode outputNode =
+        (OutputNode)
+            distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof CollectNode);
+    CollectNode collectNode =
+        (CollectNode) outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        collectNode.getChildren().get(0) instanceof ExchangeNode
+            && collectNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(
+        Arrays.asList(
+            "table1.shanghai.B3.YY",
+            "table1.shenzhen.B1.XX",
+            "table1.shenzhen.B2.ZZ",
+            "table1.shanghai.A3.YY"),
+        tableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toList()));
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
 
     // 2. diff with time filter, tag filter and measurement filter
     sql = "SELECT s1 FROM table1 WHERE DIFF(s2) > 0 and time > 5 and tag1 = 'A' and s1 = 1";
