@@ -692,26 +692,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
           continue;
         }
 
-        resp.getExceptionMessages()
+        resp.getExceptionMessages().stream()
+            .filter(message -> pipeMetaKeeper.containsPipeMeta(message.getPipeName()))
             .forEach(
                 message -> {
-                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
-                    final PipeRuntimeMeta runtimeMeta =
-                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+                  final PipeRuntimeMeta runtimeMeta =
+                      pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
-                    // Mark the status of the pipe with exception as stopped
-                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                    runtimeMeta.setIsStoppedByRuntimeException(true);
+                  // Mark the status of the pipe with exception as stopped
+                  runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                  runtimeMeta.setIsStoppedByRuntimeException(true);
 
-                    final Map<Integer, PipeRuntimeException> exceptionMap =
-                        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                    if (!exceptionMap.containsKey(dataNodeId)
-                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
-                      exceptionMap.put(
-                          dataNodeId,
-                          new PipeRuntimeCriticalException(
-                              message.getMessage(), message.getTimeStamp()));
-                    }
+                  final Map<Integer, PipeRuntimeException> exceptionMap =
+                      runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
+                  if (!exceptionMap.containsKey(dataNodeId)
+                      || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                    exceptionMap.put(
+                        dataNodeId,
+                        new PipeRuntimeCriticalException(
+                            message.getMessage(), message.getTimeStamp()));
                   }
                 });
       }
