@@ -446,9 +446,9 @@ struct TPushPipeMetaResp {
 }
 
 struct TPushPipeMetaRespExceptionMessage {
-  1: required string pipeName
-  2: required string message
-  3: required i64 timeStamp
+  1: required string message
+  2: required i64 timeStamp
+  3: optional string pipeName
 }
 
 struct TPushSinglePipeMetaReq {
