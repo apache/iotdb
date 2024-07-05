@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
@@ -51,7 +52,7 @@ public class FollowedBatchedCompactionFlushController extends AbstractCompaction
         batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
     if (compactChunkPlan.isCompactedByDirectlyFlush()
         && chunkToFlush.getStartTime() != compactChunkPlan.getTimeRange().getMin()) {
-      throw new RuntimeException();
+      throw new BatchCompactionCannotAlignedException(chunkToFlush, compactChunkPlan);
     }
     return compactChunkPlan.isCompactedByDirectlyFlush();
   }

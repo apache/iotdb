@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -90,7 +92,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     if (currentPage >= compactChunkPlan.getPageRecords().size()
         || header.getStatistics().getStartTime()
             != compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMin()) {
-      throw new RuntimeException();
+      throw new BatchCompactionCannotAlignedException(header, compactChunkPlan, currentPage);
     }
     super.writePageHeaderAndDataIntoTimeBuff(data, header);
     currentPage++;
