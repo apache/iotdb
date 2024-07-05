@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.AsyncClient
     implements ThriftClient {
@@ -44,7 +43,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeInternalServiceClient.class);
 
-  public final AtomicLong originalTimeout = new AtomicLong(-1);
+  public long originalTimeout = -1;
 
   private final boolean printLogWhenEncounterException;
 
@@ -113,7 +112,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
    * RPC is finished.
    */
   private void returnSelf() {
-    if (originalTimeout.get() != -1) {
+    if (originalTimeout != -1) {
       recoverTimeout();
     }
     clientManager.returnClient(endpoint, this);
@@ -123,26 +122,23 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
    * Call this method when needed to temporarily modify the timeout period. The original timeout
    * will be saved and automatically restored when the client is returned.
    */
-  public void setTimeoutTemporarily(long timeout) {
-    synchronized (originalTimeout) {
-      if (originalTimeout.get() != -1) {
-        logger.warn(
-            "This client's timeout has been set to {}. If you need to set it to {}, please call the recoverTimeout() first.",
-            originalTimeout.get(),
-            timeout);
-      }
-      originalTimeout.set(getTimeout());
-      setTimeout(timeout);
+  public synchronized void setTimeoutTemporarily(long timeout) {
+    if (originalTimeout != -1) {
+      logger.warn(
+          "This client's timeout has been set to {}. If you need to set it to {}, please call the recoverTimeout() first.",
+          originalTimeout,
+          timeout);
     }
+    originalTimeout = getTimeout();
+    setTimeout(timeout);
   }
 
-  private void recoverTimeout() {
-    synchronized (originalTimeout) {
-      if (originalTimeout.get() == -1) {
-        logger.warn("This client's timeout has not been modified, cannot reset");
-      }
-      setTimeout(originalTimeout.getAndSet(-1));
+  private synchronized void recoverTimeout() {
+    if (originalTimeout == -1) {
+      logger.warn("This client's timeout has not been modified, cannot reset");
     }
+    setTimeout(originalTimeout);
+    originalTimeout = -1;
   }
 
   private void close() {
