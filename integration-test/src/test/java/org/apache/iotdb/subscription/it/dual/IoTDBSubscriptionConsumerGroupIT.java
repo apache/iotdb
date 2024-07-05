@@ -976,54 +976,54 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                     for (final SubscriptionMessage message : messages) {
                       final short messageType = message.getMessageType();
-                      if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
-                        switch (SubscriptionMessageType.valueOf(messageType)) {
-                          case SESSION_DATA_SETS_HANDLER:
-                            {
-                              for (final SubscriptionSessionDataSet dataSet :
-                                  message.getSessionDataSetsHandler()) {
-                                final List<String> columnNameList = dataSet.getColumnNames();
-                                while (dataSet.hasNext()) {
-                                  final RowRecord record = dataSet.next();
+                      if (!SubscriptionMessageType.isValidatedMessageType(messageType)) {
+                        LOGGER.warn("unexpected message type: {}", messageType);
+                        continue;
+                      }
+                      switch (SubscriptionMessageType.valueOf(messageType)) {
+                        case SESSION_DATA_SETS_HANDLER:
+                          {
+                            for (final SubscriptionSessionDataSet dataSet :
+                                message.getSessionDataSetsHandler()) {
+                              final List<String> columnNameList = dataSet.getColumnNames();
+                              while (dataSet.hasNext()) {
+                                final RowRecord record = dataSet.next();
+                                if (!insertRowRecordEnrichedByConsumerGroupId(
+                                    columnNameList, record.getTimestamp(), consumerGroupId)) {
+                                  receiverCrashed.set(true);
+                                  throw new RuntimeException("detect receiver crashed");
+                                }
+                              }
+                            }
+                            break;
+                          }
+                        case TS_FILE_HANDLER:
+                          {
+                            try (final TsFileReader tsFileReader =
+                                message.getTsFileHandler().openReader()) {
+                              final QueryDataSet dataSet =
+                                  tsFileReader.query(
+                                      QueryExpression.create(
+                                          Arrays.asList(
+                                              new Path("root.topic1", "s", true),
+                                              new Path("root.topic2", "s", true)),
+                                          null));
+                              while (dataSet.hasNext()) {
+                                final RowRecord record = dataSet.next();
+                                for (final Path path : dataSet.getPaths()) {
                                   if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      columnNameList, record.getTimestamp(), consumerGroupId)) {
+                                      path.toString(), record.getTimestamp(), consumerGroupId)) {
                                     receiverCrashed.set(true);
                                     throw new RuntimeException("detect receiver crashed");
                                   }
                                 }
                               }
-                              break;
                             }
-                          case TS_FILE_HANDLER:
-                            {
-                              try (final TsFileReader tsFileReader =
-                                  message.getTsFileHandler().openReader()) {
-                                final QueryDataSet dataSet =
-                                    tsFileReader.query(
-                                        QueryExpression.create(
-                                            Arrays.asList(
-                                                new Path("root.topic1", "s", true),
-                                                new Path("root.topic2", "s", true)),
-                                            null));
-                                while (dataSet.hasNext()) {
-                                  final RowRecord record = dataSet.next();
-                                  for (final Path path : dataSet.getPaths()) {
-                                    if (!insertRowRecordEnrichedByConsumerGroupId(
-                                        path.toString(), record.getTimestamp(), consumerGroupId)) {
-                                      receiverCrashed.set(true);
-                                      throw new RuntimeException("detect receiver crashed");
-                                    }
-                                  }
-                                }
-                              }
-                              break;
-                            }
-                          default:
-                            LOGGER.warn("unexpected message type: {}", messageType);
                             break;
-                        }
-                      } else {
-                        LOGGER.warn("unexpected message type: {}", messageType);
+                          }
+                        default:
+                          LOGGER.warn("unexpected message type: {}", messageType);
+                          break;
                       }
                     }
                     consumer.commitSync(messages);

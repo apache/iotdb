@@ -110,8 +110,8 @@ public class SubscriptionEvent {
     return responses[index];
   }
 
-  public void resetCurrentResponseIndex() {
-    currentResponseIndex = 0;
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
   }
 
   //////////////////////////// commit ////////////////////////////
@@ -169,6 +169,9 @@ public class SubscriptionEvent {
   }
 
   public void nack() {
+    // reset current response index
+    currentResponseIndex = 0;
+
     lastPolledConsumerId = null;
     lastPolledTimestamp = INVALID_TIMESTAMP;
   }

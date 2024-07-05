@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
@@ -209,6 +210,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public synchronized void open() throws SubscriptionException {
     checkIfHasBeenClosed();
+
     if (!isClosed.get()) {
       return;
     }
@@ -495,7 +497,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, file, fileWriter));
-    } catch (final IOException e) {
+    } catch (final Exception e) {
+      // construct temporary message to nack
+      nack(
+          Collections.singletonList(
+              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -740,6 +746,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
+      // make every effort to delete stale intermediate file
+      if (Objects.equals(
+          SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())) {
+        try {
+          message.getTsFileHandler().deleteFile();
+        } catch (final Exception ignored) {
+        }
+      }
       dataNodeIdToSubscriptionCommitContexts
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
