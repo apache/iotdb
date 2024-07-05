@@ -1300,7 +1300,8 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "compaction_max_aligned_series_num_in_one_batch",
-                Integer.toString(conf.getCompactionMaxAlignedSeriesNumInOneBatch()))));
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "compaction_max_aligned_series_num_in_one_batch"))));
     configModified |=
         compactionMaxAlignedSeriesNumInOneBatch
             != conf.getCompactionMaxAlignedSeriesNumInOneBatch();
