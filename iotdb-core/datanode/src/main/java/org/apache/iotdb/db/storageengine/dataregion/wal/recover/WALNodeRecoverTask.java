@@ -24,14 +24,11 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
@@ -191,12 +188,7 @@ public class WALNodeRecoverTask implements Runnable {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
     }
     // make sure last wal file is correct
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(lastWALFile);
-    try {
-      walRecoverWriter.recover(metaData);
-    } catch (IOException e) {
-      logger.error("Fail to recover metadata of wal file {}", lastWALFile, e);
-    }
+    repairWalFileIfBroken(lastWALFile, metaData);
     // rename last wal file when file status are inconsistent
     if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
       String targetName =
@@ -209,6 +201,15 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
     return new long[] {lastVersionId, lastSearchIndex};
+  }
+
+  private static void repairWalFileIfBroken(File walFile, WALMetaData metaData) {
+    WALRepairWriter walRepairWriter = new WALRepairWriter(walFile);
+    try {
+      walRepairWriter.repair(metaData);
+    } catch (IOException e) {
+      logger.error("Fail to recover metadata of wal file {}", walFile, e);
+    }
   }
 
   private void recoverInfoFromCheckpoints() {
