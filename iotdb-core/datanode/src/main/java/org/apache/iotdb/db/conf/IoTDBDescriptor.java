@@ -2259,13 +2259,13 @@ public class IoTDBDescriptor {
 
     conf.setPipeReceiverFileDirs(
         Arrays.stream(
-            Optional.ofNullable(properties.getProperty("dn_pipe_receiver_file_dirs"))
-                .orElse(
-                    properties
-                        .getProperty(
-                            "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs())))
-                .trim()
-                .split(","))
+                Optional.ofNullable(properties.getProperty("dn_pipe_receiver_file_dirs"))
+                    .orElse(
+                        properties.getProperty(
+                            "pipe_receiver_file_dirs",
+                            String.join(",", conf.getPipeReceiverFileDirs())))
+                    .trim()
+                    .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
