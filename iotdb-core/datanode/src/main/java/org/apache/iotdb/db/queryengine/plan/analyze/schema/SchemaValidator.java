@@ -69,8 +69,6 @@ public class SchemaValidator {
       final TableSchema incomingSchema = insertStatement.getTableSchema();
       final TableSchema realSchema =
           metadata.validateTableHeaderSchema(databaseName, incomingSchema, context);
-      LOGGER.info("incoming table header schema: {}", incomingSchema);
-      LOGGER.info("real table header schema: {}", realSchema);
       insertStatement.validate(realSchema);
       metadata.validateDeviceSchema(insertStatement, context);
       insertStatement.updateAfterSchemaValidation(context);

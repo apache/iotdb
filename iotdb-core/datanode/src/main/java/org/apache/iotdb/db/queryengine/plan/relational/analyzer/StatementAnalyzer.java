@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
@@ -104,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -366,7 +368,16 @@ public class StatementAnalyzer {
       throw new SemanticException("Insert statement is not supported yet.");
     }
 
+    @Override
+    protected Scope visitInsertRow(InsertRow node, Optional<Scope> context) {
+      return visitInsert(node, context);
+    }
+
     protected Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
+      return visitInsert(insert, scope);
+    }
+
+    protected Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
