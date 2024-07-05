@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -376,10 +377,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         switch (dataTypes[i]) {
           case TEXT:
           case BLOB:
-            values[i] = new Binary[rowSize];
-            break;
           case STRING:
-            values[i] = new String[rowSize];
+            values[i] = new Binary[rowSize];
             break;
           case FLOAT:
             values[i] = new float[rowSize];
@@ -630,15 +629,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         break;
       case TEXT:
       case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(binaryValues[j], buffer);
-        }
-        break;
-      case STRING:
-        String[] stringValues = (String[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(stringValues[j], buffer);
         }
         break;
       default:
@@ -681,17 +675,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
         }
         break;
+      case STRING:
       case TEXT:
       case BLOB:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(binaryValues[j], stream);
-        }
-        break;
-      case STRING:
-        String[] stringValues = (String[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(stringValues[j], stream);
         }
         break;
       default:
@@ -826,15 +815,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         break;
       case TEXT:
       case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
-        }
-        break;
-      case STRING:
-        String[] stringValues = (String[]) column;
-        for (int j = start; j < end; j++) {
-          size += ReadWriteIOUtils.sizeToWrite(stringValues[j]);
         }
         break;
     }
@@ -949,13 +933,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case STRING:
-        String[] stringValues = (String[]) column;
-        for (int j = start; j < end; j++) {
-          final byte[] bytes = stringValues[j].getBytes(StandardCharsets.UTF_8);
-          buffer.putInt(bytes.length);
-          buffer.put(bytes);
-        }
-        break;
       case TEXT:
       case BLOB:
         Binary[] binaryValues = (Binary[]) column;
@@ -1119,12 +1096,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             break;
           case TEXT:
           case BLOB:
-            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
-              return false;
-            }
-            break;
           case STRING:
-            if (!Arrays.equals((String[]) this.columns[i], (String[]) columns[i])) {
+            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
               return false;
             }
             break;
@@ -1195,10 +1168,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
         break;
       case STRING:
-        String[] stringValues = (String[]) columns[measurementIndex];
-        value =
-            new TsPrimitiveType.TsBinary(
-                new Binary(stringValues[lastIdx].getBytes(StandardCharsets.UTF_8)));
+        if (columnCategories[measurementIndex] == TsTableColumnCategory.ID) {
+          String[] stringValues = (String[]) columns[measurementIndex];
+          value =
+              new TsPrimitiveType.TsBinary(
+                  new Binary(stringValues[lastIdx].getBytes(StandardCharsets.UTF_8)));
+        } else {
+          Binary[] binValues = (Binary[]) columns[measurementIndex];
+          value = new TsPrimitiveType.TsBinary(binValues[lastIdx]);
+        }
         break;
       default:
         throw new UnSupportedDataTypeException(

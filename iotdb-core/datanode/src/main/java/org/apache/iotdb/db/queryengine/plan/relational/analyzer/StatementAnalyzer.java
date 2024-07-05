@@ -381,18 +381,18 @@ public class StatementAnalyzer {
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
-      InsertBaseStatement insertTabletStatement = insert.getInnerTreeStatement();
+      InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
-      insertTabletStatement =
+      innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
-              insertTabletStatement,
+              innerInsert,
               () -> SchemaValidator.validate(metadata, insert, context),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
-      insert.setInnerTreeStatement(insertTabletStatement);
+      insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
       return ret;

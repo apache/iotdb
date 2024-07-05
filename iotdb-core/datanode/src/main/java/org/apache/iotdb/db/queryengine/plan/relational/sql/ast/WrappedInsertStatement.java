@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -77,10 +78,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
     realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
 
+    InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
     // incoming schema should be consistent with real schema
-    for (ColumnSchema incomingSchemaColumn : incomingSchemaColumns) {
+    for (int i = 0, incomingSchemaColumnsSize = incomingSchemaColumns.size();
+        i < incomingSchemaColumnsSize; i++) {
+      ColumnSchema incomingSchemaColumn = incomingSchemaColumns.get(i);
       final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
-      validate(incomingSchemaColumn, realSchemaColumn);
+      validate(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
     }
     // incoming schema should contain all id columns in real schema and have consistent order
     final List<ColumnSchema> realIdColumns = realSchema.getIdColumns();
@@ -105,16 +109,28 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     tableSchema = null;
   }
 
-  public static void validate(ColumnSchema incoming, ColumnSchema real) {
+  public static void validate(ColumnSchema incoming, ColumnSchema real, int i,
+      InsertBaseStatement innerTreeStatement) {
     if (real == null) {
-      throw new SemanticException(
+      SemanticException semanticException = new SemanticException(
           "Column " + incoming.getName() + " does not exists or fails to be " + "created");
+      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+        throw semanticException;
+      } else {
+        innerTreeStatement.markFailedMeasurement(i, semanticException);
+        return;
+      }
     }
     if (!incoming.getType().equals(real.getType())) {
-      throw new SemanticException(
+      SemanticException semanticException = new SemanticException(
           String.format(
               "Inconsistent data type of column %s: %s/%s",
               incoming.getName(), incoming.getType(), real.getType()));
+      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+        throw semanticException;
+      } else {
+        innerTreeStatement.markFailedMeasurement(i, semanticException);
+      }
     }
     if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
       throw new SemanticException(
