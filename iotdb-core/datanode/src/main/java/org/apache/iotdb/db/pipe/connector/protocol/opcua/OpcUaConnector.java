@@ -45,6 +45,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
@@ -186,7 +187,9 @@ public class OpcUaConnector implements PipeConnector {
           OpcUaConnector.class.getName())) {
         return;
       }
-      transferTablet(server, pipeInsertNodeTabletInsertionEvent.convertToTablet());
+      for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
+        transferTablet(server, tablet);
+      }
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
           OpcUaConnector.class.getName(), false);
@@ -258,7 +261,13 @@ public class OpcUaConnector implements PipeConnector {
                 LocalizedText.english(
                     Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
             break;
+          case DATE:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex]).toString()));
+            break;
           case INT64:
+          case TIMESTAMP:
             eventNode.setMessage(
                 LocalizedText.english(
                     Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
@@ -274,6 +283,8 @@ public class OpcUaConnector implements PipeConnector {
                     Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             eventNode.setMessage(
                 LocalizedText.english(
                     ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
@@ -298,13 +309,18 @@ public class OpcUaConnector implements PipeConnector {
         return Identifiers.Boolean;
       case INT32:
         return Identifiers.Int32;
+      case DATE:
+        return Identifiers.DateTime;
       case INT64:
+      case TIMESTAMP:
         return Identifiers.Int64;
       case FLOAT:
         return Identifiers.Float;
       case DOUBLE:
         return Identifiers.Double;
       case TEXT:
+      case BLOB:
+      case STRING:
         return Identifiers.String;
       case VECTOR:
       case UNKNOWN:

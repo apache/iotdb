@@ -36,12 +36,14 @@ public class PipeDataNodeTask implements PipeTask {
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
+  private volatile boolean isCompleted = false;
+
   public PipeDataNodeTask(
-      String pipeName,
-      int regionId,
-      PipeTaskStage extractorStage,
-      PipeTaskStage processorStage,
-      PipeTaskStage connectorStage) {
+      final String pipeName,
+      final int regionId,
+      final PipeTaskStage extractorStage,
+      final PipeTaskStage processorStage,
+      final PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
@@ -104,6 +106,14 @@ public class PipeDataNodeTask implements PipeTask {
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    this.isCompleted = true;
   }
 
   @Override

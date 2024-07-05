@@ -22,12 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
@@ -37,7 +36,7 @@ import java.util.List;
 public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private SubPlan subPlan;
-  private Analysis analysis;
+  private IAnalysis analysis;
   private MPPQueryContext queryContext;
 
   public WriteFragmentParallelPlanner(
@@ -50,7 +49,6 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   @Override
   public List<FragmentInstance> parallelPlan() {
     PlanFragment fragment = subPlan.getPlanFragment();
-    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
     PlanNode node = fragment.getPlanNodeTree();
     if (!(node instanceof WritePlanNode)) {
       throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");
@@ -62,7 +60,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
           new FragmentInstance(
               new PlanFragment(fragment.getId(), split),
               fragment.getId().genFragmentInstanceId(),
-              globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
+              analysis.getCovertedTimePredicate(),
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());

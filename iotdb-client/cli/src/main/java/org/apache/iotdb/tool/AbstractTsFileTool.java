@@ -21,7 +21,6 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -43,19 +42,21 @@ public abstract class AbstractTsFileTool {
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
 
-  protected static final String TIMEOUT_ARGS = "t";
-  protected static final String TIMEOUT_NAME = "timeout";
+  protected static final String TIMEOUT_ARGS = "timeout";
+  protected static final String TIMEOUT_NAME = "queryTimeout";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final int CODE_OK = 0;
   protected static final int CODE_ERROR = 1;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  protected static String host;
-  protected static String port;
-  protected static String username;
-  protected static String password;
-  protected static Session session;
+  protected static Options options;
+  protected static Options helpOptions;
+
+  protected static String host = "127.0.0.1";
+  protected static String port = "6667";
+  protected static String username = "root";
+  protected static String password = "root";
 
   protected AbstractTsFileTool() {}
 
@@ -72,42 +73,61 @@ public abstract class AbstractTsFileTool {
   }
 
   protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
-    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
-    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
-    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
-    password = commandLine.getOptionValue(PW_ARGS);
+    host =
+        null != commandLine.getOptionValue(HOST_ARGS)
+            ? commandLine.getOptionValue(HOST_ARGS)
+            : host;
+    port =
+        null != commandLine.getOptionValue(PORT_ARGS)
+            ? commandLine.getOptionValue(PORT_ARGS)
+            : port;
+    username =
+        null != commandLine.getOptionValue(USERNAME_ARGS)
+            ? commandLine.getOptionValue(USERNAME_ARGS)
+            : username;
+    password =
+        null != commandLine.getOptionValue(PW_ARGS)
+            ? commandLine.getOptionValue(PW_ARGS)
+            : password;
   }
 
-  protected static Options createNewOptions() {
-    Options options = new Options();
+  protected static void createBaseOptions() {
+    options = new Options();
+    helpOptions = new Options();
+
+    Option opHelp =
+        Option.builder(HELP_ARGS)
+            .longOpt(HELP_ARGS)
+            .hasArg(false)
+            .desc("Display help information")
+            .build();
+    options.addOption(opHelp);
+    helpOptions.addOption(opHelp);
 
     Option opHost =
         Option.builder(HOST_ARGS)
             .longOpt(HOST_NAME)
-            .required()
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (required)")
+            .desc("Host Name (optional)")
             .build();
     options.addOption(opHost);
 
     Option opPort =
         Option.builder(PORT_ARGS)
             .longOpt(PORT_NAME)
-            .required()
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (required)")
+            .desc("Port (optional)")
             .build();
     options.addOption(opPort);
 
     Option opUsername =
         Option.builder(USERNAME_ARGS)
             .longOpt(USERNAME_NAME)
-            .required()
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("Username (required)")
+            .desc("Username (optional)")
             .build();
     options.addOption(opUsername);
 
@@ -117,9 +137,8 @@ public abstract class AbstractTsFileTool {
             .optionalArg(true)
             .argName(PW_NAME)
             .hasArg()
-            .desc("Password (required)")
+            .desc("Password (optional)")
             .build();
     options.addOption(opPassword);
-    return options;
   }
 }

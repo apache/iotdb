@@ -37,9 +37,10 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -107,10 +109,15 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
+
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
+
+  private static final Set<String> LOADING_FILE_SET = new HashSet<>();
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -152,63 +159,96 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isLoadSuccess = true;
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
-        LoadSingleTsFileNode node = tsFileNodeList.get(i);
-        boolean isLoadSingleTsFileSuccess = true;
-        try {
-          if (node.isTsFileEmpty()) {
-            LOGGER.info(
-                "Load skip TsFile {}, because it has no data.",
-                node.getTsFileResource().getTsFilePath());
+        final LoadSingleTsFileNode node = tsFileNodeList.get(i);
+        final String filePath = node.getTsFileResource().getTsFilePath();
 
+        boolean isLoadSingleTsFileSuccess = true;
+        boolean shouldRemoveFileFromLoadingSet = false;
+        try {
+          synchronized (LOADING_FILE_SET) {
+            if (LOADING_FILE_SET.contains(filePath)) {
+              throw new LoadFileException(
+                  String.format("TsFile %s is loading by another scheduler.", filePath));
+            }
+            LOADING_FILE_SET.add(filePath);
+          }
+          shouldRemoveFileFromLoadingSet = true;
+
+          if (node.isTsFileEmpty()) {
+            LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
                       slotList,
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
-            isLoadSingleTsFileSuccess = loadLocally(node);
-            node.clean();
+            final long startTime = System.nanoTime();
+            try {
+              isLoadSingleTsFileSuccess = loadLocally(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
+            }
 
+            node.clean();
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
 
-            boolean isFirstPhaseSuccess = firstPhase(node);
-            boolean isSecondPhaseSuccess =
-                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            long startTime = System.nanoTime();
+            final boolean isFirstPhaseSuccess;
+            try {
+              isFirstPhaseSuccess = firstPhase(node);
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
+            }
+
+            startTime = System.nanoTime();
+            final boolean isSecondPhaseSuccess;
+            try {
+              isSecondPhaseSuccess =
+                  secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
+            }
 
             node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
           }
+
           if (isLoadSingleTsFileSuccess) {
             LOGGER.info(
                 "Load TsFile {} Successfully, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
+                filePath,
                 i + 1,
                 tsFileNodeListSize);
           } else {
             isLoadSuccess = false;
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
+                filePath,
                 i + 1,
                 tsFileNodeListSize);
           }
         } catch (Exception e) {
           isLoadSuccess = false;
           stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "LoadTsFileScheduler loads TsFile {} error",
-              node.getTsFileResource().getTsFilePath(),
-              e);
+          LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
+        } finally {
+          if (shouldRemoveFileFromLoadingSet) {
+            synchronized (LOADING_FILE_SET) {
+              LOADING_FILE_SET.remove(filePath);
+            }
+          }
         }
       }
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       }
-
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
@@ -354,7 +394,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+    PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -419,8 +459,24 @@ public class LoadTsFileScheduler implements IScheduler {
                       Tag.DATABASE.toString(),
                       databaseName,
                       Tag.REGION.toString(),
-                      dataRegion.getDataRegionId());
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
+              MetricService.getInstance()
+                  .count(
+                      node.getWritePointCount(),
+                      Metric.LEADER_QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
             });
+
     return true;
   }
 

@@ -52,6 +52,7 @@ public class MemoryPool {
     private final String fragmentInstanceId;
     private final String planNodeId;
     private final long bytesToReserve;
+
     /**
      * MemoryReservationFuture is created when SinkHandle or SourceHandle tries to reserve memory
      * from pool. This field is max Bytes that SinkHandle or SourceHandle can reserve.
@@ -115,6 +116,7 @@ public class MemoryPool {
   private final long maxBytesPerFragmentInstance;
 
   private final AtomicLong remainingBytes;
+
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved. */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
       new ConcurrentHashMap<>();
@@ -179,7 +181,7 @@ public class MemoryPool {
    * @throws MemoryLeakException throw {@link MemoryLeakException}
    */
   public void deRegisterFragmentInstanceFromQueryMemoryMap(
-      String queryId, String fragmentInstanceId) {
+      String queryId, String fragmentInstanceId, boolean forceDeregister) {
     Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
     if (queryRelatedMemory != null) {
       Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
@@ -189,6 +191,13 @@ public class MemoryPool {
       if (fragmentRelatedMemory != null) {
         hasPotentialMemoryLeak =
             fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0L);
+      }
+      if (!forceDeregister && hasPotentialMemoryLeak) {
+        // If hasPotentialMemoryLeak is true, it means that LocalSourceChannel/LocalSourceHandles
+        // have not been closed.
+        // We should wait for them to be closed. Make sure this method is called again with
+        // forceDeregister == true, after all LocalSourceChannel/LocalSourceHandles are closed.
+        return;
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
@@ -228,7 +237,8 @@ public class MemoryPool {
     Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
+        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        maxBytesPerFragmentInstance,
         bytesToReserve);
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
@@ -268,7 +278,8 @@ public class MemoryPool {
     Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
+        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        maxBytesPerFragmentInstance,
         bytesToReserve);
 
     if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {

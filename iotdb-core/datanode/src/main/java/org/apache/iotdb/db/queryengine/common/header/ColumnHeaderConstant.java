@@ -52,9 +52,10 @@ public class ColumnHeaderConstant {
   public static final String TEMPLATE = "Template";
 
   public static final String COUNT = "Count";
-  public static final String COLUMN_TTL = "TTL";
+  public static final String COLUMN_TTL = "TTL(ms)";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String TIME_PARTITION_ORIGIN = "TimePartitionOrigin";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
   public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
@@ -68,6 +69,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
+  public static final String PATH = "Path";
   public static final String VARIABLE = "Variable";
 
   // column names for count statement
@@ -92,6 +94,11 @@ public class ColumnHeaderConstant {
 
   // column names for show clusterId statement
   public static final String CLUSTER_ID = "ClusterId";
+
+  // column names for verify connection statement
+  public static final String SERVICE_PROVIDER = "ServiceProvider";
+  public static final String SENDER = "Sender";
+  public static final String CONNECTION = "Connection";
 
   // column names for show functions statement
   public static final String FUNCTION_NAME = "FunctionName";
@@ -130,7 +137,6 @@ public class ColumnHeaderConstant {
       "SchemaRegionConsensusProtocolClass";
   public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
   public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
-  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
   public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
   public static final String DATA_REGION_PER_DATA_NODE = "DataRegionPerDataNode";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
@@ -167,6 +173,8 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR = "PipeProcessor";
   public static final String PIPE_CONNECTOR = "PipeSink";
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
+  public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
+  public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -199,6 +207,10 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  public static final String PRIVILEGES = "Privileges";
+
+  public static final String GRANT_OPTION = "GrantOption";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -224,32 +236,33 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
-          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
-          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
+          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
@@ -362,6 +375,12 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showClusterIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(CLUSTER_ID, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> testConnectionColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_PROVIDER, TSDataType.TEXT),
+          new ColumnHeader(SENDER, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(VARIABLE, TSDataType.TEXT), new ColumnHeader(VALUE, TSDataType.TEXT));
@@ -409,7 +428,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_EXTRACTOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
-          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
+          new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(
@@ -488,4 +509,11 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
+
+  public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(ROLE, TSDataType.TEXT),
+          new ColumnHeader(PATH, TSDataType.TEXT),
+          new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
+          new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
 }

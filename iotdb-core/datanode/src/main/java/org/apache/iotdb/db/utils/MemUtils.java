@@ -52,7 +52,7 @@ public class MemUtils {
    * be calculated.
    */
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
-    if (dataType == TSDataType.TEXT) {
+    if (dataType.isBinary()) {
       return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
     }
     return 8L + dataType.getDataTypeSize();
@@ -83,7 +83,7 @@ public class MemUtils {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null || dataTypes.get(i) == TSDataType.TEXT) {
+      if (value[i] == null || dataTypes.get(i).isBinary()) {
         continue;
       }
       memSize += dataTypes.get(i).getDataTypeSize();
@@ -200,5 +200,25 @@ public class MemUtils {
     long kbs = cnt / IoTDBConstant.KB;
     cnt = cnt % IoTDBConstant.KB;
     return gbs + " GB " + mbs + " MB " + kbs + " KB " + cnt + " B";
+  }
+
+  public static long strToBytesCnt(String str) {
+    if (str == null || str.isEmpty()) {
+      return 0;
+    }
+    str = str.toLowerCase();
+    if (!str.endsWith("b")) {
+      str += "b";
+    }
+    long unit = 1;
+    if (str.endsWith("kb")) {
+      unit = IoTDBConstant.KB;
+    } else if (str.endsWith("mb")) {
+      unit = IoTDBConstant.MB;
+    } else if (str.endsWith("gb")) {
+      unit = IoTDBConstant.GB;
+    }
+    str = str.replaceAll("\\D", "");
+    return Long.parseLong(str) * unit;
   }
 }

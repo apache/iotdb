@@ -39,13 +39,32 @@ import java.util.Map;
 public interface ISchemaFetcher {
 
   /**
-   * Fetch all the schema of existing timeseries matched by the given patternTree
+   * Fetch all the schema of existing timeseries matched by the given patternTree. The result schema
+   * tree may contain extra measurement nodes if withTemplate is true. It recommends to use pattern
+   * to filter the result schema tree.
    *
    * @param patternTree used for matching the timeseries
+   * @param withTemplate whether to include the template in the schema
    * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchema(
       PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+
+  /**
+   * Fetch all the schema by the given patternTree in device level
+   *
+   * @return schemaTree without measurement nodes
+   */
+  ISchemaTree fetchRawSchemaInDeviceLevel(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+
+  /**
+   * Fetch all the schema by the given patternTree in device level
+   *
+   * @return schemaTree without measurement nodes
+   */
+  ISchemaTree fetchRawSchemaInMeasurementLevel(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree

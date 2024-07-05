@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -392,6 +393,11 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public boolean isDeviceAlive(IDeviceID device, long ttl) {
+    return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+  }
+
+  @Override
   public long[] getStartAndEndTime(IDeviceID deviceId) {
     Integer index = deviceToIndex.get(deviceId);
     if (index == null) {
@@ -443,5 +449,21 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public byte getTimeIndexType() {
     return DEVICE_TIME_INDEX_TYPE;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(" DeviceIndexMapSize = ").append(deviceToIndex.size());
+    builder.append(" startTimeLength = ").append(startTimes.length);
+    builder.append(" endTimeLength = ").append(endTimes.length);
+    builder.append(" DeviceIndexMap = [");
+    deviceToIndex.forEach(
+        (key, value) ->
+            builder.append(" device = ").append(key).append(", index = ").append(value));
+    builder.append("]");
+    builder.append(" StartTimes = ").append(Arrays.toString(startTimes));
+    builder.append(" EndTimes = ").append(Arrays.toString(endTimes));
+    return builder.toString();
   }
 }

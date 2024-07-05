@@ -21,9 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
@@ -207,6 +208,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case INSERT_TABLET_NODE:
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
           break;
+        case INSERT_ROWS_NODE:
+          walRedoer.redoInsertRows((InsertRowsNode) walEntry.getValue());
+          break;
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
@@ -253,7 +257,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         }
 
         // set recover progress index for pipe
-        PipeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
+        PipeDataNodeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it

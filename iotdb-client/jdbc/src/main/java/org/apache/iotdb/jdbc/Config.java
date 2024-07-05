@@ -35,6 +35,7 @@ public class Config {
   public static final String IOTDB_ERROR_PREFIX = "Error";
 
   static final String IOTDB_DEFAULT_HOST = "localhost";
+
   /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 
@@ -71,6 +72,9 @@ public class Config {
 
   /** Key of connection's time zone. */
   public static final String TIME_ZONE = "time_zone";
+
+  /** Key of connection's charset. */
+  public static final String CHARSET = "charset";
 
   public static final String USE_SSL = "use_ssl";
 

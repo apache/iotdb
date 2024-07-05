@@ -25,6 +25,9 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -32,14 +35,19 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RpcUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(RpcUtils.class);
+
   /** How big should the default read and write buffers be? Defaults to 1KB */
   public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
+
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
@@ -138,6 +146,20 @@ public class RpcUtils {
   public static TSStatus getStatus(List<TSStatus> statusList) {
     TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
     status.setSubStatus(statusList);
+    if (LOGGER.isDebugEnabled()) {
+      StringBuilder errMsg = new StringBuilder().append("Multiple error occur, messages: ");
+      Set<TSStatus> msgSet = new HashSet<>();
+      for (TSStatus subStatus : statusList) {
+        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          if (!msgSet.contains(status)) {
+            errMsg.append(status).append("; ");
+            msgSet.add(status);
+          }
+        }
+      }
+      LOGGER.debug(errMsg.toString(), new Exception(errMsg.toString()));
+    }
     return status;
   }
 

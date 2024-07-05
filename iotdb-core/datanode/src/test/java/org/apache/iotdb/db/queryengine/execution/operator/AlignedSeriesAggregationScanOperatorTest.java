@@ -84,7 +84,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();
 
   private ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");;
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+  ;
   private static final double DELTA = 0.000001;
 
   @BeforeClass
@@ -744,7 +745,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
             groupByTimeParameter,
-            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+            true);
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
     return seriesAggregationScanOperator;

@@ -233,6 +233,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    setProperty("time_partition_origin", String.valueOf(timePartitionOrigin));
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     setProperty("timestamp_precision", timestampPrecision);
     return this;
@@ -423,6 +429,44 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setWalMode(String walMode) {
     setProperty("wal_mode", walMode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    setProperty("tag_attribute_total_size", String.valueOf(tagAttributeTotalSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    setProperty(
+        "pipe_heartbeat_interval_seconds_for_collecting_pipe_meta",
+        String.valueOf(pipeHeartbeatIntervalSecondsForCollectingPipeMeta));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    setProperty(
+        "pipe_meta_syncer_initial_sync_delay_minutes",
+        String.valueOf(pipeMetaSyncerInitialSyncDelayMinutes));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    setProperty(
+        "pipe_meta_syncer_sync_interval_minutes",
+        String.valueOf(pipeMetaSyncerSyncIntervalMinutes));
     return this;
   }
 

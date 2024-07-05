@@ -49,7 +49,7 @@ public class SchemaValidator {
         schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
             insertStatement.getSchemaValidation(), context);
       }
-      insertStatement.updateAfterSchemaValidation();
+      insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }

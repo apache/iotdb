@@ -33,10 +33,11 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -44,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -140,11 +140,12 @@ public class RegionMaintainHandler {
     for (TDataNodeConfiguration node : otherOnlineDataNodes) {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
       TSStatus status =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  node.getLocation().getInternalEndPoint(),
-                  disableReq,
-                  DataNodeRequestType.DISABLE_DATA_NODE);
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      node.getLocation().getInternalEndPoint(),
+                      disableReq,
+                      CnToDnRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
         LOGGER.error(
             "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
@@ -222,22 +223,14 @@ public class RegionMaintainHandler {
 
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
-    long ttl = Long.MAX_VALUE;
-    try {
-      ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn(
-          "Cannot find out the database which region {} belongs to, ttl will be set to Long.MAX_VALUE",
-          regionId);
-    }
-    req.setTtl(ttl);
 
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                destDataNode.getInternalEndPoint(),
-                req,
-                DataNodeRequestType.CREATE_NEW_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    destDataNode.getInternalEndPoint(),
+                    req,
+                    CnToDnRequestType.CREATE_NEW_REGION_PEER);
 
     if (isSucceed(status)) {
       LOGGER.info(
@@ -278,11 +271,12 @@ public class RegionMaintainHandler {
     // destDataNode is where the new RegionReplica is created
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode, procedureId);
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                coordinator.getInternalEndPoint(),
-                maintainPeerReq,
-                DataNodeRequestType.ADD_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    coordinator.getInternalEndPoint(),
+                    maintainPeerReq,
+                    CnToDnRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
         REGION_MIGRATE_PROCESS,
@@ -314,11 +308,12 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                coordinator.getInternalEndPoint(),
-                maintainPeerReq,
-                DataNodeRequestType.REMOVE_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    coordinator.getInternalEndPoint(),
+                    maintainPeerReq,
+                    CnToDnRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REGION_MIGRATE_PROCESS,
@@ -347,17 +342,19 @@ public class RegionMaintainHandler {
     status =
         configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
                 == NodeStatus.Unknown
-            ? SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithGivenRetry(
-                    originalDataNode.getInternalEndPoint(),
-                    maintainPeerReq,
-                    DataNodeRequestType.DELETE_OLD_REGION_PEER,
-                    1)
-            : SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    originalDataNode.getInternalEndPoint(),
-                    maintainPeerReq,
-                    DataNodeRequestType.DELETE_OLD_REGION_PEER);
+            ? (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithGivenRetry(
+                        originalDataNode.getInternalEndPoint(),
+                        maintainPeerReq,
+                        CnToDnRequestType.DELETE_OLD_REGION_PEER,
+                        1)
+            : (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        originalDataNode.getInternalEndPoint(),
+                        maintainPeerReq,
+                        CnToDnRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
@@ -370,46 +367,54 @@ public class RegionMaintainHandler {
       TConsensusGroupId regionId,
       List<TDataNodeLocation> correctDataNodeLocations,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    AsyncClientHandler<TResetPeerListReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.RESET_PEER_LIST,
+    DataNodeAsyncRequestContext<TResetPeerListReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.RESET_PEER_LIST,
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
 
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
-    // In some cases the DataNode is still working, but its status is unknown.
-    // In order to make task continue under this circumstance, some unconditional retries are
-    // performed here.
-    int unconditionallyRetry = 0;
-    while (unconditionallyRetry < 6
-        || configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
-            != NodeStatus.Unknown) {
+    final long MAX_DISCONNECTION_TOLERATE_MS = 600_000;
+    final long INITIAL_DISCONNECTION_TOLERATE_MS = 60_000;
+    long startTime = System.nanoTime();
+    long lastReportTime = System.nanoTime();
+    while (true) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
+        lastReportTime = System.nanoTime();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
         }
       } catch (Exception ignore) {
 
-      } finally {
-        try {
-          TimeUnit.SECONDS.sleep(1);
-        } catch (InterruptedException ignore) {
-          Thread.currentThread().interrupt();
-        }
       }
-      unconditionallyRetry++;
+      long waitTime =
+          Math.min(
+              INITIAL_DISCONNECTION_TOLERATE_MS
+                  + TimeUnit.NANOSECONDS.toMillis(lastReportTime - startTime) / 60,
+              MAX_DISCONNECTION_TOLERATE_MS);
+      long disconnectionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime);
+      if (disconnectionTime > waitTime) {
+        break;
+      }
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException ignore) {
+        Thread.currentThread().interrupt();
+      }
     }
     LOGGER.warn(
-        "{} task {} cannot contact to DataNode {}",
+        "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
         REGION_MIGRATE_PROCESS,
         taskId,
-        dataNodeLocation);
+        dataNodeLocation,
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
     TRegionMigrateResult report = new TRegionMigrateResult();
     report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
     report.setFailedNodeAndReason(new HashMap<>());
@@ -417,8 +422,7 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(
-      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
+  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -428,14 +432,15 @@ public class RegionMaintainHandler {
         status);
     configManager
         .getLoadManager()
-        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+        .getLoadCache()
+        .createRegionCache(regionId, newLocation.getDataNodeId());
   }
 
-  public void updateRegionCache(
+  public void forceUpdateRegionCache(
       TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     configManager
         .getLoadManager()
-        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+        .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(
@@ -447,9 +452,7 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-    configManager
-        .getLoadManager()
-        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
+    configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 
@@ -502,9 +505,10 @@ public class RegionMaintainHandler {
         REMOVE_DATANODE_PROCESS,
         dataNode);
     TSStatus status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithGivenRetry(
-                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
     configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",
@@ -663,9 +667,20 @@ public class RegionMaintainHandler {
    */
   public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
       throws ProcedureException {
-    Optional<TDataNodeLocation> newLeaderNode =
-        filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-    newLeaderNode.orElseThrow(() -> new ProcedureException("Cannot find the new leader"));
+    // find new leader
+    final int findNewLeaderTimeLimitSecond = 10;
+    long startTime = System.nanoTime();
+    Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
+    while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
+      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+      if (newLeaderNode.isPresent()) {
+        break;
+      }
+    }
+    newLeaderNode.orElseThrow(
+        () ->
+            new ProcedureException(
+                "Cannot find the new leader after " + findNewLeaderTimeLimitSecond + " seconds"));
 
     // ratis needs DataNode to do election by itself
     long timestamp = System.nanoTime();
@@ -739,8 +754,7 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    // TODO return the node which has lowest load.
+    Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
         return Optional.of(aliveDataNode);

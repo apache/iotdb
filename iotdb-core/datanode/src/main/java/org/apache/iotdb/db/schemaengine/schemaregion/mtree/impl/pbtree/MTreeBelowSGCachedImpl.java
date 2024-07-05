@@ -121,6 +121,7 @@ public class MTreeBelowSGCachedImpl {
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
+  private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final int levelOfSG;
@@ -130,6 +131,7 @@ public class MTreeBelowSGCachedImpl {
   public MTreeBelowSGCachedImpl(
       PartialPath storageGroupPath,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
+      Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter,
       Runnable flushCallback,
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
@@ -138,6 +140,7 @@ public class MTreeBelowSGCachedImpl {
       SchemaRegionCachedMetric metric)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
+    this.attributeGetter = attributeGetter;
     this.regionStatistics = regionStatistics;
     store =
         PBTreeFactory.getInstance()
@@ -177,6 +180,7 @@ public class MTreeBelowSGCachedImpl {
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
+      Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter,
       CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException {
     this.store = store;
@@ -185,6 +189,7 @@ public class MTreeBelowSGCachedImpl {
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
+    this.attributeGetter = attributeGetter;
 
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
@@ -226,6 +231,7 @@ public class MTreeBelowSGCachedImpl {
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
+      Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter,
       Runnable flushCallback)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
@@ -241,6 +247,7 @@ public class MTreeBelowSGCachedImpl {
         measurementProcess,
         deviceProcess,
         tagGetter,
+        attributeGetter,
         regionStatistics);
   }
 
@@ -818,7 +825,9 @@ public class MTreeBelowSGCachedImpl {
       PartialPath pathPattern,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate)
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, ICachedMNode> collector =
@@ -834,14 +843,15 @@ public class MTreeBelowSGCachedImpl {
               skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-              if (nodes[nodes.length - 1].equals(node.getAlias())) {
-                // only when user query with alias, the alias in path will be set
-                path.setMeasurementAlias(node.getAlias());
-              }
-              if (withTags) {
-                path.setTagMap(tagGetter.apply(node));
-              }
-              schemaTree.appendSingleMeasurementPath(path);
+              schemaTree.appendSingleMeasurement(
+                  path,
+                  path.getMeasurementSchema(),
+                  withTags ? tagGetter.apply(node) : null,
+                  withAttributes ? attributeGetter.apply(node) : null,
+                  withAliasForce || nodes[nodes.length - 1].equals(node.getAlias())
+                      ? node.getAlias()
+                      : null,
+                  deviceMNode.isAligned());
             }
             return null;
           }
@@ -857,6 +867,7 @@ public class MTreeBelowSGCachedImpl {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
+      boolean withAttributes,
       boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -873,11 +884,13 @@ public class MTreeBelowSGCachedImpl {
               skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-              path.setMeasurementAlias(node.getAlias());
-              if (withTags) {
-                path.setTagMap(tagGetter.apply(node));
-              }
-              schemaTree.appendSingleMeasurementPath(path);
+              schemaTree.appendSingleMeasurement(
+                  path,
+                  path.getMeasurementSchema(),
+                  withTags ? tagGetter.apply(node) : null,
+                  withAttributes ? attributeGetter.apply(node) : null,
+                  node.getAlias(),
+                  deviceMNode.isAligned());
             }
             return null;
           }
@@ -885,6 +898,27 @@ public class MTreeBelowSGCachedImpl {
       collector.setTemplateMap(templateMap, nodeFactory);
       collector.setSkipPreDeletedSchema(true);
       collector.traverse();
+    }
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree fetchDeviceSchema(
+      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
+      try (EntityCollector<Void, ICachedMNode> collector =
+          new EntityCollector<Void, ICachedMNode>(rootNode, pattern, store, false, authorityScope) {
+            @Override
+            protected Void collectEntity(IDeviceMNode<ICachedMNode> node) {
+              if (node.isAlignedNullable() != null) {
+                schemaTree.appendTemplateDevice(
+                    node.getPartialPath(), node.isAligned(), node.getSchemaTemplateId(), null);
+              }
+              return null;
+            }
+          }) {
+        collector.traverse();
+      }
     }
     return schemaTree;
   }
@@ -933,6 +967,7 @@ public class MTreeBelowSGCachedImpl {
           path.getFullPath(), SchemaConstant.MEASUREMENT_MNODE_TYPE);
     }
   }
+
   // endregion
 
   // region Interfaces and Implementation for Logical View

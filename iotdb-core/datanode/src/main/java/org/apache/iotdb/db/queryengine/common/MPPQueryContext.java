@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -75,9 +77,15 @@ public class MPPQueryContext {
 
   QueryPlanStatistics queryPlanStatistics = null;
 
+  // To avoid query front-end from consuming too much memory, it needs to reserve memory when
+  // constructing some Expression and PlanNode.
+  private final MemoryReservationManager memoryReservationManager;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
+    this.memoryReservationManager =
+        new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
   // TODO too many callers just pass a null SessionInfo which should be forbidden
@@ -113,6 +121,7 @@ public class MPPQueryContext {
 
   public void prepareForRetry() {
     this.initResultNodeContext();
+    this.releaseAllMemoryReservedForFrontEnd();
   }
 
   private void initResultNodeContext() {
@@ -290,4 +299,28 @@ public class MPPQueryContext {
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
   }
+
+  // region =========== FE memory related, make sure its not called concurrently ===========
+
+  /**
+   * This method does not require concurrency control because the query plan is generated in a
+   * single-threaded manner.
+   */
+  public void reserveMemoryForFrontEnd(final long bytes) {
+    this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+  }
+
+  public void reserveMemoryForFrontEndImmediately() {
+    this.memoryReservationManager.reserveMemoryImmediately();
+  }
+
+  public void releaseAllMemoryReservedForFrontEnd() {
+    this.memoryReservationManager.releaseAllReservedMemory();
+  }
+
+  public void releaseMemoryReservedForFrontEnd(final long bytes) {
+    this.memoryReservationManager.releaseMemoryCumulatively(bytes);
+  }
+
+  // endregion
 }

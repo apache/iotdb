@@ -18,8 +18,16 @@
 # under the License.
 #
 
+source "$(dirname "$0")/iotdb-common.sh"
 DATANODE_CONF="`dirname "$0"`/../conf"
-dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+
+if [ -f "${DATANODE_CONF}/iotdb-system.properties" ]; then
+    dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-system.properties`
+else
+    dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+fi
+
+check_config_unique "dn_rpc_port" "$dn_rpc_port"
 
 force=""
 

@@ -45,47 +45,54 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
   private final TsFileSequenceReader tsFileSequenceReader;
 
-  final Map<IDeviceID, Set<String>> filteredDeviceMeasurementMap;
   final Map<IDeviceID, List<TimeseriesMetadata>> allDeviceTimeseriesMetadataMap;
 
   private boolean shouldParsePattern = false;
 
   private long count = 0;
 
-  public TsFileInsertionPointCounter(File tsFile, PipePattern pattern) throws IOException {
+  public TsFileInsertionPointCounter(final File tsFile, final PipePattern pattern)
+      throws IOException {
     this.pattern = pattern;
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
-
-      filteredDeviceMeasurementMap = filterDeviceMeasurementsMapByPattern();
       allDeviceTimeseriesMetadataMap = tsFileSequenceReader.getAllTimeseriesMetadata(false);
 
-      if (shouldParsePattern) {
-        countMatchedTimeseriesPoints();
-      } else {
+      if (Objects.isNull(this.pattern) || pattern.isRoot()) {
         countAllTimeseriesPoints();
+      } else {
+        final Map<IDeviceID, Set<String>> filteredDeviceMeasurementMap =
+            filterDeviceMeasurementsMapByPatternAndJudgeShouldParsePattern();
+        if (shouldParsePattern) {
+          countMatchedTimeseriesPoints(filteredDeviceMeasurementMap);
+        } else {
+          countAllTimeseriesPoints();
+        }
       }
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       close();
       throw e;
     }
   }
 
-  private Map<IDeviceID, Set<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
+  private Map<IDeviceID, Set<String>>
+      filterDeviceMeasurementsMapByPatternAndJudgeShouldParsePattern() throws IOException {
+    // pattern should be non-null here
     final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap =
         tsFileSequenceReader.getDeviceMeasurementsMap();
     final Map<IDeviceID, Set<String>> filteredDeviceMeasurementsMap = new HashMap<>();
 
-    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+    for (final Map.Entry<IDeviceID, List<String>> entry :
+        originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
+      if (pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
           filteredDeviceMeasurementsMap.put(
               new PlainDeviceID(deviceId), new HashSet<>(entry.getValue()));
@@ -122,7 +129,8 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
     return filteredDeviceMeasurementsMap;
   }
 
-  private void countMatchedTimeseriesPoints() {
+  private void countMatchedTimeseriesPoints(
+      final Map<IDeviceID, Set<String>> filteredDeviceMeasurementMap) {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> deviceTimeseriesMetadataEntry :
         allDeviceTimeseriesMetadataMap.entrySet()) {
       final IDeviceID deviceId = deviceTimeseriesMetadataEntry.getKey();
@@ -162,7 +170,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
   }

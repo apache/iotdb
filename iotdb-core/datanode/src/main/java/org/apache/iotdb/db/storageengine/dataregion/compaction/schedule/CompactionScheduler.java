@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inse
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Phaser;
@@ -60,7 +62,7 @@ import java.util.stream.Collectors;
 public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private CompactionScheduler() {}
 
@@ -100,11 +102,19 @@ public class CompactionScheduler {
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
-    trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
-    trySubmitCount +=
-        tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
-    trySubmitCount +=
-        tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
+    try {
+      trySubmitCount +=
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
+      trySubmitCount +=
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
+      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
+      trySubmitCount +=
+          tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary, false);
+    } catch (InterruptedException e) {
+      throw e;
+    } catch (Throwable e) {
+      LOGGER.error("Meet error in compaction schedule.", e);
+    }
     return trySubmitCount;
   }
 
@@ -140,6 +150,8 @@ public class CompactionScheduler {
     String storageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
 
+    long compactionConfigVersionWhenSelectTask =
+        CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
     ICompactionSelector innerSpaceCompactionSelector;
     if (sequence) {
       innerSpaceCompactionSelector =
@@ -162,6 +174,8 @@ public class CompactionScheduler {
         .updateCompactionTaskSelectionTimeCost(
             sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
             System.currentTimeMillis() - startTime);
+    innerSpaceTaskList.forEach(
+        task -> task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask));
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);
@@ -244,8 +258,13 @@ public class CompactionScheduler {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
+    if (!CompactionTaskManager.getInstance().shouldSelectCrossSpaceCompactionTask()) {
+      return 0;
+    }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
+    long compactionConfigVersionWhenSelectTask =
+        CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
@@ -263,22 +282,63 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      trySubmitCount =
-          addTaskToWaitingQueue(
-              Collections.singletonList(
-                  new CrossSpaceCompactionTask(
-                      timePartition,
-                      tsFileManager,
-                      taskList.get(i).getSeqFiles(),
-                      taskList.get(i).getUnseqFiles(),
-                      IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .getCrossCompactionPerformer()
-                          .createInstance(),
-                      memoryCost.get(i),
-                      tsFileManager.getNextCompactionTaskId())));
+      CrossSpaceCompactionTask task =
+          new CrossSpaceCompactionTask(
+              timePartition,
+              tsFileManager,
+              taskList.get(i).getSeqFiles(),
+              taskList.get(i).getUnseqFiles(),
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getCrossCompactionPerformer()
+                  .createInstance(),
+              memoryCost.get(i),
+              tsFileManager.getNextCompactionTaskId());
+      task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
+      trySubmitCount = addTaskToWaitingQueue(Collections.singletonList(task));
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
+    return trySubmitCount;
+  }
+
+  public static int tryToSubmitSettleCompactionTask(
+      TsFileManager tsFileManager,
+      long timePartition,
+      CompactionScheduleSummary summary,
+      boolean heavySelect)
+      throws InterruptedException {
+    if (!config.isEnableSeqSpaceCompaction() && !config.isEnableUnseqSpaceCompaction()) {
+      return 0;
+    }
+    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
+    SettleSelectorImpl settleSelector =
+        new SettleSelectorImpl(
+            heavySelect, logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+    long startTime = System.currentTimeMillis();
+    List<AbstractCompactionTask> taskList = new ArrayList<>();
+    if (config.isEnableSeqSpaceCompaction()) {
+      taskList.addAll(
+          settleSelector.selectSettleTask(
+              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)));
+    }
+    if (config.isEnableUnseqSpaceCompaction()) {
+      taskList.addAll(
+          settleSelector.selectSettleTask(
+              tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition)));
+    }
+    CompactionMetrics.getInstance()
+        .updateCompactionTaskSelectionTimeCost(
+            CompactionTaskType.SETTLE, System.currentTimeMillis() - startTime);
+    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
+    // evicted due to the low priority of the task
+    int trySubmitCount = 0;
+    for (AbstractCompactionTask task : taskList) {
+      if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
+        summary.updateTTLInfo(task);
+        trySubmitCount++;
+      }
+    }
     return trySubmitCount;
   }
 }

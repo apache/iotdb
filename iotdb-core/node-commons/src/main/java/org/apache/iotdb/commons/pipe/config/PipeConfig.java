@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,11 +96,11 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorHandshakeTimeoutMs();
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorTransferTimeoutMs();
   }
 
@@ -109,10 +110,6 @@ public class PipeConfig {
 
   public long getPipeConnectorRetryIntervalMs() {
     return COMMON_CONFIG.getPipeConnectorRetryIntervalMs();
-  }
-
-  public int getPipeConnectorPendingQueueSize() {
-    return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
   }
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
@@ -127,6 +124,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
+  public double getPipeAllConnectorsRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
+  }
+
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return COMMON_CONFIG.getPipeEndPointRateLimiterDropCheckIntervalMs();
+  }
+
   public float getPipeLeaderCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
@@ -137,6 +142,18 @@ public class PipeConfig {
 
   public int getPipeSnapshotExecutionMaxBatchSize() {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
+  }
+
+  public long getPipeRemainingTimeCommitAutoSwitchSeconds() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAutoSwitchSeconds();
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -177,6 +194,10 @@ public class PipeConfig {
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
@@ -187,6 +208,10 @@ public class PipeConfig {
 
   public long getPipeMaxAllowedLinkedTsFileCount() {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
@@ -259,6 +284,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
+  /////////////////////////////// Subscription ///////////////////////////////
+
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -300,7 +331,6 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
-    LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
@@ -310,9 +340,22 @@ public class PipeConfig {
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
+    LOGGER.info(
+        "PipeRemainingTimeCommitAutoSwitchSeconds: {}",
+        getPipeRemainingTimeCommitAutoSwitchSeconds());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
+
+    LOGGER.info(
+        "PipeAllConnectorsRateLimitBytesPerSecond: {}",
+        getPipeAllConnectorsRateLimitBytesPerSecond());
+    LOGGER.info(
+        "PipeEndPointRateLimiterDropCheckIntervalMs: {}",
+        getPipeEndPointRateLimiterDropCheckIntervalMs());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(
@@ -330,10 +373,16 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
     LOGGER.info(
+        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
+        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
+    LOGGER.info(
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
     LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info(
+        "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
+        getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
@@ -362,6 +411,9 @@ public class PipeConfig {
     LOGGER.info(
         "TwoStageAggregateSenderEndPointsCacheInMs: {}",
         getTwoStageAggregateSenderEndPointsCacheInMs());
+
+    LOGGER.info(
+        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

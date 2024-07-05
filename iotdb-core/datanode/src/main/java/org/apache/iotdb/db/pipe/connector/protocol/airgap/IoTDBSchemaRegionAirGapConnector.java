@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -37,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Objects;
 
 public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
@@ -60,7 +60,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   @Override
   public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
@@ -76,13 +76,15 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       isSocketAlive.set(socketIndex, false);
 
       throw new PipeConnectionException(
-          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          String.format(
+              "Network error when transfer event %s, because %s.",
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -98,20 +100,26 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   private void doTransfer(
-      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
+    final String pipeName = pipeSchemaRegionSnapshotEvent.getPipeName();
+    final long creationTime = pipeSchemaRegionSnapshotEvent.getCreationTime();
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(mtreeSnapshotFile, socket, true);
+    transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(tagLogSnapshotFile, socket, true);
+      transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
+        pipeName,
+        creationTime,
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
+            // The pattern is surely Non-null
+            pipeSchemaRegionSnapshotEvent.getPatternString(),
             mtreeSnapshotFile.getName(),
             mtreeSnapshotFile.length(),
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,

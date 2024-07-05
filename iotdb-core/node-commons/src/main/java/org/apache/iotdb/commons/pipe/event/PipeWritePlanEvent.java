@@ -23,52 +23,36 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.atomic.AtomicLong;
-
 public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
-
   protected boolean isGeneratedByPipe;
-
-  protected final AtomicLong referenceCount = new AtomicLong(0);
 
   protected ProgressIndex progressIndex;
 
   protected PipeWritePlanEvent(
-      String pipeName, PipeTaskMeta pipeTaskMeta, PipePattern pattern, boolean isGeneratedByPipe) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final boolean isGeneratedByPipe) {
+    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  /**
-   * This event doesn't share resources with other events, so no need to maintain reference count.
-   * We just use a counter to prevent the reference count from being less than 0.
-   */
+  /** {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    referenceCount.incrementAndGet();
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
-  /**
-   * This event doesn't share resources with other events, so no need to maintain reference count.
-   * We just use a counter to prevent the reference count from being less than 0.
-   */
+  /** This {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
-    final long count = referenceCount.decrementAndGet();
-    if (count < 0) {
-      LOGGER.warn("The reference count is less than 0, may need to check the implementation.");
-    }
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
     this.progressIndex = progressIndex;
   }
 
@@ -85,5 +69,30 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
+            progressIndex, isGeneratedByPipe)
+        + " - "
+        + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
+            progressIndex, isGeneratedByPipe)
+        + " - "
+        + super.coreReportMessage();
   }
 }

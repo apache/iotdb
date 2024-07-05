@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -106,13 +107,7 @@ public class WALNodeRecoverTask implements Runnable {
     }
 
     try {
-      if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-        // delete this wal node folder
-        FileUtils.deleteFileOrDirectory(logDirectory);
-        logger.info(
-            "Successfully recover WAL node in the directory {}, so delete these wal files.",
-            logDirectory);
-      } else {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // delete checkpoint info to avoid repeated recover
         File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
         for (File checkpointFile : checkpointFiles) {
@@ -122,6 +117,29 @@ public class WALNodeRecoverTask implements Runnable {
             logger.error("error when delete checkpoint file. {}", checkpointFile, e);
           }
         }
+        // register wal node
+        WALManager.getInstance()
+            .registerWALNode(
+                logDirectory.getName(),
+                logDirectory.getAbsolutePath(),
+                lastVersionId + 1,
+                lastSearchIndex);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, add this node to WALManger.",
+            logDirectory);
+      } else {
+        // delete this wal node folder
+        FileUtils.deleteFileOrDirectory(logDirectory);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, so delete these wal files.",
+            logDirectory);
+      }
+
+      // PipeConsensus will not only delete WAL node folder, but also register WAL node.
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
         // register wal node
         WALManager.getInstance()
             .registerWALNode(
@@ -154,15 +172,24 @@ public class WALNodeRecoverTask implements Runnable {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
-        if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
-            || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
-          InsertNode insertNode = (InsertNode) walEntry.getValue();
-          if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
-            searchIndex = insertNode.getSearchIndex();
-            lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
-            fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+        if (walEntry.getType().needSearch()) {
+          if (walEntry.getType() != WALEntryType.DELETE_DATA_NODE) {
+            InsertNode insertNode = (InsertNode) walEntry.getValue();
+            if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+              searchIndex = insertNode.getSearchIndex();
+              lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
+              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+            }
+          } else {
+            DeleteDataNode deleteNode = (DeleteDataNode) walEntry.getValue();
+            if (deleteNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+              searchIndex = deleteNode.getSearchIndex();
+              lastSearchIndex = Math.max(lastSearchIndex, deleteNode.getSearchIndex());
+              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+            }
           }
         }
+        metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
         metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
       }
     } catch (Exception e) {

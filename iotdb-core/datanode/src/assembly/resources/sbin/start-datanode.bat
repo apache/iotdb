@@ -72,15 +72,19 @@ IF "%1" == "printgc" (
   SHIFT
 )
 
-@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
-SET IOTDB_CONF=%1
-IF "%IOTDB_CONF%" == "" (
-  SET IOTDB_CONF=%IOTDB_HOME%\conf
-) ELSE (
-  SET IOTDB_CONF="%IOTDB_CONF%"
-)
-
+SET IOTDB_CONF=%IOTDB_HOME%\conf
 SET IOTDB_LOGS=%IOTDB_HOME%\logs
+
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+set is_conf_path=false
+for %%i in (%*) do (
+	IF "%%i" == "-c" (
+		set is_conf_path=true
+	) ELSE IF "!is_conf_path!" == "true" (
+		set is_conf_path=false
+		set IOTDB_CONF=%%i
+	)
+)
 
 IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   IF  "%enable_printgc%" == "true" (
@@ -98,51 +102,43 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo "Can't find datanode-env.bat"
 )
 
+@REM SET CONFIG FILE
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set CONFIG_FILE="%IOTDB_CONF%\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+  set CONFIG_FILE="%IOTDB_CONF%\iotdb-datanode.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-datanode.properties"
+) ELSE (
+  set CONFIG_FILE=
+)
+
 @REM CHECK THE PORT USAGES
-IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+IF DEFINED CONFIG_FILE (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    "%CONFIG_FILE%"') do (
       set dn_rpc_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    "%CONFIG_FILE%"') do (
       set dn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    "%CONFIG_FILE%"') do (
       set dn_mpp_data_exchange_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    "%CONFIG_FILE%"') do (
       set dn_schema_region_consensus_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
-      set dn_data_region_consensus_port=%%i
-  )
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-        set dn_rpc_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-        set dn_internal_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-      set dn_mpp_data_exchange_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-      set dn_schema_region_consensus_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+    "%CONFIG_FILE%"') do (
       set dn_data_region_consensus_port=%%i
   )
 ) ELSE (
-  echo "Can't find iotdb-datanode.properties, check the default ports"
+  echo "Can't find iotdb-system.properties or iotdb-datanode.properties, check the default ports"
   set dn_rpc_port=6667
   set dn_internal_port=10730
   set dn_mpp_data_exchange_port=10740
@@ -211,13 +207,14 @@ set JAVA_OPTS=-ea^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"^
+ -DOFF_HEAP_MEMORY="%OFF_HEAP_MEMORY%"^
  -Dsun.jnu.encoding=UTF-8^
  -Dfile.encoding=UTF-8
 
 @REM ----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
+if EXIST "%IOTDB_HOME%\lib" (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 
 @REM this special suffix 'iotdb.DataNode' is mandatory as stop-node.bat uses it to filter the process id.
 set CLASSPATH=%CLASSPATH%;iotdb.DataNode

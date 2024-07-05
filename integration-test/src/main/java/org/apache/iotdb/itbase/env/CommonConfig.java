@@ -80,6 +80,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
+
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
   TimeUnit getTimestampPrecision();
@@ -135,4 +137,15 @@ public interface CommonConfig {
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
 
   CommonConfig setWalMode(String walMode);
+
+  CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
+
+  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+
+  CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+
+  CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(long pipeMetaSyncerInitialSyncDelayMinutes);
+
+  CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes);
 }

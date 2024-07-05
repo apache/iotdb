@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -106,12 +108,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) throws Exception {
-    if (!useLeaderCache) {
+    if (!useLeaderCache || Objects.isNull(deviceId)) {
       return borrowClient();
     }
 
-    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
-    if (endPoint == null) {
+    return borrowClient(LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+  }
+
+  public AsyncPipeDataTransferServiceClient borrowClient(TEndPoint endPoint) throws Exception {
+    if (!useLeaderCache || Objects.isNull(endPoint)) {
       return borrowClient();
     }
 
@@ -202,6 +207,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
     client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
     waitHandshakeFinished(isHandshakeFinished);
 
@@ -219,6 +226,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       resp.set(null);
       exception.set(null);
 
+      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(
           PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
@@ -245,7 +253,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   }
 
   public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
-    if (!useLeaderCache) {
+    if (!useLeaderCache || deviceId == null || endPoint == null) {
       return;
     }
 

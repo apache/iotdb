@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.Pair;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Objects;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
@@ -87,29 +89,45 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
+    final String pipeName = snapshotEvent.getPipeName();
+    final long creationTime = snapshotEvent.getCreationTime();
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(mTreeSnapshotFile, clientAndStatus, true);
+    transferFilePieces(
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+        mTreeSnapshotFile,
+        clientAndStatus,
+        true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(tagLogSnapshotFile, clientAndStatus, true);
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          tagLogSnapshotFile,
+          clientAndStatus,
+          true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      mTreeSnapshotFile.getName(),
-                      mTreeSnapshotFile.length(),
-                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-                      snapshotEvent.getDatabaseName(),
-                      snapshotEvent.toSealTypeString()));
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
+                  // The pattern is surely Non-null
+                  snapshotEvent.getPatternString(),
+                  mTreeSnapshotFile.getName(),
+                  mTreeSnapshotFile.length(),
+                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                  snapshotEvent.getDatabaseName(),
+                  snapshotEvent.toSealTypeString()));
+      rateLimitIfNeeded(
+          snapshotEvent.getPipeName(),
+          snapshotEvent.getCreationTime(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

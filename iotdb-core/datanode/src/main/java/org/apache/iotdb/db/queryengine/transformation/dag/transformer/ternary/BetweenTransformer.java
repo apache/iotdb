@@ -21,45 +21,58 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
+
+import org.apache.tsfile.block.column.Column;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.castValueToDouble;
 
 public class BetweenTransformer extends CompareTernaryTransformer {
 
   boolean isNotBetween;
 
   public BetweenTransformer(
-      LayerPointReader firstPointReader,
-      LayerPointReader secondPointReader,
-      LayerPointReader thirdPointReader,
+      LayerReader firstReader,
+      LayerReader secondReader,
+      LayerReader thirdReader,
       boolean isNotBetween) {
-    super(firstPointReader, secondPointReader, thirdPointReader);
+    super(firstReader, secondReader, thirdReader);
     this.isNotBetween = isNotBetween;
   }
 
   @Override
   protected Evaluator constructNumberEvaluator() {
-    return () ->
+    return (Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex) ->
         ((Double.compare(
-                        castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
-                        castCurrentValueToDoubleOperand(
-                            secondPointReader, secondPointReaderDataType))
+                        castValueToDouble(firstValues, firstReaderDataType, firstIndex),
+                        castValueToDouble(secondValues, secondReaderDataType, secondIndex))
                     >= 0)
                 && (Double.compare(
-                        castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
-                        castCurrentValueToDoubleOperand(thirdPointReader, thirdPointReaderDataType))
+                        castValueToDouble(firstValues, firstReaderDataType, firstIndex),
+                        castValueToDouble(thirdValues, thirdReaderDataType, thirdIndex))
                     <= 0))
             ^ isNotBetween;
   }
 
   @Override
   protected Evaluator constructTextEvaluator() {
-    return () ->
+    return (Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex) ->
         ((TransformUtils.compare(
-                        firstPointReader.currentBinary(), secondPointReader.currentBinary())
+                        firstValues.getBinary(firstIndex), secondValues.getBinary(secondIndex))
                     >= 0)
                 && (TransformUtils.compare(
-                        firstPointReader.currentBinary(), thirdPointReader.currentBinary())
+                        firstValues.getBinary(firstIndex), thirdValues.getBinary(thirdIndex))
                     <= 0))
             ^ isNotBetween;
   }

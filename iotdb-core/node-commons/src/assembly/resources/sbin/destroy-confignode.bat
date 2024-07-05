@@ -35,7 +35,11 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
 start cmd /c "%IOTDB_HOME%\\sbin\\stop-confignode.bat -f"
 timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\confignode\" 2>nul
-set IOTDB_CONFIGNODE_CONFIG=%IOTDB_HOME%\conf\iotdb-confignode.properties
+if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set IOTDB_CONFIGNODE_CONFIG="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE (
+  set IOTDB_CONFIGNODE_CONFIG="%IOTDB_HOME%\conf\iotdb-confignode.properties"
+)
 set "delimiter=,;"
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_system_dir"
   %IOTDB_CONFIGNODE_CONFIG%') do (

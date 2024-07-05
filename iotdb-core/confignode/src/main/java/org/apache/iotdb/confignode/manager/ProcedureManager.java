@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -73,6 +74,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProce
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -107,6 +109,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -567,14 +570,23 @@ public class ProcedureManager {
                   return false;
                 })
             .findAny();
-    if (anotherMigrateProcedure.isPresent()) {
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (TConsensusGroupType.DataRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (TConsensusGroupType.SchemaRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (anotherMigrateProcedure.isPresent()) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, "
                   + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
-                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time"
-                  + "For further information, you can search [pid%d] in log.",
-              regionGroupId, anotherMigrateProcedure.get().getProcId());
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. "
+                  + "For further information, please search [pid%d] in log. ",
+              regionGroupId.getId(), anotherMigrateProcedure.get().getProcId());
     } else if (originalDataNode == null) {
       failMessage =
           String.format(
@@ -591,21 +603,27 @@ public class ProcedureManager {
               "%s, There are no other DataNodes could be selected to perform the add peer process, "
                   + "please check RegionGroup: %s by show regions sql command",
               REGION_MIGRATE_PROCESS, regionGroupId);
-    } else if (configManager.getPartitionManager()
-        .getAllReplicaSets(originalDataNode.getDataNodeId()).stream()
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(originalDataNode.getDataNodeId())
+        .stream()
         .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
               migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
-    } else if (configManager.getPartitionManager().getAllReplicaSets(destDataNode.getDataNodeId())
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(destDataNode.getDataNodeId())
         .stream()
         .anyMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (!configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running)
+    } else if (!configManager
+        .getNodeManager()
+        .filterDataNodeThroughStatus(NodeStatus.Running)
         .stream()
         .map(TDataNodeConfiguration::getLocation)
         .map(TDataNodeLocation::getDataNodeId)
@@ -654,6 +672,7 @@ public class ProcedureManager {
             .getLocation();
     // select coordinator for adding peer
     RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
+    // TODO: choose the DataNode which has lowest load
     final TDataNodeLocation coordinatorForAddPeer =
         handler
             .filterDataNodeWithOtherRegionReplica(
@@ -1133,6 +1152,19 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
+    long procedureId = executor.submitProcedure(new SetTTLProcedure(setTTLPlan, isGeneratedByPipe));
+
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
   /**
    * Waiting until the specific procedures finished.
    *
@@ -1152,7 +1184,7 @@ public class ProcedureManager {
       final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
-        // the procedure is still executing
+        // The procedure is still executing
         statusList.add(
             RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE));
         isSucceed = false;

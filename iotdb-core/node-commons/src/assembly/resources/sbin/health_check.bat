@@ -76,6 +76,10 @@ for %%a in (%*) do (
             )
         )
     )
+    if "%%a"=="--help" (
+           echo Usage: health_check.bat [-ips ^<ip1^> ^<port1^> ^<port2^>,^<ip2^> ^<port3^> ^<port4^>] [-o ^<all/local/remote^>]
+           exit /b 1
+        )
 )
 
 set endpoints=!ips!
@@ -188,8 +192,12 @@ set confignode_mem= %memory_size_in_mb%
 set datanode_mem=%datanode_mem%
 set confignode_mem=%confignode_mem%
 
-set /A datanode_mem=!datanode_mem! / 1024
-set /A confignode_mem=!confignode_mem! / 1024
+set datanode_mem=%datanode_mem%
+set confignode_mem=%confignode_mem%
+
+for /f %%i in ('powershell.exe -Command "[math]::Round(%datanode_mem% / 1024, 2)"') do set datanode_mem=%%i
+for /f %%i in ('powershell.exe -Command "[math]::Round(%confignode_mem% / 1024, 2)"') do set confignode_mem=%%i
+
 echo Check: Installation Environment(Memory)
 echo Requirement: Allocate sufficient memory for IoTDB
 
@@ -224,7 +232,11 @@ exit /b
 :local_dirs_check
 
 setlocal enabledelayedexpansion
-set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
+if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set "properties_file=%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE (
+  set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
+)
 for /f "usebackq tokens=1,* delims==" %%a in ("%properties_file%") do (
     if "%%a"=="dn_data_dirs" (
         set "dn_data_dirs=%%b"
@@ -291,7 +303,6 @@ for %%a in (%spacedirs%) do (
     for %%b in ("!string:;=" "!") do (
         set "subString=%%~b"
         for %%c in ("!subString:,=" "!") do (
-
             if not exist "%%c\" (
                     mkdir "%%c" > nul 2>&1
                     if errorlevel 1 (
@@ -309,19 +320,20 @@ for %%a in (%spacedirs%) do (
                     )
                 ) else (
                     echo test > "%%c\tempfile.txt"
-                    if errorlevel 1 (
-                    if defined operation_dirs (
-                                    set operation_dirs=!operation_dirs!,%%c lacks write permission
-                                ) else (
-                                    set operation_dirs=%%c lacks write permission
-                                )
-                    ) else (
-                    if defined operation_dirs (
-                                    set operation_dirs=!operation_dirs!,%%c has write permission
-                                ) else (
-                                    set operation_dirs=%%c has write permission
-                                )
+                    if EXIST "%%c\tempfile.txt" (
+                        if defined operation_dirs (
+                            set operation_dirs=!operation_dirs!,%%c has write permission
+                        ) else (
+                            set operation_dirs=%%c has write permission
+                        )
                         del "%%c\tempfile.txt" >nul 2>&1
+
+                    ) else (
+                        if defined operation_dirs (
+                             set operation_dirs=!operation_dirs!,%%c lacks write permission
+                        ) else (
+                             set operation_dirs=%%c lacks write permission
+                        )
                     )
                 )
         )
@@ -342,46 +354,36 @@ if defined operation_dirs (
 exit /b
 
 :local_ports_check
-IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-datanode.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-datanode.properties"
+) ELSE (
+  set DATANODE_CONFIG_FILE_PATH=
+)
+IF DEFINED DATANODE_CONFIG_FILE_PATH (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    %DATANODE_CONFIG_FILE_PATH%') do (
       set dn_rpc_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    %DATANODE_CONFIG_FILE_PATH%') do (
       set dn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    %DATANODE_CONFIG_FILE_PATH%') do (
       set dn_mpp_data_exchange_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    %DATANODE_CONFIG_FILE_PATH%') do (
       set dn_schema_region_consensus_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
-      set dn_data_region_consensus_port=%%i
-  )
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-        set dn_rpc_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-        set dn_internal_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-      set dn_mpp_data_exchange_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
-      set dn_schema_region_consensus_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+    %DATANODE_CONFIG_FILE_PATH%') do (
       set dn_data_region_consensus_port=%%i
   )
 ) ELSE (
@@ -392,23 +394,25 @@ IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
   set dn_data_region_consensus_port=10760
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-confignode.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-confignode.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-confignode.properties"
+) ELSE (
+  set CONFIGNODE_CONFIG_FILE_PATH=
+)
+IF DEFINED CONFIGNODE_CONFIG_FILE_PATH (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-    %IOTDB_CONF%\iotdb-confignode.properties') do (
+    %CONFIGNODE_CONFIG_FILE_PATH%') do (
       set cn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-    %IOTDB_CONF%\iotdb-confignode.properties') do (
+    %CONFIGNODE_CONFIG_FILE_PATH%') do (
       set cn_consensus_port=%%i
-  )
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-confignode.properties" (
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-      %IOTDB_HOME%\conf\iotdb-confignode.properties') do (
-        set cn_internal_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-      %IOTDB_HOME%\conf\iotdb-confignode.properties') do (
-        set cn_consensus_port=%%i
   )
 ) ELSE (
   set cn_internal_port=10710

@@ -79,4 +79,8 @@ public class FolderManager {
       throw e;
     }
   }
+
+  public List<String> getFolders() {
+    return folders;
+  }
 }

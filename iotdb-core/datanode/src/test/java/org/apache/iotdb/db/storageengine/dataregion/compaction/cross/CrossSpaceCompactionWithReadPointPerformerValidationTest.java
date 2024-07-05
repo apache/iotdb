@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -2086,8 +2087,12 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
    */
   @Test
   public void testSelectingFilesWhenSomeFilesBeingDeleted()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException, MergeException {
+      throws MetadataException,
+          IOException,
+          WriteProcessException,
+          StorageEngineException,
+          InterruptedException,
+          MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);
@@ -2105,7 +2110,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG + "-" + "0");
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");

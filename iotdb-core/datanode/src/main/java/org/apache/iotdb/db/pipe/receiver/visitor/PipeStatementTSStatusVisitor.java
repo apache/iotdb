@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -28,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -45,9 +49,26 @@ import org.apache.iotdb.rpc.TSStatusCode;
  * the processes that generate the following {@link TSStatus}es in the class.
  */
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
+
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   @Override
   public TSStatus visitNode(final StatementNode node, final TSStatus context) {
     return context;
+  }
+
+  @Override
+  public TSStatus visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || context.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
+            && context.getMessage() != null
+            && context.getMessage().contains("memory")) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitLoadFile(loadTsFileStatement, context);
   }
 
   @Override
@@ -76,8 +97,17 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   private TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+        && (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
+            && config.isEnablePartialInsert())) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitStatement(insertBaseStatement, context);
@@ -199,6 +229,16 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateStatement batchActivateTemplateStatement, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (final TSStatus status : context.getSubStatus()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+          return visitStatement(batchActivateTemplateStatement, context);
+        }
+      }
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
   }
 

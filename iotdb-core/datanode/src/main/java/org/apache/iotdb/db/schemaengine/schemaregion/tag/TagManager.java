@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowTimeSeriesResult;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,8 +78,12 @@ public class TagManager {
   private final Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex =
       new ConcurrentHashMap<>();
 
-  public TagManager(String sgSchemaDirPath) throws IOException {
+  private final MemSchemaRegionStatistics regionStatistics;
+
+  public TagManager(String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
+      throws IOException {
     tagLogFile = new TagLogFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
+    this.regionStatistics = regionStatistics;
   }
 
   public synchronized boolean createSnapshot(File targetDir) {
@@ -120,7 +126,8 @@ public class TagManager {
     }
   }
 
-  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+  public static TagManager loadFromSnapshot(
+      File snapshotDir, String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
@@ -131,7 +138,7 @@ public class TagManager {
 
     try {
       org.apache.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
-      return new TagManager(sgSchemaDirPath);
+      return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
       if (!tagFile.delete()) {
         logger.warn(
@@ -143,7 +150,7 @@ public class TagManager {
 
   public boolean recoverIndex(long offset, IMeasurementMNode<?> measurementMNode)
       throws IOException {
-    Map<String, String> tags = tagLogFile.readTag(COMMON_CONFIG.getTagAttributeTotalSize(), offset);
+    Map<String, String> tags = tagLogFile.readTag(offset);
     if (tags == null || tags.isEmpty()) {
       return false;
     } else {
@@ -156,10 +163,35 @@ public class TagManager {
     if (tagKey == null || tagValue == null || measurementMNode == null) {
       return;
     }
-    tagIndex
-        .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
-        .add(measurementMNode);
+
+    int tagIndexOldSize = tagIndex.size();
+    Map<String, Set<IMeasurementMNode<?>>> tagValueMap =
+        tagIndex.computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>());
+    int tagIndexNewSize = tagIndex.size();
+
+    int tagValueMapOldSize = tagValueMap.size();
+    Set<IMeasurementMNode<?>> measurementsSet =
+        tagValueMap.computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()));
+    int tagValueMapNewSize = tagValueMap.size();
+
+    int measurementsSetOldSize = measurementsSet.size();
+    measurementsSet.add(measurementMNode);
+    int measurementsSetNewSize = measurementsSet.size();
+
+    long memorySize = 0;
+    if (tagIndexNewSize - tagIndexOldSize == 1) {
+      // the last 4 is the memory occupied by the size of tagvaluemap
+      memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
+    }
+    if (tagValueMapNewSize - tagValueMapOldSize == 1) {
+      // the last 4 is the memory occupied by the size of measurementsSet
+      memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
+    }
+    if (measurementsSetNewSize - measurementsSetOldSize == 1) {
+      // 8 is the memory occupied by the length of the IMeasurementMNode
+      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
+    }
+    requestMemory(memorySize);
   }
 
   public void addIndex(Map<String, String> tagsMap, IMeasurementMNode<?> measurementMNode) {
@@ -171,10 +203,27 @@ public class TagManager {
   }
 
   public void removeIndex(String tagKey, String tagValue, IMeasurementMNode<?> measurementMNode) {
-    tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
-    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
-      tagIndex.get(tagKey).remove(tagValue);
+    if (tagKey == null || tagValue == null || measurementMNode == null) {
+      return;
     }
+    // init memory size
+    long memorySize = 0;
+    if (tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
+      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
+    }
+    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
+      if (tagIndex.get(tagKey).remove(tagValue) != null) {
+        // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
+        memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
+      }
+    }
+    if (tagIndex.get(tagKey).isEmpty()) {
+      if (tagIndex.remove(tagKey) != null) {
+        // the last 4 is the memory occupied by the size of tagValueMap
+        memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
+      }
+    }
+    releaseMemory(memorySize);
   }
 
   private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
@@ -310,8 +359,7 @@ public class TagManager {
     if (node.getOffset() < 0) {
       return;
     }
-    Map<String, String> tagMap =
-        tagLogFile.readTag(COMMON_CONFIG.getTagAttributeTotalSize(), node.getOffset());
+    Map<String, String> tagMap = tagLogFile.readTag(node.getOffset());
     if (tagMap != null) {
       for (Map.Entry<String, String> entry : tagMap.entrySet()) {
         if (tagIndex.containsKey(entry.getKey())
@@ -324,13 +372,9 @@ public class TagManager {
                     entry.getValue(),
                     node.getOffset()));
           }
-          tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
-          if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
-            tagIndex.get(entry.getKey()).remove(entry.getValue());
-            if (tagIndex.get(entry.getKey()).isEmpty()) {
-              tagIndex.remove(entry.getKey());
-            }
-          }
+
+          removeIndex(entry.getKey(), entry.getValue(), node);
+
         } else {
           if (logger.isDebugEnabled()) {
             logger.debug(
@@ -359,8 +403,7 @@ public class TagManager {
       IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
@@ -383,6 +426,7 @@ public class TagManager {
             }
 
             removeIndex(key, beforeValue, leafMNode);
+
           } else {
             if (logger.isDebugEnabled()) {
               logger.debug(
@@ -424,8 +468,7 @@ public class TagManager {
       Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
       String key = entry.getKey();
@@ -453,8 +496,7 @@ public class TagManager {
       Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
       String key = entry.getKey();
@@ -484,8 +526,7 @@ public class TagManager {
   public void dropTagsOrAttributes(
       Set<String> keySet, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     Map<String, String> deleteTag = new HashMap<>();
     for (String key : keySet) {
@@ -505,16 +546,10 @@ public class TagManager {
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-    Map<String, Set<IMeasurementMNode<?>>> tagVal2LeafMNodeSet;
-    Set<IMeasurementMNode<?>> nodeSet;
-    for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      // change the tag inverted index map
-      tagVal2LeafMNodeSet = tagIndex.get(key);
-      if (tagVal2LeafMNodeSet != null) {
-        nodeSet = tagVal2LeafMNodeSet.get(value);
-        if (nodeSet != null) {
+    if (!deleteTag.isEmpty()) {
+      for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
+        if (tagIndex.containsKey((entry.getKey()))
+            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
@@ -524,23 +559,19 @@ public class TagManager {
                     leafMNode.getOffset()));
           }
 
-          nodeSet.remove(leafMNode);
-          if (nodeSet.isEmpty()) {
-            tagVal2LeafMNodeSet.remove(value);
-            if (tagVal2LeafMNodeSet.isEmpty()) {
-              tagIndex.remove(key);
-            }
+          removeIndex(entry.getKey(), entry.getValue(), leafMNode);
+
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                String.format(
+                    String.format(
+                        DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                    entry.getKey(),
+                    entry.getValue(),
+                    leafMNode.getOffset(),
+                    tagIndex.containsKey(entry.getKey())));
           }
-        }
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key,
-                  value,
-                  leafMNode.getOffset(),
-                  tagIndex.containsKey(key)));
         }
       }
     }
@@ -557,8 +588,7 @@ public class TagManager {
       Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
     Map<String, String> oldTagValue = new HashMap<>();
     Map<String, String> newTagValue = new HashMap<>();
 
@@ -599,7 +629,8 @@ public class TagManager {
                   leafMNode.getOffset()));
         }
 
-        tagIndex.get(key).get(beforeValue).remove(leafMNode);
+        removeIndex(key, beforeValue, leafMNode);
+
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -628,8 +659,7 @@ public class TagManager {
       String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     // current name has existed
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
@@ -657,7 +687,7 @@ public class TagManager {
                   leafMNode.getOffset()));
         }
 
-        tagIndex.get(oldKey).get(value).remove(leafMNode);
+        removeIndex(oldKey, value, leafMNode);
 
       } else {
         if (logger.isDebugEnabled()) {
@@ -691,7 +721,7 @@ public class TagManager {
 
   public Pair<Map<String, String>, Map<String, String>> readTagFile(long tagFileOffset)
       throws IOException {
-    return tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), tagFileOffset);
+    return tagLogFile.read(tagFileOffset);
   }
 
   /**
@@ -709,11 +739,38 @@ public class TagManager {
     }
   }
 
+  /**
+   * Read the attributes of this node.
+   *
+   * @param node the node to query.
+   * @return the attribute key-value map.
+   * @throws RuntimeException If any IOException happens.
+   */
+  public Map<String, String> readAttributes(IMeasurementMNode<?> node) {
+    try {
+      return readTagFile(node.getOffset()).getRight();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public void clear() throws IOException {
     this.tagIndex.clear();
     if (tagLogFile != null) {
       tagLogFile.close();
       tagLogFile = null;
+    }
+  }
+
+  private void requestMemory(long size) {
+    if (regionStatistics != null) {
+      regionStatistics.requestMemory(size);
+    }
+  }
+
+  private void releaseMemory(long size) {
+    if (regionStatistics != null) {
+      regionStatistics.releaseMemory(size);
     }
   }
 }

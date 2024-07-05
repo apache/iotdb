@@ -26,7 +26,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -154,7 +155,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 
     Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<InsertRowNode>>> splitMap = new HashMap<>();
@@ -228,7 +229,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     List<Integer> insertRowNodeIndex = new ArrayList<>();
 
     try {
-      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      devicePath =
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath((ReadWriteIOUtils.readString(byteBuffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
     }
@@ -293,6 +296,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
     insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByPipe);
+  }
+
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    super.markAsGeneratedByRemoteConsensusLeader();
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemoteConsensusLeader);
   }
 
   @Override

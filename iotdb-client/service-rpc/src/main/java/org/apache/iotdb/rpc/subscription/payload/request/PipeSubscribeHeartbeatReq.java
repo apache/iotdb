@@ -41,7 +41,8 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(TPipeSubscribeReq heartbeatReq) {
+  public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(
+      final TPipeSubscribeReq heartbeatReq) {
     final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
 
     req.version = heartbeatReq.version;
@@ -54,14 +55,14 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
+    final PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
     return this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);

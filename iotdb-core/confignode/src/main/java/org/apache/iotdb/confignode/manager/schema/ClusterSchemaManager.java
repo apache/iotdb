@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -31,9 +30,9 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -48,7 +47,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -155,8 +153,8 @@ public class ClusterSchemaManager {
               "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
     }
 
+    createDatabaseLock.lock();
     try {
-      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
@@ -168,6 +166,10 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
+      // set ttl
+      if (databaseSchemaPlan.getSchema().isSetTTL()) {
+        result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
+      }
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
@@ -182,7 +184,7 @@ public class ClusterSchemaManager {
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (MetadataException metadataException) {
-      // Reject if StorageGroup already set
+      // Reject if Database already set
       if (metadataException instanceof IllegalPathException) {
         result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       } else if (metadataException instanceof DatabaseAlreadySetException) {
@@ -336,10 +338,10 @@ public class ClusterSchemaManager {
   }
 
   /** Only used in cluster tool show Databases. */
-  public TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan) {
+  public TShowDatabaseResp showDatabase(GetDatabasePlan getDatabasePlan) {
     DatabaseSchemaResp databaseSchemaResp;
     try {
-      databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+      databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getDatabasePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -357,9 +359,9 @@ public class ClusterSchemaManager {
       String database = databaseSchema.getName();
       TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
-      databaseInfo.setTTL(databaseSchema.getTTL());
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
@@ -389,78 +391,22 @@ public class ClusterSchemaManager {
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
-  public Map<String, Long> getAllTTLInfo() {
+  public Map<String, Long> getTTLInfoForUpgrading() {
     List<String> databases = getDatabaseNames();
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        infoMap.put(database, getTTL(database));
+        final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
+        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
+        if (ttl < 0 || ttl == Long.MAX_VALUE) {
+          continue;
+        }
+        infoMap.put(database, ttl);
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);
       }
     }
     return infoMap;
-  }
-
-  /**
-   * Update TTL for the specific StorageGroup or all databases in a path
-   *
-   * @param setTTLPlan setTTLPlan
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if successfully update the TTL, {@link
-   *     TSStatusCode#DATABASE_NOT_EXIST} if the path doesn't exist
-   */
-  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
-
-    Map<String, TDatabaseSchema> storageSchemaMap =
-        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
-
-    if (storageSchemaMap.isEmpty()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DATABASE_NOT_EXIST,
-          "Path [" + new PartialPath(setTTLPlan.getDatabasePathPattern()) + "] does not exist");
-    }
-
-    // Map<DataNodeId, TDataNodeLocation>
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    // Map<DataNodeId, StorageGroupPatterns>
-    Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
-    for (String storageGroup : storageSchemaMap.keySet()) {
-      // Get related DataNodes
-      Set<TDataNodeLocation> dataNodeLocations =
-          getPartitionManager()
-              .getDatabaseRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
-
-      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-        dnlToSgMap
-            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
-            .add(storageGroup);
-      }
-    }
-
-    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
-    dnlToSgMap
-        .keySet()
-        .forEach(
-            dataNodeId -> {
-              TSetTTLReq setTTLReq =
-                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
-              clientHandler.putRequest(dataNodeId, setTTLReq);
-              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
-            });
-    // TODO: Check response
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-
-    try {
-      return getConsensusManager()
-          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
   }
 
   public TSStatus setSchemaReplicationFactor(
@@ -504,14 +450,14 @@ public class ClusterSchemaManager {
 
   /**
    * Only leader use this interface. Adjust the maxSchemaRegionGroupNum and maxDataRegionGroupNum of
-   * each StorageGroup based on existing cluster resources
+   * each Database based on existing cluster resources
    */
   public synchronized void adjustMaxRegionGroupNum() {
-    // Get all StorageGroupSchemas
+    // Get all DatabaseSchemas
     Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
     if (databaseSchemaMap.isEmpty()) {
-      // Skip when there are no StorageGroups
+      // Skip when there are no Databases
       return;
     }
 
@@ -582,7 +528,7 @@ public class ClusterSchemaManager {
         adjustMaxRegionGroupNumPlan.putEntry(
             databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
       } catch (DatabaseNotExistsException e) {
-        LOGGER.warn("Adjust maxRegionGroupNum failed because StorageGroup doesn't exist", e);
+        LOGGER.warn("Adjust maxRegionGroupNum failed because Database doesn't exist", e);
       }
     }
     try {
@@ -607,8 +553,8 @@ public class ClusterSchemaManager {
                 // Use Math.ceil here to ensure that the maxRegionGroupNum
                 // will be increased as long as the number of cluster DataNodes is increased
                 Math.ceil(
-                    // The maxRegionGroupNum of the current StorageGroup is expected to be:
-                    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+                    // The maxRegionGroupNum of the current Database is expected to be:
+                    // (resourceWeight * resource) / (createdDatabaseNum * replicationFactor)
                     resourceWeight * resource / (databaseNum * replicationFactor)),
             // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
             allocatedRegionGroupCount));
@@ -708,29 +654,19 @@ public class ClusterSchemaManager {
   }
 
   /**
-   * Only leader use this interface. Get the TTL of specified Database
-   *
-   * @param database DatabaseName
-   * @throws DatabaseNotExistsException When the specified Database doesn't exist
-   */
-  public long getTTL(String database) throws DatabaseNotExistsException {
-    return getDatabaseSchemaByName(database).getTTL();
-  }
-
-  /**
    * Only leader use this interface. Get the replication factor of specified Database
    *
    * @param database DatabaseName
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return SchemaReplicationFactor or DataReplicationFactor
-   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
+   * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
   public int getReplicationFactor(String database, TConsensusGroupType consensusGroupType)
       throws DatabaseNotExistsException {
-    TDatabaseSchema storageGroupSchema = getDatabaseSchemaByName(database);
+    TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
     return TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
-        ? storageGroupSchema.getSchemaReplicationFactor()
-        : storageGroupSchema.getDataReplicationFactor();
+        ? databaseSchema.getSchemaReplicationFactor()
+        : databaseSchema.getDataReplicationFactor();
   }
 
   /**
@@ -1099,10 +1035,10 @@ public class ClusterSchemaManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
 
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

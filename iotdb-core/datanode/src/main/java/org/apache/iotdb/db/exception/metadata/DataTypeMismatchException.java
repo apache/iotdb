@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.tsfile.enums.TSDataType;
 
 public class DataTypeMismatchException extends MetadataException {
+
+  // NOTICE: DO NOT CHANGE THIS STRING, IT IS USED IN THE ERROR HANDLING OF PIPE
+  public static final String REGISTERED_TYPE_STRING = "registered type";
+
   public DataTypeMismatchException(
       String deviceName,
       String measurementName,
@@ -34,10 +38,24 @@ public class DataTypeMismatchException extends MetadataException {
     super(
         String.format(
             "data type of %s.%s is not consistent, "
-                + "registered type %s, inserting type %s, timestamp %s, value %s",
+                + "%s %s, inserting type %s, timestamp %s, value %s",
             deviceName,
             measurementName,
+            REGISTERED_TYPE_STRING,
             typeInSchema,
+            insertType,
+            time,
+            value == null ? "null" : processValue(value.toString())));
+  }
+
+  public DataTypeMismatchException(
+      String deviceName, String measurementName, TSDataType insertType, long time, Object value) {
+    super(
+        String.format(
+            "data type and value of %s.%s is not consistent, "
+                + "inserting type %s, timestamp %s, value %s",
+            deviceName,
+            measurementName,
             insertType,
             time,
             value == null ? "null" : processValue(value.toString())));

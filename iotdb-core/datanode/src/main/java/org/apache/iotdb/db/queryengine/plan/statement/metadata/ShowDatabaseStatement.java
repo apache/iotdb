@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -73,7 +74,8 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   public void buildTSBlock(
-      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future) {
+      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future)
+      throws IllegalPathException {
 
     List<TSDataType> outputDataTypes =
         isDetailed
@@ -88,18 +90,14 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       String storageGroup = entry.getKey();
       TDatabaseInfo storageGroupInfo = entry.getValue();
+
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
-
-      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
-        builder.getColumnBuilder(1).appendNull();
-      } else {
-        builder.getColumnBuilder(1).writeLong(storageGroupInfo.getTTL());
-      }
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       if (isDetailed) {
         builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());

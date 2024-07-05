@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -59,13 +58,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       PartialPath rootPath,
       MemSchemaRegionStatistics regionStatistics,
       SchemaRegionMemMetric metric) {
-    this.root =
-        nodeFactory
-            .createDatabaseMNode(
-                null,
-                rootPath.getTailNode(),
-                CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs())
-            .getAsMNode();
+    this.root = nodeFactory.createDatabaseMNode(null, rootPath.getTailNode()).getAsMNode();
     this.regionStatistics = regionStatistics;
     this.metric = metric;
   }

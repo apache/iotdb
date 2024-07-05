@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
-import java.io.IOException;
 import java.util.List;
 
 /** The input data set interface for a UDFPlan. */
@@ -32,20 +32,7 @@ public interface IUDFInputDataSet {
   /** returns the input data types, except the timestamp column(the last column). */
   List<TSDataType> getDataTypes();
 
-  /** Whether the data set has next row. */
-  boolean hasNextRowInObjects() throws IOException;
+  YieldableState yield() throws Exception;
 
-  /** Whether the data set has next row. */
-  default YieldableState canYieldNextRowInObjects() throws Exception {
-    return hasNextRowInObjects()
-        ? YieldableState.YIELDABLE
-        : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
-  }
-
-  /**
-   * Get the next row for UDFPlan input.
-   *
-   * <p>The last element in the row is the timestamp.
-   */
-  Object[] nextRowInObjects();
+  Column[] currentBlock();
 }

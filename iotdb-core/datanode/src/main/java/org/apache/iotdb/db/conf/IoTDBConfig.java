@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -48,6 +50,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -59,7 +62,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -73,7 +75,7 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  public static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
@@ -189,6 +191,9 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
 
+  /** off heap memory bytes from env */
+  private long maxOffHeapMemoryBytes = 0;
+
   // region Write Ahead Log Configuration
   /** Write mode of wal */
   private volatile WALMode walMode = WALMode.ASYNC;
@@ -210,6 +215,9 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
+
+  /** max total direct buffer off heap memory size proportion */
+  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -237,14 +245,6 @@ public class IoTDBConfig {
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
   // endregion
-
-  /**
-   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
-   * Unit: byte
-   */
-  private int mlogBufferSize = 1024 * 1024;
-
   /**
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
@@ -312,8 +312,9 @@ public class IoTDBConfig {
     {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
-  private String loadTsFileDir =
-      tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+  private String[] loadTsFileDirs = {
+    tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+  };
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -423,13 +424,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private volatile boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private volatile boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private volatile boolean enableCrossSpaceCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -464,7 +465,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -496,28 +497,43 @@ public class IoTDBConfig {
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in one inner space compaction task */
-  private int fileLimitPerInnerTask = 30;
+  private volatile int fileLimitPerInnerTask = 30;
 
   /** The max candidate file num in one cross space compaction task */
-  private int fileLimitPerCrossTask = 500;
+  private volatile int fileLimitPerCrossTask = 500;
 
   /** The max candidate file num in compaction */
-  private int totalFileLimitForCompactionTask = 5000;
+  private volatile int totalFileLimitForCompactionTask = 5000;
 
   /** The max total size of candidate files in one cross space compaction task */
-  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
+  private volatile long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /**
    * Only the unseq files whose level of inner space compaction reaches this value can be selected
    * to participate in the cross space compaction.
    */
-  private int minCrossCompactionUnseqFileLevel = 1;
+  private volatile int minCrossCompactionUnseqFileLevel = 1;
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
+  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
+  private long ttlCheckInterval = 7_200_000L;
+
+  /** The number of threads to be set up to check ttl. */
+  private int ttlCheckerNum = 1;
+
+  /**
+   * The max expired time of device set with ttl. If the expired time exceeds this value, then
+   * expired data will be cleaned by compaction. The unit is ms. Default is 1 month.
+   */
+  private long maxExpiredTime = 2_592_000_000L;
+
+  /**
+   * The expired device ratio. If the number of expired device in one tsfile exceeds this value,
+   * then expired data of this tsfile will be cleaned by compaction.
+   */
+  private float expiredDataRatio = 0.3f;
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
@@ -528,23 +544,23 @@ public class IoTDBConfig {
   /** The number of threads to be set up to select compaction task. */
   private int compactionScheduleThreadNum = 4;
 
-  private boolean enableTsFileValidation = false;
+  private volatile boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
-  private int candidateCompactionTaskQueueSize = 200;
+  private int candidateCompactionTaskQueueSize = 50;
 
   /**
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+  private volatile long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
 
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
    * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
    * are selected first.
    */
-  private double innerCompactionTaskSelectionDiskRedundancy = 0.05;
+  private volatile double innerCompactionTaskSelectionDiskRedundancy = 0.05;
 
   /** The size of global compaction estimation file info cahce. */
   private int globalCompactionFileInfoCacheSize = 1000;
@@ -896,7 +912,7 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
@@ -1089,6 +1105,9 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
+  // PipeConsensus Config
+  private int pipeConsensusPipelineSize = 5;
+
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
@@ -1101,9 +1120,13 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
+
+  private String[] pipeConsensusReceiverFileDirs = new String[0];
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1114,6 +1137,8 @@ public class IoTDBConfig {
    * TimeUnit/resources interval.
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
+
+  private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
   IoTDBConfig() {}
 
@@ -1144,6 +1169,14 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public int getPipeConsensusPipelineSize() {
+    return pipeConsensusPipelineSize;
+  }
+
+  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
+    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1248,7 +1281,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
-    loadTsFileDir = addDataHomeDir(loadTsFileDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
@@ -1263,6 +1295,9 @@ public class IoTDBConfig {
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
       pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
+    }
+    for (int i = 0; i < pipeConsensusReceiverFileDirs.length; i++) {
+      pipeConsensusReceiverFileDirs[i] = addDataHomeDir(pipeConsensusReceiverFileDirs[i]);
     }
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -1293,6 +1328,7 @@ public class IoTDBConfig {
         }
       }
     }
+    formulateLoadTsFileDirs(tierDataDirs);
   }
 
   void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
@@ -1300,9 +1336,13 @@ public class IoTDBConfig {
     formulateDataDirs(tierDataDirs);
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
+      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
-        if (!newDirs.contains(oldDir)) {
+        if (newDirs.stream()
+            .noneMatch(
+                newDir ->
+                    Objects.equals(
+                        new File(newDir).getAbsolutePath(), new File(oldDir).getAbsolutePath()))) {
           String msg =
               String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
           logger.error(msg);
@@ -1396,7 +1436,6 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
-    setLoadTsFileDir(tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1431,12 +1470,21 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
-  public String getLoadTsFileDir() {
-    return loadTsFileDir;
+  public String[] getLoadTsFileDirs() {
+    return this.loadTsFileDirs;
   }
 
-  public void setLoadTsFileDir(String loadTsFileDir) {
-    this.loadTsFileDir = loadTsFileDir;
+  public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
+    final String[] newLoadTsFileDirs = new String[tierDataDirs.length];
+    for (int i = 0; i < tierDataDirs.length; i++) {
+      newLoadTsFileDirs[i] =
+          tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+    }
+
+    // Update loadTsFileDirs after all newLoadTsFileDirs are generated,
+    // or the newLoadTsFileDirs will be used in the middle of the process
+    // and cause the undefined behavior.
+    this.loadTsFileDirs = newLoadTsFileDirs;
   }
 
   public String getSchemaDir() {
@@ -1622,6 +1670,9 @@ public class IoTDBConfig {
   }
 
   public void setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
     this.queryThreadCount = queryThreadCount;
     this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
@@ -1819,6 +1870,15 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
+    return maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
+  public void setMaxDirectBufferOffHeapMemorySizeProportion(
+      double maxDirectBufferOffHeapMemorySizeProportion) {
+    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
   public int getWalBufferQueueCapacity() {
     return walBufferQueueCapacity;
   }
@@ -1831,7 +1891,7 @@ public class IoTDBConfig {
     return walFileSizeThresholdInByte;
   }
 
-  void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
+  public void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
@@ -2133,14 +2193,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-  public long getCrossCompactionFileSelectionTimeBudget() {
-    return crossCompactionFileSelectionTimeBudget;
-  }
-
-  void setCrossCompactionFileSelectionTimeBudget(long crossCompactionFileSelectionTimeBudget) {
-    this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
   }
 
   public boolean isRpcThriftCompressionEnable() {
@@ -2597,6 +2649,14 @@ public class IoTDBConfig {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 
+  public void setMaxOffHeapMemoryBytes(long maxOffHeapMemoryBytes) {
+    this.maxOffHeapMemoryBytes = maxOffHeapMemoryBytes;
+  }
+
+  public long getMaxOffHeapMemoryBytes() {
+    return maxOffHeapMemoryBytes;
+  }
+
   public long getSlowQueryThreshold() {
     return slowQueryThreshold;
   }
@@ -2660,14 +2720,6 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
-  }
-
-  public int getMlogBufferSize() {
-    return mlogBufferSize;
-  }
-
-  public void setMlogBufferSize(int mlogBufferSize) {
-    this.mlogBufferSize = mlogBufferSize;
   }
 
   public long getSyncMlogPeriodInMs() {
@@ -2842,6 +2894,34 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
+  public long getTTlCheckInterval() {
+    return ttlCheckInterval;
+  }
+
+  public int getTTlCheckerNum() {
+    return ttlCheckerNum;
+  }
+
+  public void setTtlCheckInterval(long ttlCheckInterval) {
+    this.ttlCheckInterval = ttlCheckInterval;
+  }
+
+  public long getMaxExpiredTime() {
+    return maxExpiredTime;
+  }
+
+  public void setMaxExpiredTime(long maxExpiredTime) {
+    this.maxExpiredTime = maxExpiredTime;
+  }
+
+  public float getExpiredDataRatio() {
+    return expiredDataRatio;
+  }
+
+  public void setExpiredDataRatio(float expiredDataRatio) {
+    this.expiredDataRatio = expiredDataRatio;
+  }
+
   public int getFileLimitPerInnerTask() {
     return fileLimitPerInnerTask;
   }
@@ -2876,14 +2956,6 @@ public class IoTDBConfig {
 
   public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
     this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
-  }
-
-  public long getCompactionSubmissionIntervalInMs() {
-    return compactionSubmissionIntervalInMs;
-  }
-
-  public void setCompactionSubmissionIntervalInMs(long interval) {
-    compactionSubmissionIntervalInMs = interval;
   }
 
   public int getSubCompactionTaskNum() {
@@ -3085,6 +3157,7 @@ public class IoTDBConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+    MetricConfigDescriptor.getInstance().getMetricConfig().updateClusterName(clusterName);
   }
 
   public String getClusterId() {
@@ -3793,6 +3866,14 @@ public class IoTDBConfig {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public double getLoadWriteThroughputBytesPerSecond() {
+    return loadWriteThroughputBytesPerSecond;
+  }
+
+  public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
+    this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
     this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
@@ -3801,6 +3882,25 @@ public class IoTDBConfig {
     return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
         ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
         : this.pipeReceiverFileDirs;
+  }
+
+  public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
+    this.pipeConsensusReceiverFileDirs = pipeConsensusReceiverFileDirs;
+  }
+
+  public String[] getPipeConsensusReceiverFileDirs() {
+    return (Objects.isNull(this.pipeConsensusReceiverFileDirs)
+            || this.pipeConsensusReceiverFileDirs.length == 0)
+        ? new String[] {
+          systemDir
+              + File.separator
+              + "pipe"
+              + File.separator
+              + "consensus"
+              + File.separator
+              + "receiver"
+        }
+        : this.pipeConsensusReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {
@@ -3880,5 +3980,27 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public TDataNodeLocation generateLocalDataNodeLocation() {
+    TDataNodeLocation result = new TDataNodeLocation();
+    result.setDataNodeId(getDataNodeId());
+    result.setClientRpcEndPoint(new TEndPoint(getInternalAddress(), getRpcPort()));
+    result.setInternalEndPoint(new TEndPoint(getInternalAddress(), getInternalPort()));
+    result.setMPPDataExchangeEndPoint(
+        new TEndPoint(getInternalAddress(), getMppDataExchangePort()));
+    result.setDataRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getDataRegionConsensusPort()));
+    result.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
+    return result;
+  }
+
+  public CompressionType getWALCompressionAlgorithm() {
+    return WALCompressionAlgorithm;
+  }
+
+  public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
+    this.WALCompressionAlgorithm = WALCompressionAlgorithm;
   }
 }

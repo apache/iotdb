@@ -37,8 +37,8 @@ public class MetricConfigDescriptor {
   }
 
   /** Load properties into metric config. */
-  public void loadProps(Properties properties) {
-    MetricConfig loadConfig = generateFromProperties(properties);
+  public void loadProps(Properties properties, boolean isConfigNode) {
+    MetricConfig loadConfig = generateFromProperties(properties, isConfigNode);
     metricConfig.copy(loadConfig);
   }
 
@@ -47,8 +47,8 @@ public class MetricConfigDescriptor {
    *
    * @return reload level of metric service
    */
-  public ReloadLevel loadHotProps(Properties properties) {
-    MetricConfig newMetricConfig = generateFromProperties(properties);
+  public ReloadLevel loadHotProps(Properties properties, boolean isConfigNode) {
+    MetricConfig newMetricConfig = generateFromProperties(properties, isConfigNode);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (!metricConfig.equals(newMetricConfig)) {
       if (!metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
@@ -72,7 +72,7 @@ public class MetricConfigDescriptor {
   }
 
   /** Load properties into metric config. */
-  private MetricConfig generateFromProperties(Properties properties) {
+  private MetricConfig generateFromProperties(Properties properties, boolean isConfigNode) {
     MetricConfig loadConfig = new MetricConfig();
 
     String reporterList =
@@ -83,73 +83,98 @@ public class MetricConfigDescriptor {
                 loadConfig.getMetricReporterList().stream()
                     .map(ReporterType::toString)
                     .collect(Collectors.toSet())),
-            properties);
+            properties,
+            isConfigNode);
     loadConfig.setMetricReporterList(reporterList);
 
     loadConfig.setMetricLevel(
         MetricLevel.valueOf(
-            getProperty("metric_level", String.valueOf(loadConfig.getMetricLevel()), properties)));
+            getProperty(
+                "metric_level",
+                String.valueOf(loadConfig.getMetricLevel()),
+                properties,
+                isConfigNode)));
 
     loadConfig.setAsyncCollectPeriodInSecond(
         Integer.parseInt(
             getProperty(
                 "metric_async_collect_period",
                 String.valueOf(loadConfig.getAsyncCollectPeriodInSecond()),
-                properties)));
+                properties,
+                isConfigNode)));
 
     loadConfig.setPrometheusReporterPort(
         Integer.parseInt(
             getProperty(
                 "metric_prometheus_reporter_port",
                 String.valueOf(loadConfig.getPrometheusReporterPort()),
-                properties)));
+                properties,
+                isConfigNode)));
 
     IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
-        getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
+        getProperty(
+            "metric_iotdb_reporter_host", reporterConfig.getHost(), properties, isConfigNode));
 
     reporterConfig.setPort(
         Integer.valueOf(
             getProperty(
                 "metric_iotdb_reporter_port",
                 String.valueOf(reporterConfig.getPort()),
-                properties)));
+                properties,
+                isConfigNode)));
 
     reporterConfig.setUsername(
-        getProperty("metric_iotdb_reporter_username", reporterConfig.getUsername(), properties));
+        getProperty(
+            "metric_iotdb_reporter_username",
+            reporterConfig.getUsername(),
+            properties,
+            isConfigNode));
 
     reporterConfig.setPassword(
-        getProperty("metric_iotdb_reporter_password", reporterConfig.getPassword(), properties));
+        getProperty(
+            "metric_iotdb_reporter_password",
+            reporterConfig.getPassword(),
+            properties,
+            isConfigNode));
 
     reporterConfig.setMaxConnectionNumber(
         Integer.valueOf(
             getProperty(
                 "metric_iotdb_reporter_max_connection_number",
                 String.valueOf(reporterConfig.getMaxConnectionNumber()),
-                properties)));
+                properties,
+                isConfigNode)));
 
     reporterConfig.setLocation(
-        getProperty("metric_iotdb_reporter_location", reporterConfig.getLocation(), properties));
+        getProperty(
+            "metric_iotdb_reporter_location",
+            reporterConfig.getLocation(),
+            properties,
+            isConfigNode));
 
     reporterConfig.setPushPeriodInSecond(
         Integer.valueOf(
             getProperty(
                 "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
-                properties)));
-    loadConfig.setInternalReportType(
-        InternalReporterType.valueOf(
-            properties.getProperty(
-                "dn_metric_internal_reporter_type",
-                loadConfig.getInternalReportType().toString())));
+                properties,
+                isConfigNode)));
+    if (!isConfigNode) {
+      loadConfig.setInternalReportType(
+          InternalReporterType.valueOf(
+              properties.getProperty(
+                  "dn_metric_internal_reporter_type",
+                  loadConfig.getInternalReportType().toString())));
+    }
 
     return loadConfig;
   }
 
   /** Get property from confignode or datanode. */
-  private String getProperty(String target, String defaultValue, Properties properties) {
-    return properties.getProperty(
-        "dn_" + target, properties.getProperty("cn_" + target, defaultValue));
+  private String getProperty(
+      String target, String defaultValue, Properties properties, boolean isConfigNode) {
+    return properties.getProperty((isConfigNode ? "cn_" : "dn_") + target, defaultValue);
   }
 
   private static class MetricConfigDescriptorHolder {

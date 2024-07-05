@@ -22,11 +22,16 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SubscriptionTopicAgent {
 
@@ -59,17 +64,17 @@ public class SubscriptionTopicAgent {
   ////////////////////////// Topic Management Entry //////////////////////////
 
   public TPushTopicMetaRespExceptionMessage handleSingleTopicMetaChanges(
-      TopicMeta topicMetaFromCoordinator) {
+      final TopicMeta topicMetaFromCoordinator) {
     acquireWriteLock();
     try {
       handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-              topicName, e.getMessage());
+              topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
@@ -85,18 +90,18 @@ public class SubscriptionTopicAgent {
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
-      List<TopicMeta> topicMetasFromCoordinator) {
+      final List<TopicMeta> topicMetasFromCoordinator) {
     acquireWriteLock();
     try {
-      for (TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
+      for (final TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
         try {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
-        } catch (Exception e) {
+        } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-                  topicName, e.getMessage());
+                  topicName, e);
           LOGGER.warn(exceptionMessage);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
@@ -108,15 +113,14 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  public TPushTopicMetaRespExceptionMessage handleDropTopic(String topicName) {
+  public TPushTopicMetaRespExceptionMessage handleDropTopic(final String topicName) {
     acquireWriteLock();
     try {
       handleDropTopicInternal(topicName);
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String exceptionMessage =
-          String.format(
-              "Subscription: Failed to drop topic %s, because %s", topicName, e.getMessage());
+          String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
@@ -125,14 +129,51 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  private void handleDropTopicInternal(String topicName) {
+  private void handleDropTopicInternal(final String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
   }
 
-  public boolean isTopicExisted(String topicName) {
+  public boolean isTopicExisted(final String topicName) {
     acquireReadLock();
     try {
       return topicMetaKeeper.containsTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicFormat(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
+    acquireReadLock();
+    try {
+      return topicNames.stream()
+          .collect(
+              Collectors.toMap(
+                  topicName -> topicName,
+                  topicName -> topicMetaKeeper.getTopicMeta(topicName).getConfig()));
     } finally {
       releaseReadLock();
     }

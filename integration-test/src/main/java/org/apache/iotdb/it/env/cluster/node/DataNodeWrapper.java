@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
@@ -29,13 +30,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIRECT_MEMORY_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
@@ -53,6 +52,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_TRACING_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
@@ -62,7 +62,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEI
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
@@ -124,13 +123,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getTargetNodeConfigPath() {
-    return workDirFilePath("conf", DATA_NODE_PROPERTIES_FILE);
-  }
-
-  @Override
-  protected String getTargetCommonConfigPath() {
-    return workDirFilePath("conf", COMMON_PROPERTIES_FILE);
+  protected String getSystemConfigPath() {
+    return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
   }
 
   @Override
@@ -145,7 +139,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public String getSystemPropertiesPath() {
-    return workDirFilePath("data/datanode/system/schema", SYSTEM_PROPERTIES_FILE);
+    return workDirFilePath("data/datanode/system/schema", IoTDBStartCheck.PROPERTIES_FILE_NAME);
   }
 
   @Override

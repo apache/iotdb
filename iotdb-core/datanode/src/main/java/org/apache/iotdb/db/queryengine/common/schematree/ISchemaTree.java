@@ -107,4 +107,6 @@ public interface ISchemaTree {
    * @return whether there's view in this schema tree
    */
   boolean hasLogicalViewMeasurement();
+
+  void removeLogicalView();
 }

@@ -22,12 +22,9 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +63,7 @@ public class PipeMemoryManager {
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
             this::tryExpandAll,
@@ -110,7 +107,8 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTabletMemoryBlock block =
-          (PipeTabletMemoryBlock) forceAllocate(calculateTabletSizeInBytes(tablet), true);
+          (PipeTabletMemoryBlock)
+              forceAllocate(PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet), true);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -181,63 +179,6 @@ public class PipeMemoryManager {
       }
     }
     return null;
-  }
-
-  public static long calculateTabletSizeInBytes(Tablet tablet) {
-    long totalSizeInBytes = 0;
-
-    if (tablet == null) {
-      return totalSizeInBytes;
-    }
-
-    // timestamps
-    if (tablet.timestamps != null) {
-      totalSizeInBytes += tablet.timestamps.length * 8L;
-    }
-
-    // values
-    final List<MeasurementSchema> timeseries = tablet.getSchemas();
-    if (timeseries != null) {
-      for (int column = 0; column < timeseries.size(); column++) {
-        final MeasurementSchema measurementSchema = timeseries.get(column);
-        if (measurementSchema == null) {
-          continue;
-        }
-
-        final TSDataType tsDataType = measurementSchema.getType();
-        if (tsDataType == null) {
-          continue;
-        }
-
-        if (tsDataType == TSDataType.TEXT) {
-          if (tablet.values == null || tablet.values.length <= column) {
-            continue;
-          }
-          final Binary[] values = ((Binary[]) tablet.values[column]);
-          if (values == null) {
-            continue;
-          }
-          for (Binary value : values) {
-            totalSizeInBytes +=
-                value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
-          }
-        } else {
-          totalSizeInBytes += (long) tablet.timestamps.length * tsDataType.getDataTypeSize();
-        }
-      }
-    }
-
-    // bitMaps
-    if (tablet.bitMaps != null) {
-      for (int i = 0; i < tablet.bitMaps.length; i++) {
-        totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
-      }
-    }
-
-    // estimate other dataStructures size
-    totalSizeInBytes += 100;
-
-    return totalSizeInBytes;
   }
 
   public synchronized PipeMemoryBlock tryAllocate(long sizeInBytes) {

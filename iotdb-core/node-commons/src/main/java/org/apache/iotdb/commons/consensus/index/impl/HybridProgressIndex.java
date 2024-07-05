@@ -55,6 +55,10 @@ public class HybridProgressIndex extends ProgressIndex {
     }
   }
 
+  public Map<Short, ProgressIndex> getType2Index() {
+    return type2Index;
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     lock.readLock().lock();

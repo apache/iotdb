@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
@@ -93,13 +94,27 @@ public class WebSocketConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
           "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
+      return;
+    }
+
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent event =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      for (final PipeRawTabletInsertionEvent rawTabletInsertionEvent :
+          event.toRawTabletInsertionEvents()) {
+        // Skip report if any tablet events is added
+        event.skipReportOnCommit();
+        // Transfer raw tablet insertion event to make sure one event binds
+        // to only one tablet in the server
+        transfer(rawTabletInsertionEvent);
+      }
       return;
     }
 

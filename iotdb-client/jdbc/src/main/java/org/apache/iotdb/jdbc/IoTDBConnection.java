@@ -39,6 +39,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.Charset;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -75,6 +76,7 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.
@@ -88,6 +90,8 @@ public class IoTDBConnection implements Connection {
   private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
 
   private ZoneId zoneId;
+  private Charset charset;
+
   private boolean autoCommit;
   private String url;
 
@@ -110,6 +114,7 @@ public class IoTDBConnection implements Connection {
     this.userName = info.get("user").toString();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
+    this.charset = params.getCharset();
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
@@ -199,7 +204,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
   }
 
   @Override
@@ -214,7 +219,7 @@ public class IoTDBConnection implements Connection {
       throw new SQLException(
           String.format("Statements with ResultSet type %d are not supported", resultSetType));
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
   }
 
   @Override
@@ -277,7 +282,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBDatabaseMetadata(this, getClient(), sessionId);
+    return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
   }
 
   @Override
@@ -365,7 +370,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId);
+    return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
   }
 
   @Override

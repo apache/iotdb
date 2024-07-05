@@ -293,6 +293,7 @@ public abstract class AbstractEnv implements BaseEnv {
         });
     testJDBCConnection();
   }
+
   /**
    * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
    * if the status of all nodes still not match the predicate, throw AssertionError.
@@ -478,7 +479,9 @@ public abstract class AbstractEnv implements BaseEnv {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+            Config.IOTDB_URL_PREFIX
+                + endpoint
+                + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
             System.getProperty("User", username),
             System.getProperty("Password", password));
     return new NodeConnection(
@@ -520,7 +523,9 @@ public abstract class AbstractEnv implements BaseEnv {
           () -> {
             Connection readConnection =
                 DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+                    Config.IOTDB_URL_PREFIX
+                        + endpoint
+                        + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                     System.getProperty("User", username),
                     System.getProperty("Password", password));
             return new NodeConnection(
@@ -558,7 +563,7 @@ public abstract class AbstractEnv implements BaseEnv {
                       DriverManager.getConnection(
                           Config.IOTDB_URL_PREFIX
                               + dataNodeEndpoint
-                              + getParam(null, NODE_NETWORK_TIMEOUT_MS),
+                              + getParam(null, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                           System.getProperty("User", "root"),
                           System.getProperty("Password", "root"))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
@@ -583,11 +588,14 @@ public abstract class AbstractEnv implements BaseEnv {
     }
   }
 
-  private String getParam(Constant.Version version, int timeout) {
+  private String getParam(Constant.Version version, int timeout, String timeZone) {
     StringBuilder sb = new StringBuilder("?");
     sb.append(Config.NETWORK_TIMEOUT).append("=").append(timeout);
     if (version != null) {
       sb.append("&").append(VERSION).append("=").append(version);
+    }
+    if (timeZone != null) {
+      sb.append("&").append(Config.TIME_ZONE).append("=").append(timeZone);
     }
     return sb.toString();
   }
@@ -604,11 +612,18 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void dumpTestJVMSnapshot() {
     for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-      configNodeWrapper.dumpJVMSnapshot(testMethodName);
+      configNodeWrapper.executeJstack(testMethodName);
     }
     for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
-      dataNodeWrapper.dumpJVMSnapshot(testMethodName);
+      dataNodeWrapper.executeJstack(testMethodName);
     }
+  }
+
+  @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
   }
 
   @Override
@@ -619,12 +634,6 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
-  }
-
-  public List<AbstractNodeWrapper> getNodeWrapperList() {
-    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
-    result.addAll(dataNodeWrapperList);
-    return result;
   }
 
   /**

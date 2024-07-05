@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -37,7 +38,7 @@ import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
@@ -96,11 +97,11 @@ public class ConfigNode implements ConfigNodeMBean {
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
           IoTDBConstant.JMX_TYPE,
           ServiceType.CONFIG_NODE.getJmxName());
-  private final RegisterManager registerManager = new RegisterManager();
+  protected final RegisterManager registerManager = new RegisterManager();
 
   protected ConfigManager configManager;
 
-  private ConfigNode() {
+  protected ConfigNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
@@ -134,6 +135,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
+        upgrade();
         waitForLeaderElected();
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
@@ -184,7 +186,7 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager
             .getNodeManager()
             .applyConfigNode(
-                generateConfigNodeLocation(SEED_CONFIG_NODE_ID),
+                CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
                 new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
@@ -232,7 +234,7 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-    } catch (StartupException | IOException e) {
+    } catch (StartupException | IOException | IllegalPathException e) {
       LOGGER.error("Meet error while starting up.", e);
       stop();
     }
@@ -299,12 +301,16 @@ public class ConfigNode implements ConfigNodeMBean {
 
   void initConfigManager() {
     try {
-      configManager = new ConfigManager();
-    } catch (IOException e) {
+      setConfigManager();
+    } catch (Exception e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
     LOGGER.info("Successfully initialize ConfigManager.");
+  }
+
+  protected void setConfigManager() throws Exception {
+    this.configManager = new ConfigManager();
   }
 
   /**
@@ -317,14 +323,13 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
+            CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
 
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
     TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
-      LOGGER.error(
-          "Please set the cn_seed_config_node parameter in iotdb-confignode.properties file.");
+      LOGGER.error("Please set the cn_seed_config_node parameter in iotdb-system.properties file.");
       throw new StartupException("The seedConfigNode setting in conf is empty");
     }
 
@@ -334,7 +339,7 @@ public class ConfigNode implements ConfigNodeMBean {
       Object obj =
           SyncConfigNodeClientPool.getInstance()
               .sendSyncRequestToConfigNodeWithRetry(
-                  seedConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+                  seedConfigNode, req, CnToCnNodeRequestType.REGISTER_CONFIG_NODE);
 
       if (obj instanceof TConfigNodeRegisterResp) {
         resp = (TConfigNodeRegisterResp) obj;
@@ -388,9 +393,13 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup RPCService
     ConfigNodeRPCService configNodeRPCService = new ConfigNodeRPCService();
     ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor =
-        new ConfigNodeRPCServiceProcessor(configManager);
+        getConfigNodeRPCServiceProcessor();
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
+  }
+
+  protected ConfigNodeRPCServiceProcessor getConfigNodeRPCServiceProcessor() {
+    return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   private void waitForLeaderElected() {
@@ -429,11 +438,23 @@ public class ConfigNode implements ConfigNodeMBean {
     System.exit(-1);
   }
 
+  /**
+   * During the reboot, perform some upgrade works to adapt to the optimizations in the new version.
+   */
+  private void upgrade() throws IllegalPathException {
+    // upgrade from old database-level ttl to new device-level ttl
+    if (configManager.getTTLManager().getTTLCount() == 1) {
+      configManager
+          .getTTLManager()
+          .setTTL(configManager.getClusterSchemaManager().getTTLInfoForUpgrading());
+    }
+  }
+
   public ConfigManager getConfigManager() {
     return configManager;
   }
 
-  protected void addShutDownHook() {
+  private void addShutDownHook() {
     Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
   }
 
@@ -444,7 +465,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static class ConfigNodeHolder {
 
-    private static final ConfigNode INSTANCE = new ConfigNode();
+    private static ConfigNode instance = new ConfigNode();
 
     private ConfigNodeHolder() {
       // Empty constructor
@@ -452,6 +473,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   public static ConfigNode getInstance() {
-    return ConfigNodeHolder.INSTANCE;
+    return ConfigNodeHolder.instance;
+  }
+
+  public static void setInstance(ConfigNode configNode) {
+    ConfigNodeHolder.instance = configNode;
   }
 }

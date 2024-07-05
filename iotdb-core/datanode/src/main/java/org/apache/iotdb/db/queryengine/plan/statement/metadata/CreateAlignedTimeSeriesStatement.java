@@ -35,6 +35,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * CREATE ALIGNED TIMESERIES statement.
@@ -177,5 +178,59 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateAlignedTimeseries(this, context);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final CreateAlignedTimeSeriesStatement that = (CreateAlignedTimeSeriesStatement) obj;
+    return Objects.equals(this.devicePath, that.devicePath)
+        && Objects.equals(this.measurements, that.measurements)
+        && Objects.equals(this.dataTypes, that.dataTypes)
+        && Objects.equals(this.encodings, that.encodings)
+        && Objects.equals(this.compressors, that.compressors)
+        && Objects.equals(this.aliasList, that.aliasList)
+        && Objects.equals(this.tagsList, that.tagsList)
+        && Objects.equals(this.attributesList, that.attributesList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        devicePath,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        aliasList,
+        tagsList,
+        attributesList);
+  }
+
+  @Override
+  public String toString() {
+    return "CreateAlignedTimeSeriesStatement{"
+        + "devicePath='"
+        + devicePath
+        + "', measurements="
+        + measurements
+        + ", dataTypes='"
+        + dataTypes
+        + "', encodings="
+        + encodings
+        + "', compressors="
+        + compressors
+        + "', aliasList="
+        + aliasList
+        + "', tagsList="
+        + tagsList
+        + "', attributesList="
+        + attributesList
+        + "'}";
   }
 }

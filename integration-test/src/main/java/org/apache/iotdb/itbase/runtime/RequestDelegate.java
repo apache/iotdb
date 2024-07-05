@@ -76,14 +76,34 @@ public abstract class RequestDelegate<T> {
    */
   public final T requestAllAndCompare() throws SQLException {
     List<T> results = requestAll();
-    T data = results.get(0);
-    for (int i = 1; i < results.size(); i++) {
-      T anotherData = results.get(i);
-      if (!Objects.equals(data, anotherData)) {
-        throw new InconsistentDataException(results, endpoints);
-      }
+    if (!results.stream().allMatch(result -> compare(results.get(0), result))) {
+      throw new InconsistentDataException(results, endpoints);
     }
-    return data;
+    return results.get(0);
+  }
+
+  private boolean compare(T data, T anotherData) {
+    if (data instanceof byte[] && anotherData instanceof byte[]) {
+      return Arrays.equals((byte[]) data, (byte[]) anotherData);
+    } else if (data instanceof short[] && anotherData instanceof short[]) {
+      return Arrays.equals((short[]) data, (short[]) anotherData);
+    } else if (data instanceof int[] && anotherData instanceof int[]) {
+      return Arrays.equals((int[]) data, (int[]) anotherData);
+    } else if (data instanceof long[] && anotherData instanceof long[]) {
+      return Arrays.equals((long[]) data, (long[]) anotherData);
+    } else if (data instanceof char[] && anotherData instanceof char[]) {
+      return Arrays.equals((char[]) data, (char[]) anotherData);
+    } else if (data instanceof float[] && anotherData instanceof float[]) {
+      return Arrays.equals((float[]) data, (float[]) anotherData);
+    } else if (data instanceof double[] && anotherData instanceof double[]) {
+      return Arrays.equals((double[]) data, (double[]) anotherData);
+    } else if (data instanceof boolean[] && anotherData instanceof boolean[]) {
+      return Arrays.equals((boolean[]) data, (boolean[]) anotherData);
+    } else if (data instanceof Object[] && anotherData instanceof Object[]) {
+      return Arrays.equals((Object[]) data, (Object[]) anotherData);
+    } else {
+      return Objects.equals(data, anotherData);
+    }
   }
 
   protected void handleExceptions(Exception[] exceptions) throws SQLException {

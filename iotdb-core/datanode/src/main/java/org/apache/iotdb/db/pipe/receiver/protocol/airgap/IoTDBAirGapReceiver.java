@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -59,16 +59,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private boolean isELanguagePayload;
 
-  public IoTDBAirGapReceiver(Socket socket, long receiverId) {
+  public IoTDBAirGapReceiver(final Socket socket, final long receiverId) {
     this.socket = socket;
     this.receiverId = receiverId;
 
-    agent = PipeAgent.receiver().thrift();
+    agent = PipeDataNodeAgent.receiver().thrift();
   }
 
   @Override
   public void runMayThrow() throws Throwable {
-    socket.setSoTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
     socket.setKeepAlive(true);
 
     LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
@@ -82,7 +82,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
           receiverId,
           socket);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Pipe air gap receiver {} closed because of exception. Socket: {}",
           receiverId,
@@ -90,7 +90,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           e);
       throw e;
     } finally {
-      PipeAgent.receiver().thrift().handleClientExit();
+      PipeDataNodeAgent.receiver().thrift().handleClientExit();
       socket.close();
     }
   }
@@ -138,6 +138,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       }
     } catch (final PipeConnectionException e) {
       LOGGER.info("Socket closed when listening to data. Because: {}", e.getMessage());
+      socket.close();
     } catch (final Exception e) {
       LOGGER.warn("Exception during handling receiving, receiverId: {}", receiverId, e);
       fail();
@@ -161,13 +162,13 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final CRC32 crc32 = new CRC32();
       crc32.update(bytes, LONG_LEN, bytes.length - LONG_LEN);
       return BytesUtils.bytesToLong(BytesUtils.subBytes(bytes, 0, LONG_LEN)) == crc32.getValue();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       // ArrayIndexOutOfBoundsException when bytes.length < LONG_LEN
       return false;
     }
   }
 
-  private byte[] readData(InputStream inputStream) throws IOException {
+  private byte[] readData(final InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
     if (length <= 0) {
@@ -187,7 +188,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * Read the length of the following data. The thread may typically block here when there is no
    * data to read.
    */
-  private int readLength(InputStream inputStream) throws IOException {
+  private int readLength(final InputStream inputStream) throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
     readTillFull(inputStream, doubleIntLengthBytes);
 

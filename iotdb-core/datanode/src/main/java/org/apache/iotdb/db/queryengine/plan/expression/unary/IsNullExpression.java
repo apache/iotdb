@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,6 +32,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class IsNullExpression extends UnaryExpression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IsNullExpression.class);
   private final boolean isNot;
 
   public IsNullExpression(Expression expression, boolean isNot) {
@@ -76,5 +81,10 @@ public class IsNullExpression extends UnaryExpression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitIsNullExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
   }
 }

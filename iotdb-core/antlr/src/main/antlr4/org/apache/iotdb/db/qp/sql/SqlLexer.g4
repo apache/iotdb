@@ -165,6 +165,10 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONNECTION
+    : C O N N E C T I O N
+    ;
+
 CONNECTOR
     : C O N N E C T O R
     ;
@@ -938,6 +942,10 @@ ELSE
     : E L S E
     ;
 
+INF
+    : I N F
+    ;
+
 // Privileges Keywords
 
 PRIVILEGE_VALUE
@@ -1100,6 +1108,12 @@ STRING_LITERAL
     | SQUOTA_STRING
     ;
 
+// Note: we allow any character inside the binary literal and validate
+// its a correct literal when the AST is being constructed. This
+// allows us to provide more meaningful error messages to the user
+BINARY_LITERAL
+    : 'X\'' (~'\'')* '\''
+    ;
 
 // Date & Time Literal
 

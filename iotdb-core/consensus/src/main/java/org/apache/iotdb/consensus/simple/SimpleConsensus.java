@@ -245,6 +245,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    return stateMachineMap.containsKey(groupId) ? 1 : 0;
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
   }
@@ -257,6 +262,11 @@ class SimpleConsensus implements IConsensus {
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(groupId);
+  }
+
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    // do not support reload consensus config for now
   }
 
   @Override

@@ -63,6 +63,7 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONNECTION
     | CONNECTOR
     | CONTAIN
     | CONTAINS
@@ -260,5 +261,6 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | INF
     | CURRENT_TIMESTAMP
     ;

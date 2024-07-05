@@ -19,105 +19,51 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
-
-import java.io.IOException;
-import java.util.Objects;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
 
-  protected final LayerRowReader layerRowReader;
-  private final boolean isLayerRowReaderConstant;
+  protected final LayerReader layerReader;
 
-  public MappableUDFQueryRowTransformer(LayerRowReader layerRowReader, UDTFExecutor executor) {
+  public MappableUDFQueryRowTransformer(LayerReader layerReader, UDTFExecutor executor) {
     super(executor);
-    this.layerRowReader = layerRowReader;
-    this.isLayerRowReaderConstant = false;
-  }
-
-  @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
-    if (!layerRowReader.next()) {
-      return false;
-    }
-
-    if (!isLayerRowReaderConstant) {
-      cachedTime = layerRowReader.currentTime();
-    }
-
-    if (layerRowReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      Row row = layerRowReader.currentRow();
-      execute(row);
-    }
-
-    layerRowReader.readyForNext();
-    return true;
+    this.layerReader = layerReader;
   }
 
   @Override
   protected YieldableState yieldValue() throws Exception {
-    final YieldableState yieldableState = layerRowReader.yield();
+    final YieldableState yieldableState = layerReader.yield();
     if (!YieldableState.YIELDABLE.equals(yieldableState)) {
       return yieldableState;
     }
 
-    if (!isLayerRowReaderConstant) {
-      cachedTime = layerRowReader.currentTime();
-    }
+    Column[] columns = layerReader.current();
+    cachedColumns = execute(columns);
 
-    if (layerRowReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      Row row = layerRowReader.currentRow();
-      execute(row);
-    }
-
-    layerRowReader.readyForNext();
+    layerReader.consumedAll();
     return YieldableState.YIELDABLE;
   }
 
-  private void execute(Row row) {
-    executor.execute(row);
-    Object currentValue = executor.getCurrentValue();
-    if (Objects.isNull(currentValue)) {
-      currentNull = true;
-      return;
-    }
-    switch (tsDataType) {
-      case INT32:
-        cachedInt = (int) currentValue;
-        break;
-      case INT64:
-        cachedLong = (long) currentValue;
-        break;
-      case FLOAT:
-        cachedFloat = (float) currentValue;
-        break;
-      case DOUBLE:
-        cachedDouble = (double) currentValue;
-        break;
-      case BOOLEAN:
-        cachedBoolean = (boolean) currentValue;
-        break;
-      case TEXT:
-        cachedBinary = (Binary) currentValue;
-        break;
-      default:
-        throw new UnSupportedDataTypeException(tsDataType.toString());
-    }
+  private Column[] execute(Column[] columns) {
+    int count = columns[0].getPositionCount();
+    ColumnBuilder valueColumnBuilder = TypeUtils.initColumnBuilder(tsDataType, count);
+
+    executor.execute(columns, valueColumnBuilder);
+
+    int timeColumnIndex = columns.length - 1;
+    Column timeColumn = columns[timeColumnIndex];
+    Column valueColumn = valueColumnBuilder.build();
+    return new Column[] {valueColumn, timeColumn};
   }
 
   @Override
   public boolean isConstantPointReader() {
-    return isLayerRowReaderConstant;
+    return false;
   }
 }

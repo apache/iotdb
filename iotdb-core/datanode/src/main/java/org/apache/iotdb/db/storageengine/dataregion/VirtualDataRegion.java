@@ -20,13 +20,18 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * It's a virtual data region used for query which contains time series that don't belong to any
@@ -38,6 +43,9 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   private static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
       new QueryDataSource(Collections.emptyList(), Collections.emptyList());
+
+  private static final QueryDataSourceForRegionScan EMPTY_REGION_QUERY_DATA_SOURCE =
+      new QueryDataSourceForRegionScan(Collections.emptyList(), Collections.emptyList());
 
   public static VirtualDataRegion getInstance() {
     return VirtualDataRegion.InstanceHolder.INSTANCE;
@@ -65,8 +73,23 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   }
 
   @Override
-  public long getDataTTL() {
-    return Long.MAX_VALUE;
+  public IQueryDataSource queryForDeviceRegionScan(
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    return EMPTY_REGION_QUERY_DATA_SOURCE;
+  }
+
+  @Override
+  public IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    return EMPTY_REGION_QUERY_DATA_SOURCE;
   }
 
   @Override

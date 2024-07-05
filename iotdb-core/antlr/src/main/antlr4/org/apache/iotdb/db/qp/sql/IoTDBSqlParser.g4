@@ -64,7 +64,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -82,7 +82,7 @@ dclStatement
     ;
 
 utilityStatement
-    : flush | clearCache | settle | startRepairData | stopRepairData | explain
+    : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -178,14 +178,18 @@ aliasClause
     : ALIAS operator_eq alias
     ;
 
+timeConditionClause
+    :whereClause
+    ;
+
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? timeConditionClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? rowPaginationClause?
     ;
 
 // ---- Show Child Paths
@@ -200,12 +204,12 @@ showChildNodes
 
 // ---- Count Devices
 countDevices
-    : COUNT DEVICES prefixPath?
+    : COUNT DEVICES prefixPath? timeConditionClause?
     ;
 
 // ---- Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // ---- Count Nodes
@@ -313,12 +317,12 @@ alterSchemaTemplate
 // TTL =============================================================================================
 // ---- Set TTL
 setTTL
-    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
+    : SET TTL TO path=prefixPath time=(INTEGER_LITERAL | INF)
     ;
 
 // ---- Unset TTL
 unsetTTL
-    : UNSET TTL TO path=prefixPath
+    : UNSET TTL (TO | FROM) path=prefixPath
     ;
 
 // ---- Show TTL
@@ -523,6 +527,10 @@ getSeriesSlotList
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    ;
+
+verifyConnection
+    : VERIFY CONNECTION (DETAILS)?
     ;
 
 // Pipe Task =========================================================================================
@@ -974,6 +982,15 @@ clearCache
     : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
+// Set Configuration
+setConfiguration
+    : SET CONFIGURATION setConfigurationEntry+ (ON INTEGER_LITERAL)?
+    ;
+
+setConfigurationEntry
+    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
+    ;
+
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
@@ -1147,6 +1164,7 @@ constant
     | (MINUS|PLUS|DIV)? realLiteral
     | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
+    | BINARY_LITERAL
     | boolean_literal
     | null_literal
     | nan_literal
@@ -1306,6 +1324,7 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    | TIMESTAMP
     ;
 
 alias

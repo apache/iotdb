@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
@@ -82,9 +83,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public InsertionCrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
+    this.selectedSeqFiles = Collections.emptyList();
+    this.selectedUnseqFiles = new ArrayList<>(1);
   }
 
   private TsFileResource unseqFileToInsert;
@@ -158,7 +161,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
-      CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);
       CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
           Collections.singletonList(unseqFileToInsert), false);
 
@@ -242,6 +244,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (sourceTsFile != null) {
       unseqFileToInsert = new TsFileResource(sourceTsFile);
+      selectedUnseqFiles.add(unseqFileToInsert);
     }
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
@@ -288,7 +291,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     return targetFile == null
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
-        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists());
+        || (unseqFileToInsert != null
+            && unseqFileToInsert.modFileExists()
+            && !targetFile.modFileExists());
   }
 
   private void rollback() throws IOException {
@@ -298,6 +303,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
     }
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    if (targetFile == null) {
+      return;
+    }
     if (targetFile.tsFileExists()) {
       FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(targetFile));
     }
@@ -309,6 +317,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void finishTask() throws IOException {
+    if (unseqFileToInsert == null) {
+      return;
+    }
     if (recoverMemoryStatus && unseqFileToInsert.tsFileExists()) {
       FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
     }
@@ -342,6 +353,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   protected void createSummary() {
     this.summary = new CompactionTaskSummary();
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    return CompactionTaskType.INSERTION;
   }
 
   private void releaseAllLocks() {

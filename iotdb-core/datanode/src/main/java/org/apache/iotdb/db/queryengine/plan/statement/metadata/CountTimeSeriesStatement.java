@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class CountTimeSeriesStatement extends CountStatement {
 
   private SchemaFilter schemaFilter;
+
+  private WhereCondition timeCondition;
 
   public CountTimeSeriesStatement(PartialPath partialPath) {
     super(partialPath);
@@ -37,6 +46,39 @@ public class CountTimeSeriesStatement extends CountStatement {
 
   public void setSchemaFilter(SchemaFilter schemaFilter) {
     this.schemaFilter = schemaFilter;
+  }
+
+  public void setTimeCondition(WhereCondition timeCondition) {
+    this.timeCondition = timeCondition;
+  }
+
+  public boolean hasTimeCondition() {
+    return timeCondition != null;
+  }
+
+  public WhereCondition getTimeCondition() {
+    return timeCondition;
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          this.authorityScope =
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(
+                      userName, PrivilegeType.READ_SCHEMA.ordinal()),
+                  AuthorityChecker.getAuthorizedPathTree(
+                      userName, PrivilegeType.READ_DATA.ordinal()));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return super.checkPermissionBeforeProcess(userName);
+    }
   }
 
   @Override

@@ -22,13 +22,15 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -37,19 +39,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  private volatile boolean isStartedToSupply = false;
-  private final AtomicInteger processorEventCollectorQueueTsFileSize = new AtomicInteger(0);
-  private final AtomicInteger connectorInputPendingQueueTsFileSize = new AtomicInteger(0);
-
   @Override
-  protected void doExtract(PipeRealtimeEvent event) {
+  protected void doExtract(final PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
@@ -78,7 +76,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     return shouldExtractInsertion;
   }
 
-  private void extractTabletInsertion(PipeRealtimeEvent event) {
+  private void extractTabletInsertion(final PipeRealtimeEvent event) {
     if (canNotUseTabletAnyMore()) {
       event
           .getTsFileEpoch()
@@ -107,7 +105,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case USING_TABLET:
       case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
+          // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
           final String errorMessage =
               String.format(
@@ -115,7 +113,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard tablet event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
@@ -131,7 +129,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private void extractTsFileInsertion(PipeRealtimeEvent event) {
+  private void extractTsFileInsertion(final PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()
         .migrateState(
@@ -178,7 +176,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case USING_TSFILE:
       case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
+          // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
           final String errorMessage =
               String.format(
@@ -186,7 +184,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard TsFile event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
@@ -203,19 +201,18 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore() {
-    // In the following 4 cases, we should not extract any more tablet events. all the data
+    // In the following 5 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
-    //  1. The historical extractor has not consumed all the data.
-    //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
-    //  tsfile mode to continue extracting, but if Wal size > maximum size of wal buffer,
+    //  1. If Wal size > maximum size of wal buffer,
     //  the write operation will be throttled, so we should not extract any more tablet events.
-    //  3. The number of pinned memtables has reached the dangerous threshold.
-    //  4. The number of tsfile events in the pending queue has exceeded the limit.
+    //  2. The number of pinned memtables has reached the dangerous threshold.
+    //  3. The number of historical tsFile events to transfer has exceeded the limit.
+    //  4. The number of realtime tsfile events to transfer has exceeded the limit.
     //  5. The number of linked tsfiles has reached the dangerous threshold.
-    return !isStartedToSupply
-        || mayWalSizeReachThrottleThreshold()
+    return mayWalSizeReachThrottleThreshold()
         || mayMemTablePinnedCountReachDangerousThreshold()
-        || isTsFileEventCountInQueueExceededLimit()
+        || isHistoricalTsFileEventCountExceededLimit()
+        || isRealtimeTsFileEventCountExceededLimit()
         || mayTsFileLinkedCountReachDangerousThreshold();
   }
 
@@ -225,40 +222,36 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
-  private boolean isTsFileEventCountInQueueExceededLimit() {
+  private boolean isHistoricalTsFileEventCountExceededLimit() {
+    final IoTDBDataRegionExtractor extractor =
+        PipeDataRegionExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
+    return Objects.nonNull(extractor)
+        && extractor.getHistoricalTsFileInsertionEventCount()
+            >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  }
+
+  private boolean isRealtimeTsFileEventCountExceededLimit() {
     return pendingQueue.getTsFileInsertionEventCount()
-            + processorEventCollectorQueueTsFileSize.get()
-            + connectorInputPendingQueueTsFileSize.get()
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeResourceManager.tsfile().getLinkedTsfileCount()
+    return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
-  }
-
-  public void informProcessorEventCollectorQueueTsFileSize(int queueSize) {
-    processorEventCollectorQueueTsFileSize.set(queueSize);
-  }
-
-  public void informConnectorInputPendingQueueTsFileSize(int queueSize) {
-    connectorInputPendingQueueTsFileSize.set(queueSize);
   }
 
   @Override
   public Event supply() {
-    isStartedToSupply = true;
-
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
-      Event suppliedEvent;
+      final Event suppliedEvent;
 
-      // used to judge type of event, not directly for supplying.
+      // Used to judge the type of the event, not directly for supplying.
       final Event eventToSupply = realtimeEvent.getEvent();
       if (eventToSupply instanceof TabletInsertionEvent) {
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
@@ -285,11 +278,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
 
-    // means the pending queue is empty.
+    // Means the pending queue is empty.
     return null;
   }
 
-  private Event supplyTabletInsertion(PipeRealtimeEvent event) {
+  private Event supplyTabletInsertion(final PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()
         .migrateState(
@@ -307,7 +300,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
-        // if the state is USING_TSFILE, discard the event and poll the next one.
+        // If the state is USING_TSFILE, discard the event and poll the next one.
         return null;
       case EMPTY:
       case USING_TABLET:
@@ -316,7 +309,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
           return event.getEvent();
         } else {
-          // if the event's reference count can not be increased, it means the data represented by
+          // If the event's reference count can not be increased, it means the data represented by
           // this event is not reliable anymore. but the data represented by this event
           // has been carried by the following tsfile event, so we can just discard this event.
           event.getTsFileEpoch().migrateState(this, s -> TsFileEpoch.State.USING_BOTH);
@@ -329,13 +322,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private Event supplyTsFileInsertion(PipeRealtimeEvent event) {
+  private Event supplyTsFileInsertion(final PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()
         .migrateState(
             this,
             state -> {
-              // this would not happen, but just in case.
+              // This would not happen, but just in case.
               if (state.equals(TsFileEpoch.State.EMPTY)) {
                 LOGGER.error(
                     String.format("EMPTY TsFileEpoch when supplying TsFile Event %s", event));
@@ -347,7 +340,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TABLET:
-        // if the state is USING_TABLET, discard the event and poll the next one.
+        // If the state is USING_TABLET, discard the event and poll the next one.
         return null;
       case EMPTY:
       case USING_TSFILE:
@@ -356,7 +349,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
           return event.getEvent();
         } else {
-          // if the event's reference count can not be increased, it means the data represented by
+          // If the event's reference count can not be increased, it means the data represented by
           // this event is not reliable anymore. the data has been lost. we simply discard this
           // event
           // and report the exception to PipeRuntimeAgent.
@@ -367,7 +360,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "the data represented by this event is lost",
                   event.getEvent());
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
           return null;
         }

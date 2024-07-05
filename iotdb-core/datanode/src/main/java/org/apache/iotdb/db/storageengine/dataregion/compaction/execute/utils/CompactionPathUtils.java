@@ -33,13 +33,17 @@ public class CompactionPathUtils {
 
   public static PartialPath getPath(IDeviceID device, String measurement)
       throws IllegalPathException {
+    return getPath(device).concatNode(measurement);
+  }
+
+  public static PartialPath getPath(IDeviceID device) throws IllegalPathException {
     PartialPath path;
     String plainDeviceId = ((PlainDeviceID) device).toStringID();
     if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
     } else {
-      path = new PartialPath(((PlainDeviceID) device).toStringID().split("\\."));
+      path = new PartialPath(plainDeviceId);
     }
-    return path.concatNode(measurement);
+    return path;
   }
 }

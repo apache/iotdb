@@ -72,6 +72,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferBytes(PlanNode planNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

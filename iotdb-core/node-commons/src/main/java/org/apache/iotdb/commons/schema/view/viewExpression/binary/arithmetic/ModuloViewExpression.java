@@ -40,6 +40,7 @@ public class ModuloViewExpression extends ArithmeticBinaryViewExpression {
   public ModuloViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

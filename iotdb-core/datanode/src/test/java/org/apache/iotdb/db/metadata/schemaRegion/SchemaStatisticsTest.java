@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
@@ -79,9 +78,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(6000);
       // schemaRegion1
-      IMNode<ICachedMNode> sg1 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<ICachedMNode> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
       if (size1 != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
@@ -127,16 +124,12 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      IMNode<?> sg1 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      IMNode<?> sg2 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
       sg2.setFullPath("root.sg2");
       long size2 = sg2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -147,9 +140,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      IMNode<?> sg1 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
       IMNode<?> tmp = nodeFactory.createDeviceMNode(sg1, "v");
@@ -179,9 +170,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      IMNode<?> sg2 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
       sg2.setFullPath("root.sg2");
       long size2 = sg2.estimateSize();
       tmp = nodeFactory.createInternalMNode(sg2, "d1");
@@ -244,9 +233,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      IMNode<ICachedMNode> sg1 =
-          nodeFactory.createDatabaseDeviceMNode(
-              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<ICachedMNode> sg1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
       if (sg1.estimateSize() != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
@@ -274,9 +261,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       }
       // schemaRegion2
-      IMNode<?> sg2 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
       sg2.setFullPath("root.sg2");
       long size2 = sg2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -287,9 +272,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      IMNode<?> sg1 =
-          nodeFactory.createDatabaseDeviceMNode(
-              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
       IMNode<?> tmp =
@@ -315,9 +298,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      IMNode<?> sg2 =
-          nodeFactory.createDatabaseMNode(
-              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
       sg2.setFullPath("root.sg2");
       long size2 = sg2.estimateSize();
       tmp = nodeFactory.createDeviceMNode(sg2, "d1");

@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -63,19 +62,22 @@ public class CheckpointManager implements AutoCloseable {
   // region these variables should be protected by infoLock
   // memTable id -> memTable info
   private final Map<Long, MemTableInfo> memTableId2Info = new ConcurrentHashMap<>();
+
   // cache the biggest byte buffer to serialize checkpoint
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer cachedByteBuffer;
+
   // max memTable id
   private long maxMemTableId = 0;
   // current checkpoint file version id, only updated by fsyncAndDeleteThread
   private long currentCheckPointFileVersion = 0;
   // current checkpoint file log writer, only updated by fsyncAndDeleteThread
   private ILogWriter currentLogWriter;
+
   // endregion
 
-  public CheckpointManager(String identifier, String logDirectory) throws FileNotFoundException {
+  public CheckpointManager(String identifier, String logDirectory) throws IOException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
@@ -255,6 +257,7 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }
+
   // endregion
 
   // region methods for pipe
@@ -314,6 +317,7 @@ public class CheckpointManager implements AutoCloseable {
       infoLock.unlock();
     }
   }
+
   // endregion
 
   /** Get MemTableInfo of oldest unpinned MemTable, whose first version id is smallest. */
@@ -340,12 +344,13 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** Update wal disk cost of active memTables. */
-  public void updateCostOfActiveMemTables(Map<Long, Long> memTableId2WalDiskUsage) {
+  public void updateCostOfActiveMemTables(
+      Map<Long, Long> memTableId2WalDiskUsage, double compressionRate) {
     for (Map.Entry<Long, Long> memTableWalUsage : memTableId2WalDiskUsage.entrySet()) {
       memTableId2Info.computeIfPresent(
           memTableWalUsage.getKey(),
           (k, v) -> {
-            v.addWalDiskUsage(memTableWalUsage.getValue());
+            v.addWalDiskUsage((long) (memTableWalUsage.getValue() * compressionRate));
             return v;
           });
     }

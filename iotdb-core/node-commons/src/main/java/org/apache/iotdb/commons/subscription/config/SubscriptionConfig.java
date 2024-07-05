@@ -35,8 +35,20 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTabletBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTsFileBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes();
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -55,12 +67,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionDefaultPollTimeoutMs();
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionMinPollTimeoutMs();
+  public long getSubscriptionReadFileBufferSize() {
+    return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -72,7 +80,17 @@ public class SubscriptionConfig {
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
-        "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+        "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
+        getSubscriptionPrefetchTabletBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}",
+        getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}",
+        getSubscriptionPrefetchTsFileBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
+        getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
@@ -80,8 +98,7 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
-    LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
-    LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
+    LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

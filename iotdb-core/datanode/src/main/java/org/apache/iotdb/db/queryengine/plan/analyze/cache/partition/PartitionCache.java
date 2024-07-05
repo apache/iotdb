@@ -87,15 +87,19 @@ public class PartitionCache {
 
   /** the size of partitionCache */
   private final int cacheSize = config.getPartitionCacheSize();
+
   /** the cache of database */
   private final Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
+
   /** storage -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
+
   /** storage -> dataPartitionTable */
   private final Cache<String, DataPartitionTable> dataPartitionCache;
 
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
+
   /** TConsensusGroupId -> TRegionReplicaSet */
   private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
 
@@ -292,8 +296,8 @@ public class PartitionCache {
    */
   private void getStorageGroupMap(
       StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
+    storageGroupCacheLock.readLock().lock();
     try {
-      storageGroupCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;
@@ -425,16 +429,16 @@ public class PartitionCache {
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet result;
     // try to get regionReplicaSet from cache
+    regionReplicaSetLock.readLock().lock();
     try {
-      regionReplicaSetLock.readLock().lock();
       result = groupIdToReplicaSetMap.get(consensusGroupId);
     } finally {
       regionReplicaSetLock.readLock().unlock();
     }
     if (result == null) {
       // if not hit then try to get regionReplicaSet from confignode
+      regionReplicaSetLock.writeLock().lock();
       try {
-        regionReplicaSetLock.writeLock().lock();
         // verify that there are not hit in cache
         if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
           try (ConfigNodeClient client =
@@ -468,18 +472,17 @@ public class PartitionCache {
    *
    * @param timestamp the timestamp of map that need to update
    * @param map consensusGroupId to regionReplicaSet map
-   * @return true if update successfully or false when map is not latest
+   * @return {@code true} if update successfully or false when map is not latest
    */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
+    regionReplicaSetLock.writeLock().lock();
     try {
-      regionReplicaSetLock.writeLock().lock();
       boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
       // if timestamp is greater than latestUpdateTime, then update
       if (result) {
         groupIdToReplicaSetMap.clear();
         groupIdToReplicaSetMap.putAll(map);
-        logger.info("groupIdToReplicaSetMap update: {}", groupIdToReplicaSetMap);
       }
       return result;
     } finally {
@@ -489,8 +492,8 @@ public class PartitionCache {
 
   /** invalidate replicaSetCache */
   public void invalidReplicaSetCache() {
+    regionReplicaSetLock.writeLock().lock();
     try {
-      regionReplicaSetLock.writeLock().lock();
       groupIdToReplicaSetMap.clear();
     } finally {
       regionReplicaSetLock.writeLock().unlock();
@@ -611,6 +614,7 @@ public class PartitionCache {
       schemaPartitionCacheLock.writeLock().unlock();
     }
   }
+
   // endregion
 
   // region data partition cache

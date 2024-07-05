@@ -70,7 +70,12 @@ get_properties_value() {
     local file_name=$1
     local property_name=$2
     local default_value=$3
-    local property_value=$(sed "/^${property_name}=/!d;s/.*=//" "${IOTDB_HOME}/conf/${file_name}.properties")
+    if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
+            local file_path="${IOTDB_HOME}/conf/iotdb-system.properties"
+    else
+            local file_path="${IOTDB_HOME}/conf/${file_name}.properties"
+    fi
+    local property_value=$(sed "/^${property_name}=/!d;s/.*=//" "${file_path}")
     if [ -z "$property_value" ]; then
             property_value="$default_value"
     fi
@@ -111,8 +116,6 @@ check_running_process() {
     done
     if [ ${#iotdb_listening_ports[@]} -gt 0 ]; then
           echo " Please stop IoTDB"  >&2
-          echo " Exit..."  >&2
-          echo ""
           exit 1
     fi
 }
@@ -131,4 +134,6 @@ if [ ! -d "$logs_dir" ]; then
     mkdir "$logs_dir"
 fi
 
-nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@" > ${logs_dir}/iotdb-data-back.log 2>&1 &
+IOTDB_CLI_CONF=${IOTDB_HOME}/conf
+iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-backup.xml"
+exec nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" >/dev/null 2>&1 <&- &

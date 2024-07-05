@@ -48,6 +48,7 @@ public enum ConfigPhysicalPlanType {
   GetDatabase((short) 208),
   CountDatabase((short) 209),
   AlterDatabase((short) 210),
+  ShowTTL((short) 211),
 
   /** Region. */
   CreateRegionGroups((short) 300),
@@ -122,6 +123,7 @@ public enum ConfigPhysicalPlanType {
   ListUserRoles((short) 636),
   @Deprecated
   ListRoleUsers((short) 637),
+  CreateUserWithRawPassword((short) 638),
 
   /** Function. */
   CreateFunction((short) 700),
@@ -212,6 +214,7 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteTimeSeries((short) 1702),
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
+  PipeSetTTL((short) 1705),
 
   /** Subscription */
   CreateTopic((short) 1800),

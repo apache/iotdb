@@ -33,8 +33,9 @@ public interface ILogWriter extends Closeable {
    *
    * @param buffer content that have been converted to bytes
    * @throws IOException if an I/O error occurs
+   * @return Compression rate of the buffer after compression
    */
-  void write(ByteBuffer buffer) throws IOException;
+  double write(ByteBuffer buffer) throws IOException;
 
   /**
    * Forces any updates to this file to be written to the storage device that contains it.

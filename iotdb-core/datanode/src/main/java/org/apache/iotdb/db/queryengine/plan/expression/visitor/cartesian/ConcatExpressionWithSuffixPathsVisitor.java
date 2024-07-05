@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayList;
@@ -35,8 +37,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck;
 
 public class ConcatExpressionWithSuffixPathsVisitor
     extends CartesianProductVisitor<ConcatExpressionWithSuffixPathsVisitor.Context> {
@@ -60,7 +62,8 @@ public class ConcatExpressionWithSuffixPathsVisitor
 
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-    return reconstructFunctionExpressions(functionExpression, childExpressionsList);
+    return reconstructFunctionExpressionsWithMemoryCheck(
+        functionExpression, childExpressionsList, context.getQueryContext());
   }
 
   @Override
@@ -78,7 +81,8 @@ public class ConcatExpressionWithSuffixPathsVisitor
         actualPaths.add(concatPath);
       }
     }
-    return reconstructTimeSeriesOperands(timeSeriesOperand, actualPaths);
+    return reconstructTimeSeriesOperandsWithMemoryCheck(
+        timeSeriesOperand, actualPaths, context.getQueryContext());
   }
 
   @Override
@@ -92,13 +96,20 @@ public class ConcatExpressionWithSuffixPathsVisitor
     return Collections.singletonList(constantOperand);
   }
 
-  public static class Context {
+  public static class Context implements QueryContextProvider {
     private final List<PartialPath> prefixPaths;
     private final PathPatternTree patternTree;
 
-    public Context(List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+    private final MPPQueryContext queryContext;
+
+    public Context(
+        final List<PartialPath> prefixPaths,
+        final PathPatternTree patternTree,
+        final MPPQueryContext queryContext) {
       this.prefixPaths = prefixPaths;
       this.patternTree = patternTree;
+      Validate.notNull(queryContext, "QueryContext is null");
+      this.queryContext = queryContext;
     }
 
     public List<PartialPath> getPrefixPaths() {
@@ -107,6 +118,11 @@ public class ConcatExpressionWithSuffixPathsVisitor
 
     public PathPatternTree getPatternTree() {
       return patternTree;
+    }
+
+    @Override
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
     }
   }
 }

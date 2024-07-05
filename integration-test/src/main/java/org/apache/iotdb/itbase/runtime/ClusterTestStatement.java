@@ -20,6 +20,9 @@ package org.apache.iotdb.itbase.runtime;
 
 import org.apache.iotdb.jdbc.Config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,9 +34,10 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTestStatement.class);
   private static final int DEFAULT_QUERY_TIMEOUT = 120;
-  private final Statement writeStatement;
-  private final String writEndpoint;
+  private Statement writeStatement;
+  private String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
   private final List<String> readEndpoints = new ArrayList<>();
   private boolean closed = false;
@@ -41,16 +45,28 @@ public class ClusterTestStatement implements Statement {
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
   private int fetchSize = Config.DEFAULT_FETCH_SIZE;
 
-  public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
-      throws SQLException {
-    this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
-    updateConfig(writeStatement, 0);
-    writEndpoint = writeConnection.toString();
+  public ClusterTestStatement(
+      NodeConnection writeConnection, List<NodeConnection> readConnections) {
+    try {
+      this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
+      updateConfig(writeStatement, 0);
+      writEndpoint = writeConnection.toString();
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to create write statement.", e);
+    }
+
     for (NodeConnection readConnection : readConnections) {
-      Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
-      this.readStatements.add(readStatement);
-      this.readEndpoints.add(readConnection.toString());
-      updateConfig(readStatement, queryTimeout);
+      try {
+        Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
+        this.readStatements.add(readStatement);
+        this.readEndpoints.add(readConnection.toString());
+        updateConfig(readStatement, queryTimeout);
+      } catch (SQLException e) {
+        LOGGER.warn("Cannot create read statement from connection {}.", readConnection, e);
+      }
+    }
+    if (readStatements.isEmpty()) {
+      LOGGER.warn("Failed to create any read statement.");
     }
   }
 

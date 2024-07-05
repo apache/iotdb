@@ -179,6 +179,9 @@ public class QueryExecution implements IQueryExecution {
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
 
+    // The last batch of memory reserved by the front end
+    context.reserveMemoryForFrontEndImmediately();
+
     // friendly for gc
     logicalPlan.clearUselessMemory();
 
@@ -362,7 +365,8 @@ public class QueryExecution implements IQueryExecution {
           .deRegisterFragmentInstanceFromMemoryPool(
               fragmentInstanceId.queryId,
               FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                  fragmentInstanceId));
+                  fragmentInstanceId),
+              true);
     }
   }
 
@@ -482,7 +486,9 @@ public class QueryExecution implements IQueryExecution {
     return resultHandle.getSerializedTsBlock();
   }
 
-  /** @return true if there is more tsblocks, otherwise false */
+  /**
+   * @return true if there is more tsblocks, otherwise false
+   */
   @Override
   public boolean hasNextResult() {
     return resultHandle != null && !resultHandle.isFinished();

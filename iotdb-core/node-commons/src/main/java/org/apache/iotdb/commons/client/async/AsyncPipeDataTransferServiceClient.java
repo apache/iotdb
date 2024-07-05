@@ -31,6 +31,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.transport.TNonblockingSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,6 +118,15 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     this.shouldReturnSelf.set(shouldReturnSelf);
   }
 
+  public void setTimeoutDynamically(int timeout) {
+    try {
+      ((TNonblockingSocket) ___transport).setTimeout(timeout);
+    } catch (Exception e) {
+      setTimeout(timeout);
+      LOGGER.error("Failed to set timeout dynamically, set it statically", e);
+    }
+  }
+
   private void close() {
     ___transport.close();
     ___currentMethod = null;
@@ -131,7 +141,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
         LOGGER.error(
             "Unexpected exception occurs in {}, error msg is {}",
             this,
-            ExceptionUtils.getRootCause(e).toString());
+            ExceptionUtils.getRootCause(e).toString(),
+            e);
       }
       return false;
     }
@@ -152,6 +163,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public int getPort() {
     return endpoint.getPort();
+  }
+
+  public TEndPoint getEndPoint() {
+    return endpoint;
   }
 
   @Override

@@ -29,7 +29,7 @@ popd
 if NOT DEFINED JAVA_HOME goto :err
 
 set JAVA_OPTS=-ea^
- -DIOTDB_HOME=%IOTDB_HOME%
+ -DIOTDB_HOME="%IOTDB_HOME%"
 
 SET IOTDB_CONF=%IOTDB_HOME%\conf
 IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
@@ -38,18 +38,28 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo Can't find datanode-env.bat
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-    %IOTDB_CONF%\iotdb-datanode.properties') do (
+    "%IOTDB_CONF%\iotdb-system.properties"') do (
+      set dn_rpc_port=%%i
+  )
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
+    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
       set dn_rpc_port=%%i
   )
 ) ELSE (
   set dn_rpc_port=6667
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-    %IOTDB_CONF%\iotdb-confignode.properties') do (
+    "%IOTDB_CONF%\iotdb-system.properties"') do (
+      set cn_internal_port=%%i
+  )
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
+    "%IOTDB_CONF%\iotdb-confignode.properties"') do (
       set cn_internal_port=%%i
   )
 ) ELSE (
@@ -91,15 +101,17 @@ echo ------------------------------------------
 echo Starting IoTDB Client Data Back Script
 echo ------------------------------------------
 
-set CLASSPATH=%CLASSPATH%;%IOTDB_HOME%\lib\*
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
 
-set "logsDir=%IOTDB_HOME%\logs"
+set logsDir="%IOTDB_HOME%\logs"
 if not exist "%logsDir%" (
     mkdir "%logsDir%"
 )
 
-start /B "" cmd /C "%JAVA_HOME%\bin\java -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %* > %logsDir%\iotdb-data-back.log 2>&1"
+set IOTDB_CLI_CONF=%IOTDB_HOME%\conf
+set "iotdb_cli_params=-Dlogback.configurationFile=!IOTDB_CLI_CONF!\logback-backup.xml"
+start /B "" cmd /C "("%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !iotdb_cli_params! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*) > nul 2>&1"
 exit /b
 
 :checkIfIOTDBProcess

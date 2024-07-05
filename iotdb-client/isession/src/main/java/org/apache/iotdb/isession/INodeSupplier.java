@@ -22,9 +22,12 @@ package org.apache.iotdb.isession;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 public interface INodeSupplier extends Supplier<List<TEndPoint>> {
 
   void close();
+
+  Optional<TEndPoint> getQueryEndPoint();
 }

@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.input;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 
 import java.util.List;
 
@@ -32,8 +32,7 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
 
   private final Operator operator;
   private final List<TSDataType> dataTypes;
-
-  private TsBlockRowIterator tsBlockRowIterator;
+  private TsBlock tsBlock;
 
   public TsBlockInputDataSet(Operator operator, List<TSDataType> dataTypes) {
     this.operator = operator;
@@ -46,41 +45,29 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
   }
 
   @Override
-  public boolean hasNextRowInObjects() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public YieldableState canYieldNextRowInObjects() throws Exception {
-    if (tsBlockRowIterator == null) {
+  public YieldableState yield() throws Exception {
+    // Request from child operator if there is no TsBlock
+    if (tsBlock == null) {
       if (operator.isBlocked() != Operator.NOT_BLOCKED) {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
       if (!operator.hasNextWithTimer()) {
         return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
-      final TsBlock tsBlock = operator.nextWithTimer();
+      tsBlock = operator.nextWithTimer();
       if (tsBlock == null) {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
-      tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
     }
 
-    if (tsBlockRowIterator.hasNext()) {
-      return YieldableState.YIELDABLE;
-    } else {
-      tsBlockRowIterator = null;
-      if (operator.isBlocked() != Operator.NOT_BLOCKED) {
-        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
-      }
-      return operator.hasNextWithTimer()
-          ? YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA
-          : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
-    }
+    return YieldableState.YIELDABLE;
   }
 
   @Override
-  public Object[] nextRowInObjects() {
-    return tsBlockRowIterator.next();
+  public Column[] currentBlock() {
+    Column[] rows = tsBlock.getAllColumns();
+    // Prepare for next TsBlock
+    tsBlock = null;
+    return rows;
   }
 }

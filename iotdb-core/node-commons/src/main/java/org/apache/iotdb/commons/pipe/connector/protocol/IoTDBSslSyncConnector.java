@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.Pair;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
@@ -143,7 +145,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus, boolean isMultiFile)
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -161,14 +166,21 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         final PipeTransferFilePieceResp resp;
         try {
+          final TPipeTransferReq req =
+              compressIfNeeded(
+                  isMultiFile
+                      ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                      : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+          pipe2WeightMap.forEach(
+              (namePair, weight) ->
+                  rateLimitIfNeeded(
+                      namePair.getLeft(),
+                      namePair.getRight(),
+                      clientAndStatus.getLeft().getEndPoint(),
+                      (long) (req.getBody().length * weight)));
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          isMultiFile
-                              ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
-                              : getTransferSingleFilePieceReq(file.getName(), position, payLoad)));
+                  clientAndStatus.getLeft().pipeTransfer(req));
         } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
@@ -217,5 +229,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     if (clientManager != null) {
       clientManager.close();
     }
+
+    super.close();
   }
 }

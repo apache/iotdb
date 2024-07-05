@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
@@ -31,9 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Node
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedI
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -78,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -95,10 +98,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -138,7 +143,7 @@ public enum PlanNodeType {
   ALTER_TIME_SERIES((short) 21),
   CREATE_ALIGNED_TIME_SERIES((short) 22),
   TIME_SERIES_SCHEMA_SCAN((short) 23),
-  SCHEMA_FETCH_SCAN((short) 24),
+  SERIES_SCHEMA_FETCH_SCAN((short) 24),
   SCHEMA_QUERY_MERGE((short) 25),
   SCHEMA_QUERY_ORDER_BY_HEAT((short) 26),
   DEVICES_COUNT((short) 27),
@@ -210,6 +215,13 @@ public enum PlanNodeType {
   EXPLAIN_ANALYZE((short) 90),
 
   PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
+
+  RAW_DATA_AGGREGATION((short) 92),
+
+  DEVICE_REGION_SCAN((short) 93),
+  TIMESERIES_REGION_SCAN((short) 94),
+  REGION_MERGE((short) 95),
+  DEVICE_SCHEMA_FETCH_SCAN((short) 96),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -239,6 +251,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(stream);
       case 14:
         return InsertRowNode.deserializeFromWAL(stream);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
       default:
@@ -253,6 +267,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(buffer);
       case 14:
         return InsertRowNode.deserializeFromWAL(buffer);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
       default:
@@ -312,7 +328,7 @@ public enum PlanNodeType {
       case 23:
         return TimeSeriesSchemaScanNode.deserialize(buffer);
       case 24:
-        return SchemaFetchScanNode.deserialize(buffer);
+        return SeriesSchemaFetchScanNode.deserialize(buffer);
       case 25:
         return SchemaQueryMergeNode.deserialize(buffer);
       case 26:
@@ -441,6 +457,16 @@ public enum PlanNodeType {
         return ExplainAnalyzeNode.deserialize(buffer);
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
+      case 92:
+        return RawDataAggregationNode.deserialize(buffer);
+      case 93:
+        return DeviceRegionScanNode.deserialize(buffer);
+      case 94:
+        return TimeseriesRegionScanNode.deserialize(buffer);
+      case 95:
+        return ActiveRegionScanMergeNode.deserialize(buffer);
+      case 96:
+        return DeviceSchemaFetchScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -449,14 +475,18 @@ public enum PlanNodeType {
   public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
+      case 1:
+        return DeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 3:
         return FilterNode.deserializeUseTemplate(buffer, typeProvider);
-      case 33:
-        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
-      case 65:
-        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 32:
         return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 34:
+        return AlignedSeriesAggregationScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

@@ -24,9 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,7 +41,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     private E data;
     private LinkedListNode<E> next;
 
-    private LinkedListNode(E data) {
+    private LinkedListNode(final E data) {
       this.data = data;
       this.next = null;
     }
@@ -57,15 +58,15 @@ public class ConcurrentIterableLinkedQueue<E> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private final Condition hasNextCondition = lock.writeLock().newCondition();
 
-  private final ConcurrentMap<DynamicIterator, DynamicIterator> iteratorSet =
-      new ConcurrentHashMap<>();
+  private final Set<DynamicIterator> iteratorSet =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * Add an element to the tail of the queue.
    *
    * @param e the element to be added, which cannot be {@code null}
    */
-  public void add(E e) {
+  public void add(final E e) {
     if (e == null) {
       throw new IllegalArgumentException("Null element is not allowed.");
     }
@@ -110,7 +111,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       // Iterate over iterators to find the minimum valid newFirstIndex
-      for (final DynamicIterator iterator : iteratorSet.keySet()) {
+      for (final DynamicIterator iterator : iteratorSet) {
         newFirstIndex = Math.min(newFirstIndex, iterator.getNextIndex());
       }
       newFirstIndex = Math.max(newFirstIndex, firstIndex);
@@ -125,7 +126,11 @@ public class ConcurrentIterableLinkedQueue<E> {
       }
 
       firstNode = currentNode;
-      pilotNode.next = firstNode;
+      // pilotNode.next shall be null when the queue is empty and firstNode == pilotNode
+      // to make iterator.hasNext() == false when the iterator is on the pilotNode
+      if (firstNode != pilotNode) {
+        pilotNode.next = firstNode;
+      }
 
       // Reset firstNode and lastNode to pilotNode if the queue becomes empty
       if (firstNode == null) {
@@ -134,14 +139,12 @@ public class ConcurrentIterableLinkedQueue<E> {
       }
 
       // Update iterators if necessary
-      iteratorSet
-          .keySet()
-          .forEach(
-              iterator -> {
-                if (iterator.nextIndex == firstIndex) {
-                  iterator.currentNode = pilotNode;
-                }
-              });
+      iteratorSet.forEach(
+          iterator -> {
+            if (iterator.nextIndex == firstIndex) {
+              iterator.currentNode = pilotNode;
+            }
+          });
 
       hasNextCondition.signalAll();
 
@@ -156,7 +159,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       // Use a new set to avoid ConcurrentModificationException
-      ImmutableSet.copyOf(iteratorSet.keySet()).forEach(DynamicIterator::close);
+      ImmutableSet.copyOf(iteratorSet).forEach(DynamicIterator::close);
 
       tryRemoveBefore(tailIndex);
     } finally {
@@ -200,7 +203,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public void setFirstIndex(long firstIndex) {
+  public void setFirstIndex(final long firstIndex) {
     lock.writeLock().lock();
     try {
       this.firstIndex = firstIndex;
@@ -218,7 +221,7 @@ public class ConcurrentIterableLinkedQueue<E> {
    * If the queue is empty, the given index is valid if it is equal to {@link
    * ConcurrentIterableLinkedQueue#firstIndex}.
    */
-  public boolean isNextIndexValid(long nextIndex) {
+  public boolean isNextIndexValid(final long nextIndex) {
     lock.readLock().lock();
     try {
       return firstIndex <= nextIndex && nextIndex <= tailIndex;
@@ -231,9 +234,9 @@ public class ConcurrentIterableLinkedQueue<E> {
     return !iteratorSet.isEmpty();
   }
 
-  public DynamicIterator iterateFrom(long offset) {
+  public DynamicIterator iterateFrom(final long offset) {
     final DynamicIterator iterator = new DynamicIterator(offset);
-    iteratorSet.put(iterator, iterator);
+    iteratorSet.add(iterator);
     return iterator;
   }
 
@@ -289,7 +292,7 @@ public class ConcurrentIterableLinkedQueue<E> {
      * @return the next element in the queue. {@code null} if the queue is closed, or if the waiting
      *     time elapsed, or the thread is interrupted
      */
-    public E next(long waitTimeMillis) {
+    public E next(final long waitTimeMillis) {
       lock.writeLock().lock();
       try {
         while (!hasNext()) {
@@ -306,7 +309,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         ++nextIndex;
 
         return currentNode.data;
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Interrupted while waiting for next element.", e);
         return null;

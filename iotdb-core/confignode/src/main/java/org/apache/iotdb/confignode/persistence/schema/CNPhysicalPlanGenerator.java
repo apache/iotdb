@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -52,7 +53,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -80,8 +80,6 @@ public class CNPhysicalPlanGenerator
 
   private static final String STRING_ENCODING = "utf-8";
 
-  // For default password
-  private static final String DEFAULT_PASSWORD = "password";
   private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   private final HashMap<Integer, String> templateTable = new HashMap<>();
@@ -132,6 +130,8 @@ public class CNPhysicalPlanGenerator
       generateUserRolePhysicalPlan(false);
     } else if (snapshotFileType == CNSnapshotFileType.USER_ROLE) {
       generateGrantRolePhysicalPlan();
+    } else if (snapshotFileType == CNSnapshotFileType.TTL) {
+      generateSetTTLPlan();
     } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
       generateTemplatePlan();
       if (latestException != null) {
@@ -187,10 +187,11 @@ public class CNPhysicalPlanGenerator
       }
       String user = versionAndName.left;
       if (isUser) {
-        readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan createUser = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+        final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        final AuthorPlan createUser =
+            new AuthorPlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
         createUser.setUserName(user);
-        createUser.setPassword(DEFAULT_PASSWORD);
+        createUser.setPassword(rawPassword);
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
@@ -265,6 +266,22 @@ public class CNPhysicalPlanGenerator
         plan.setNodeNameList(new ArrayList<>());
         planDeque.add(plan);
       }
+    }
+  }
+
+  private void generateSetTTLPlan() {
+    try (DataInputStream ttlInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
+      int size = ReadWriteIOUtils.readInt(ttlInputStream);
+      while (size > 0) {
+        String path = ReadWriteIOUtils.readString(ttlInputStream);
+        long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
+        planDeque.add(new SetTTLPlan(PathUtils.splitPathToDetachedNodes(path), ttl));
+        size--;
+      }
+    } catch (IOException | IllegalPathException e) {
+      logger.error("Got exception when deserializing ttl file", e);
+      latestException = e;
     }
   }
 
@@ -387,11 +404,6 @@ public class CNPhysicalPlanGenerator
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
-    long databaseTTL = -1L;
-    if (databaseMNode.getAsMNode().getDatabaseSchema().isSetTTL()) {
-      databaseTTL = databaseMNode.getAsMNode().getDatabaseSchema().getTTL();
-      databaseMNode.getAsMNode().getDatabaseSchema().unsetTTL();
-    }
 
     if (databaseMNode.getAsMNode().getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
       templateNodeList.add((IConfigMNode) databaseMNode);
@@ -401,13 +413,6 @@ public class CNPhysicalPlanGenerator
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
     planDeque.add(createDBPlan);
-    if (databaseTTL != -1L) {
-      final SetTTLPlan setTTLPlan =
-          new SetTTLPlan(
-              Arrays.asList(databaseMNode.getAsMNode().getDatabaseSchema().getName().split("\\.")),
-              databaseTTL);
-      planDeque.add(setTTLPlan);
-    }
     return databaseMNode.getAsMNode();
   }
 

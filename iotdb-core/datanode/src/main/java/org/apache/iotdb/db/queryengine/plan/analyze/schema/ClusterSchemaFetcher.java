@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -92,12 +93,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     Set<PartialPath> explicitDevicePatternList = new HashSet<>();
     int explicitDevicePatternCount = 0;
     for (PartialPath pattern : pathPatternList) {
-      if (!pattern.hasWildcard()) {
-        explicitPathList.add(pattern);
-      } else if (pattern.hasExplicitDevice()
+      if (withTemplate
+          && pattern.hasExplicitDevice()
           && templateManager.checkTemplateSetInfo(pattern) != null) {
         explicitDevicePatternList.add(pattern.getDevicePath());
         explicitDevicePatternCount++;
+      } else if (!pattern.hasWildcard()) {
+        explicitPathList.add(pattern);
       }
     }
 
@@ -152,6 +154,21 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     } finally {
       schemaCache.releaseReadLock();
     }
+  }
+
+  @Override
+  public ISchemaTree fetchRawSchemaInDeviceLevel(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+    authorityScope.constructTree();
+    return clusterSchemaFetchExecutor.fetchDeviceLevelRawSchema(
+        patternTree, authorityScope, context);
+  }
+
+  @Override
+  public ISchemaTree fetchRawSchemaInMeasurementLevel(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+    return clusterSchemaFetchExecutor.fetchMeasurementLevelRawSchema(
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, authorityScope), context);
   }
 
   @Override

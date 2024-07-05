@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -46,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Objects;
 
 public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
@@ -68,7 +69,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
 
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -82,7 +83,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tablet insertion event %s, because %s.",
-              tabletInsertionEvent, e.getMessage()),
+              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
           e);
     }
   }
@@ -105,7 +106,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
 
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       doTransferWrapper(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
@@ -115,7 +116,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -123,12 +125,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   @Override
   public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
         doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
-      } else if (!(event instanceof PipeHeartbeatEvent)) {
+      } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
             "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
             event);
@@ -138,13 +140,14 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsfile event %s, because %s.", event, e.getMessage()),
+              "Network error when transfer tsfile event %s, because %s.",
+              ((PipeSchemaRegionWritePlanEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }
 
   private void doTransferWrapper(
-      final Socket socket,
+      final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     try {
@@ -161,7 +164,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket,
+      final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     final InsertNode insertNode =
@@ -172,7 +175,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
             : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
 
-    if (!send(socket, bytes)) {
+    if (!send(
+        pipeInsertNodeTabletInsertionEvent.getPipeName(),
+        pipeInsertNodeTabletInsertionEvent.getCreationTime(),
+        socket,
+        bytes)) {
       final String errorMessage =
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
@@ -186,7 +193,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -202,9 +209,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
     if (!send(
+        pipeRawTabletInsertionEvent.getPipeName(),
+        pipeRawTabletInsertionEvent.getCreationTime(),
         socket,
         PipeTransferTabletRawReq.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
@@ -222,7 +231,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -238,18 +247,22 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
+    final long creationTime = pipeTsFileInsertionEvent.getCreationTime();
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
     if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
       final File modFile = pipeTsFileInsertionEvent.getModFile();
-      transferFilePieces(modFile, socket, true);
-      transferFilePieces(tsFile, socket, true);
+      transferFilePieces(pipeName, creationTime, modFile, socket, true);
+      transferFilePieces(pipeName, creationTime, tsFile, socket, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       if (!send(
+          pipeName,
+          creationTime,
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
               modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()))) {
@@ -262,9 +275,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }
     } else {
-      transferFilePieces(tsFile, socket, false);
+      transferFilePieces(pipeName, creationTime, tsFile, socket, false);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       if (!send(
+          pipeName,
+          creationTime,
           socket,
           PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
         receiverStatusHandler.handle(

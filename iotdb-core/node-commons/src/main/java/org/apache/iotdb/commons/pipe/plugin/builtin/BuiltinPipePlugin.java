@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.consensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
@@ -35,8 +36,10 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.Aggregat
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.ChangingValueSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.twostage.TwoStageCountProcessor;
 
@@ -59,6 +62,8 @@ public enum BuiltinPipePlugin {
   TUMBLING_TIME_SAMPLING_PROCESSOR(
       "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
   SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
+  CHANGING_VALUE_SAMPLING_PROCESSOR(
+      "changing-value-sampling-processor", ChangingValueSamplingProcessor.class),
   THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
   AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
   COUNT_POINT_PROCESSOR("count-point-processor", TwoStageCountProcessor.class),
@@ -66,6 +71,7 @@ public enum BuiltinPipePlugin {
   // Hidden-processors, which are plugins of the processors
   STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
   TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
+  PIPE_CONSENSUS_PROCESSOR("pipe-consensus-processor", PipeConsensusProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -75,6 +81,9 @@ public enum BuiltinPipePlugin {
   IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
   IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
+  PIPE_CONSENSUS_ASYNC_CONNECTOR(
+      "pipe-consensus-async-connector", PipeConsensusAsyncConnector.class),
+
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
@@ -90,6 +99,7 @@ public enum BuiltinPipePlugin {
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
+  PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncConnector.class),
   ;
 
   private final String pipePluginName;
@@ -126,6 +136,7 @@ public enum BuiltinPipePlugin {
                   // Processors
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
                   AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),

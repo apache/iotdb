@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -58,8 +59,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(true),
-        serialId,
-        CompactionTaskPriorityType.REPAIR_DATA);
+        serialId);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     this.rewriteFile = false;
@@ -78,8 +78,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId,
-        CompactionTaskPriorityType.REPAIR_DATA);
+        serialId);
     this.sourceFile = sourceFile;
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -100,8 +99,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(true),
-        serialId,
-        CompactionTaskPriorityType.REPAIR_DATA);
+        serialId);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     this.latch = latch;
@@ -122,8 +120,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId,
-        CompactionTaskPriorityType.REPAIR_DATA);
+        serialId);
     this.sourceFile = sourceFile;
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -171,7 +168,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   protected void prepareTargetFiles() throws IOException {
     CompactionUtils.updateProgressIndex(
         targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
-    CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+    CompactionUtils.moveTargetFile(
+        targetTsFileList, CompactionTaskType.REPAIR, storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
         "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
@@ -235,5 +233,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (latch != null) {
       latch.countDown();
     }
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    return CompactionTaskType.REPAIR;
   }
 }

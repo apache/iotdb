@@ -75,6 +75,7 @@ public class TsFileNameGenerator {
         version,
         innerSpaceCompactionCount,
         crossSpaceCompactionCount,
+        0,
         TsFileConstant.TSFILE_SUFFIX);
   }
 
@@ -87,10 +88,12 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount,
+      int tierLevel,
       String customSuffix)
       throws DiskSpaceInsufficientException {
     String tsFileDir =
-        generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
+        generateTsFileDir(
+            sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId, tierLevel);
     fsFactory.getFile(tsFileDir).mkdirs();
     return tsFileDir
         + File.separator
@@ -102,10 +105,11 @@ public class TsFileNameGenerator {
       boolean sequence,
       String logicalStorageGroup,
       String virtualStorageGroup,
-      long timePartitionId)
+      long timePartitionId,
+      int tierLevel)
       throws DiskSpaceInsufficientException {
     TierManager tierManager = TierManager.getInstance();
-    String baseDir = tierManager.getNextFolderForTsFile(0, sequence);
+    String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
     return baseDir
         + File.separator
         + logicalStorageGroup
@@ -241,6 +245,7 @@ public class TsFileNameGenerator {
                       tsFileName.version,
                       tsFileName.innerCompactionCnt,
                       tsFileName.crossCompactionCnt,
+                      resource.getTierLevel(),
                       IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)),
               TsFileResourceStatus.COMPACTING));
     }
@@ -265,6 +270,7 @@ public class TsFileNameGenerator {
     long maxVersion = Long.MIN_VALUE;
     long maxInnerMergeCount = Long.MIN_VALUE;
     long maxCrossMergeCount = Long.MIN_VALUE;
+    int maxTierLevel = 0;
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       minTime = Math.min(tsFileName.time, minTime);
@@ -273,6 +279,7 @@ public class TsFileNameGenerator {
       maxVersion = Math.max(tsFileName.version, maxVersion);
       maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
+      maxTierLevel = Math.max(resource.getTierLevel(), maxTierLevel);
     }
     // set target resource to COMPACTING until the end of this task
     TsFileResource resource =
@@ -288,6 +295,7 @@ public class TsFileNameGenerator {
                         minVersion,
                         (int) maxInnerMergeCount + 1,
                         (int) maxCrossMergeCount,
+                        maxTierLevel,
                         IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),
                 TsFileResourceStatus.COMPACTING)
             : new TsFileResource(
@@ -301,10 +309,56 @@ public class TsFileNameGenerator {
                         maxVersion,
                         (int) maxInnerMergeCount + 1,
                         (int) maxCrossMergeCount,
+                        maxTierLevel,
                         IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),
                 TsFileResourceStatus.COMPACTING);
     resource.setSeq(sequence);
     return resource;
+  }
+
+  public static TsFileResource getSettleCompactionTargetFileResources(
+      List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
+    long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
+    long minVersion = Long.MAX_VALUE;
+    long maxVersion = Long.MIN_VALUE;
+    long maxInnerMergeCount = Long.MIN_VALUE;
+    long maxCrossMergeCount = Long.MIN_VALUE;
+    for (TsFileResource resource : tsFileResources) {
+      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      minTime = Math.min(tsFileName.time, minTime);
+      maxTime = Math.max(tsFileName.time, maxTime);
+      minVersion = Math.min(tsFileName.version, minVersion);
+      maxVersion = Math.max(tsFileName.version, maxVersion);
+      maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
+    }
+    // set target resource to COMPACTING until the end of this task
+    return sequence
+        ? new TsFileResource(
+            new File(
+                tsFileResources.get(0).getTsFile().getParent(),
+                minTime
+                    + FILE_NAME_SEPARATOR
+                    + minVersion
+                    + FILE_NAME_SEPARATOR
+                    + (maxInnerMergeCount + 1)
+                    + FILE_NAME_SEPARATOR
+                    + maxCrossMergeCount
+                    + IoTDBConstant.SETTLE_SUFFIX),
+            TsFileResourceStatus.COMPACTING)
+        : new TsFileResource(
+            new File(
+                tsFileResources.get(0).getTsFile().getParent(),
+                maxTime
+                    + FILE_NAME_SEPARATOR
+                    + maxVersion
+                    + FILE_NAME_SEPARATOR
+                    + (maxInnerMergeCount + 1)
+                    + FILE_NAME_SEPARATOR
+                    + maxCrossMergeCount
+                    + IoTDBConstant.SETTLE_SUFFIX),
+            TsFileResourceStatus.COMPACTING);
   }
 
   public static class TsFileName {

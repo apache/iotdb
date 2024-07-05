@@ -50,6 +50,7 @@ public class TimeSeriesViewOperand extends LeafViewOperand {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -77,6 +78,7 @@ public class TimeSeriesViewOperand extends LeafViewOperand {
   protected void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(pathString, stream);
   }
+
   // endregion
 
   public String getPathString() {

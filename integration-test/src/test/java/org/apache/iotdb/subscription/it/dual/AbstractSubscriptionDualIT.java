@@ -21,35 +21,46 @@ package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionDualIT {
+abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
+  @Override
   @Before
   public void setUp() {
+    super.setUp();
+
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    setUpConfig();
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
 
+  protected void setUpConfig() {
+    // enable auto create schema
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+  }
+
+  @Override
   @After
-  public final void tearDown() {
+  public void tearDown() {
+    super.tearDown();
+
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }

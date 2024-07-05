@@ -238,11 +238,13 @@ public class LimitOffsetPushDownTest {
   }
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    OptimizationTestUtil.checkPushDown(new LimitOffsetPushDown(), sql, rawPlan, optPlan);
+    OptimizationTestUtil.checkPushDown(
+        Collections.emptyList(), new LimitOffsetPushDown(), sql, rawPlan, optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    OptimizationTestUtil.checkCannotPushDown(new LimitOffsetPushDown(), sql, rawPlan);
+    OptimizationTestUtil.checkCannotPushDown(
+        Collections.emptyList(), new LimitOffsetPushDown(), sql, rawPlan);
   }
 
   // test for limit/offset push down in group by time
@@ -318,6 +320,34 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms, 75ms) offset 2 limit 3";
     checkGroupByTimePushDown(sql, 154, 354, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown12() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 3";
+    checkGroupByTimePushDown(sql, 404, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown13() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 5";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown14() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc offset 2 limit 5";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown15() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 6";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
   }
 
   private void checkGroupByTimePushDown(

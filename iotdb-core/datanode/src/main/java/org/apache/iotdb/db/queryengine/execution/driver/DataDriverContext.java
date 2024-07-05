@@ -21,18 +21,26 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class DataDriverContext extends DriverContext {
 
   // it will be set to null, after being merged into Parent FIContext
   private List<PartialPath> paths;
+  private QueryDataSourceType queryDataSourceType = null;
+  private Map<IDeviceID, DeviceContext> deviceIDToContext;
   // it will be set to null, after QueryDataSource being inited
   private List<DataSourceOperator> sourceOperators;
 
@@ -40,12 +48,27 @@ public class DataDriverContext extends DriverContext {
     super(fragmentInstanceContext, pipelineId);
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
+    this.deviceIDToContext = null;
   }
 
   public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
     super(parentContext.getFragmentInstanceContext(), pipelineId);
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
+    this.deviceIDToContext = null;
+  }
+
+  public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
+    this.queryDataSourceType = queryDataSourceType;
+  }
+
+  public void setDeviceIDToContext(Map<IDeviceID, DeviceContext> deviceIDToContext) {
+    this.deviceIDToContext = deviceIDToContext;
+  }
+
+  public void clearDeviceIDToContext() {
+    // friendly for gc
+    deviceIDToContext = null;
   }
 
   public void addPath(PartialPath path) {
@@ -60,6 +83,14 @@ public class DataDriverContext extends DriverContext {
     return paths;
   }
 
+  public Map<IDeviceID, DeviceContext> getDeviceIDToContext() {
+    return deviceIDToContext;
+  }
+
+  public Optional<QueryDataSourceType> getQueryDataSourceType() {
+    return Optional.ofNullable(queryDataSourceType);
+  }
+
   public void clearPaths() {
     // friendly for gc
     paths = null;
@@ -69,7 +100,7 @@ public class DataDriverContext extends DriverContext {
     return getFragmentInstanceContext().getDataRegion();
   }
 
-  public QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
+  public IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     return getFragmentInstanceContext().getSharedQueryDataSource();
   }
 

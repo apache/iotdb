@@ -105,6 +105,7 @@ public class PipeRowCollector implements RowCollector {
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),
+              sourceEvent == null ? 0 : sourceEvent.getCreationTime(),
               pipeTaskMeta,
               sourceEvent,
               false));
@@ -112,11 +113,11 @@ public class PipeRowCollector implements RowCollector {
     this.tablet = null;
   }
 
-  public Iterable<TabletInsertionEvent> convertToTabletInsertionEvents() {
+  public List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport) {
     collectTabletInsertionEvent();
 
     final int eventListSize = tabletInsertionEventList.size();
-    if (eventListSize > 0) { // The last event should report progress
+    if (eventListSize > 0 && shouldReport) { // The last event should report progress
       ((PipeRawTabletInsertionEvent) tabletInsertionEventList.get(eventListSize - 1))
           .markAsNeedToReport();
     }

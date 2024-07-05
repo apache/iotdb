@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -39,6 +40,9 @@ public class ConstantOperand extends LeafOperand {
 
   public static final ConstantOperand FALSE = new ConstantOperand(TSDataType.BOOLEAN, "false");
   public static final ConstantOperand TRUE = new ConstantOperand(TSDataType.BOOLEAN, "true");
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ConstantOperand.class);
 
   private final String valueString;
   private final TSDataType dataType;
@@ -115,5 +119,10 @@ public class ConstantOperand extends LeafOperand {
   protected void serialize(DataOutputStream stream) throws IOException {
     dataType.serializeTo(stream);
     ReadWriteIOUtils.write(valueString, stream);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(valueString);
   }
 }

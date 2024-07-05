@@ -37,7 +37,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String TOTAL_MEM_USAGE = "schema_region_total_mem_usage";
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
   private static final String REGION_NUMBER = "schema_region_number";
-
+  private static final String DEVICE_NUMBER = "schema_region_total_device_cnt";
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
 
@@ -49,6 +49,13 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        ISchemaEngineStatistics::getTotalDevicesNumber,
+        Tag.NAME.toString(),
+        DEVICE_NUMBER);
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -95,6 +102,8 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
+    metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
@@ -108,6 +117,10 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), MEM_CAPACITY);
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), REGION_NUMBER);
+    metricService.remove(
+        MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_ENGINE_MODE);
+    metricService.remove(
+        MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
 
   /**

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -66,6 +65,7 @@ public class SchemaFile implements ISchemaFile {
   private final String filePath;
   private final String logPath;
   private String storageGroupName;
+  // TODO: Useless
   private long dataTTL;
   private boolean isEntity;
   private int sgNodeTemplateIdWithState;
@@ -159,7 +159,7 @@ public class SchemaFile implements ISchemaFile {
                 .getConfig()
                 .getSchemaRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.RATIS_CONSENSUS),
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        Long.MAX_VALUE,
         false);
   }
 
@@ -187,16 +187,14 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              nodeFactory.createDatabaseDeviceMNode(
-                  null, sgPathNodes[sgPathNodes.length - 1], dataTTL),
-              0L);
+              nodeFactory.createDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1]), 0L);
       resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
       resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
               nodeFactory
-                  .createDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL)
+                  .createDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1])
                   .getAsMNode(),
               0L);
     }
@@ -206,7 +204,6 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException {
-    this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isDevice();
     if (sgNode.isDevice()) {
       this.sgNodeTemplateIdWithState = sgNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
@@ -323,6 +320,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.inspect(pw);
     return String.format("SchemaFile[%s] had been inspected.", this.filePath);
   }
+
   // endregion
 
   // region File Operations
@@ -501,12 +499,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     Files.copy(snapshot.toPath(), schemaFile.toPath());
-    return new SchemaFile(
-        sgName,
-        schemaRegionId,
-        false,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-        false);
+    return new SchemaFile(sgName, schemaRegionId, false, Long.MAX_VALUE, false);
   }
 
   // endregion

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>1.3.2-SNAPSHOT</version>
+        <version>1.3.3-SNAPSHOT</version>
     </parent>
     <artifactId>node-commons</artifactId>
     <name>IoTDB: Core: Node Commons</name>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -48,32 +48,37 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>udf-api</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>trigger-api</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>pipe-api</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-consensus</artifactId>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -83,12 +88,16 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-core</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -151,6 +160,10 @@
             <artifactId>commons-jexl3</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
@@ -165,8 +178,21 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-common</artifactId>
+        </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/assembly/resources/conf</directory>
+                <includes>
+                    <include>iotdb-system.properties.template</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <!--
         Generate an OSGI compatible MANIFEST file.
@@ -185,10 +211,10 @@
                 <executions>
                     <execution>
                         <id>bundle-manifest</id>
+                        <phase>process-classes</phase>
                         <goals>
                             <goal>manifest</goal>
                         </goals>
-                        <phase>process-classes</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -204,6 +230,7 @@
                     </includeOnlyProperties>
                     <commitIdGenerationMode>full</commitIdGenerationMode>
                     <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
                     <offline>true</offline>
                     <gitDescribe>
                         <dirty>-dev</dirty>
@@ -212,10 +239,10 @@
                 <executions>
                     <execution>
                         <id>get-the-git-infos</id>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>revision</goal>
                         </goals>
-                        <phase>initialize</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -258,11 +285,11 @@
                 <executions>
                     <execution>
                         <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
-                        <phase>integration-test</phase>
                     </execution>
                 </executions>
             </plugin>

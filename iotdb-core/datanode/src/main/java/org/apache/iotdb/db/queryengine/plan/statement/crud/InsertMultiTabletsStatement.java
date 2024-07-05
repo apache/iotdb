@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -47,6 +48,14 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   public void setInsertTabletStatementList(List<InsertTabletStatement> insertTabletStatementList) {
     this.insertTabletStatementList = insertTabletStatementList;
+  }
+
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      partialPaths.add(insertTabletStatement.devicePath);
+    }
+    return partialPaths;
   }
 
   public List<String[]> getMeasurementsList() {
@@ -89,7 +98,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public void updateAfterSchemaValidation() {
+  public void updateAfterSchemaValidation(MPPQueryContext context) {
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
       if (!this.hasFailedMeasurements() && insertTabletStatement.hasFailedMeasurements()) {
         this.failedMeasurementIndex2Info = insertTabletStatement.failedMeasurementIndex2Info;
@@ -100,6 +109,13 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     return false;
+  }
+
+  @Override
+  public void semanticCheck() {
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      insertTabletStatement.semanticCheck();
+    }
   }
 
   @Override

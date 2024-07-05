@@ -34,16 +34,17 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   protected Set<Short> transferredTypes;
 
   protected PipeSnapshotEvent(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      PipeSnapshotResourceManager resourceManager) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final PipeSnapshotResourceManager resourceManager) {
+    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.resourceManager = resourceManager;
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
     this.progressIndex = progressIndex;
   }
 
@@ -59,6 +60,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
+    return true;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
     return true;
   }
 
@@ -79,5 +85,14 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
             progressIndex, transferredTypes)
         + " - "
         + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeSnapshotEvent{progressIndex=%s, transferredTypes=%s}",
+            progressIndex, transferredTypes)
+        + " - "
+        + super.coreReportMessage();
   }
 }

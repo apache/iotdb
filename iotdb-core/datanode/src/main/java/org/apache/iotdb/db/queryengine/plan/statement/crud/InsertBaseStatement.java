@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -153,7 +154,7 @@ public abstract class InsertBaseStatement extends Statement {
 
   public abstract List<ISchemaValidation> getSchemaValidationList();
 
-  public void updateAfterSchemaValidation() throws QueryProcessException {}
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {}
 
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes(int index)
@@ -198,6 +199,21 @@ public abstract class InsertBaseStatement extends Statement {
   public abstract long getMinTime();
 
   public abstract Object getFirstValueOfIndex(int index);
+
+  public void semanticCheck() {
+    Set<String> deduplicatedMeasurements = new HashSet<>();
+    for (String measurement : measurements) {
+      if (measurement == null || measurement.isEmpty()) {
+        throw new SemanticException(
+            "Measurement contains null or empty string: " + Arrays.toString(measurements));
+      }
+      if (deduplicatedMeasurements.contains(measurement)) {
+        throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
+      } else {
+        deduplicatedMeasurements.add(measurement);
+      }
+    }
+  }
 
   // region partial insert
   /**
@@ -275,6 +291,7 @@ public abstract class InsertBaseStatement extends Statement {
       this.cause = cause;
     }
   }
+
   // endregion
 
   // region functions used by analyzing logical views
@@ -309,7 +326,7 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     // construct map from device to measurements and record the index of its measurement
-    // schemaengine
+    // schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {

@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -41,21 +43,23 @@ public class InTransformer extends UnaryTransformer {
   private Set<Boolean> booleanSet;
   private Set<String> stringSet;
 
-  public InTransformer(LayerPointReader layerPointReader, boolean isNotIn, Set<String> values) {
-    super(layerPointReader);
+  public InTransformer(LayerReader layerReader, boolean isNotIn, Set<String> values) {
+    super(layerReader);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
     initTypedSet(values);
   }
 
   private void initTypedSet(Set<String> values) {
-    switch (layerPointReaderDataType) {
+    switch (layerReaderDataType) {
       case INT32:
+      case DATE:
         intSet = new HashSet<>();
         for (String value : values) {
           intSet.add(Integer.valueOf(value));
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (String value : values) {
           longSet.add(Long.valueOf(value));
@@ -80,48 +84,136 @@ public class InTransformer extends UnaryTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = values;
         break;
       default:
-        throw new UnsupportedOperationException(
-            "unsupported data type: " + layerPointReader.getDataType());
+        throw new UnsupportedOperationException("unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReaderDataType) {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    switch (layerReaderDataType) {
       case INT32:
-        int intValue = layerPointReader.currentInt();
-        cachedBoolean = satisfy.of(intValue);
-        break;
+      case DATE:
+        transformInt(columns, builder);
+        return;
       case INT64:
-        long longValue = layerPointReader.currentLong();
-        cachedBoolean = satisfy.of(longValue);
-        break;
+      case TIMESTAMP:
+        transformLong(columns, builder);
+        return;
       case FLOAT:
-        float floatValue = layerPointReader.currentFloat();
-        cachedBoolean = satisfy.of(floatValue);
-        break;
+        transformFloat(columns, builder);
+        return;
       case DOUBLE:
-        double doubleValue = layerPointReader.currentDouble();
-        cachedBoolean = satisfy.of(doubleValue);
-        break;
+        transformDouble(columns, builder);
+        return;
       case BOOLEAN:
-        boolean booleanValue = layerPointReader.currentBoolean();
-        cachedBoolean = satisfy.of(booleanValue);
-        break;
+        transformBoolean(columns, builder);
+        return;
       case TEXT:
-        Binary binaryValue = layerPointReader.currentBinary();
-        cachedBoolean = satisfy.of(binaryValue.getStringValue(TSFileConfig.STRING_CHARSET));
-        break;
+      case STRING:
+        transformBinary(columns, builder);
+        return;
       default:
-        throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());
+        throw new QueryProcessException("unsupported data type: " + layerReaderDataType);
+    }
+  }
+
+  private void transformInt(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    int[] values = columns[0].getInts();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i]);
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformLong(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    long[] values = columns[0].getLongs();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i]);
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    float[] values = columns[0].getFloats();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i]);
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    double[] values = columns[0].getDoubles();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i]);
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformBoolean(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    boolean[] values = columns[0].getBooleans();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i]);
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformBinary(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    Binary[] values = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = satisfy.of(values[i].getStringValue(TSFileConfig.STRING_CHARSET));
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
     }
   }
 

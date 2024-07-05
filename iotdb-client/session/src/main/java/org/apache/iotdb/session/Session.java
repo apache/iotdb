@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -126,6 +127,7 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -434,6 +436,7 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.queryTimeoutInMs = builder.timeOut;
   }
 
   @Override
@@ -886,7 +889,7 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+      return getQuerySessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
@@ -901,6 +904,25 @@ public class Session implements ISession {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
+  }
+
+  private SessionConnection getQuerySessionConnection() {
+    Optional<TEndPoint> endPoint =
+        availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
+    if (!endPoint.isPresent() || endPointToSessionConnection == null) {
+      return defaultSessionConnection;
+    }
+    SessionConnection connection =
+        endPointToSessionConnection.computeIfAbsent(
+            endPoint.get(),
+            k -> {
+              try {
+                return constructSessionConnection(this, endPoint.get(), zoneId);
+              } catch (IoTDBConnectionException ex) {
+                return null;
+              }
+            });
+    return connection == null ? defaultSessionConnection : connection;
   }
 
   /**
@@ -3261,6 +3283,7 @@ public class Session implements ISession {
         }
         return sortedValues;
       case INT32:
+      case DATE:
         int[] intValues = (int[]) valueList;
         int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3268,6 +3291,7 @@ public class Session implements ISession {
         }
         return sortedIntValues;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) valueList;
         long[] sortedLongValues = new long[longValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3289,6 +3313,8 @@ public class Session implements ISession {
         }
         return sortedDoubleValues;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3539,7 +3565,9 @@ public class Session implements ISession {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
-  /** @return Amount of measurements in the template */
+  /**
+   * @return Amount of measurements in the template
+   */
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3550,7 +3578,9 @@ public class Session implements ISession {
     return resp.getCount();
   }
 
-  /** @return If the node specified by the path is a measurement. */
+  /**
+   * @return If the node specified by the path is a measurement.
+   */
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3562,7 +3592,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return if there is a node correspond to the path in the template. */
+  /**
+   * @return if there is a node correspond to the path in the template.
+   */
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3574,7 +3606,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return All paths of measurements in the template. */
+  /**
+   * @return All paths of measurements in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3586,7 +3620,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths of measurements under the pattern in the template. */
+  /**
+   * @return All paths of measurements under the pattern in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3598,7 +3634,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All template names. */
+  /**
+   * @return All template names.
+   */
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3609,7 +3647,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths have been set to designated template. */
+  /**
+   * @return All paths have been set to designated template.
+   */
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3620,7 +3660,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths are using designated template. */
+  /**
+   * @return All paths are using designated template.
+   */
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {

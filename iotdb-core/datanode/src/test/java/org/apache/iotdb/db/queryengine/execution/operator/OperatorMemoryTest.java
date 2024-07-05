@@ -150,14 +150,12 @@ public class OperatorMemoryTest {
               scanOptionsBuilder.build());
 
       assertEquals(
-          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L,
+          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxPeekMemory());
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxReturnSize());
-      assertEquals(
-          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 2L,
-          seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+      assertEquals(0L, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -202,7 +200,7 @@ public class OperatorMemoryTest {
       long maxPeekMemory =
           Math.max(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
+              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
       long maxReturnMemory =
           Math.min(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
@@ -832,12 +830,14 @@ public class OperatorMemoryTest {
       driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SchemaFetchScanOperator operator =
-          new SchemaFetchScanOperator(
+          SchemaFetchScanOperator.ofSeries(
               planNodeId,
               driverContext.getOperatorContexts().get(0),
               null,
               null,
               null,
+              false,
+              false,
               false,
               false);
 
@@ -1004,8 +1004,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long cachedRawDataSize =
-          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1037,7 +1036,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1080,7 +1079,7 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1120,7 +1119,7 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1158,7 +1157,7 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1223,7 +1222,8 @@ public class OperatorMemoryTest {
         aggregators,
         timeRangeIterator,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        true);
   }
 
   @Test

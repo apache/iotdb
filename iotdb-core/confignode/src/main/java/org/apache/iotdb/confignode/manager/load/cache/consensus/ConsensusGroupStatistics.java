@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
@@ -30,6 +31,12 @@ public class ConsensusGroupStatistics extends AbstractStatistics {
 
   public ConsensusGroupStatistics(long statisticsNanoTimestamp, int leaderId) {
     super(statisticsNanoTimestamp);
+    this.leaderId = leaderId;
+  }
+
+  @TestOnly
+  public ConsensusGroupStatistics(int leaderId) {
+    super(System.nanoTime());
     this.leaderId = leaderId;
   }
 

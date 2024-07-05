@@ -130,7 +130,9 @@ public interface IWritableMemChunk extends WALEntryValue {
     return Long.MAX_VALUE;
   }
 
-  /** @return how many points are deleted */
+  /**
+   * @return how many points are deleted
+   */
   int delete(long lowerBound, long upperBound);
 
   IChunkWriter createIChunkWriter();

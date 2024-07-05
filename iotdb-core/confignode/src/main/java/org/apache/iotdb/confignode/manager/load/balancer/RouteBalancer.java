@@ -25,9 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -80,6 +80,10 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.FAST_IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.IOT_CONSENSUS_V2.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
@@ -154,8 +158,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
-            getPartitionManager().getAllRegionGroupIdMap(regionGroupType),
-            getPartitionManager().getAllReplicaSetsMap(regionGroupType),
+            getLoadManager().getLoadCache().getCurrentDatabaseRegionGroupMap(regionGroupType),
+            getLoadManager().getLoadCache().getCurrentRegionLocationMap(regionGroupType),
             currentLeaderMap,
             getLoadManager().getLoadCache().getCurrentDataNodeStatisticsMap(),
             getLoadManager().getLoadCache().getCurrentRegionStatisticsMap(regionGroupType));
@@ -163,8 +167,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     // Transfer leader to the optimal distribution
     long currentTime = System.nanoTime();
     AtomicInteger requestId = new AtomicInteger(0);
-    AsyncClientHandler<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
+    DataNodeAsyncRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CHANGE_REGION_LEADER);
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
@@ -180,9 +184,12 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 regionGroupId,
                 newLeaderId);
             switch (consensusProtocolClass) {
+              case ConsensusFactory.FAST_IOT_CONSENSUS:
+              case ConsensusFactory.IOT_CONSENSUS_V2:
               case ConsensusFactory.IOT_CONSENSUS:
               case ConsensusFactory.SIMPLE_CONSENSUS:
-                // For IoTConsensus or SimpleConsensus protocol, change RegionRouteMap is enough
+                // For IoTConsensus or SimpleConsensus or PipeConsensus protocol, change
+                // RegionRouteMap is enough
                 successTransferMap.put(
                     regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
                 break;
@@ -210,7 +217,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                       new TRegionLeaderChangeReq(regionGroupId, newLeader);
                   int requestIndex = requestId.getAndIncrement();
                   clientHandler.putRequest(requestIndex, regionLeaderChangeReq);
-                  clientHandler.putDataNodeLocation(requestIndex, newLeader);
+                  clientHandler.putNodeLocation(requestIndex, newLeader);
                 }
                 break;
             }
@@ -218,7 +225,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         });
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNode(clientHandler);
+      CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(clientHandler);
       for (int i = 0; i < requestId.get(); i++) {
         if (clientHandler.getResponseMap().get(i).getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -300,13 +307,12 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
-    LOGGER.info("region map: {}", tmpPriorityMap);
-    AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
+    DataNodeAsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
   }
 
   private void recordRegionPriorityMap(
@@ -331,7 +337,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** @return Map<RegionGroupId, RegionPriority> */
+  /**
+   * @return Map<RegionGroupId, RegionPriority>
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {

@@ -83,7 +83,9 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.DropSchemaTemplate));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.unset"),
-          Collections.singletonList(ConfigPhysicalPlanType.PipeUnsetTemplate));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.UnsetTemplate, ConfigPhysicalPlanType.PipeUnsetTemplate)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.drop"),
@@ -113,7 +115,10 @@ public class ConfigRegionListeningFilter {
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.create"),
-          Collections.singletonList(ConfigPhysicalPlanType.CreateUser));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CreateUser,
+                  ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
           Collections.singletonList(ConfigPhysicalPlanType.UpdateUser));
@@ -152,7 +157,7 @@ public class ConfigRegionListeningFilter {
   }
 
   public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
+      throws IllegalPathException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     Set<PartialPath> inclusionOptions =
         parseOptions(

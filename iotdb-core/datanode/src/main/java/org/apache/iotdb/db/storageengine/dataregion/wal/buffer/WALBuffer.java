@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -73,7 +72,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFA
 public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
+  public static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
@@ -90,20 +89,24 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
   // last writer position when fsync is called, help record each entry's position
   private long lastFsyncPosition;
+
   // region these variables should be protected by buffersLock
   /** two buffers switch between three statuses (there is always 1 buffer working). */
   // buffer in working status, only updated by serializeThread
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer workingBuffer;
+
   // buffer in idle status
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer idleBuffer;
+
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer syncingBuffer;
+
   // endregion
   // file status of working buffer, updating file writer's status when syncing
   protected volatile WALFileStatus currentFileStatus;
@@ -115,7 +118,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage wal files which have MemTableIds
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
 
-  public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
+  public WALBuffer(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
   }
 
@@ -125,7 +128,7 @@ public class WALBuffer extends AbstractWALBuffer {
       CheckpointManager checkpointManager,
       long startFileVersion,
       long startSearchIndex)
-      throws FileNotFoundException {
+      throws IOException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = checkpointManager;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
@@ -475,6 +478,7 @@ public class WALBuffer extends AbstractWALBuffer {
       buffersLock.unlock();
     }
   }
+
   // endregion
 
   // region Task of syncBufferThread
@@ -516,8 +520,9 @@ public class WALBuffer extends AbstractWALBuffer {
           forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
 
       // flush buffer to os
+      double compressionRatio = 1.0;
       try {
-        currentWALFileWriter.write(syncingBuffer, info.metaData);
+        compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
@@ -530,12 +535,14 @@ public class WALBuffer extends AbstractWALBuffer {
       memTableIdsOfWal
           .computeIfAbsent(currentWALFileVersion, memTableIds -> new HashSet<>())
           .addAll(info.metaData.getMemTablesId());
-      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage);
+      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage, compressionRatio);
 
       boolean forceSuccess = false;
       // try to roll log writer
       if (info.rollWALFileWriterListener != null
-          || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+          // TODO: Control the wal file by the number of WALEntry
+          || (forceFlag
+              && currentWALFileWriter.originalSize() >= config.getWalFileSizeThresholdInByte())) {
         try {
           rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           forceSuccess = true;
@@ -577,7 +584,7 @@ public class WALBuffer extends AbstractWALBuffer {
             position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
-        lastFsyncPosition = currentWALFileWriter.size();
+        lastFsyncPosition = currentWALFileWriter.originalSize();
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);
@@ -640,6 +647,7 @@ public class WALBuffer extends AbstractWALBuffer {
       buffersLock.unlock();
     }
   }
+
   // endregion
 
   @Override

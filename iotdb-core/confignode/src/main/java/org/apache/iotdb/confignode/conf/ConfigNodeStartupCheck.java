@@ -74,8 +74,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     checkGlobalConfig();
     createDirsIfNecessary();
     if (SystemPropertiesUtils.isRestarted()) {
-      /* Always restore ClusterName and ConfigNodeId first */
-      CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
+      /* Always restore ConfigNodeId first */
       CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
       SystemPropertiesUtils.checkSystemProperties();
@@ -143,6 +142,18 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
     }
 
+    // When the schemaengine region consensus protocol is set to PipeConsensus,
+    // we should report an error
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
+          String.format(
+              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
+          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.FastIoTConsensus");
+    }
+
     // The leader distribution policy is limited
     if (!AbstractLeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !AbstractLeaderBalancer.CFD_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
@@ -169,6 +180,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     }
     if (CONF.getDefaultDataRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_data_region_group_num should be positive");
+    }
+
+    // Check time partition origin
+    if (COMMON_CONFIG.getTimePartitionOrigin() < 0) {
+      throw new ConfigurationException("The time_partition_origin should be non-negative");
     }
 
     // Check time partition interval

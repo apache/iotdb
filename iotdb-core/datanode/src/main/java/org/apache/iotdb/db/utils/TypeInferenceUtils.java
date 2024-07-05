@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -40,19 +41,13 @@ import java.util.List;
 
 public class TypeInferenceUtils {
 
-  private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
-
-  private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
-
-  private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+  private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
   private TypeInferenceUtils() {}
+
+  private static boolean isBlob(String s) {
+    return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
+  }
 
   static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {
@@ -104,18 +99,20 @@ public class TypeInferenceUtils {
     } else if (inferType) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
-        return booleanStringInferType;
+        return CONF.getBooleanStringInferType();
       } else if (isNumber(strValue)) {
         if (isLong(StringUtils.trim(strValue))) {
-          return integerStringInferType;
+          return CONF.getIntegerStringInferType();
         } else {
-          return floatingStringInferType;
+          return CONF.getFloatingStringInferType();
         }
       } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
         return null;
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
-        return nanStringInferType;
+        return CONF.getNanStringInferType();
+      } else if (isBlob(strValue)) {
+        return TSDataType.BLOB;
       } else {
         return TSDataType.TEXT;
       }
@@ -169,11 +166,19 @@ public class TypeInferenceUtils {
       return;
     }
     switch (aggrFuncName.toLowerCase()) {
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+        if (dataType.isNumeric()
+            || TSDataType.STRING.equals(dataType)
+            || TSDataType.DATE.equals(dataType)
+            || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [MIN_VALUE, MAX_VALUE] only support data types [INT32, INT64, FLOAT, DOUBLE, STRING, DATE, TIMESTAMP]");
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.MAX_VALUE:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
@@ -184,7 +189,7 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
@@ -317,6 +322,10 @@ public class TypeInferenceUtils {
       case DOUBLE:
       case BOOLEAN:
       case TEXT:
+      case DATE:
+      case TIMESTAMP:
+      case BLOB:
+      case STRING:
         return false;
       default:
         throw new IllegalArgumentException("Unknown data type: " + fromType);

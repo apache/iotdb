@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 
@@ -34,9 +35,15 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 public class CommonConfig {
 
-  public static final String CONFIG_NAME = "iotdb-common.properties";
+  public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
+  public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
+  public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
+  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -119,6 +126,9 @@ public class CommonConfig {
    */
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
+  /** The maximum number of TTL rules stored in the system, the default is 1000. */
+  private int ttlRuleCapacity = 1000;
+
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
@@ -148,6 +158,9 @@ public class CommonConfig {
 
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
+
+  /** Time partition origin in milliseconds. */
+  private long timePartitionOrigin = 0;
 
   /** Time partition interval in milliseconds. */
   private long timePartitionInterval = 604_800_000;
@@ -185,17 +198,17 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorHandshakeTimeoutMs = 10 * 1000L; // 10 seconds
-  private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
+  private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
+  private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
-  // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
-  // pipeAsyncConnectorCoreClientNumber
-  private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber = 4;
   private int pipeAsyncConnectorMaxClientNumber = 16;
+
+  private double pipeAllSinksRateLimitBytesPerSecond = -1;
+  private int pipeEndPointRateLimiterDropCheckIntervalMs = 1000;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
@@ -207,9 +220,11 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -228,20 +243,28 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
+  private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
+  private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+      PipeRemainingTimeRateAverageTime.MEAN;
+  private double pipeTsFileScanParsingThreshold = 0.05;
 
-  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000; // 8 minutes
-  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
-  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
+
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 16;
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
-  private long subscriptionDefaultPollTimeoutMs = 30000;
-  private long subscriptionMinPollTimeoutMs = 500;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
+  private long subscriptionReadFileBufferSize = 8 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -269,6 +292,10 @@ public class CommonConfig {
 
   private final Set<String> enabledKillPoints =
       KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
+
+  private volatile boolean retryForUnknownErrors = false;
+
+  private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
   CommonConfig() {
     // Empty constructor
@@ -402,16 +429,20 @@ public class CommonConfig {
     this.systemFileStorageFs = systemFileStorageFs;
   }
 
-  public long getDefaultTTLInMs() {
-    return tierTTLInMs[tierTTLInMs.length - 1];
-  }
-
   public long[] getTierTTLInMs() {
     return tierTTLInMs;
   }
 
   public void setTierTTLInMs(long[] tierTTLInMs) {
     this.tierTTLInMs = tierTTLInMs;
+  }
+
+  public int getTTlRuleCapacity() {
+    return ttlRuleCapacity;
+  }
+
+  public void setTTlRuleCapacity(int ttlRuleCapacity) {
+    this.ttlRuleCapacity = ttlRuleCapacity;
   }
 
   public int getConnectionTimeoutInMS() {
@@ -524,6 +555,14 @@ public class CommonConfig {
     isStopping = stopping;
   }
 
+  public long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
+  public void setTimePartitionOrigin(long timePartitionOrigin) {
+    this.timePartitionOrigin = timePartitionOrigin;
+  }
+
   public long getTimePartitionInterval() {
     return timePartitionInterval;
   }
@@ -634,20 +673,32 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return pipeConnectorHandshakeTimeoutMs;
   }
 
   public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
-    this.pipeConnectorHandshakeTimeoutMs = pipeConnectorHandshakeTimeoutMs;
+    try {
+      this.pipeConnectorHandshakeTimeoutMs = Math.toIntExact(pipeConnectorHandshakeTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorHandshakeTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return pipeConnectorTransferTimeoutMs;
   }
 
   public void setPipeConnectorTransferTimeoutMs(long pipeConnectorTransferTimeoutMs) {
-    this.pipeConnectorTransferTimeoutMs = pipeConnectorTransferTimeoutMs;
+    try {
+      this.pipeConnectorTransferTimeoutMs = Math.toIntExact(pipeConnectorTransferTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorTransferTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
   public int getPipeConnectorReadFileBufferSize() {
@@ -743,14 +794,6 @@ public class CommonConfig {
     this.pipeConnectorRetryIntervalMs = pipeConnectorRetryIntervalMs;
   }
 
-  public int getPipeConnectorPendingQueueSize() {
-    return pipeConnectorPendingQueueSize;
-  }
-
-  public void setPipeConnectorPendingQueueSize(int pipeConnectorPendingQueueSize) {
-    this.pipeConnectorPendingQueueSize = pipeConnectorPendingQueueSize;
-  }
-
   public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {
     return pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount;
   }
@@ -818,6 +861,16 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
+  }
+
+  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
   }
@@ -841,6 +894,16 @@ public class CommonConfig {
 
   public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
     this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
+  }
+
+  public void setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+      float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
+    this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage =
+        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
@@ -974,6 +1037,50 @@ public class CommonConfig {
     this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
   }
 
+  public long getPipeRemainingTimeCommitRateAutoSwitchSeconds() {
+    return pipeRemainingTimeCommitRateAutoSwitchSeconds;
+  }
+
+  public void setPipeRemainingTimeCommitRateAutoSwitchSeconds(
+      long pipeRemainingTimeCommitRateAutoSwitchSeconds) {
+    this.pipeRemainingTimeCommitRateAutoSwitchSeconds =
+        pipeRemainingTimeCommitRateAutoSwitchSeconds;
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public void setPipeRemainingTimeCommitRateAverageTime(
+      PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
+    this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public double getPipeTsFileScanParsingThreshold() {
+    return pipeTsFileScanParsingThreshold;
+  }
+
+  public void setPipeTsFileScanParsingThreshold(double pipeTsFileScanParsingThreshold) {
+    this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
+  }
+
+  public double getPipeAllSinksRateLimitBytesPerSecond() {
+    return pipeAllSinksRateLimitBytesPerSecond;
+  }
+
+  public void setPipeAllSinksRateLimitBytesPerSecond(double pipeAllSinksRateLimitBytesPerSecond) {
+    this.pipeAllSinksRateLimitBytesPerSecond = pipeAllSinksRateLimitBytesPerSecond;
+  }
+
+  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
+    return pipeEndPointRateLimiterDropCheckIntervalMs;
+  }
+
+  public void setPipeEndPointRateLimiterDropCheckIntervalMs(
+      int pipeEndPointRateLimiterDropCheckIntervalMs) {
+    this.pipeEndPointRateLimiterDropCheckIntervalMs = pipeEndPointRateLimiterDropCheckIntervalMs;
+  }
+
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
     return twoStageAggregateMaxCombinerLiveTimeInMs;
   }
@@ -1002,6 +1109,15 @@ public class CommonConfig {
     this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
   }
 
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return subscriptionCacheMemoryUsagePercentage;
+  }
+
+  public void setSubscriptionCacheMemoryUsagePercentage(
+      float subscriptionCacheMemoryUsagePercentage) {
+    this.subscriptionCacheMemoryUsagePercentage = subscriptionCacheMemoryUsagePercentage;
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return subscriptionSubtaskExecutorMaxThreadNum;
   }
@@ -1014,12 +1130,42 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return subscriptionMaxTabletsPerPrefetching;
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
-    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  public void setSubscriptionPrefetchTabletBatchMaxDelayInMs(
+      int subscriptionPrefetchTabletBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTabletBatchMaxDelayInMs = subscriptionPrefetchTabletBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTabletBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+      long subscriptionPrefetchTabletBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTabletBatchMaxSizeInBytes =
+        subscriptionPrefetchTabletBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTsFileBatchMaxDelayInMs = subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTsFileBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      long subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTsFileBatchMaxSizeInBytes =
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -1057,20 +1203,12 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return subscriptionDefaultPollTimeoutMs;
+  public long getSubscriptionReadFileBufferSize() {
+    return subscriptionReadFileBufferSize;
   }
 
-  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
-    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return subscriptionMinPollTimeoutMs;
-  }
-
-  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
-    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
+  public void setSubscriptionReadFileBufferSize(long subscriptionReadFileBufferSize) {
+    this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 
   public String getSchemaEngineMode() {
@@ -1139,5 +1277,21 @@ public class CommonConfig {
 
   public Set<String> getEnabledKillPoints() {
     return enabledKillPoints;
+  }
+
+  public boolean isRetryForUnknownErrors() {
+    return retryForUnknownErrors;
+  }
+
+  public void setRetryForUnknownErrors(boolean retryForUnknownErrors) {
+    this.retryForUnknownErrors = retryForUnknownErrors;
+  }
+
+  public long getRemoteWriteMaxRetryDurationInMs() {
+    return remoteWriteMaxRetryDurationInMs;
+  }
+
+  public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
+    this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
   }
 }

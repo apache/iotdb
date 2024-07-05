@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -77,20 +78,28 @@ public class WALNodeTest {
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
+  private String prevConsensus;
   private WALNode walNode;
+  private long originWALThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte();
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(2 * 1024 * 1024);
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
+    prevConsensus = config.getDataRegionConsensusProtocolClass();
     config.setWalMode(WALMode.SYNC);
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     walNode = new WALNode(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(originWALThreshold);
     walNode.close();
     config.setWalMode(prevMode);
+    config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory);
     StorageEngine.getInstance().reset();
   }
@@ -283,7 +292,7 @@ public class WALNodeTest {
         .setDataRegion(
             new DataRegionId(1), new DataRegionTest.DummyDataRegion(logDirectory, databasePath));
     walNode.onMemTableCreated(memTable, tsFilePath);
-    while (walNode.getCurrentLogVersion() == 0) {
+    while (time < 20000) {
       ++time;
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});

@@ -27,13 +27,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
@@ -277,11 +277,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
         filterNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof AggregationNode);
+            instanceof RawDataAggregationNode);
     PlanNode thirdFiRoot = plan.getInstances().get(2).getFragment().getPlanNodeTree();
     assertTrue(thirdFiRoot instanceof IdentitySinkNode);
     assertTrue(thirdFiRoot.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
   }
 
   /*
@@ -1080,6 +1081,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof ProjectNode);
+    assertTrue(
+        firstFiTopNode
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof FullOuterTimeJoinNode);
     for (int i = 1; i < 4; i++) {
       assertTrue(

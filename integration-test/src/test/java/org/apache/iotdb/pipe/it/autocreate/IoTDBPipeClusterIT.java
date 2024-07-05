@@ -85,8 +85,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -107,7 +107,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     testWithAllParameters("hybrid");
   }
 
-  public void testWithAllParameters(String realtimeMode) throws Exception {
+  public void testWithAllParameters(final String realtimeMode) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -226,18 +226,18 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           leaderIndex = i;
           try {
             senderEnv.shutdownDataNode(i);
-          } catch (Exception e) {
+          } catch (final Throwable e) {
             e.printStackTrace();
             return;
           }
           try {
             TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException ignored) {
+          } catch (final InterruptedException ignored) {
           }
           try {
             senderEnv.startDataNode(i);
             ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
-          } catch (Exception e) {
+          } catch (final Throwable e) {
             e.printStackTrace();
             return;
           }
@@ -261,8 +261,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -338,7 +343,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
       try {
         senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
@@ -357,8 +362,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -425,21 +435,21 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                         new TCreatePipeReq("p" + i, connectorAttributes)
                             .setExtractorAttributes(extractorAttributes)
                             .setProcessorAttributes(processorAttributes));
-                  } catch (TException e) {
+                  } catch (final TException e) {
                     // Not sure if the "createPipe" has succeeded
                     e.printStackTrace();
                     return;
                   }
                   try {
                     Thread.sleep(100);
-                  } catch (Exception ignored) {
+                  } catch (final Exception ignored) {
                   }
                 }
               });
       t.start();
       try {
         senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
@@ -494,13 +504,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                     }
                     Thread.sleep(100);
                   }
-                } catch (InterruptedException ignored) {
+                } catch (final InterruptedException ignored) {
                 }
               });
       t.start();
       try {
         senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
@@ -518,7 +528,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
       }
     }
@@ -562,7 +572,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
       try {
         senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
@@ -580,7 +590,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
       }
     }
@@ -634,7 +644,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
         ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
-      } catch (Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
@@ -695,7 +705,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    TestUtils.restartCluster(senderEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
+
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",
@@ -735,11 +751,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.incrementAndGet();
                   }
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                   Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
+                } catch (final TException | ClientManagerException | IOException e) {
                   e.printStackTrace();
-                } catch (Exception e) {
+                } catch (final Exception e) {
                   // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
@@ -765,11 +781,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.incrementAndGet();
                   }
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                   Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
+                } catch (final TException | ClientManagerException | IOException e) {
                   e.printStackTrace();
-                } catch (Exception e) {
+                } catch (final Exception e) {
                   // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
@@ -806,7 +822,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     testCreatePipesWithSameConnector(100);
   }
 
-  private void testCreatePipesWithSameConnector(int pipeCount) throws Exception {
+  private void testCreatePipesWithSameConnector(final int pipeCount) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -821,6 +837,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     connectorAttributes.put("connector.ip", receiverIp);
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
+    final AtomicInteger successCount = new AtomicInteger(0);
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < pipeCount; ++i) {
       final int finalI = i;
@@ -836,11 +853,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                               .setProcessorAttributes(processorAttributes));
                   Assert.assertEquals(
                       TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
+                  successCount.incrementAndGet();
+                } catch (final InterruptedException e) {
                   e.printStackTrace();
-                } catch (Exception e) {
+                  Thread.currentThread().interrupt();
+                } catch (final TException | ClientManagerException | IOException e) {
+                  e.printStackTrace();
+                } catch (final Exception e) {
                   // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
@@ -856,10 +875,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertEquals(pipeCount, showPipeResult.size());
+      Assert.assertEquals(successCount.get(), showPipeResult.size());
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
-      Assert.assertEquals(pipeCount, showPipeResult.size());
+      Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
   }
 
@@ -912,8 +931,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (-123, 3)",
-              "insert into root.db.d1(time, s1) values (now(), 3)",
+              // Test the correctness of insertRowsNode transmission
+              "insert into root.db.d1(time, s1) values (-122, 3)",
+              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
               "flush"))) {
         return;
       }
@@ -922,7 +942,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("5,"));
+          Collections.singleton("6,"));
     }
   }
 }

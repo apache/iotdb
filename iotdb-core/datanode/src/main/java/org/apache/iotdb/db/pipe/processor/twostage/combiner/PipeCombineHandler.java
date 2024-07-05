@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultResponse;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
@@ -147,7 +147,7 @@ public class PipeCombineHandler {
       }
 
       final Set<Integer> pipeRelatedRegionIdSet =
-          new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
+          new HashSet<>(PipeDataNodeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
       pipeRelatedRegionIdSet.removeIf(
           regionId -> !ALL_REGION_ID_2_DATANODE_ID_MAP.containsKey(regionId));
       if (LOGGER.isInfoEnabled()) {

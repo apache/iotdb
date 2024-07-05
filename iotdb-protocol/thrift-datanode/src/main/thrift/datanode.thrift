@@ -28,7 +28,6 @@ struct TCreateSchemaRegionReq {
 struct TCreateDataRegionReq {
   1: required common.TRegionReplicaSet regionReplicaSet
   2: required string storageGroup
-  3: optional i64 ttl
 }
 
 struct TInvalidateCacheReq {
@@ -57,7 +56,6 @@ struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
   3: required string storageGroup
-  4: optional i64 ttl
 }
 
 struct TMaintainPeerReq {
@@ -294,6 +292,9 @@ struct TDataNodeHeartbeatResp {
   11: optional string activateStatus
   12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
   13: optional map<common.TConsensusGroupId, i64> consensusLogicalTimeMap
+  14: optional list<bool> pipeCompletedList
+  15: optional list<i64> pipeRemainingEventCountList
+  16: optional list<double> pipeRemainingTimeList
 }
 
 struct TPipeHeartbeatReq {
@@ -302,6 +303,9 @@ struct TPipeHeartbeatReq {
 
 struct TPipeHeartbeatResp {
   1: required list<binary> pipeMetaList
+  2: optional list<bool> pipeCompletedList
+  3: optional list<i64> pipeRemainingEventCountList
+  4: optional list<double> pipeRemainingTimeList
 }
 
 enum TSchemaLimitLevel{
@@ -847,6 +851,10 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache()
 
+  common.TShowConfigurationResp showConfiguration()
+
+  common.TSStatus setConfiguration(common.TSetConfigurationReq req)
+
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
@@ -854,9 +862,9 @@ service IDataNodeRPCService {
   common.TSStatus killQueryInstance(string queryId)
 
   /**
-   * Config node will Set the TTL for the database on a list of data nodes.
-   */
-  common.TSStatus setTTL(common.TSetTTLReq req)
+     * Config node will Set the TTL for the database on a list of data nodes.
+     */
+    common.TSStatus setTTL(common.TSetTTLReq req)
 
   /**
    * Update template cache when template info or template set info is updated
@@ -991,6 +999,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
 
 service MPPDataExchangeService {
@@ -1003,4 +1016,7 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
