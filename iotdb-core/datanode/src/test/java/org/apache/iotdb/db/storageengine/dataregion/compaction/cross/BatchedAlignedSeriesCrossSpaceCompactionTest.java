@@ -443,6 +443,37 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
     validate(targetResources);
   }
 
+  @Test
+  public void testCompactByFlushChunkAndDeserialize() throws Exception {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {
+              new TimeRange[] {
+                new TimeRange(1000, 2000), new TimeRange(50000, 60000), new TimeRange(60001, 60002)
+              }
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource unseqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10000, 20000)}},
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            Arrays.asList(false, false, false),
+            false);
+    unseqResources.add(unseqResource1);
+    List<TsFileResource> targetResources = performCompaction();
+    validate(targetResources);
+  }
+
   private List<TsFileResource> performCompaction() throws Exception {
     tsFileManager.addAll(unseqResources, false);
     List<TsFileResource> targetResources =

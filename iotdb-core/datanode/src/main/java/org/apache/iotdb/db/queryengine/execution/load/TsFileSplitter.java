@@ -447,9 +447,6 @@ public class TsFileSplitter {
       List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
         AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
-        if (!chunkDataMap.containsKey(oldChunkData)) {
-          chunkDataMap.put(oldChunkData, new BatchedAlignedValueChunkData(oldChunkData));
-        }
         BatchedAlignedValueChunkData chunkData =
             chunkDataMap.computeIfAbsent(oldChunkData, BatchedAlignedValueChunkData::new);
         alignedChunkDataList.set(i, chunkData);
