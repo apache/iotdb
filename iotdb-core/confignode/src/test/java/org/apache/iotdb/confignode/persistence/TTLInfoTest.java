@@ -215,7 +215,7 @@ public class TTLInfoTest {
         ttlInfo.unsetTTL(new SetTTLPlan(-1, "root")).getCode());
     assertEquals(
         TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
-        ttlInfo.unsetTTL(new SetTTLPlan(-1, "root.sg100.f10.d1")).getCode());
+        ttlInfo.unsetTTL(new SetTTLPlan(-1, "root", "sg100", "f10", "d1")).getCode());
 
     PartialPath path = new PartialPath("root.test.db1.group1.group2.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 11111222L));
