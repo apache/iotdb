@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
@@ -368,6 +369,13 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       @Override
       public boolean canCompactCurrentChunkByDirectlyFlush(
           ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
+        CompactChunkPlan compactChunkPlan =
+            batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
+        if (timeChunk.getChunkMetadata().getStartTime()
+            != compactChunkPlan.getTimeRange().getMin()) {
+          throw new BatchCompactionCannotAlignedException(
+              timeChunk.getChunkMetadata(), compactChunkPlan, batchCompactionPlan);
+        }
         return batchCompactionPlan
             .getCompactChunkPlan(currentCompactChunk)
             .isCompactedByDirectlyFlush();
