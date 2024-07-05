@@ -42,8 +42,8 @@ public class DatabaseConflictException extends MetadataException {
     return storageGroupPath;
   }
 
-  private static String getMessage(final String path, final boolean hasChild) {
-    if (hasChild) {
+  private static String getMessage(final String path, final boolean isChild) {
+    if (isChild) {
       return String.format("some children of %s have already been created as database", path);
     } else {
       return String.format("%s has already been created as database", path);
