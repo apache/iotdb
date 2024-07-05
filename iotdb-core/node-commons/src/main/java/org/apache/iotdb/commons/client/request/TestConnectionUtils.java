@@ -25,10 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -39,6 +36,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TestConnectionUtils {
+  private static int dataNodeServiceRequestTimeout =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+  private static int configNodeServiceRequestTimeout =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+
   public static <ServiceProviderLocation, RequestType>
       List<TTestConnectionResult> testConnectionsImpl(
           List<ServiceProviderLocation> nodeLocations,
@@ -83,21 +85,21 @@ public class TestConnectionUtils {
   public static int calculateCnLeaderToAllCnMaxTime() {
     return
     // SUBMIT_TEST_CONNECTION_TASK rpc timeout
-    AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        // CN test timeout
-        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        + AsyncDataNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
+    configNodeServiceRequestTimeout
+        // cn internal service
+        + configNodeServiceRequestTimeout
+        // dn internal service
+        + dataNodeServiceRequestTimeout;
   }
 
   public static int calculateCnLeaderToAllDnMaxTime() {
     return
     // SUBMIT_TEST_CONNECTION_TASK rpc timeout
-    AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        // DN test timeout
-        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        + AsyncDataNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        + AsyncDataNodeExternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS
-        + AsyncDataNodeMPPDataExchangeServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
+    configNodeServiceRequestTimeout
+        // cn internal service
+        + configNodeServiceRequestTimeout
+        // dn internal, external, mpp service
+        + 3 * dataNodeServiceRequestTimeout;
   }
 
   public static int calculateCnLeaderToAllNodeMaxTime() {
@@ -106,6 +108,6 @@ public class TestConnectionUtils {
 
   public static int calculateDnToCnLeaderMaxTime() {
     return calculateCnLeaderToAllDnMaxTime()
-        + AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS;
+        + CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   }
 }

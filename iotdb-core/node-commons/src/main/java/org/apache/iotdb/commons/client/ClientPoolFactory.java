@@ -79,8 +79,7 @@ public class ClientPoolFactory {
               new AsyncConfigNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(
-                          AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS)
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -128,8 +127,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(
-                          AsyncDataNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS)
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -154,8 +152,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeExternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(
-                          AsyncDataNodeExternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS)
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -181,8 +178,7 @@ public class ClientPoolFactory {
               new AsyncConfigNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(
-                          AsyncConfigNodeInternalServiceClient.DEFAULT_CONNECTION_TIMEOUT_IN_MS)
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
@@ -256,9 +252,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeMPPDataExchangeServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(
-                          AsyncDataNodeMPPDataExchangeServiceClient
-                              .DEFAULT_CONNECTION_TIMEOUT_IN_MS)
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
@@ -45,8 +44,6 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeInternalServiceClient.class);
 
-  public static final int DEFAULT_CONNECTION_TIMEOUT_IN_MS =
-      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   public final AtomicLong originalTimeout = new AtomicLong(-1);
 
   private final boolean printLogWhenEncounterException;
