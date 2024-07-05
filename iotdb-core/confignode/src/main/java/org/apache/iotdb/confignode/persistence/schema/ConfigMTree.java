@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -108,8 +109,8 @@ public class ConfigMTree {
    *
    * @param path path
    */
-  public void setStorageGroup(PartialPath path) throws MetadataException {
-    String[] nodeNames = path.getNodes();
+  public void setStorageGroup(final PartialPath path) throws MetadataException {
+    final String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
@@ -118,12 +119,12 @@ public class ConfigMTree {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      IConfigMNode temp = store.getChild(cur, nodeNames[i]);
+      final IConfigMNode temp = store.getChild(cur, nodeNames[i]);
       if (temp == null) {
         store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
       } else if (temp.isDatabase()) {
         // before create database, check whether the database already exists
-        throw new DatabaseAlreadySetException(temp.getFullPath());
+        throw new DatabaseConflictException(temp.getFullPath(), false);
       }
       cur = store.getChild(cur, nodeNames[i]);
       i++;
@@ -134,19 +135,17 @@ public class ConfigMTree {
     synchronized (this) {
       if (store.hasChild(cur, nodeNames[i])) {
         // node b has child sg
-        if (store.getChild(cur, nodeNames[i]).isDatabase()) {
-          throw new DatabaseAlreadySetException(path.getFullPath());
-        } else {
-          throw new DatabaseAlreadySetException(path.getFullPath(), true);
-        }
+        throw store.getChild(cur, nodeNames[i]).isDatabase()
+            ? new DatabaseAlreadySetException(path.getFullPath())
+            : new DatabaseConflictException(path.getFullPath(), false);
       } else {
-        IDatabaseMNode<IConfigMNode> databaseMNode =
+        final IDatabaseMNode<IConfigMNode> databaseMNode =
             nodeFactory.createDatabaseMNode(cur, nodeNames[i]);
 
-        IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode.getAsMNode());
+        final IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode.getAsMNode());
 
         if (result != databaseMNode) {
-          throw new DatabaseAlreadySetException(path.getFullPath(), true);
+          throw new DatabaseConflictException(path.getFullPath(), true);
         }
       }
     }
@@ -258,9 +257,9 @@ public class ConfigMTree {
   /**
    * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
    */
-  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByDatabasePath(PartialPath databasePath)
+  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByDatabasePath(final PartialPath databasePath)
       throws MetadataException {
-    String[] nodes = databasePath.getNodes();
+    final String[] nodes = databasePath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(databasePath.getFullPath());
     }
@@ -271,7 +270,7 @@ public class ConfigMTree {
         throw new DatabaseNotSetException(databasePath.getFullPath());
       }
       if (cur.isDatabase()) {
-        throw new DatabaseAlreadySetException(cur.getFullPath());
+        throw new DatabaseConflictException(cur.getFullPath(), false);
       }
     }
 
@@ -282,7 +281,7 @@ public class ConfigMTree {
     if (cur.isDatabase()) {
       return cur.getAsDatabaseMNode();
     } else {
-      throw new DatabaseAlreadySetException(databasePath.getFullPath(), true);
+      throw new DatabaseConflictException(databasePath.getFullPath(), true);
     }
   }
 
@@ -340,8 +339,9 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public void checkDatabaseAlreadySet(PartialPath path) throws DatabaseAlreadySetException {
-    String[] nodeNames = path.getNodes();
+  public void checkDatabaseAlreadySet(final PartialPath path)
+      throws DatabaseAlreadySetException, DatabaseConflictException {
+    final String[] nodeNames = path.getNodes();
     IConfigMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return;
@@ -355,7 +355,7 @@ public class ConfigMTree {
         throw new DatabaseAlreadySetException(cur.getFullPath());
       }
     }
-    throw new DatabaseAlreadySetException(path.getFullPath(), true);
+    throw new DatabaseConflictException(path.getFullPath(), true);
   }
 
   // endregion

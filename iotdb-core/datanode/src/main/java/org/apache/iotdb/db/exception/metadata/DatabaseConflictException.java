@@ -22,18 +22,31 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class DatabaseAlreadySetException extends MetadataException {
+public class DatabaseConflictException extends MetadataException {
+
+  private final boolean isChild;
 
   private final String storageGroupPath;
 
-  public DatabaseAlreadySetException(final String path) {
-    super(
-        String.format("%s has already been created as database", path),
-        TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+  public DatabaseConflictException(final String path, boolean isChild) {
+    super(getMessage(path, isChild), TSStatusCode.DATABASE_CONFLICT.getStatusCode());
+    this.isChild = isChild;
     storageGroupPath = path;
+  }
+
+  public boolean isChild() {
+    return isChild;
   }
 
   public String getStorageGroupPath() {
     return storageGroupPath;
+  }
+
+  private static String getMessage(final String path, final boolean hasChild) {
+    if (hasChild) {
+      return String.format("some children of %s have already been created as database", path);
+    } else {
+      return String.format("%s has already been created as database", path);
+    }
   }
 }
