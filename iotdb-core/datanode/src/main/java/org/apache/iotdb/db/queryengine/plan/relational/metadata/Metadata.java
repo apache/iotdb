@@ -75,7 +75,8 @@ public interface Metadata {
   List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
-      List<String> attributeColumns);
+      List<String> attributeColumns,
+      MPPQueryContext context);
 
   /**
    * This method is used for table column validation and should be invoked before device validation.
