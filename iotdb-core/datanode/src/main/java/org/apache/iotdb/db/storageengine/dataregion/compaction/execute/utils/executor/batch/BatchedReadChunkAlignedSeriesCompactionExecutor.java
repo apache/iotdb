@@ -371,14 +371,15 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
         CompactChunkPlan compactChunkPlan =
             batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
-        if (timeChunk.getChunkMetadata().getStartTime()
-            != compactChunkPlan.getTimeRange().getMin()) {
+        boolean isCurrentChunkCompactedByDirectlyFlush =
+            compactChunkPlan.isCompactedByDirectlyFlush();
+        if (isCurrentChunkCompactedByDirectlyFlush
+            && timeChunk.getChunkMetadata().getStartTime()
+                != compactChunkPlan.getTimeRange().getMin()) {
           throw new BatchCompactionCannotAlignedException(
               timeChunk.getChunkMetadata(), compactChunkPlan, batchCompactionPlan);
         }
-        return batchCompactionPlan
-            .getCompactChunkPlan(currentCompactChunk)
-            .isCompactedByDirectlyFlush();
+        return isCurrentChunkCompactedByDirectlyFlush;
       }
 
       @Override
