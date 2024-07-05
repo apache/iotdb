@@ -81,10 +81,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         });
   }
 
+  /////////////////////////////// prefetch ///////////////////////////////
+
   @Override
   public void executePrefetch() {
-    tryPrefetch();
-    serializeEventsInQueue();
+    super.tryPrefetch();
+    this.serializeEventsInQueue();
   }
 
   @Override

@@ -93,6 +93,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         });
   }
 
+  /////////////////////////////// poll ///////////////////////////////
+
   @Override
   public SubscriptionEvent poll(final String consumerId) {
     if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
@@ -257,6 +259,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return event;
   }
 
+  /////////////////////////////// prefetch ///////////////////////////////
+
+  @Override
+  public synchronized void executePrefetch() {
+    super.tryPrefetch();
+
+    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
+    for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
+      try {
+        event.prefetchRemainingResponses();
+        event.trySerializeRemainingResponses();
+      } catch (final IOException ignored) {
+      }
+    }
+  }
+
   @Override
   protected boolean onEvent(final TabletInsertionEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
@@ -337,18 +355,21 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  @Override
-  public synchronized void executePrefetch() {
-    tryPrefetch();
+  /////////////////////////////// commit ///////////////////////////////
 
-    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
-    for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
-      try {
-        event.prefetchRemainingResponses();
-        event.trySerializeRemainingResponses();
-      } catch (final IOException ignored) {
+  /**
+   * @return {@code true} if nack successfully
+   */
+  @Override
+  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
+    if (super.nack(consumerId, commitContext)) {
+      final SubscriptionEvent event = consumerIdToSubscriptionEventMap.get(consumerId);
+      if (Objects.nonNull(event) && Objects.equals(commitContext, event.getCommitContext())) {
+        consumerIdToSubscriptionEventMap.remove(consumerId);
       }
+      return true;
     }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -397,7 +418,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
       consumerIdToSubscriptionEventMap.remove(entry.getKey());
 
-      event.resetCurrentResponseIndex();
+      event.nack();
       consumerIdToSubscriptionEventMap.put(consumerId, event);
 
       event.recordLastPolledConsumerId(consumerId);
