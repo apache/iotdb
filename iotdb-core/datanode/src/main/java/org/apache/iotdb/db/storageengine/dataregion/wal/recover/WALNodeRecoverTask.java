@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -174,20 +175,11 @@ public class WALNodeRecoverTask implements Runnable {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
         if (walEntry.getType().needSearch()) {
-          if (walEntry.getType() != WALEntryType.DELETE_DATA_NODE) {
-            InsertNode insertNode = (InsertNode) walEntry.getValue();
-            if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
-              searchIndex = insertNode.getSearchIndex();
-              lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
-              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
-            }
-          } else {
-            DeleteDataNode deleteNode = (DeleteDataNode) walEntry.getValue();
-            if (deleteNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
-              searchIndex = deleteNode.getSearchIndex();
-              lastSearchIndex = Math.max(lastSearchIndex, deleteNode.getSearchIndex());
-              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
-            }
+          SearchNode searchNode = (SearchNode) walEntry.getValue();
+          if (searchNode.getSearchIndex() != SearchNode.NO_CONSENSUS_INDEX) {
+            searchIndex = searchNode.getSearchIndex();
+            lastSearchIndex = Math.max(lastSearchIndex, searchNode.getSearchIndex());
+            fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
           }
         }
         metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
@@ -203,7 +195,7 @@ public class WALNodeRecoverTask implements Runnable {
     try {
       walRecoverWriter.recover(metaData);
     } catch (IOException e) {
-      logger.error("Fail to recover metadata of wal file {}", lastWALFile);
+      logger.error("Fail to recover metadata of wal file {}", lastWALFile, e);
     }
     // rename last wal file when file status are inconsistent
     if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
