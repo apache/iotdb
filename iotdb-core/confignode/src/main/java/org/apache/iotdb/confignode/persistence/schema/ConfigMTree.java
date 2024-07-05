@@ -137,7 +137,7 @@ public class ConfigMTree {
         // node b has child sg
         throw store.getChild(cur, nodeNames[i]).isDatabase()
             ? new DatabaseAlreadySetException(path.getFullPath())
-            : new DatabaseConflictException(path.getFullPath(), false);
+            : new DatabaseConflictException(path.getFullPath(), true);
       } else {
         final IDatabaseMNode<IConfigMNode> databaseMNode =
             nodeFactory.createDatabaseMNode(cur, nodeNames[i]);
