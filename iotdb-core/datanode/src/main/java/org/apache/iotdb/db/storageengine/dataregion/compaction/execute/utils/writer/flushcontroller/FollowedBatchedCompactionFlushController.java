@@ -52,7 +52,8 @@ public class FollowedBatchedCompactionFlushController extends AbstractCompaction
         batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
     if (compactChunkPlan.isCompactedByDirectlyFlush()
         && chunkToFlush.getStartTime() != compactChunkPlan.getTimeRange().getMin()) {
-      throw new BatchCompactionCannotAlignedException(chunkToFlush, compactChunkPlan);
+      throw new BatchCompactionCannotAlignedException(
+          chunkToFlush, compactChunkPlan, batchCompactionPlan);
     }
     return compactChunkPlan.isCompactedByDirectlyFlush();
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 
 import org.apache.tsfile.file.header.PageHeader;
@@ -34,10 +35,12 @@ public class BatchCompactionCannotAlignedException extends RuntimeException {
   }
 
   public BatchCompactionCannotAlignedException(
-      IChunkMetadata chunkMetadata, CompactChunkPlan compactChunkPlan) {
+      IChunkMetadata chunkMetadata,
+      CompactChunkPlan compactChunkPlan,
+      BatchCompactionPlan batchCompactionPlan) {
     super(
         String.format(
-            "Current chunk %s cannot be aligned with time chunk: %s",
-            chunkMetadata, compactChunkPlan));
+            "Current chunk %s cannot be aligned with time chunk: %s, all time chunk in first batch is %s",
+            chunkMetadata, compactChunkPlan, batchCompactionPlan));
   }
 }
