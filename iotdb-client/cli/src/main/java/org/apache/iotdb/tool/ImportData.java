@@ -268,6 +268,8 @@ public class ImportData extends AbstractDataTool {
       if (!file.isDirectory()) {
         file.mkdir();
         failedFileDirectory = file.getAbsolutePath() + File.separator;
+      } else if (!failedFileDirectory.endsWith("/") && !failedFileDirectory.endsWith("\\")) {
+        failedFileDirectory += File.separator;
       }
     }
     if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
