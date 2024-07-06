@@ -92,7 +92,10 @@ public class CreateTableDeviceNode extends WritePlanNode {
       if (lastNonNullIndex == -1) {
         throw new IllegalArgumentException("DeviceID shouldn't be all nulls.");
       }
-      res.add(Arrays.copyOf(device, lastNonNullIndex + 1));
+      res.add(
+          lastNonNullIndex == device.length - 1
+              ? device
+              : Arrays.copyOf(device, lastNonNullIndex + 1));
     }
     return res;
   }
