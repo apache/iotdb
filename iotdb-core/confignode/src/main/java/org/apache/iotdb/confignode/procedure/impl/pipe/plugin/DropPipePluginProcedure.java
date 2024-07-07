@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -44,6 +45,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
@@ -107,16 +109,28 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final PipePluginCoordinator pipePluginCoordinator =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
+    AtomicReference<PipeTaskInfo> pipeTaskInfo =
+        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().tryLock();
+
     pipePluginCoordinator.lock();
 
     try {
       pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+
+      if (pipeTaskInfo != null) {
+        pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
+      }
+
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
       pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
+    } finally {
+      if (pipeTaskInfo != null) {
+        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+      }
     }
 
     try {
@@ -132,8 +146,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private Flow executeFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromDropOnDataNodes({})", pluginName);
 
-    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, false))
-            .getCode()
+    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, true)).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropPipePluginState.DROP_ON_CONFIG_NODES);
       return Flow.HAS_MORE_STATE;

@@ -34,11 +34,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
-  protected final Map<String, Class<?>> pipePluginNameToClassMap;
+  protected final Map<String, PipePluginClassLoader> pipePluginNameToClassLoaderMap;
+  protected final Map<String, Class<?>> builtinPipePluginNameToClassMap;
 
   public PipePluginMetaKeeper() {
-    pipePluginNameToClassMap = new ConcurrentHashMap<>();
-
+    pipePluginNameToClassLoaderMap = new ConcurrentHashMap<>();
+    builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
     loadBuiltInPlugins();
   }
 
@@ -48,7 +49,7 @@ public abstract class PipePluginMetaKeeper {
           builtinPipePlugin.getPipePluginName(),
           new PipePluginMeta(
               builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
-      addPluginAndClass(
+      addBuiltInPluginClass(
           builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
     }
   }
@@ -73,22 +74,33 @@ public abstract class PipePluginMetaKeeper {
     return pipePluginNameToMetaMap.containsKey(pluginName.toUpperCase());
   }
 
-  public void addPluginAndClass(String pluginName, Class<?> clazz) {
-    pipePluginNameToClassMap.put(pluginName.toUpperCase(), clazz);
+  public void addPluginAndClassLoader(String pluginName, PipePluginClassLoader classLoader) {
+    pipePluginNameToClassLoaderMap.put(pluginName.toUpperCase(), classLoader);
   }
 
-  public Class<?> getPluginClass(String pluginName) {
-    return pipePluginNameToClassMap.get(pluginName.toUpperCase());
+  private void addBuiltInPluginClass(String pluginName, Class<?> builtinPipePluginClass) {
+    builtinPipePluginNameToClassMap.put(pluginName.toUpperCase(), builtinPipePluginClass);
   }
 
-  public void removePluginClass(String pluginName) {
-    pipePluginNameToClassMap.remove(pluginName.toUpperCase());
+  public PipePluginClassLoader getPluginClassLoader(String pluginName) {
+    return pipePluginNameToClassLoaderMap.get(pluginName.toUpperCase());
   }
 
-  public void updatePluginClass(PipePluginMeta pipePluginMeta, PipePluginClassLoader classLoader)
-      throws ClassNotFoundException {
-    final Class<?> functionClass = Class.forName(pipePluginMeta.getClassName(), true, classLoader);
-    pipePluginNameToClassMap.put(pipePluginMeta.getPluginName().toUpperCase(), functionClass);
+  public Class<?> getBuiltPluginClass(String pluginName) {
+    return builtinPipePluginNameToClassMap.get(pluginName.toUpperCase());
+  }
+
+  public void removePluginClassLoader(String pluginName) {
+    pipePluginNameToClassLoaderMap.remove(pluginName.toUpperCase());
+  }
+
+  public String getPluginNameByJarName(String jarName) {
+    for (Map.Entry<String, PipePluginMeta> entry : pipePluginNameToMetaMap.entrySet()) {
+      if (entry.getValue().getJarName().equals(jarName)) {
+        return entry.getKey();
+      }
+    }
+    return null;
   }
 
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {

@@ -46,9 +46,10 @@ public class PipePluginClassLoaderManager implements IService {
     activeClassLoader = new PipePluginClassLoader(libRoot);
   }
 
-  public PipePluginClassLoader updateAndGetActiveClassLoader() throws IOException {
+  public PipePluginClassLoader updateAndGetActiveClassLoader(String pluginDirPath)
+      throws IOException {
     PipePluginClassLoader deprecatedClassLoader = activeClassLoader;
-    activeClassLoader = new PipePluginClassLoader(libRoot);
+    activeClassLoader = new PipePluginClassLoader(pluginDirPath);
     if (deprecatedClassLoader != null) {
       deprecatedClassLoader.markAsDeprecated();
     }

@@ -187,8 +187,9 @@ public class PipePluginInfo implements SnapshotProcessor {
           pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
 
       if (createPipePluginPlan.getJarFile() != null) {
-        pipePluginExecutableManager.saveToInstallDir(
+        pipePluginExecutableManager.savePluginToInstallDir(
             ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
+            createPipePluginPlan.getPipePluginMeta().getPluginName(),
             pipePluginMeta.getJarName());
       }
 
@@ -208,9 +209,21 @@ public class PipePluginInfo implements SnapshotProcessor {
     final String pluginName = dropPipePluginPlan.getPluginName();
 
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(
-          pipePluginMetaKeeper.getPipePluginMeta(pluginName).getJarName());
+      String jarName = pipePluginMetaKeeper.getPipePluginMeta(pluginName).getJarName();
+      pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(jarName);
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
+
+      try {
+        pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);
+      } catch (IOException e) {
+        final String errorMessage =
+            String.format(
+                "Failed to execute dropPipePlugin(%s) on config nodes, because of %s",
+                pluginName, e);
+        LOGGER.warn(errorMessage, e);
+        return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(errorMessage);
+      }
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -226,10 +239,11 @@ public class PipePluginInfo implements SnapshotProcessor {
     try {
       final List<ByteBuffer> jarList = new ArrayList<>();
       for (final String jarName : getPipePluginJarPlan.getJarNames()) {
+        String pluginName = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         jarList.add(
             ExecutableManager.transferToBytebuffer(
                 PipePluginExecutableManager.getInstance()
-                    .getFileStringUnderInstallByName(jarName)));
+                    .getPluginInstallPath(pluginName, jarName)));
       }
       return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
     } catch (final Exception e) {

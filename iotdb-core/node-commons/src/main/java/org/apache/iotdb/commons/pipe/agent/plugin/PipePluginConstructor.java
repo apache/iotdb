@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -82,12 +83,16 @@ public abstract class PipePluginConstructor {
     }
 
     try {
-      return (PipePlugin)
-          pluginMetaKeeper.getPluginClass(pluginName).getDeclaredConstructor().newInstance();
+
+      PipePluginClassLoader classLoader = pluginMetaKeeper.getPluginClassLoader(pluginName);
+      final Class<?> pluginClass = Class.forName(information.getClassName(), true, classLoader);
+
+      return (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
-        | IllegalAccessException e) {
+        | IllegalAccessException
+        | ClassNotFoundException e) {
       String errorMessage =
           String.format(
               "Failed to reflect PipePlugin %s(%s) instance, because %s",

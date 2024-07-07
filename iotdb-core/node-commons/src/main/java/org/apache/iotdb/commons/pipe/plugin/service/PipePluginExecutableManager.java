@@ -45,7 +45,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
     final String pluginName = pipePluginMeta.getPluginName();
     final String md5FilePath = pluginName + ".txt";
 
-    if (hasFileUnderInstallDir(md5FilePath)) {
+    if (hasFileUnderTemporaryRoot(md5FilePath)) {
       try {
         return readTextFromFileUnderTemporaryRoot(md5FilePath).equals(pipePluginMeta.getJarMD5());
       } catch (IOException e) {
@@ -58,7 +58,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       final String md5 =
           DigestUtils.md5Hex(
               Files.newInputStream(
-                  Paths.get(getInstallDir() + File.separator + pipePluginMeta.getJarName())));
+                  Paths.get(getPluginInstallPath(pluginName, pipePluginMeta.getJarName()))));
       // Save the md5 in a txt under trigger temporary lib
       saveTextAsFileUnderTemporaryRoot(md5, md5FilePath);
       return md5.equals(pipePluginMeta.getJarMD5());
