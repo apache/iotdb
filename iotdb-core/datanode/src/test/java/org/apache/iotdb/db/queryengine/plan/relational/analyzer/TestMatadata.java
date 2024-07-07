@@ -205,7 +205,8 @@ public class TestMatadata implements Metadata {
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
-      List<String> attributeColumns) {
+      List<String> attributeColumns,
+      MPPQueryContext context) {
     return Arrays.asList(
         new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
         new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
