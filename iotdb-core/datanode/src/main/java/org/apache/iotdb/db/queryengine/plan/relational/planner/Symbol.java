@@ -44,6 +44,11 @@ public class Symbol implements Comparable<Symbol> {
     this.name = name;
   }
 
+  public static Symbol of(String name) {
+    requireNonNull(name, "name is null");
+    return new Symbol(name);
+  }
+
   public String getName() {
     return name;
   }

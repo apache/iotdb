@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry> {
 
@@ -49,18 +50,20 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
   @Override
   public boolean visitDeviceIdFilter(DeviceIdFilter filter, DeviceEntry deviceEntry) {
     IDeviceID deviceID = deviceEntry.getDeviceID();
-    // the first segment is "db.table", skip it
-    if (deviceID.segmentNum() < filter.getIndex() + 1) {
-      return false;
+    // the first segment is "tableName", skip it
+    int index = filter.getIndex() + 1;
+    // if index out of array bound, means that value will be null
+    if (deviceID.segmentNum() <= index) {
+      return filter.getValue() == null;
     } else {
-      return deviceID.segment(filter.getIndex() + 1).equals(filter.getValue());
+      return Objects.equals(deviceID.segment(index), filter.getValue());
     }
   }
 
   @Override
   public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, DeviceEntry deviceEntry) {
-    return filter
-        .getValue()
-        .equals(deviceEntry.getAttributeColumnValues().get(attributeIndexMap.get(filter.getKey())));
+    return Objects.equals(
+        deviceEntry.getAttributeColumnValues().get(attributeIndexMap.get(filter.getKey())),
+        filter.getValue());
   }
 }

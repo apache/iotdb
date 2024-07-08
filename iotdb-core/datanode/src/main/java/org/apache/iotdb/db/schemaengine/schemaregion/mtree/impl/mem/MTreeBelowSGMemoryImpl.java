@@ -1510,8 +1510,8 @@ public class MTreeBelowSGMemoryImpl {
     cur = child;
 
     String nodeName;
-    for (int i = 0; i < devicePath.length; i++) {
-      nodeName = devicePath[i] == null ? null : devicePath[i].toString();
+    for (Object o : devicePath) {
+      nodeName = o == null ? null : (String) o;
       child = cur.getChild(nodeName);
       if (child == null) {
         child = store.addChild(cur, nodeName, nodeFactory.createInternalMNode(cur, nodeName));

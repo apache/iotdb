@@ -38,6 +38,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
+/** It contains all tables' latest column schema */
 public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
@@ -205,6 +206,18 @@ public class DataNodeTableCache implements ITableCache {
             }
             return v;
           });
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalid(String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.remove(database);
+      preCreateTableMap.remove(database);
+      preAddColumnMap.remove(database);
     } finally {
       readWriteLock.writeLock().unlock();
     }

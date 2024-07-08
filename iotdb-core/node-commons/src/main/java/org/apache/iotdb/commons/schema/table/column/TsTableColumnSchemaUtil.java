@@ -106,7 +106,7 @@ public class TsTableColumnSchemaUtil {
   public static List<TsTableColumnSchema> deserializeColumnSchemaList(ByteBuffer buffer) {
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size == -1) {
-      return null;
+      throw new IllegalArgumentException("size should not be -1");
     }
     List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {

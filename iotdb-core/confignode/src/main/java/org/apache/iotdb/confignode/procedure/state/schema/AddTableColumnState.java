@@ -22,6 +22,6 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 public enum AddTableColumnState {
   COLUMN_CHECK,
   PRE_RELEASE,
-  COMMIT_RELEASE,
-  ADD_COLUMN
+  ADD_COLUMN,
+  COMMIT_RELEASE
 }

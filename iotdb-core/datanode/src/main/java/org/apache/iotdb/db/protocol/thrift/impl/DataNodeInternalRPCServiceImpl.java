@@ -136,6 +136,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -509,14 +510,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
       DataNodeSchemaCache.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
+      // clear table related cache
+      String database = req.getFullPath().substring(5);
+      DataNodeTableCache.getInstance().invalid(database);
+      TableDeviceSchemaFetcher.getInstance().getTableDeviceCache().invalidate(database);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
   }
 

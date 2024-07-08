@@ -55,14 +55,24 @@ public class APHashExecutor extends SeriesPartitionExecutor {
     int index = 0;
 
     for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
-      String segment = (String) deviceID.segment(segmentID);
-      for (int i = 0; i < segment.length(); i++) {
+      Object segment = deviceID.segment(segmentID);
+      if (segment instanceof String) {
+        String segmentStr = (String) segment;
+        for (int i = 0; i < segmentStr.length(); i++) {
+          if ((index++ & 1) == 0) {
+            hash ^= ((hash << 7) ^ (int) segmentStr.charAt(i) ^ (hash >> 3));
+          } else {
+            hash ^= (~((hash << 11) ^ (int) segmentStr.charAt(i) ^ (hash >> 5)));
+          }
+        }
+      } else {
         if ((index++ & 1) == 0) {
-          hash ^= ((hash << 7) ^ (int) segment.charAt(i) ^ (hash >> 3));
+          hash ^= ((hash << 7) ^ NULL_SEGMENT_HASH_NUM ^ (hash >> 3));
         } else {
-          hash ^= (~((hash << 11) ^ (int) segment.charAt(i) ^ (hash >> 5)));
+          hash ^= (~((hash << 11) ^ NULL_SEGMENT_HASH_NUM ^ (hash >> 5)));
         }
       }
+
       if (segmentID < segmentNum - 1) {
         if ((index++ & 1) == 0) {
           hash ^= ((hash << 7) ^ (int) PATH_SEPARATOR ^ (hash >> 3));

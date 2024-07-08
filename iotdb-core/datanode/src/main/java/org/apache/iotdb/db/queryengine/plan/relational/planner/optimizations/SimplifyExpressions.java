@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.NormalizeOrExpressionRewriter.normalizeOrExpression;
 
-public class SimplifyExpressions implements RelationalPlanOptimizer {
+public class SimplifyExpressions implements TablePlanOptimizer {
 
   @Override
   public PlanNode optimize(

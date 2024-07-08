@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,21 +36,22 @@ public class OutputNode extends SingleChildProcessNode {
   private final List<String> columnNames;
 
   // column name = symbol
-  private final List<Symbol> outputs;
+  private final List<Symbol> outputSymbols;
 
-  public OutputNode(PlanNodeId id, PlanNode child, List<String> columnNames, List<Symbol> outputs) {
+  public OutputNode(
+      PlanNodeId id, PlanNode child, List<String> columnNames, List<Symbol> outputSymbols) {
     super(id, child);
     this.id = id;
     this.child = child;
     this.columnNames = ImmutableList.copyOf(columnNames);
-    this.outputs = ImmutableList.copyOf(outputs);
+    this.outputSymbols = ImmutableList.copyOf(outputSymbols);
   }
 
-  public OutputNode(PlanNodeId id, List<String> columnNames, List<Symbol> outputs) {
+  public OutputNode(PlanNodeId id, List<String> columnNames, List<Symbol> outputSymbols) {
     super(id);
     this.id = id;
     this.columnNames = ImmutableList.copyOf(columnNames);
-    this.outputs = ImmutableList.copyOf(outputs);
+    this.outputSymbols = ImmutableList.copyOf(outputSymbols);
   }
 
   @Override
@@ -59,7 +61,7 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new OutputNode(id, child, columnNames, outputs);
+    return new OutputNode(id, child, columnNames, outputSymbols);
   }
 
   @Override
@@ -72,8 +74,8 @@ public class OutputNode extends SingleChildProcessNode {
     PlanNodeType.TABLE_OUTPUT_NODE.serialize(byteBuffer);
     ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
     columnNames.forEach(columnName -> ReadWriteIOUtils.write(columnName, byteBuffer));
-    ReadWriteIOUtils.write(outputs.size(), byteBuffer);
-    outputs.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+    outputSymbols.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
   }
 
   @Override
@@ -83,8 +85,8 @@ public class OutputNode extends SingleChildProcessNode {
     for (String columnName : columnNames) {
       ReadWriteIOUtils.write(columnName, stream);
     }
-    ReadWriteIOUtils.write(outputs.size(), stream);
-    for (Symbol symbol : outputs) {
+    ReadWriteIOUtils.write(outputSymbols.size(), stream);
+    for (Symbol symbol : outputSymbols) {
       Symbol.serialize(symbol, stream);
     }
   }
@@ -110,6 +112,25 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return outputs;
+    return outputSymbols;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    OutputNode outputNode = (OutputNode) o;
+    return Objects.equal(outputSymbols, outputNode.outputSymbols);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), outputSymbols);
+  }
+
+  @Override
+  public String toString() {
+    return "OutputNode-" + this.getPlanNodeId();
   }
 }

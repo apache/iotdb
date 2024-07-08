@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.ExchangeNodeGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.AddExchangeNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.DistributedPlanGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -38,6 +39,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import java.util.Collections;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
 
@@ -72,19 +74,23 @@ public class TableModelStatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
-    // TODO(beyyes) adapt this logic after optimize ExchangeNodeAdder
-    ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(context.getQueryContext(), context.getAnalysis());
-    List<PlanNode> distributedPlanNodeResult =
-        new ExchangeNodeGenerator().visitPlan(logicalPlan.getRootNode(), exchangeContext);
+    // generate table model distributed plan
+    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
+    List<PlanNode> distributedPlanResult =
+        new DistributedPlanGenerator(context.getQueryContext(), context.getAnalysis())
+            .genResult(logicalPlan.getRootNode(), planContext);
+    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+
+    // add exchange node for distributed plan
+    PlanNode outputNodeWithExchange =
+        new AddExchangeNodes(context.getQueryContext())
+            .addExchangeNodes(distributedPlanResult.get(0), planContext);
 
     List<String> lines =
-        distributedPlanNodeResult
-            .get(0)
-            .accept(
-                new PlanGraphPrinter(),
-                new PlanGraphPrinter.GraphContext(
-                    context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+        outputNodeWithExchange.accept(
+            new PlanGraphPrinter(),
+            new PlanGraphPrinter.GraphContext(
+                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     return getStatementMemorySource(header, lines);
   }

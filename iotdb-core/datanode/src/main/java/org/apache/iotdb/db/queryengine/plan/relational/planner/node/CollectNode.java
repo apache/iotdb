@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -71,5 +73,23 @@ public class CollectNode extends MultiChildProcessNode {
   public static CollectNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new CollectNode(planNodeId);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode());
+  }
+
+  @Override
+  public String toString() {
+    return "CollectNode-" + this.getPlanNodeId();
   }
 }

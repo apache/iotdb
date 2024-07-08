@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -37,8 +36,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
+
 public class SchemaPredicateUtil {
 
+  private SchemaPredicateUtil() {}
+
+  // pair.left is Expressions only contain ID columns
+  // pair.right is Expressions contain at least one ATTRIBUTE column
   static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
       List<Expression> expressionList, TsTable table) {
     List<Expression> idDeterminedList = new ArrayList<>();
@@ -66,7 +71,7 @@ public class SchemaPredicateUtil {
       List<Expression> schemaFilterList) {
     List<List<Expression>> orConcatList =
         schemaFilterList.stream()
-            .map(SchemaPredicateUtil::convertOneDeviceIdPredicateToOrConcat)
+            .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
             .collect(Collectors.toList());
     int orSize = orConcatList.size();
     int finalResultSize = 1;
@@ -96,6 +101,9 @@ public class SchemaPredicateUtil {
 
       if (!hasConflictFilter) {
         result.add(oneCase);
+      } else {
+        // TODO table metadata
+        throw new IllegalStateException("have conflict filter!");
       }
 
       for (int k = orSize - 1; k >= 0; k--) {
@@ -110,37 +118,19 @@ public class SchemaPredicateUtil {
     return result;
   }
 
-  private static List<Expression> convertOneDeviceIdPredicateToOrConcat(Expression schemaFilter) {
-    List<Expression> result = new ArrayList<>();
-    if (schemaFilter instanceof LogicalExpression) {
-      LogicalExpression logicalExpression = (LogicalExpression) schemaFilter;
-      if (logicalExpression.getOperator().equals(LogicalExpression.Operator.AND)) {
-        throw new IllegalStateException("Input filter shall not be AND operation");
-      } else if (logicalExpression.getOperator().equals(LogicalExpression.Operator.OR)) {
-        result.addAll(convertOneDeviceIdPredicateToOrConcat(logicalExpression.getTerms().get(0)));
-        result.addAll(convertOneDeviceIdPredicateToOrConcat(logicalExpression.getTerms().get(1)));
-      }
-    } else {
-      result.add(schemaFilter);
-    }
-    return result;
-  }
-
-  private static String getColumnName(Expression expression) {
-    ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+  public static String getColumnName(Expression expression) {
+    ComparisonExpression node = (ComparisonExpression) expression;
     String columnName;
-    if (comparisonExpression.getLeft() instanceof Literal) {
-      if (comparisonExpression.getRight() instanceof Identifier) {
-        columnName = ((Identifier) (comparisonExpression.getRight())).getValue();
-      } else {
-        columnName = ((SymbolReference) (comparisonExpression.getRight())).getName();
+    if (node.getLeft() instanceof Literal) {
+      if (!(node.getRight() instanceof SymbolReference)) {
+        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
       }
+      columnName = ((SymbolReference) (node.getRight())).getName();
     } else {
-      if (comparisonExpression.getLeft() instanceof Identifier) {
-        columnName = ((Identifier) (comparisonExpression.getLeft())).getValue();
-      } else {
-        columnName = ((SymbolReference) (comparisonExpression.getLeft())).getName();
+      if (!(node.getLeft() instanceof SymbolReference)) {
+        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getLeft());
       }
+      columnName = ((SymbolReference) (node.getLeft())).getName();
     }
     return columnName;
   }

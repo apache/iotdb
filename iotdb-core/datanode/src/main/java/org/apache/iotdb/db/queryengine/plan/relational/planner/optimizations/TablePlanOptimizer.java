@@ -20,7 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
-public interface RelationalPlanOptimizer {
+public interface TablePlanOptimizer {
   PlanNode optimize(
       PlanNode planNode,
       Analysis analysis,

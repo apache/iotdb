@@ -54,7 +54,7 @@ public class MetadataUtil {
   }
 
   public static void checkObjectName(String dbName, String objectName) {
-    checkLowerCase(dbName, "schemaName");
+    checkLowerCase(dbName, "dbName");
     checkLowerCase(objectName, "objectName");
   }
 

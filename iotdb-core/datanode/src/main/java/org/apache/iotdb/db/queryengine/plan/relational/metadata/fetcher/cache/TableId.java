@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.commons.schema.MemUsageUtil;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 
 public class TableId {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(TableId.class);
 
   private final String database;
 
@@ -42,13 +44,13 @@ public class TableId {
     return tableName;
   }
 
+  public boolean belongTo(String database) {
+    return Objects.equals(this.database, database);
+  }
+
   public int estimateSize() {
-    return 8
-        + 8
-        + 8
-        + (int)
-            (MemUsageUtil.computeStringMemUsage(database)
-                + MemUsageUtil.computeStringMemUsage(tableName));
+    return (int)
+        (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database) + RamUsageEstimator.sizeOf(tableName));
   }
 
   @Override

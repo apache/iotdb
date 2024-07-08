@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class TableDistributionPlanner {
@@ -50,16 +51,18 @@ public class TableDistributionPlanner {
   }
 
   public DistributedQueryPlan plan() {
-    ExchangeNodeGenerator.PlanContext exchangeContext =
-        new ExchangeNodeGenerator.PlanContext(mppQueryContext, analysis);
-    List<PlanNode> distributedPlanNodeResult =
-        new ExchangeNodeGenerator().visitPlan(logicalQueryPlan.getRootNode(), exchangeContext);
 
-    if (distributedPlanNodeResult.size() != 1) {
-      throw new IllegalStateException("root node must return only one");
-    }
+    // generate table model distributed plan
+    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
+    List<PlanNode> distributedPlanResult =
+        new DistributedPlanGenerator(mppQueryContext, analysis)
+            .genResult(logicalQueryPlan.getRootNode(), planContext);
+    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 
-    PlanNode outputNodeWithExchange = distributedPlanNodeResult.get(0);
+    // add exchange node for distributed plan
+    PlanNode outputNodeWithExchange =
+        new AddExchangeNodes(mppQueryContext)
+            .addExchangeNodes(distributedPlanResult.get(0), planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
@@ -69,19 +72,21 @@ public class TableDistributionPlanner {
                   .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e))
                   .collect(Collectors.toList()));
     }
-    adjustUpStream(outputNodeWithExchange, exchangeContext);
+    adjustUpStream(outputNodeWithExchange, planContext);
 
+    // generate subPlan
     SubPlan subPlan =
         new SubPlanGenerator()
             .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
     subPlan.getPlanFragment().setRoot(true);
 
+    // generate fragment instances
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
             ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
             : new WriteFragmentParallelPlanner(subPlan, analysis, mppQueryContext).parallelPlan();
 
-    // Only execute this step for READ operation
+    // only execute this step for READ operation
     if (mppQueryContext.getQueryType() == QueryType.READ) {
       setSinkForRootInstance(subPlan, fragmentInstances);
     }
@@ -124,32 +129,32 @@ public class TableDistributionPlanner {
     rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
-  private void adjustUpStream(PlanNode root, ExchangeNodeGenerator.PlanContext exchangeContext) {
-    if (!exchangeContext.hasExchangeNode) {
+  private void adjustUpStream(PlanNode root, DistributedPlanGenerator.PlanContext context) {
+    if (!context.hasExchangeNode) {
       return;
     }
 
-    adjustUpStreamHelper(root, exchangeContext, new HashMap<>());
+    adjustUpStreamHelper(root, context, new HashMap<>());
   }
 
   private void adjustUpStreamHelper(
       PlanNode root,
-      ExchangeNodeGenerator.PlanContext exchangeContext,
-      Map<TRegionReplicaSet, IdentitySinkNode> regionNodemap) {
+      DistributedPlanGenerator.PlanContext context,
+      Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
     for (PlanNode child : root.getChildren()) {
-      adjustUpStreamHelper(child, exchangeContext, regionNodemap);
+      adjustUpStreamHelper(child, context, regionNodeMap);
 
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
+
         IdentitySinkNode identitySinkNode =
-            regionNodemap.computeIfAbsent(
-                exchangeContext
-                    .getNodeDistribution(exchangeNode.getChild().getPlanNodeId())
-                    .getRegion(),
+            regionNodeMap.computeIfAbsent(
+                context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
                 k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
         identitySinkNode.addChild(exchangeNode.getChild());
         identitySinkNode.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
+
         exchangeNode.setChild(identitySinkNode);
         exchangeNode.setIndexOfUpstreamSinkHandle(identitySinkNode.getCurrentLastIndex());
       }

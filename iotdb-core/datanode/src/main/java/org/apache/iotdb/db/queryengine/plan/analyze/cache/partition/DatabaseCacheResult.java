@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class StorageGroupCacheResult<K, V> {
+public abstract class DatabaseCacheResult<K, V> {
   /** the result */
   private boolean success = true;
 
@@ -56,7 +56,7 @@ public abstract class StorageGroupCacheResult<K, V> {
     return map;
   }
 
-  public abstract void put(IDeviceID device, String storageGroupName);
+  public abstract void put(IDeviceID device, String databaseName);
 
   /** set failed and clear the map */
   public void setFailed() {
