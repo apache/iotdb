@@ -155,6 +155,7 @@ public class CompressionRatio {
           "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
           totalMemorySize,
           totalDiskSize);
+      oldFileName = ratioFiles[maxRatioIndex].getName();
       deleteRedundantFilesByIndex(ratioFiles, maxRatioIndex);
     } else { // If there is no new file, try to restore from the old version file
       File[] ratioFilesBeforeV121 =
