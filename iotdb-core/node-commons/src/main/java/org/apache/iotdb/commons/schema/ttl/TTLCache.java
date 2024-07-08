@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.commons.schema.ttl;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -78,15 +81,16 @@ public class TTLCache {
    *
    * @param nodes path to be removed
    */
-  public void unsetTTL(String[] nodes) {
+  public TSStatus unsetTTL(String[] nodes) {
     if (nodes.length < 2) {
-      return;
+      return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
+          .setMessage(String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
     } else if (nodes.length == 2) {
       // if path equals to root.**, then unset it to configured ttl
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
           && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl = Long.MAX_VALUE;
-        return;
+        return StatusUtils.OK;
       }
     }
     CacheNode current = ttlCacheTree;
@@ -98,7 +102,11 @@ public class TTLCache {
       CacheNode child = current.getChild(nodes[i]);
       if (child == null) {
         // there is no matching path on ttl cache tree
-        return;
+        return new TSStatus(TSStatusCode.PATH_NOT_EXIST.getStatusCode())
+            .setMessage(
+                "Not TTL rule"
+                    + " set for "
+                    + String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
       }
       if (hasNonDefaultTTL) {
         parentOfSubPathToBeRemoved = current;
@@ -114,13 +122,14 @@ public class TTLCache {
     if (!current.getChildren().isEmpty()) {
       // node to be removed is internal node, then just reset its ttl
       current.ttl = NULL_TTL;
-      return;
+      return StatusUtils.OK;
     }
 
     // node to be removed is leaf node, then remove corresponding node of this path from cache tree
     if (parentOfSubPathToBeRemoved != null) {
       parentOfSubPathToBeRemoved.removeChild(nodes[index]);
     }
+    return StatusUtils.OK;
   }
 
   /**

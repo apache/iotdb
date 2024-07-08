@@ -120,7 +120,7 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.17</moquette.version>
-        <netty.version>4.1.97.Final</netty.version>
+        <netty.version>4.1.110.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
@@ -137,11 +137,11 @@
     -->
         <ratis.version>3.1.0</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.1.13</reactor-netty.version>
-        <reactor.version>3.5.10</reactor.version>
+        <reactor-netty.version>1.1.20</reactor-netty.version>
+        <reactor.version>3.5.18</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
-        <snappy-java.version>1.1.10.4</snappy-java.version>
+        <snappy-java.version>1.1.10.5</snappy-java.version>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
@@ -165,8 +165,8 @@
     -->
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
-        <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <tsfile.version>1.0.1-bf6a2f3-SNAPSHOT</tsfile.version>
+        <zstd-jni.version>1.5.6-3</zstd-jni.version>
+        <tsfile.version>1.0.1-9c68a35-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim

@@ -122,7 +122,9 @@ public class SubscriptionBroker {
    * @return list of successful commit contexts
    */
   public List<SubscriptionCommitContext> commit(
-      final List<SubscriptionCommitContext> commitContexts, final boolean nack) {
+      final String consumerId,
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
@@ -138,11 +140,11 @@ public class SubscriptionBroker {
         continue;
       }
       if (!nack) {
-        if (prefetchingQueue.ack(commitContext)) {
+        if (prefetchingQueue.ack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(commitContext)) {
+        if (prefetchingQueue.nack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       }

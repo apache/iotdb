@@ -300,10 +300,11 @@ public class ConfigNodeDescriptor {
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
 
     conf.setPipeReceiverFileDir(
-        properties
-            .getProperty(
-                "pipe_receiver_file_dir",
-                conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")
+        Optional.ofNullable(properties.getProperty("cn_pipe_receiver_file_dir"))
+            .orElse(
+                properties.getProperty(
+                    "pipe_receiver_file_dir",
+                    conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver"))
             .trim());
 
     conf.setHeartbeatIntervalInMs(
