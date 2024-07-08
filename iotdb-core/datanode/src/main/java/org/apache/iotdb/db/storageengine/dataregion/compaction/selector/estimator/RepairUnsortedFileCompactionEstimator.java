@@ -53,7 +53,8 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
     long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSize =
-        averageChunkSize * maxConcurrentSeriesNum * taskInfo.getMaxChunkMetadataNumInSeries();
+        averageChunkSize * maxConcurrentSeriesNum * taskInfo.getMaxChunkMetadataNumInSeries()
+            + maxConcurrentSeriesNum * tsFileConfig.getPageSizeInByte();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize = Math.min(maxConcurrentSeriesSize, maxTargetChunkWriterSize);
 
