@@ -109,21 +109,22 @@ public class PipeTableResp implements DataSet {
     final List<TShowPipeInfo> showPipeInfoList = new ArrayList<>();
 
     for (final PipeMeta pipeMeta : allPipeMeta) {
-      final Map<String, Set<Integer>> pipeExceptionMessageRegion = new HashMap<>();
+      final Map<String, Set<Integer>> pipeExceptionMessage2RegionIdsMap = new HashMap<>();
+      final Map<String, Set<Integer>> pipeExceptionMessage2NodeIdsMap = new HashMap<>();
       final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
       final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
 
       for (final Map.Entry<Integer, PipeRuntimeException> entry :
           runtimeMeta.getNodeId2PipeRuntimeExceptionMap().entrySet()) {
-        final Integer regionId = entry.getKey();
+        final Integer nodeId = entry.getKey();
         final PipeRuntimeException e = entry.getValue();
         final String exceptionMessage =
             DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
 
-        pipeExceptionMessageRegion
+        pipeExceptionMessage2NodeIdsMap
             .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
-            .add(regionId);
+            .add(nodeId);
       }
 
       for (final Map.Entry<Integer, PipeTaskMeta> entry :
@@ -132,21 +133,48 @@ public class PipeTableResp implements DataSet {
         for (final PipeRuntimeException e : entry.getValue().getExceptionMessages()) {
           final String exceptionMessage =
               DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
-          pipeExceptionMessageRegion
+          pipeExceptionMessage2RegionIdsMap
               .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
               .add(regionId);
         }
       }
 
-      for (final Map.Entry<String, Set<Integer>> entry : pipeExceptionMessageRegion.entrySet()) {
+      int size = pipeExceptionMessage2NodeIdsMap.size();
+      int count = 0;
+
+      for (final Map.Entry<String, Set<Integer>> entry :
+          pipeExceptionMessage2NodeIdsMap.entrySet()) {
+        final String exceptionMessage = entry.getKey();
+        final Set<Integer> nodeIds = entry.getValue();
+        exceptionMessageBuilder
+            .append("nodeIds: ")
+            .append(nodeIds)
+            .append(", ")
+            .append(exceptionMessage);
+        if (++count < size) {
+          exceptionMessageBuilder.append("; ");
+        }
+      }
+
+      if (exceptionMessageBuilder.length() > 0) {
+        exceptionMessageBuilder.append("\n");
+      }
+
+      size = pipeExceptionMessage2RegionIdsMap.size();
+      count = 0;
+
+      for (final Map.Entry<String, Set<Integer>> entry :
+          pipeExceptionMessage2RegionIdsMap.entrySet()) {
         final String exceptionMessage = entry.getKey();
         final Set<Integer> regionIds = entry.getValue();
         exceptionMessageBuilder
-            .append("regionId: ")
+            .append("regionIds: ")
             .append(regionIds)
-            .append(",")
-            .append(exceptionMessage)
-            .append(";");
+            .append(", ")
+            .append(exceptionMessage);
+        if (++count < size) {
+          exceptionMessageBuilder.append("; ");
+        }
       }
 
       final TShowPipeInfo showPipeInfo =
