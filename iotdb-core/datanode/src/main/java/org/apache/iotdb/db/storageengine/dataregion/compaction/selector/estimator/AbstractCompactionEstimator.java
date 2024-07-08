@@ -59,7 +59,14 @@ public abstract class AbstractCompactionEstimator {
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio() + 1;
+  protected long compressionRatio = 3;
+
+  protected AbstractCompactionEstimator() {
+    try {
+      compressionRatio = (long) CompressionRatio.getInstance().getRatio();
+    } catch (Exception ignored) {
+    }
+  }
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
 

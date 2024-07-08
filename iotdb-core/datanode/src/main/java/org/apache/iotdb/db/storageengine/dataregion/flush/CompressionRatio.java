@@ -85,6 +85,12 @@ public class CompressionRatio {
    * call this method.
    */
   public synchronized void updateRatio(long memorySize, long diskSize) throws IOException {
+    if (memorySize < 0 || totalMemorySize.get() < 0) {
+      LOGGER.warn(
+          "The compression ratio is negative, current memTableSize: {}, totalMemTableSize: {}",
+          memorySize,
+          totalMemorySize);
+    }
     File oldFile = SystemFileFactory.INSTANCE.getFile(directory, oldFileName);
 
     totalMemorySize.addAndGet(memorySize);

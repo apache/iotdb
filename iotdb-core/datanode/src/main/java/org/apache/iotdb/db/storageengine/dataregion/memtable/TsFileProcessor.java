@@ -1551,6 +1551,7 @@ public class TsFileProcessor {
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
       CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
+
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",
