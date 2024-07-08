@@ -44,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -77,6 +78,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
   private final String oldThreadName = Thread.currentThread().getName();
 
   private ICrossCompactionPerformer performer = new ReadPointCompactionPerformer();
+  private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
 
   @Before
   public void setUp()
@@ -85,6 +87,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    SystemInfo.getInstance().setMemorySizeForCompaction(100 * 1024 * 1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
@@ -93,6 +96,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
     TsFileValidationTool.badFileNum = 0;
   }
 

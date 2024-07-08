@@ -85,6 +85,12 @@ public class CompressionRatio {
    * call this method.
    */
   public synchronized void updateRatio(long memorySize, long diskSize) throws IOException {
+    if (memorySize < 0 || totalMemorySize.get() < 0) {
+      LOGGER.warn(
+          "The compression ratio is negative, current memTableSize: {}, totalMemTableSize: {}",
+          memorySize,
+          totalMemorySize);
+    }
     File oldFile = SystemFileFactory.INSTANCE.getFile(directory, oldFileName);
 
     totalMemorySize.addAndGet(memorySize);
@@ -149,6 +155,7 @@ public class CompressionRatio {
           "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
           totalMemorySize,
           totalDiskSize);
+      oldFileName = ratioFiles[maxRatioIndex].getName();
       deleteRedundantFilesByIndex(ratioFiles, maxRatioIndex);
     } else { // If there is no new file, try to restore from the old version file
       File[] ratioFilesBeforeV121 =
