@@ -43,14 +43,22 @@ import java.util.HashMap;
 public class PipeDataNodePluginAgentTest {
   private static final String TMP_LIB_TOOR_DIR = "PipePluginAgentTest_libroot";
   private static final String TMP_TEMP_LIB_ROOT_DIR = "PipePluginAgentTest_temporarylibroot";
-  private static final String PLUGIN_NAME = "plugin-name";
+  private static final PipePluginMeta PIPE_PLUGIN_META =
+      new PipePluginMeta(
+          "PLUGIN-NAME",
+          "org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor",
+          false,
+          "IoTDBDataRegionExtractor.jar",
+          "md5");
 
   @Before
   public void before() {
     try {
       PipePluginExecutableManager.setupAndGetInstance(TMP_LIB_TOOR_DIR, TMP_TEMP_LIB_ROOT_DIR);
       PipePluginClassLoaderManager.setupAndGetInstance(TMP_LIB_TOOR_DIR);
-      String pluginPath = PipePluginExecutableManager.getInstance().getPluginsDirPath(PLUGIN_NAME);
+      String pluginPath =
+          PipePluginExecutableManager.getInstance()
+              .getPluginsDirPath(PIPE_PLUGIN_META.getPluginName());
       Files.createDirectories(Paths.get(pluginPath));
     } catch (IOException e) {
       Assert.fail();
@@ -60,7 +68,9 @@ public class PipeDataNodePluginAgentTest {
   @After
   public void after() {
     try {
-      String pluginPath = PipePluginExecutableManager.getInstance().getPluginsDirPath(PLUGIN_NAME);
+      String pluginPath =
+          PipePluginExecutableManager.getInstance()
+              .getPluginsDirPath(PIPE_PLUGIN_META.getPluginName());
       Files.deleteIfExists(Paths.get(pluginPath));
       Files.deleteIfExists(Paths.get(PipePluginExecutableManager.getInstance().getInstallDir()));
       Files.deleteIfExists(Paths.get(TMP_TEMP_LIB_ROOT_DIR));
@@ -73,16 +83,10 @@ public class PipeDataNodePluginAgentTest {
   @Test
   public void testPipePluginAgent() {
     PipeDataNodePluginAgent agent = new PipeDataNodePluginAgent();
+
     try {
-      agent.register(
-          new PipePluginMeta(
-              PLUGIN_NAME,
-              "org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor",
-              false,
-              "IoTDBDataRegionExtractor.jar",
-              "md5"),
-          null);
-      agent.deregister(PLUGIN_NAME, false);
+      agent.register(PIPE_PLUGIN_META, null);
+      agent.deregister(PIPE_PLUGIN_META.getPluginName(), true);
     } catch (Exception e) {
       Assert.fail();
     }
