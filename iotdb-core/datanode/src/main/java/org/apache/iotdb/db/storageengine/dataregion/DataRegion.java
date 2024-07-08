@@ -1020,9 +1020,16 @@ public class DataRegion implements IDataRegionForQuery {
                     insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
                 && noFailure;
       }
-      startTime = System.nanoTime();
-      tryToUpdateInsertTabletLastCache(insertTabletNode);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+          // disable updating last cache on follower
+          startTime = System.nanoTime();
+          tryToUpdateInsertTabletLastCache(insertTabletNode);
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+              System.nanoTime() - startTime);
+        }
+      }
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1096,11 +1103,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-        || node.isGeneratedByRemoteConsensusLeader()) {
-      // disable updating last cache on follower
-      return;
-    }
     long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
     String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
@@ -1141,13 +1143,13 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-        return tsFileProcessor;
+      if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        long startTime = System.nanoTime();
+        tryToUpdateInsertRowLastCache(insertRowNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
-      // disable updating last cache on follower
-      long startTime = System.nanoTime();
-      tryToUpdateInsertRowLastCache(insertRowNode);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
     return tsFileProcessor;
   }
@@ -1243,13 +1245,13 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if (insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
-        return;
+      if (!insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        long startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
-      // disable updating last cache on follower
-      long startTime = System.nanoTime();
-      tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
   }
 
@@ -3343,14 +3345,13 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
-          return;
+        if (!insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
+          // disable updating last cache on follower
+          startTime = System.nanoTime();
+          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+              System.nanoTime() - startTime);
         }
-        // disable updating last cache on follower
-        startTime = System.nanoTime();
-        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
