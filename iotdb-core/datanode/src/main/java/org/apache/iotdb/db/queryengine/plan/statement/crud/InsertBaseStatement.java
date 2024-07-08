@@ -137,6 +137,10 @@ public abstract class InsertBaseStatement extends Statement {
     this.dataTypes = dataTypes;
   }
 
+  public void setDataType(TSDataType dataType, int i) {
+    this.dataTypes[i] = dataType;
+  }
+
   /** Returns true when this statement is empty and no need to write into the server */
   public abstract boolean isEmpty();
 
@@ -252,14 +256,11 @@ public abstract class InsertBaseStatement extends Statement {
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
-    if (columnCategories != null) {
-      idColumnIndices = new ArrayList<>();
-      for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
-          idColumnIndices.add(i);
-        }
-      }
-    }
+  }
+
+  public void setColumnCategory(TsTableColumnCategory columnCategory, int i) {
+    this.columnCategories[i] = columnCategory;
+    this.idColumnIndices = null;
   }
 
   public List<Integer> getIdColumnIndices() {

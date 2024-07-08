@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -91,6 +92,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     adjustIdColumns(realIdColumns);
   }
 
+  /**
+   * Adjust the order of ID columns in this insertion to be consistent with that from the schema region.
+   * @param realColumnSchemas column order from the schema region
+   */
   public void adjustIdColumns(List<ColumnSchema> realColumnSchemas) {
     List<ColumnSchema> incomingColumnSchemas = getTableSchema().getIdColumns();
     final InsertBaseStatement baseStatement = getInnerTreeStatement();
@@ -112,27 +117,38 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public static void validate(ColumnSchema incoming, ColumnSchema real, int i,
       InsertBaseStatement innerTreeStatement) {
     if (real == null) {
+      // the column does not exist and auto-creation is disabled
       SemanticException semanticException = new SemanticException(
           "Column " + incoming.getName() + " does not exists or fails to be " + "created");
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+        // non-measurement columns cannot be partially inserted
         throw semanticException;
       } else {
+        // partial insertion
         innerTreeStatement.markFailedMeasurement(i, semanticException);
         return;
       }
     }
-    if (!incoming.getType().equals(real.getType())) {
+    if (incoming.getType() == null) {
+      // sql insertion does not provide type
+      innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
+    } else if (!incoming.getType().equals(real.getType())) {
       SemanticException semanticException = new SemanticException(
           String.format(
               "Inconsistent data type of column %s: %s/%s",
               incoming.getName(), incoming.getType(), real.getType()));
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+        // non-measurement columns cannot be partially inserted
         throw semanticException;
       } else {
+        // partial insertion
         innerTreeStatement.markFailedMeasurement(i, semanticException);
       }
     }
-    if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
+    if (incoming.getColumnCategory() == null) {
+      // sql insertion does not provide category
+      innerTreeStatement.setColumnCategory(real.getColumnCategory(), i);
+    } else if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
       throw new SemanticException(
           String.format(
               "Inconsistent column category of column %s: %s/%s",
