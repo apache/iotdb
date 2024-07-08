@@ -480,7 +480,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement) {
+  public boolean chunkNotExist(IDeviceID deviceId, String measurement) {
     IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
     if (null == memChunkGroup) {
       return true;
