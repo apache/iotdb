@@ -81,6 +81,10 @@ public class TableScanNode extends SourceNode {
   // push down offset for result set. The default value is 0
   private long pushDownOffset;
 
+  // pushLimitToEachDevice == true means that each device in TableScanNode need to return
+  // `pushDownLimit` row number
+  // pushLimitToEachDevice == false means that all devices in TableScanNode totally need to return
+  // `pushDownLimit` row number
   private boolean pushLimitToEachDevice = false;
 
   // The id of DataRegion where the node will run
