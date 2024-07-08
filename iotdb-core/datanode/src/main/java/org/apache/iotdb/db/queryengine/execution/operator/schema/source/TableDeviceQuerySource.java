@@ -46,17 +46,17 @@ import java.util.NoSuchElementException;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private String database;
+  private final String database;
 
-  private String tableName;
+  private final String tableName;
 
-  private List<List<Expression>> idDeterminedPredicateList;
+  private final List<List<Expression>> idDeterminedPredicateList;
 
-  private Expression idFuzzyPredicate;
+  private final Expression idFuzzyPredicate;
 
-  private List<ColumnHeader> columnHeaderList;
+  private final List<ColumnHeader> columnHeaderList;
 
-  private TsTable table;
+  private final TsTable table;
 
   public TableDeviceQuerySource(
       String database,
@@ -182,9 +182,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private SchemaFilter getExecutableIdFuzzyFilter(Expression idFuzzyExpression) {
     ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
-    ConvertSchemaPredicateToFilterVisitor.Context context =
-        new ConvertSchemaPredicateToFilterVisitor.Context(table);
-    return visitor.process(idFuzzyExpression);
+    return visitor.process(
+        idFuzzyExpression, new ConvertSchemaPredicateToFilterVisitor.Context(table));
   }
 
   @Override

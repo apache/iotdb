@@ -19,22 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.commons.schema.MemUsageUtil;
+import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TableDeviceCacheEntry {
 
-  private final Map<String, String> attributeMap;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class);
 
-  public TableDeviceCacheEntry() {
-    attributeMap = new ConcurrentHashMap<>();
-  }
+  // the cached attributeMap may not be the latest, but there won't be any correctness problems
+  // because when missing getting the key-value from this attributeMap, caller will try to get or
+  // create from remote
+  // there may exist key is not null, but value is null in this map, which means that the key's
+  // corresponding value is null, doesn't mean that the key doesn't exist
+  private final ImmutableMap<String, String> attributeMap;
 
   public TableDeviceCacheEntry(Map<String, String> attributeMap) {
-    this.attributeMap = new HashMap<>(attributeMap);
+    this.attributeMap = ImmutableMap.copyOf(attributeMap);
   }
 
   public String getAttribute(String key) {
@@ -46,10 +49,6 @@ public class TableDeviceCacheEntry {
   }
 
   public int estimateSize() {
-    int size = 8; // map reference
-    for (Map.Entry<String, String> entry : attributeMap.entrySet()) {
-      size += (int) MemUsageUtil.computeKVMemUsageInMap(entry.getKey(), entry.getValue());
-    }
-    return size;
+    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOfMap(attributeMap));
   }
 }

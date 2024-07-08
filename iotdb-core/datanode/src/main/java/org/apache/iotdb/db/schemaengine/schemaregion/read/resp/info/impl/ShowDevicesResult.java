@@ -23,6 +23,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
@@ -53,7 +54,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
-  public void setAttributeProvider(Function<String, String> attributeProvider) {
+  public void setAttributeProvider(UnaryOperator<String> attributeProvider) {
     this.attributeProvider = attributeProvider;
   }
 

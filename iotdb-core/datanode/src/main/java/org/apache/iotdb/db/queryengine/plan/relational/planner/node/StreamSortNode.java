@@ -21,8 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+
+import com.google.common.base.Objects;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -52,12 +56,45 @@ public class StreamSortNode extends SortNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(byteBuffer);
+    orderingScheme.serialize(byteBuffer);
+    ReadWriteIOUtils.write(partial, byteBuffer);
+    ReadWriteIOUtils.write(streamCompareKeyEndIndex, byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(stream);
+    orderingScheme.serialize(stream);
+    ReadWriteIOUtils.write(partial, stream);
+    ReadWriteIOUtils.write(streamCompareKeyEndIndex, stream);
+  }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
+    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
+    int streamCompareKeyEndIndex = ReadWriteIOUtils.read(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new StreamSortNode(planNodeId, null, orderingScheme, partial, streamCompareKeyEndIndex);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    StreamSortNode streamSortNode = (StreamSortNode) o;
+    return Objects.equal(streamCompareKeyEndIndex, streamSortNode.streamCompareKeyEndIndex);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), streamCompareKeyEndIndex);
+  }
+
+  @Override
+  public String toString() {
+    return "StreamSortNode-" + this.getPlanNodeId();
   }
 }

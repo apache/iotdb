@@ -36,6 +36,8 @@ public abstract class SeriesPartitionExecutor {
 
   protected final int seriesPartitionSlotNum;
 
+  protected final int NULL_SEGMENT_HASH_NUM = (int) Character.MAX_VALUE + 1;
+
   public SeriesPartitionExecutor(int seriesPartitionSlotNum) {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }

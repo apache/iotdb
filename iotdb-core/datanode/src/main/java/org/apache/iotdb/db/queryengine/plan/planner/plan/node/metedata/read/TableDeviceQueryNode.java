@@ -46,10 +46,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<Expression>> idDeterminedPredicateList;
+  private final List<List<Expression>> idDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyPredicate;
+  private final Expression idFuzzyPredicate;
 
   public TableDeviceQueryNode(
       PlanNodeId planNodeId,

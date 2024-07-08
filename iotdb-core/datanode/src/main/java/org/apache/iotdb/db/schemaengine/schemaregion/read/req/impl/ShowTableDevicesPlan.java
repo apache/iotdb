@@ -28,9 +28,9 @@ import java.util.List;
 
 public class ShowTableDevicesPlan {
 
-  private PartialPath devicePattern;
+  private final PartialPath devicePattern;
 
-  private SchemaFilter attributeFilter;
+  private final SchemaFilter attributeFilter;
 
   public ShowTableDevicesPlan(PartialPath devicePattern, SchemaFilter attributeFilter) {
     this.devicePattern = devicePattern;

@@ -23,9 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.base.Objects;
 
@@ -34,58 +33,46 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class FilterNode extends SingleChildProcessNode {
-  private Expression predicate;
+/** CollectNode output the content of children. */
+public class CollectNode extends MultiChildProcessNode {
 
-  public FilterNode(PlanNodeId id, PlanNode child, Expression predicate) {
-    super(id, child);
-    this.predicate = predicate;
+  public CollectNode(PlanNodeId id) {
+    super(id);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFilter(this, context);
+    return visitor.visitCollect(this, context);
   }
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(id, child, predicate);
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_FILTER_NODE.serialize(byteBuffer);
-    Expression.serialize(predicate, byteBuffer);
-  }
-
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_FILTER_NODE.serialize(stream);
-    Expression.serialize(predicate, stream);
-  }
-
-  public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    Expression predicate = Expression.deserialize(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, null, predicate);
-  }
-
-  public Expression getPredicate() {
-    return predicate;
-  }
-
-  public void setPredicate(Expression predicate) {
-    this.predicate = predicate;
+    return new CollectNode(id);
   }
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return child.getOutputSymbols();
+    return children.get(0).getOutputSymbols();
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_COLLECT_NODE.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_COLLECT_NODE.serialize(stream);
+  }
+
+  public static CollectNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new CollectNode(planNodeId);
   }
 
   @Override
@@ -93,17 +80,16 @@ public class FilterNode extends SingleChildProcessNode {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    FilterNode filterNode = (FilterNode) o;
-    return Objects.equal(predicate, filterNode.predicate);
+    return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), predicate);
+    return Objects.hashCode(super.hashCode());
   }
 
   @Override
   public String toString() {
-    return "FilterNode-" + this.getPlanNodeId();
+    return "CollectNode-" + this.getPlanNodeId();
   }
 }

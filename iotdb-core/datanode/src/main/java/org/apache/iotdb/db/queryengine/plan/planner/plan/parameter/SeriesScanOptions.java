@@ -117,6 +117,17 @@ public class SeriesScanOptions {
     return filter;
   }
 
+  /**
+   * pushLimitToEachDevice==false means that all devices return total limit rows.
+   *
+   * @return true only if pushLimitToEachDevice==false and limit in paginationController has already
+   *     consumed up
+   */
+  public boolean limitConsumedUp() {
+    return !pushLimitToEachDevice
+        && (paginationController != null && !paginationController.hasCurLimit());
+  }
+
   public static class Builder {
 
     private Filter globalTimeFilter = null;

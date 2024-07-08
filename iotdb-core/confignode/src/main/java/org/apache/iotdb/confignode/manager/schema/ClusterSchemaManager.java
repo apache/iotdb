@@ -81,8 +81,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -190,17 +188,9 @@ public class ClusterSchemaManager {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
-    } catch (MetadataException metadataException) {
+    } catch (final MetadataException metadataException) {
       // Reject if Database already set
-      if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      } else if (metadataException instanceof DatabaseAlreadySetException) {
-        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
-      } else if (metadataException instanceof SchemaQuotaExceededException) {
-        result = new TSStatus(TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
-      } else {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
+      result = new TSStatus(metadataException.getErrorCode());
       result.setMessage(metadataException.getMessage());
     } finally {
       createDatabaseLock.unlock();
@@ -1139,7 +1129,9 @@ public class ClusterSchemaManager {
 
     List<TsTableColumnSchema> copiedList = new ArrayList<>();
     for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (targetTable.getColumnSchema(columnSchema.getColumnName()) == null) {
+      TsTableColumnSchema existingColumnSchema =
+          targetTable.getColumnSchema(columnSchema.getColumnName());
+      if (existingColumnSchema == null) {
         copiedList.add(columnSchema);
       }
     }

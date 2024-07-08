@@ -52,9 +52,14 @@ public class BKDRHashExecutor extends SeriesPartitionExecutor {
     int segmentNum = deviceID.segmentNum();
 
     for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
-      String segment = (String) deviceID.segment(segmentID);
-      for (int i = 0; i < segment.length(); i++) {
-        hash = hash * SEED + (int) segment.charAt(i);
+      Object segment = deviceID.segment(segmentID);
+      if (segment instanceof String) {
+        String segmentStr = (String) segment;
+        for (int i = 0; i < segmentStr.length(); i++) {
+          hash = hash * SEED + (int) segmentStr.charAt(i);
+        }
+      } else {
+        hash = hash * SEED + NULL_SEGMENT_HASH_NUM;
       }
       if (segmentID < segmentNum - 1) {
         hash = hash * SEED + (int) PATH_SEPARATOR;
