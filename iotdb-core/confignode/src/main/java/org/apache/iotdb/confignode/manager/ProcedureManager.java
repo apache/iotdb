@@ -214,14 +214,13 @@ public class ProcedureManager {
   public TSStatus deleteDatabases(
       final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
     final List<Long> procedureIds = new ArrayList<>();
+    final long startCheckTimeForProcedures = System.currentTimeMillis();
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       final String database = databaseSchema.getName();
-      final long startCheckTimeForCurrentProcedure = System.currentTimeMillis();
       boolean hasOverlappedTask = false;
       synchronized (this) {
         while (executor.isRunning()
-            && System.currentTimeMillis() - startCheckTimeForCurrentProcedure
-                < PROCEDURE_WAIT_TIME_OUT) {
+            && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
           ProcedureType type;
           for (final Procedure<?> procedure : executor.getProcedures().values()) {
             type = ProcedureFactory.getProcedureType(procedure);
