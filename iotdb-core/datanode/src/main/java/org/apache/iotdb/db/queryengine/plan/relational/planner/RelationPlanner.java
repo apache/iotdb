@@ -213,6 +213,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
   }
 
+  @Override
   protected RelationPlan visitInsertRow(InsertRow node, Void context) {
     InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
     RelationalInsertRowNode insertNode =

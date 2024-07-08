@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -89,6 +90,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowStatement;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
 
 public class DataRegionTest {
@@ -275,6 +278,55 @@ public class DataRegionTest {
     MeasurementSchema measurementSchema = new MeasurementSchema(measurementName, TSDataType.DOUBLE);
     final IDeviceID deviceID1 = insertTabletNode1.getDeviceID(0);
     final IDeviceID deviceID2 = insertTabletNode2.getDeviceID(0);
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(
+                new AlignedFullPath(
+                    deviceID1,
+                    Collections.singletonList(measurementName),
+                    Collections.singletonList(measurementSchema))),
+            deviceID1,
+            context,
+            null,
+            null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+
+    queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(
+                new AlignedFullPath(
+                    deviceID2,
+                    Collections.singletonList(measurementName),
+                    Collections.singletonList(measurementSchema))),
+            deviceID2,
+            context,
+            null,
+            null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testRelationRowWriteAndSyncClose()
+      throws QueryProcessException, WriteProcessException {
+    RelationalInsertRowNode insertNode1 = genInsertRowNode( 0);
+    dataRegion.insert(insertNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    RelationalInsertRowNode insertRowNode2 = genInsertRowNode(10);
+    dataRegion.insert(insertRowNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    String measurementName = "m1";
+    MeasurementSchema measurementSchema = new MeasurementSchema(measurementName, TSDataType.DOUBLE);
+    final IDeviceID deviceID1 = insertNode1.getDeviceID();
+    final IDeviceID deviceID2 = insertRowNode2.getDeviceID();
 
     QueryDataSource queryDataSource =
         dataRegion.query(

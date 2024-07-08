@@ -79,8 +79,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
    */
   private boolean[] measurementIsAligned;
 
-  private boolean writeToTable = false;
-
   public InsertTabletStatement() {
     super();
     statementType = StatementType.BATCH_INSERT;
@@ -439,14 +437,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
-  }
-
-  public boolean isWriteToTable() {
-    return writeToTable;
-  }
-
-  public void setWriteToTable(boolean writeToTable) {
-    this.writeToTable = writeToTable;
   }
 
   @Override

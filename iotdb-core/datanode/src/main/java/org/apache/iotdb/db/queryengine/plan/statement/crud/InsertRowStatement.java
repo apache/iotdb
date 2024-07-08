@@ -76,7 +76,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   private boolean[] measurementIsAligned;
 
-  private boolean isWriteToTable = false;
   private IDeviceID deviceID;
 
   public InsertRowStatement() {
@@ -450,14 +449,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
-  }
-
-  public boolean isWriteToTable() {
-    return isWriteToTable;
-  }
-
-  public void setWriteToTable(boolean writeToTable) {
-    isWriteToTable = writeToTable;
   }
 
   public IDeviceID getTableDeviceID() {

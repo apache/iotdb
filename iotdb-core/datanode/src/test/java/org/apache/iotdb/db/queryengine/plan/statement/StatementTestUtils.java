@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -42,6 +43,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StatementTestUtils {
+
+  public static final String TEST_PARTITION_EXECUTOR = "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  public static final int TEST_SERIES_SLOT_NUM = 1000;
 
   private StatementTestUtils() {
     // util class
@@ -187,6 +191,26 @@ public class StatementTestUtils {
         null,
         columns,
         rowCnt,
+        columnCategories);
+  }
+
+  public static RelationalInsertRowNode genInsertRowNode(int offset) {
+    String[] measurements = genColumnNames();
+    TSDataType[] dataTypes = genDataTypes();
+    TsTableColumnCategory[] columnCategories = genColumnCategories();
+
+    Object[] values = genValues(offset);
+    long timestamp = genTimestamps(1, offset)[0];
+
+    return new RelationalInsertRowNode(
+        new PlanNodeId(offset + "-" + 1),
+        new PartialPath(new String[] {tableName()}),
+        true,
+        measurements,
+        dataTypes,
+        timestamp,
+        values,
+        false,
         columnCategories);
   }
 

@@ -693,9 +693,8 @@ public class AnalyzerTest {
       @Override
       public DataPartition getOrCreateDataPartition(
           List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-        int seriesSlotNum = 1000;
-        String partitionExecutorName =
-            "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+        int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
+        String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
         SeriesPartitionExecutor seriesPartitionExecutor =
             SeriesPartitionExecutor.getSeriesPartitionExecutor(
                 partitionExecutorName, seriesSlotNum);

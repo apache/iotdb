@@ -75,6 +75,7 @@ public abstract class InsertBaseStatement extends Statement {
   protected TsTableColumnCategory[] columnCategories;
   protected List<Integer> idColumnIndices;
   protected List<Integer> attrColumnIndices;
+  protected boolean writeToTable = false;
 
   // region params used by analyzing logical views.
 
@@ -480,5 +481,17 @@ public abstract class InsertBaseStatement extends Statement {
     CommonUtils.swapArray(columnCategories, src, target);
     idColumnIndices = null;
   }
+
+  public boolean isWriteToTable() {
+    return writeToTable;
+  }
+
+  public void setWriteToTable(boolean writeToTable) {
+    this.writeToTable = writeToTable;
+    if (writeToTable) {
+      isAligned = true;
+    }
+  }
+
   // endregion
 }

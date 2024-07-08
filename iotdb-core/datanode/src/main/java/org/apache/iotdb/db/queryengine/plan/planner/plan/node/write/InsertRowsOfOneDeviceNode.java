@@ -65,10 +65,14 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
    */
   private List<Integer> insertRowNodeIndexList;
 
-  /** the InsertRowsNode list */
+  /**
+   * the InsertRowsNode list
+   */
   private List<InsertRowNode> insertRowNodeList;
 
-  /** record the result of insert rows */
+  /**
+   * record the result of insert rows
+   */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
   public InsertRowsOfOneDeviceNode(PlanNodeId id) {
@@ -127,7 +131,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+  }
 
   @Override
   public PlanNodeType getType() {
@@ -165,7 +170,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  devicePath.getIDeviceIDAsFullDevice(), timePartitionSlot);
+                  devicePath.getIDeviceIDAsFullDevice(), timePartitionSlot,
+                  analysis.getDatabaseName());
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
       Map<TTimePartitionSlot, List<Integer>> tmpIndexMap =
@@ -302,9 +308,15 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertRowsOfOneDeviceNode that = (InsertRowsOfOneDeviceNode) o;
     return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
         && Objects.equals(insertRowNodeList, that.insertRowNodeList);

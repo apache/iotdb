@@ -250,14 +250,7 @@ public class TsFileProcessor {
     logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
   }
 
-  /**
-   * Insert data in an InsertRowNode into the workingMemtable.
-   *
-   * @param insertRowNode physical plan of insertion
-   */
-  public void insert(InsertRowNode insertRowNode, long[] costsForMetrics)
-      throws WriteProcessException {
-
+  private void ensureMemTable(long[] costsForMetrics) {
     if (workMemTable == null) {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
@@ -267,6 +260,17 @@ public class TsFileProcessor {
           .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
+  }
+
+  /**
+   * Insert data in an InsertRowNode into the workingMemtable.
+   *
+   * @param insertRowNode physical plan of insertion
+   */
+  public void insert(InsertRowNode insertRowNode, long[] costsForMetrics)
+      throws WriteProcessException {
+
+    ensureMemTable(costsForMetrics);
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
@@ -338,14 +342,7 @@ public class TsFileProcessor {
   public void insert(InsertRowsNode insertRowsNode, long[] costsForMetrics)
       throws WriteProcessException {
 
-    if (workMemTable == null) {
-      long startTime = System.nanoTime();
-      createNewWorkingMemTable();
-      // recordCreateMemtableBlockCost
-      costsForMetrics[0] += System.nanoTime() - startTime;
-      WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
-    }
+    ensureMemTable(costsForMetrics);
 
     long[] memIncrements;
 
