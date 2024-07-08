@@ -57,6 +57,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
+
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
  * how to reuse a session connection. Even if the session is disconnected, the session pool can
@@ -155,6 +157,7 @@ public class SessionPool implements ISessionPool {
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
 
+  // may be null
   protected String database;
 
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
@@ -720,7 +723,7 @@ public class SessionPool implements ISessionPool {
   }
 
   @SuppressWarnings({"squid:S2446"})
-  private void putBack(ISession session) {
+  protected void putBack(ISession session) {
     queue.push(session);
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
@@ -832,6 +835,11 @@ public class SessionPool implements ISessionPool {
               formattedNodeUrls, RETRY, e.getMessage()),
           e);
     }
+  }
+
+  protected void cleanSessionAndMayThrowConnectionException(ISession session) {
+    closeSession(session);
+    tryConstructNewSession();
   }
 
   /**
@@ -3036,6 +3044,13 @@ public class SessionPool implements ISessionPool {
   @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+
+    // use XXX is forbidden in SessionPool.executeNonQueryStatement
+    if (isUseDatabase(sql)) {
+      throw new IllegalArgumentException(
+          String.format("SessionPool doesn't support executing %s directly", sql));
+    }
+
     ISession session = getSession();
     try {
       session.executeNonQueryStatement(sql);

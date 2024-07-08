@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -176,7 +177,8 @@ public class Session implements ISession {
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
 
-  protected String database;
+  // may be null
+  protected volatile String database;
 
   private static final String REDIRECT_TWICE = "redirect twice";
 
@@ -606,7 +608,14 @@ public class Session implements ISession {
           session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
+        session,
+        endpoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   @Override
@@ -939,7 +948,13 @@ public class Session implements ISession {
   @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    String previousDB = database;
     defaultSessionConnection.executeNonQueryStatement(sql);
+    if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
+      for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+        sessionConnection.executeNonQueryStatement(sql);
+      }
+    }
   }
 
   /**
@@ -3827,6 +3842,14 @@ public class Session implements ISession {
   @Override
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
     return defaultSessionConnection.fetchAllConnections();
+  }
+
+  protected void changeDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   public static class Builder {

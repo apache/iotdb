@@ -62,7 +62,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import javax.sql.DataSource;
 
 public class IoTDBConnection implements Connection {
 
@@ -594,5 +593,9 @@ public class IoTDBConnection implements Connection {
 
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
+  }
+
+  protected void changeDefaultDatabase(String database) {
+    params.setDb(database);
   }
 }

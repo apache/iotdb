@@ -206,7 +206,7 @@ public class SessionConnection {
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
     if (database != null) {
-      openReq.putToConfiguration("database", database);
+      openReq.putToConfiguration("db", database);
     }
 
     try {
@@ -511,7 +511,11 @@ public class SessionConnection {
       throws TException {
     request.setSessionId(sessionId);
     request.setStatementId(statementId);
-    return client.executeUpdateStatementV2(request).status;
+    TSExecuteStatementResp resp = client.executeUpdateStatementV2(request);
+    if (resp.isSetDatabase()) {
+      session.changeDatabase(resp.getDatabase());
+    }
+    return resp.status;
   }
 
   protected SessionDataSet executeRawDataQuery(

@@ -55,7 +55,15 @@ public class SubscriptionSessionConnection extends SessionConnection {
       String sqlDialect,
       String database)
       throws IoTDBConnectionException {
-    super(session, endPoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
+    super(
+        session,
+        endPoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList

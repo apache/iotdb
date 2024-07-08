@@ -33,10 +33,10 @@ public class Utils {
     "squid:S5843",
     "squid:S5998"
   }) // Regular expressions should not be too complicated
-  static final Pattern SUFFIX_URL_PATTERN = Pattern.compile("([0-9]{1,5})(/|\\\\?.*=.*(&.*=.*)*)?");
+  static final Pattern SUFFIX_URL_PATTERN = Pattern.compile("(/|\\\\?.*=.*(&.*=.*)*)?");
 
   static final String COLON = ":";
-  static final String SLASH = "/";
+  static final char SLASH = '/';
   static final String PARAMETER_SEPARATOR = "?";
 
   static final String RPC_COMPRESS = "rpc_compress";
@@ -59,28 +59,41 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       int i = subURL.lastIndexOf(COLON);
       host = subURL.substring(0, i);
+      params.setHost(host);
       suffixURL = subURL.substring(i + 1);
 
-      matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
-      if (matcher.matches() && parseUrlParam(subURL, info)) {
-        isUrlLegal = true;
+      // parse port
+      int port = 0;
+      for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
+        port = port * 10 + (subURL.charAt(i) - '0');
+      }
+      // legal port
+      if (port >= 1 && port <= 65535) {
+        params.setPort(port);
+        // parse database
+        if (subURL.charAt(i) == SLASH) {
+          int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
+          String database;
+          if (endIndex <= i + 1) {
+            database = subURL.substring(i + 1);
+            suffixURL = "";
+          } else {
+            database = subURL.substring(i + 1, endIndex);
+            suffixURL = subURL.substring(endIndex);
+          }
+          params.setDb(database);
+        }
+
+        matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
+        if (matcher.matches() && parseUrlParam(subURL, info)) {
+          isUrlLegal = true;
+        }
       }
     }
     if (!isUrlLegal) {
       throw new IoTDBURLException(
-          "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port?property1=value1&property2=value2");
+          "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2");
     }
-
-    params.setHost(host);
-
-    // parse port
-    String port = suffixURL;
-    if (suffixURL.contains(PARAMETER_SEPARATOR)) {
-      port = suffixURL.split("\\" + PARAMETER_SEPARATOR)[0];
-    } else if (suffixURL.contains(SLASH)) {
-      port = suffixURL.substring(0, suffixURL.length() - 1);
-    }
-    params.setPort(Integer.parseInt(port));
 
     if (info.containsKey(Config.AUTH_USER)) {
       params.setUsername(info.getProperty(Config.AUTH_USER));
@@ -119,9 +132,6 @@ public class Utils {
     }
     if (info.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
-    }
-    if (info.containsKey(Config.DATABASE)) {
-      params.setDb(info.getProperty(Config.DATABASE));
     }
 
     return params;
@@ -162,7 +172,6 @@ public class Utils {
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
         case Config.SQL_DIALECT:
-        case Config.DATABASE:
           info.put(key, value);
           break;
         case Config.TIME_ZONE:
