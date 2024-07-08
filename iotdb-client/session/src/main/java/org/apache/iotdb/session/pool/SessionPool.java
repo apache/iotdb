@@ -22,6 +22,7 @@ package org.apache.iotdb.session.pool;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.IPooledSession;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -710,6 +711,10 @@ public class SessionPool implements ISessionPool {
     }
 
     return session;
+  }
+
+  public IPooledSession getPooledSession() throws IoTDBConnectionException {
+    return new SessionWrapper((Session) getSession(), this);
   }
 
   @Override
