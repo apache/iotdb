@@ -916,6 +916,15 @@ public class DataRegion implements IDataRegionForQuery {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+          // disable updating last cache on follower
+          startTime = System.nanoTime();
+          tryToUpdateInsertRowLastCache(insertRowNode);
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+              System.nanoTime() - startTime);
+        }
+      }
     } finally {
       writeUnlock();
     }
@@ -1141,16 +1150,6 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
-
-    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-        // disable updating last cache on follower
-        long startTime = System.nanoTime();
-        tryToUpdateInsertRowLastCache(insertRowNode);
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
-      }
-    }
     return tsFileProcessor;
   }
 
@@ -1180,7 +1179,7 @@ public class DataRegion implements IDataRegionForQuery {
             latestFlushedTime);
   }
 
-  private void insertToTsFileProcessors(
+  private List<InsertRowNode> insertToTsFileProcessors(
       InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
     long[] costsForMetrics = new long[4];
     Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
@@ -1243,16 +1242,7 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
-
-    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if (!insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
-        // disable updating last cache on follower
-        long startTime = System.nanoTime();
-        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
-      }
-    }
+    return executedInsertRowNodeList;
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
@@ -3411,7 +3401,19 @@ public class DataRegion implements IDataRegionForQuery {
                     > lastFlushTimeMap.getFlushedTime(
                         timePartitionIds[i], insertRowNode.getDeviceID());
       }
-      insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+      List<InsertRowNode> executedInsertRowNodeList =
+          insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        if (!insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
+          // disable updating last cache on follower
+          startTime = System.nanoTime();
+          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+              System.nanoTime() - startTime);
+        }
+      }
+
       if (!insertRowsNode.getResults().isEmpty()) {
         throw new BatchProcessException("Partial failed inserting rows");
       }
