@@ -385,12 +385,26 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   private void startHistoricalExtractorAndRealtimeExtractor(
       final AtomicReference<Exception> exceptionHolder) {
     try {
-      // Start realtimeExtractor first to avoid losing data. This may cause some
-      // retransmission, yet it is OK according to the idempotency of IoTDB.
-      // Note: The order of historical collection is flushing data -> adding all tsFile events.
-      // There can still be writing when tsFile events are added. If we start
-      // realtimeExtractor after the process, then this part of data will be lost.
-      realtimeExtractor.start();
+      // Assign the realtime extractor starter to the historical extractor.
+      // The historical extractor will start the realtime extractor when it finishes to start.
+      // The historical extractor will hold locks when starting its own and the realtime extractor.
+      // Then no events will be lost or duplicated.
+      historicalExtractor.assignRealtimeExtractorStarter(
+          () -> {
+            try {
+              realtimeExtractor.start();
+            } catch (Exception e) {
+              throw new PipeException(
+                  String.format(
+                      "Pipe %s@%s: Start realtime extractor %s error. Reason: %s",
+                      pipeName,
+                      regionId,
+                      realtimeExtractor.getClass().getSimpleName(),
+                      e.getMessage()),
+                  e);
+            }
+          });
+
       historicalExtractor.start();
     } catch (final Exception e) {
       exceptionHolder.set(e);

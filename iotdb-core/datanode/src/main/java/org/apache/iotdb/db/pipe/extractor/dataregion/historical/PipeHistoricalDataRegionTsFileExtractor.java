@@ -120,6 +120,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
+  private Runnable realtimeExtractorStarter;
+
   private Queue<TsFileResource> pendingQueue;
 
   @Override
@@ -377,6 +379,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
       pendingQueue = new ArrayDeque<>();
+
+      // Start realtime extractor after historical extractor
+      if (Objects.nonNull(realtimeExtractorStarter)) {
+        realtimeExtractorStarter.run();
+      }
       return;
     }
 
@@ -479,6 +486,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resourceList.size(),
             originalSequenceTsFileCount + originalUnsequenceTsFileCount,
             System.currentTimeMillis() - startHistoricalExtractionTime);
+
+        // Start realtime extractor after historical extractor
+        if (Objects.nonNull(realtimeExtractorStarter)) {
+          realtimeExtractorStarter.run();
+        }
       } finally {
         tsFileManager.readUnlock();
       }
@@ -616,6 +628,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return event;
   }
 
+  @Override
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it
     // implies that the extractor only extracts deletion thus the
@@ -628,6 +641,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public int getPendingQueueSize() {
     return Objects.nonNull(pendingQueue) ? pendingQueue.size() : 0;
+  }
+
+  @Override
+  public void assignRealtimeExtractorStarter(final Runnable realtimeExtractorStarter) {
+    this.realtimeExtractorStarter = realtimeExtractorStarter;
   }
 
   @Override
