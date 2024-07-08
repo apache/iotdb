@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+
 public class InstantPageLoader extends PageLoader {
 
   private ByteBuffer pageData;
@@ -59,11 +61,8 @@ public class InstantPageLoader extends PageLoader {
 
   @Override
   public ByteBuffer getUnCompressedData() throws IOException {
-    byte[] unCompressedData = new byte[pageHeader.getUncompressedSize()];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-    unCompressor.uncompress(
-        pageData.array(), 0, pageHeader.getCompressedSize(), unCompressedData, 0);
-    return ByteBuffer.wrap(unCompressedData);
+    return uncompressPageData(pageHeader, unCompressor, pageData);
   }
 
   @Override
