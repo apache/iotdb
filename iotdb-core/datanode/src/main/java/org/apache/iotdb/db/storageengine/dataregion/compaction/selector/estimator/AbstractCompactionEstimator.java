@@ -63,7 +63,9 @@ public abstract class AbstractCompactionEstimator {
 
   protected AbstractCompactionEstimator() {
     try {
-      compressionRatio = (long) CompressionRatio.getInstance().getRatio();
+      double compressionRatioFromFile = CompressionRatio.getInstance().getRatio();
+      compressionRatio =
+          compressionRatioFromFile > 0 ? (long) compressionRatioFromFile : compressionRatio;
     } catch (Exception ignored) {
     }
   }
