@@ -954,7 +954,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                                 while (dataSet.hasNext()) {
                                   final RowRecord record = dataSet.next();
                                   if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      columnNameList, record, consumerGroupId)) {
+                                      columnNameList, record.getTimestamp(), consumerGroupId)) {
                                     receiverCrashed.set(true);
                                     throw new RuntimeException("detect receiver crashed");
                                   }
@@ -975,12 +975,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                                             null));
                                 while (dataSet.hasNext()) {
                                   final RowRecord record = dataSet.next();
-                                  if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      dataSet.getPaths().get(0).toString(),
-                                      record,
-                                      consumerGroupId)) {
-                                    receiverCrashed.set(true);
-                                    throw new RuntimeException("detect receiver crashed");
+                                  for (final Path path : dataSet.getPaths()) {
+                                    if (!insertRowRecordEnrichedByConsumerGroupId(
+                                        path.toString(), record.getTimestamp(), consumerGroupId)) {
+                                      receiverCrashed.set(true);
+                                      throw new RuntimeException("detect receiver crashed");
+                                    }
                                   }
                                 }
                               }
@@ -1050,39 +1050,47 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
    * @return false -> receiver crashed
    */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
-      final List<String> columnNameList, final RowRecord record, final String consumerGroupId)
+      final List<String> columnNameList, final long timestamp, final String consumerGroupId)
       throws Exception {
-    if (columnNameList.size() != 2) {
+    final int columnSize = columnNameList.size();
+    if (columnSize <= 1) { // only with time column
       LOGGER.warn("unexpected column name list: {}", columnNameList);
       throw new Exception("unexpected column name list");
     }
-    final String columnName = columnNameList.get(1);
-    return insertRowRecordEnrichedByConsumerGroupId(columnName, record, consumerGroupId);
+
+    for (int columnIndex = 1; columnIndex < columnSize; ++columnIndex) {
+      final String columnName = columnNameList.get(columnIndex);
+      if (!insertRowRecordEnrichedByConsumerGroupId(columnName, timestamp, consumerGroupId)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
    * @return false -> receiver crashed
    */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
-      final String columnName, final RowRecord record, final String consumerGroupId)
+      final String columnName, final long timestamp, final String consumerGroupId)
       throws Exception {
     if ("root.topic1.s".equals(columnName)) {
       final String sql =
           String.format(
-              "insert into root.%s.topic1(time, s) values (%s, 1)",
-              consumerGroupId, record.getTimestamp());
+              "insert into root.%s.topic1(time, s) values (%s, 1)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else if ("root.topic2.s".equals(columnName)) {
+    }
+
+    if ("root.topic2.s".equals(columnName)) {
       final String sql =
           String.format(
-              "insert into root.%s.topic2(time, s) values (%s, 1)",
-              consumerGroupId, record.getTimestamp());
+              "insert into root.%s.topic2(time, s) values (%s, 3)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else {
-      LOGGER.warn("unexpected column name: {}", columnName);
-      throw new Exception("unexpected column name");
     }
+
+    LOGGER.warn("unexpected column name: {}", columnName);
+    throw new Exception("unexpected column name");
   }
 }
