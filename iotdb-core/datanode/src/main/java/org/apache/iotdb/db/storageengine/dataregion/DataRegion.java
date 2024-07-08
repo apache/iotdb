@@ -159,6 +159,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -2032,31 +2033,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
-  private void separateTsFile(
+  private void getTwoKindsOfTsFiles(
       List<TsFileResource> sealedResource,
       List<TsFileResource> unsealedResource,
       long startTime,
       long endTime) {
-    tsFileManager
-        .getTsFileList(true, startTime, endTime)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
-    tsFileManager
-        .getTsFileList(false, startTime, endTime)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
+    Stream<TsFileResource> tsFileResources =
+        tsFileManager.getTsFileList(true, startTime, endTime).stream();
+    Stream.concat(tsFileResources, tsFileManager.getTsFileList(false, startTime, endTime).stream());
+    sealedResource.addAll(
+        tsFileResources.filter(TsFileResource::isClosed).collect(Collectors.toList()));
+    unsealedResource.addAll(
+        tsFileResources.filter(resource -> !resource.isClosed()).collect(Collectors.toList()));
   }
 
   /**
@@ -2097,7 +2085,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       Set<String> deviceMatchInfo = new HashSet<>();
@@ -2140,7 +2128,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
       writeUnlock();
       releasedLock = true;

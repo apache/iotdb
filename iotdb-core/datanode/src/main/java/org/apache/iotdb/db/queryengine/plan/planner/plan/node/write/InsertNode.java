@@ -25,11 +25,9 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -69,7 +67,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
    */
   protected IDeviceID deviceID;
 
-    protected boolean isGeneratedByRemoteConsensusLeader = false;
+  protected boolean isGeneratedByRemoteConsensusLeader = false;
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
@@ -158,23 +156,24 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     this.deviceID = deviceID;
   }
 
-    public boolean isGeneratedByRemoteConsensusLeader() {
-        switch (config.getDataRegionConsensusProtocolClass()) {
-            case ConsensusFactory.IOT_CONSENSUS:
-            case ConsensusFactory.IOT_CONSENSUS_V2:
-            case ConsensusFactory.FAST_IOT_CONSENSUS:
-            case ConsensusFactory.RATIS_CONSENSUS:
-                return isGeneratedByRemoteConsensusLeader;
-            case ConsensusFactory.SIMPLE_CONSENSUS:
-                return false;
-        }
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    switch (config.getDataRegionConsensusProtocolClass()) {
+      case ConsensusFactory.IOT_CONSENSUS:
+      case ConsensusFactory.IOT_CONSENSUS_V2:
+      case ConsensusFactory.FAST_IOT_CONSENSUS:
+      case ConsensusFactory.RATIS_CONSENSUS:
+        return isGeneratedByRemoteConsensusLeader;
+      case ConsensusFactory.SIMPLE_CONSENSUS:
         return false;
     }
+    return false;
+  }
 
-    @Override
-    public void markAsGeneratedByRemoteConsensusLeader() {
-        isGeneratedByRemoteConsensusLeader = true;
-    }
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    isGeneratedByRemoteConsensusLeader = true;
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");

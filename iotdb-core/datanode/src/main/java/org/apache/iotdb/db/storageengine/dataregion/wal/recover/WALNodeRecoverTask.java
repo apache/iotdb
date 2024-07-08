@@ -82,7 +82,7 @@ public class WALNodeRecoverTask implements Runnable {
     logger.info("Start recovering WAL node in the directory {}", logDirectory);
 
     // recover version id and search index
-    long[] indexInfo = recoverLastFile();
+    long[] indexInfo = readLastFileInfoAndRepairIt();
     long lastVersionId = indexInfo[0];
     long lastSearchIndex = indexInfo[1];
 
@@ -155,7 +155,7 @@ public class WALNodeRecoverTask implements Runnable {
     }
   }
 
-  private long[] recoverLastFile() {
+  private long[] readLastFileInfoAndRepairIt() {
     File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (walFiles == null || walFiles.length == 0) {
       return new long[] {0L, 0L};
@@ -217,7 +217,6 @@ public class WALNodeRecoverTask implements Runnable {
     CheckpointRecoverUtils.CheckpointInfo info =
         CheckpointRecoverUtils.recoverMemTableInfo(logDirectory);
     memTableId2Info = info.getMemTableId2Info();
-    memTableId2RecoverPerformer = new HashMap<>();
     // update init memTable id
     long maxMemTableId = info.getMaxMemTableId();
     AtomicLong memTableIdCounter = AbstractMemTable.memTableIdCounter;
@@ -228,6 +227,7 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
     // update firstValidVersionId and get recover performer from WALRecoverManager
+    memTableId2RecoverPerformer = new HashMap<>();
     for (MemTableInfo memTableInfo : memTableId2Info.values()) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
 

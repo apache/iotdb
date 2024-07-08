@@ -25,27 +25,27 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
 
-abstract public class SearchNode extends WritePlanNode {
+public abstract class SearchNode extends WritePlanNode {
 
-    /** this insert node doesn't need to participate in iot consensus */
-    public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+  /** this insert node doesn't need to participate in iot consensus */
+  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
-    /**
-     * this index is used by wal search, its order should be protected by the upper layer, and the
-     * value should start from 1
-     */
-    protected long searchIndex = NO_CONSENSUS_INDEX;
+  /**
+   * this index is used by wal search, its order should be protected by the upper layer, and the
+   * value should start from 1
+   */
+  protected long searchIndex = NO_CONSENSUS_INDEX;
 
-    protected SearchNode(PlanNodeId id) {
-        super(id);
-    }
+  protected SearchNode(PlanNodeId id) {
+    super(id);
+  }
 
-    public long getSearchIndex() {
-        return searchIndex;
-    }
+  public long getSearchIndex() {
+    return searchIndex;
+  }
 
-    /** Search index should start from 1 */
-    public void setSearchIndex(long searchIndex) {
-        this.searchIndex = searchIndex;
-    }
+  /** Search index should start from 1 */
+  public void setSearchIndex(long searchIndex) {
+    this.searchIndex = searchIndex;
+  }
 }

@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
 
 public class DeleteDataNode extends SearchNode implements WALEntryValue {
   /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
