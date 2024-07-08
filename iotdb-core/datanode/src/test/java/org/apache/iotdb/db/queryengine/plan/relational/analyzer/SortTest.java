@@ -122,7 +122,7 @@ public class SortTest {
   @Test
   public void timeOthersSomeIDColumnSortTest() {
     sql =
-        "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
+        "SELECT time, tag3, substring(tag1, 1), cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -131,8 +131,6 @@ public class SortTest {
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
-    // OutputNode - LimitNode - OffsetNode - SortNode - ProjectNode - ProjectNode - FilterNode -
-    // TableScanNode
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof LimitNode);
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
@@ -141,7 +139,7 @@ public class SortTest {
             instanceof SortNode);
     SortNode sortNode =
         (SortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
-    // TODO(beyyes) if these two ProjectNode can be merged into one?
+    // TODO(beyyes) merge parent and child ProjectNode into one, parent contains all children
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -162,7 +160,7 @@ public class SortTest {
                 .getChildren()
                 .get(0);
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
-    // TODO(beyyes) fix the case prune unUsed Columns when the child of SortNode is ProjectNode
+    // TODO(beyyes) fix the case prune unused columns when the child of SortNode is ProjectNode
     //    assertEquals(
     //        Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
     //        tableScanNode.getOutputColumnNames());
@@ -170,9 +168,7 @@ public class SortTest {
     assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
 
-    // OutputNode - LimitNode - OffsetNode - MergeSortNode - SortNode - ProjectNode - ProjectNode -
-    // FilterNode -
-    // TableScanNode
+    // Output - Limit - Offset - MergeSort - Sort - Project - Project - Filter - TableScan
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
@@ -228,8 +224,9 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
-    // IdentitySinkNode - SortNode - ProjectNode - ProjectNode - FilterNode - TableScanNode
+    // IdentitySink - Sort - Project - Project - Filter - TableScan
     assertTrue(
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree() instanceof IdentitySinkNode);
     assertTrue(
@@ -298,6 +295,7 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
     // TODO(beyyes) add only one device entry optimization and verifies
   }
@@ -348,10 +346,9 @@ public class SortTest {
     assertEquals(9, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
-    // OutputNode - LimitNode - OffsetNode - MergeSortNode - SortNode - ProjectNode - ProjectNode -
-    // FilterNode -
-    // TableScanNode
+    // Output - Limit - Offset - MergeSort - Sort - Project - Project - Filter - TableScan
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
@@ -407,8 +404,9 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
-    // IdentitySinkNode - SortNode - ProjectNode - ProjectNode - FilterNode - TableScanNode
+    // IdentitySink - Sort - Project - Project - Filter - TableScan
     assertTrue(
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree() instanceof IdentitySinkNode);
     assertTrue(
@@ -477,6 +475,7 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
   }
 
   // order by time, some_ids, others
@@ -492,8 +491,7 @@ public class SortTest {
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
-    // OutputNode - LimitNode - OffsetNode - SortNode - ProjectNode - ProjectNode - FilterNode -
-    // TableScanNode
+    // Output - Limit - Offset - Sort - Project - Project - Filter - TableScan
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof LimitNode);
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
@@ -525,10 +523,8 @@ public class SortTest {
     assertEquals(9, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
-    // OutputNode - LimitNode - OffsetNode - MergeSortNode - SortNode - ProjectNode - ProjectNode -
-    // FilterNode -
-    // TableScanNode
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
@@ -584,6 +580,7 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
 
     // IdentitySinkNode - SortNode - ProjectNode - ProjectNode - FilterNode - TableScanNode
     assertTrue(
@@ -654,6 +651,7 @@ public class SortTest {
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
     assertEquals(DESC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
   }
 
   // order by time, all_ids, others
