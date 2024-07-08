@@ -37,6 +37,8 @@ public class TableModelJDBCExample {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+
+    // don't specify database in url
     try (Connection connection =
             DriverManager.getConnection(
                 "jdbc:iotdb://127.0.0.1:6667?sql_dialect=table", "root", "root");
@@ -64,7 +66,7 @@ public class TableModelJDBCExample {
       }
 
       // show tables by specifying another database
-      // using SHOW tables in
+      // using SHOW tables FROM
       try (ResultSet resultSet = statement.executeQuery("SHOW TABLES FROM test1")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
@@ -82,7 +84,18 @@ public class TableModelJDBCExample {
             DriverManager.getConnection(
                 "jdbc:iotdb://127.0.0.1:6667/test1?sql_dialect=table", "root", "root");
         Statement statement = connection.createStatement()) {
-      // show tables from current database
+      // show tables from current database test1
+      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        System.out.println(metaData.getColumnCount());
+        while (resultSet.next()) {
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+        }
+      }
+
+      // change database to test2
+      statement.execute("use test2");
+
       try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());

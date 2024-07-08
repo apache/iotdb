@@ -62,6 +62,7 @@ public class Utils {
       params.setHost(host);
       suffixURL = subURL.substring(i + 1);
 
+      i++;
       // parse port
       int port = 0;
       for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
@@ -75,7 +76,11 @@ public class Utils {
           int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
           String database;
           if (endIndex <= i + 1) {
-            database = subURL.substring(i + 1);
+            if (i + 1 == subURL.length()) {
+              database = null;
+            } else {
+              database = subURL.substring(i + 1);
+            }
             suffixURL = "";
           } else {
             database = subURL.substring(i + 1, endIndex);
@@ -92,7 +97,8 @@ public class Utils {
     }
     if (!isUrlLegal) {
       throw new IoTDBURLException(
-          "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2");
+          "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2, current url is "
+              + url);
     }
 
     if (info.containsKey(Config.AUTH_USER)) {

@@ -191,7 +191,7 @@ public class IoTDBConnectionParams {
   }
 
   public Optional<String> getDb() {
-    return Optional.of(db);
+    return Optional.ofNullable(db);
   }
 
   public void setDb(String db) {
