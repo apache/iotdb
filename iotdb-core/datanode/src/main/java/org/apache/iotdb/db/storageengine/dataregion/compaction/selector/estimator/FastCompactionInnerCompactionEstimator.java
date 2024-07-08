@@ -55,21 +55,19 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     }
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
-        averageUncompressedChunkSize
+        averageChunkSize
             * taskInfo.getFileInfoList().size()
             * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+            * taskInfo.getMaxChunkMetadataNumInSeries();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
     long maxConcurrentChunkSizeFromSourceFile =
-        averageUncompressedChunkSize
+        (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * maxConcurrentSeriesNum
             * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
 

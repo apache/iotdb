@@ -51,22 +51,21 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     if (taskInfo.getTotalChunkNum() == 0) {
       return taskInfo.getModificationFileSize();
     }
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
-        averageUncompressedChunkSize
+        averageChunkSize
             * taskInfo.getFileInfoList().size()
             * taskInfo.getMaxConcurrentSeriesNum()
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+            * taskInfo.getMaxChunkMetadataNumInSeries();
     long maxTargetChunkWriterSize =
         config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
     long chunkSizeFromSourceFile =
-        averageUncompressedChunkSize * taskInfo.getMaxConcurrentSeriesNum();
+        (averageChunkSize + tsFileConfig.getPageSizeInByte())
+            * taskInfo.getMaxConcurrentSeriesNum();
 
     return targetChunkWriterSize + chunkSizeFromSourceFile + taskInfo.getModificationFileSize();
   }
