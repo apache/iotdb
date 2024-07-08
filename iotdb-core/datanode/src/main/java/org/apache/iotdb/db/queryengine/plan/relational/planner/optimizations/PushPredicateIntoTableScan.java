@@ -251,7 +251,8 @@ public class PushPredicateIntoTableScan implements TablePlanOptimizer {
               .map(Symbol::getName)
               .collect(Collectors.toList());
       List<DeviceEntry> deviceEntries =
-          metadata.indexScan(node.getQualifiedObjectName(), metadataExpressions, attributeColumns);
+          metadata.indexScan(
+              node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);
       node.setDeviceEntries(deviceEntries);
 
       if (deviceEntries.isEmpty()) {
