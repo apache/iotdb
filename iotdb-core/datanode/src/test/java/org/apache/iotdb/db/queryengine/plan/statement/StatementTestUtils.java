@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -107,6 +108,10 @@ public class StatementTestUtils {
     return new Object[] {ids, attrs, values};
   }
 
+  public static Object[] genValues(int offset) {
+    return new Object[] {"id:" + offset, "attr:" + offset, offset * 1.0};
+  }
+
   public static long[] genTimestamps() {
     return genTimestamps(3, 0);
   }
@@ -117,6 +122,27 @@ public class StatementTestUtils {
       timestamps[i] = i + offset;
     }
     return timestamps;
+  }
+
+  public static InsertRowStatement genInsertRowStatement(
+      boolean writeToTable, int offset) {
+    String[] measurements = genColumnNames();
+    TSDataType[] dataTypes = genDataTypes();
+    TsTableColumnCategory[] columnCategories = genColumnCategories();
+
+    Object[] values = genValues(offset);
+    long[] timestamps = genTimestamps(1, offset);
+
+    InsertRowStatement insertStatement = new InsertRowStatement();
+    insertStatement.setDevicePath(new PartialPath(new String[] {tableName()}));
+    insertStatement.setMeasurements(measurements);
+    insertStatement.setDataTypes(dataTypes);
+    insertStatement.setColumnCategories(columnCategories);
+    insertStatement.setValues(values);
+    insertStatement.setTime(timestamps[0]);
+    insertStatement.setWriteToTable(writeToTable);
+
+    return insertStatement;
   }
 
   public static InsertTabletStatement genInsertTabletStatement(
@@ -164,8 +190,13 @@ public class StatementTestUtils {
         columnCategories);
   }
 
+
   public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable) {
     return genInsertTabletStatement(writeToTable, 3, 0);
+  }
+
+  public static InsertRowStatement genInsertRowStatement(boolean writeToTable) {
+    return genInsertRowStatement(writeToTable, 0);
   }
 
   public static TsTable genTsTable() {

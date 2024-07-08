@@ -377,7 +377,7 @@ public class StatementAnalyzer {
       return visitInsert(insert, scope);
     }
 
-    protected Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+    private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
