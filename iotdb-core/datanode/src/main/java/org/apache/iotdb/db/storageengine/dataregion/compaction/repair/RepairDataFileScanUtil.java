@@ -41,7 +41,6 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -60,6 +59,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
@@ -134,7 +135,10 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(chunkHeader.getCompressionType(), pageHeader, pageData);
+            uncompressPageData(
+                pageHeader,
+                IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
+                pageData);
         Decoder decoder =
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
@@ -186,7 +190,10 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(chunkHeader.getCompressionType(), pageHeader, pageData);
+            uncompressPageData(
+                pageHeader,
+                IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
+                pageData);
         ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
         Decoder timeDecoder =
             Decoder.getDecoderByType(
@@ -206,16 +213,6 @@ public class RepairDataFileScanUtil {
     ByteBuffer timeBuffer = uncompressedPageData.slice();
     timeBuffer.limit(timeBufferLength);
     return timeBuffer;
-  }
-
-  private ByteBuffer uncompressPageData(
-      CompressionType compressionType, PageHeader pageHeader, ByteBuffer pageData)
-      throws IOException {
-    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-    byte[] uncompressedData = new byte[pageHeader.getUncompressedSize()];
-    unCompressor.uncompress(
-        pageData.array(), 0, pageHeader.getCompressedSize(), uncompressedData, 0);
-    return ByteBuffer.wrap(uncompressedData);
   }
 
   private void checkPreviousTimeAndUpdate(String path, long time) {
