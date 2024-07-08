@@ -140,9 +140,10 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       }
     } else {
       FastAlignedSeriesCompactionExecutor seriesCompactionExecutor;
-      if (measurementSchemas.size()
-          > IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch()
-              + 1) {
+      if (measurementSchemas.size() - 1
+          > IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getCompactionMaxAlignedSeriesNumInOneBatch()) {
         seriesCompactionExecutor =
             new BatchedFastAlignedSeriesCompactionExecutor(
                 compactionWriter,
