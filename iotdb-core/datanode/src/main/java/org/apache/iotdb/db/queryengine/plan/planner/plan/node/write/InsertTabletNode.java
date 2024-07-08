@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -1164,19 +1163,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         break;
       case TEXT:
       case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
-        break;
-      case STRING:
-        if (columnCategories[measurementIndex] == TsTableColumnCategory.ID) {
-          String[] stringValues = (String[]) columns[measurementIndex];
-          value =
-              new TsPrimitiveType.TsBinary(
-                  new Binary(stringValues[lastIdx].getBytes(StandardCharsets.UTF_8)));
-        } else {
-          Binary[] binValues = (Binary[]) columns[measurementIndex];
-          value = new TsPrimitiveType.TsBinary(binValues[lastIdx]);
-        }
         break;
       default:
         throw new UnSupportedDataTypeException(
