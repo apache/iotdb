@@ -56,21 +56,20 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
 
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
-        averageUncompressedChunkSize
-            * taskInfo.getFileInfoList().size()
-            * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+        averageChunkSize
+                * taskInfo.getFileInfoList().size()
+                * maxConcurrentSeriesNum
+                * taskInfo.getMaxChunkMetadataNumInSeries()
+            + maxConcurrentSeriesNum * tsFileConfig.getPageSizeInByte();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
     long maxConcurrentChunkSizeFromSourceFile =
-        averageUncompressedChunkSize
+        (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * maxConcurrentSeriesNum
             * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
 
