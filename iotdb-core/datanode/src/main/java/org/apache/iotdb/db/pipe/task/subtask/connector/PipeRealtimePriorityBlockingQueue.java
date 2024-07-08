@@ -81,13 +81,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Event event = null;
     if (eventCount.get() >= pendingQueueConsumeThreshold && !tsfileInsertEventDeque.isEmpty()) {
       event = tsfileInsertEventDeque.pollLast();
-      long v = 0;
-      while (eventCount.compareAndSet(eventCount.get(), 0)) {
-        v++;
-        if (v > concurrentAttemptLimit) {
-          break;
-        }
-      }
+      resetEventCount();
     }
 
     if (Objects.isNull(event)) {
@@ -97,6 +91,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (Objects.isNull(event)) {
       event = tsfileInsertEventDeque.pollLast();
+      resetEventCount();
     }
     return event;
   }
@@ -114,13 +109,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (eventCount.get() >= pendingQueueConsumeThreshold) {
       event = tsfileInsertEventDeque.pollLast();
-      long v = 0;
-      while (eventCount.compareAndSet(eventCount.get(), 0)) {
-        v++;
-        if (v > concurrentAttemptLimit) {
-          break;
-        }
-      }
+      resetEventCount();
     }
     if (event == null && !super.isEmpty()) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
@@ -129,6 +118,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     } else if (!tsfileInsertEventDeque.isEmpty()) {
       // Always poll the last offered event
       event = tsfileInsertEventDeque.pollLast();
+      resetEventCount();
     }
 
     // If no event is available, block until an event is available
@@ -136,6 +126,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event = tsfileInsertEventDeque.pollLast();
+        resetEventCount();
       }
     }
 
@@ -173,5 +164,15 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public int getTsFileInsertionEventCount() {
     return tsfileInsertEventDeque.size();
+  }
+
+  private void resetEventCount() {
+    long v = 0;
+    while (eventCount.compareAndSet(eventCount.get(), 0)) {
+      v++;
+      if (v > concurrentAttemptLimit) {
+        break;
+      }
+    }
   }
 }
