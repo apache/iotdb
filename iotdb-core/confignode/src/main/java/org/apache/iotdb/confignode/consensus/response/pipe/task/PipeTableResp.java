@@ -139,9 +139,6 @@ public class PipeTableResp implements DataSet {
         }
       }
 
-      int size = pipeExceptionMessage2NodeIdsMap.size();
-      int count = 0;
-
       for (final Map.Entry<String, Set<Integer>> entry :
           pipeExceptionMessage2NodeIdsMap.entrySet()) {
         final String exceptionMessage = entry.getKey();
@@ -150,18 +147,12 @@ public class PipeTableResp implements DataSet {
             .append("nodeIds: ")
             .append(nodeIds)
             .append(", ")
-            .append(exceptionMessage);
-        if (++count < size) {
-          exceptionMessageBuilder.append("; ");
-        }
+            .append(exceptionMessage)
+            .append("; ");
       }
 
-      if (exceptionMessageBuilder.length() > 0) {
-        exceptionMessageBuilder.append("\n");
-      }
-
-      size = pipeExceptionMessage2RegionIdsMap.size();
-      count = 0;
+      final int size = pipeExceptionMessage2RegionIdsMap.size();
+      int count = 0;
 
       for (final Map.Entry<String, Set<Integer>> entry :
           pipeExceptionMessage2RegionIdsMap.entrySet()) {
