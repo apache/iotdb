@@ -30,6 +30,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -37,6 +38,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
+
+  private final AtomicInteger eventCount = new AtomicInteger(0);
+
+  private static final int pendingQueueConsumeThreshold = 1000;
+
+  private static final int concurrentAttemptLimit = 20;
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -71,7 +78,23 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public Event directPoll() {
-    Event event = super.directPoll();
+    Event event = null;
+    if (eventCount.get() >= pendingQueueConsumeThreshold && !tsfileInsertEventDeque.isEmpty()) {
+      event = tsfileInsertEventDeque.pollLast();
+      long v = 0;
+      while (eventCount.compareAndSet(eventCount.get(), 0)) {
+        v++;
+        if (v > concurrentAttemptLimit) {
+          break;
+        }
+      }
+    }
+
+    if (Objects.isNull(event)) {
+      event = super.directPoll();
+      eventCount.incrementAndGet();
+    }
+
     if (Objects.isNull(event)) {
       event = tsfileInsertEventDeque.pollLast();
     }
@@ -89,9 +112,20 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   public Event waitedPoll() {
     Event event = null;
 
-    if (!super.isEmpty()) {
+    if (eventCount.get() >= pendingQueueConsumeThreshold) {
+      event = tsfileInsertEventDeque.pollLast();
+      long v = 0;
+      while (eventCount.compareAndSet(eventCount.get(), 0)) {
+        v++;
+        if (v > concurrentAttemptLimit) {
+          break;
+        }
+      }
+    }
+    if (event == null && !super.isEmpty()) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
+      eventCount.incrementAndGet();
     } else if (!tsfileInsertEventDeque.isEmpty()) {
       // Always poll the last offered event
       event = tsfileInsertEventDeque.pollLast();
