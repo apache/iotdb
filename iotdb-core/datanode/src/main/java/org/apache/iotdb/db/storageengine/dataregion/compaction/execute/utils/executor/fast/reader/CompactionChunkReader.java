@@ -107,7 +107,7 @@ public class CompactionChunkReader {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          "do not has a complete page body. Expected:"
+          "do not have a complete page body. Expected:"
               + compressedPageBodyLength
               + ". Actual:"
               + chunkBuffer.remaining());
