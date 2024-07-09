@@ -372,6 +372,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public synchronized void start() {
     if (!shouldExtractInsertion) {
+      // Start realtime extractor after historical extractor
+      if (Objects.nonNull(realtimeExtractorStarter)) {
+        realtimeExtractorStarter.run();
+      }
       return;
     }
 
