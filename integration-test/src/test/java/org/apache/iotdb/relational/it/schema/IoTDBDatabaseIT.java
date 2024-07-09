@@ -65,6 +65,17 @@ public class IoTDBDatabaseIT {
       // create
       statement.execute("create database test");
 
+      // create duplicated database without IF NOT EXISTS
+      try {
+        statement.execute("create database test");
+        fail("create database test shouldn't succeed because test already exists");
+      } catch (SQLException e) {
+        assertEquals("501: Database test already exists", e.getMessage());
+      }
+
+      // create duplicated database with IF NOT EXISTS
+      statement.execute("create database IF NOT EXISTS test");
+
       String[] databaseNames = new String[] {"test"};
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
@@ -105,14 +116,16 @@ public class IoTDBDatabaseIT {
         assertFalse(resultSet.next());
       }
 
-      // drop nonexistent database
+      // drop nonexistent database without IF EXISTS
       try {
         statement.execute("drop database test");
-        fail("drop database test shouldn't succeed because test1 doesn't exist");
+        fail("drop database test shouldn't succeed because test doesn't exist");
       } catch (SQLException e) {
-        // TODO error msg should be changed to 500: Database test1 doesn't exists
-        assertEquals("508: Path [root.test] does not exist", e.getMessage());
+        assertEquals("500: Database test doesn't exist", e.getMessage());
       }
+
+      // drop nonexistent database with IF EXISTS
+      statement.execute("drop database IF EXISTS test");
 
       // create with strange name
       try {

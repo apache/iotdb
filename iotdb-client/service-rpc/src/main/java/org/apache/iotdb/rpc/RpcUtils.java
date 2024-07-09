@@ -342,4 +342,8 @@ public class RpcUtils {
         : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
             .setMessage(failedStatus.toString());
   }
+
+  public static boolean isUseDatabase(String sql) {
+    return sql.length() > 4 && "use ".equalsIgnoreCase(sql.substring(0, 4));
+  }
 }
