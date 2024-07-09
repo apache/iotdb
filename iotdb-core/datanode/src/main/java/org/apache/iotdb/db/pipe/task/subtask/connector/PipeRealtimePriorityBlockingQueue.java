@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -41,9 +42,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final AtomicInteger eventCount = new AtomicInteger(0);
 
-  private static final int pendingQueueConsumeThreshold = 1000;
-
-  private static final int concurrentAttemptLimit = 20;
+  private static final int realTimeEventConsumeThreshold =
+      PipeConfig.getInstance().getPipeRealTimeFirstDequeHistoryThreshold();
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -79,46 +79,52 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event directPoll() {
     Event event = null;
-    if (eventCount.get() >= pendingQueueConsumeThreshold && !tsfileInsertEventDeque.isEmpty()) {
-      event = tsfileInsertEventDeque.pollLast();
-      resetEventCount();
+    if (eventCount.get() >= realTimeEventConsumeThreshold) {
+      event = tsfileInsertEventDeque.pollFirst();
+      eventCount.set(0);
     }
-
     if (Objects.isNull(event)) {
       event = super.directPoll();
-      eventCount.incrementAndGet();
+      if (Objects.isNull(event)) {
+        event = tsfileInsertEventDeque.pollLast();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
+      }
     }
 
-    if (Objects.isNull(event)) {
-      event = tsfileInsertEventDeque.pollLast();
-      resetEventCount();
-    }
     return event;
   }
 
   /**
-   * Try to poll the freshest insertion event from the queue. First, try to poll the first offered
-   * non-TsFileInsertionEvent. If no such event is available, poll the last offered
-   * TsFileInsertionEvent. If no event is available, block until an event is available.
+   * When the number of polls exceeds the realtimeConsumeThreshold, the {@link TsFileInsertionEvent}
+   * of the earliest write to the queue is returned. if the realtimeConsumeThreshold is not reached
+   * then an attempt is made to poll the queue for the latest insertion {@link Event}. First, it
+   * tries to poll the first provided If there is no such {@link Event}, poll the last supplied
+   * {@link TsFileInsertionEvent}. If no {@link Event} is available, it blocks until a {@link Event}
+   * is available.
    *
-   * @return the freshest insertion event. can be null if no event is available.
+   * @return the freshest insertion {@link Event}. can be {@code null} if no event is available.
    */
   @Override
   public Event waitedPoll() {
     Event event = null;
-
-    if (eventCount.get() >= pendingQueueConsumeThreshold) {
-      event = tsfileInsertEventDeque.pollLast();
-      resetEventCount();
+    if (eventCount.get() >= realTimeEventConsumeThreshold) {
+      event = tsfileInsertEventDeque.pollFirst();
+      if (event != null) {
+        eventCount.set(0);
+      }
     }
     if (event == null && !super.isEmpty()) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      eventCount.incrementAndGet();
-    } else if (!tsfileInsertEventDeque.isEmpty()) {
-      // Always poll the last offered event
-      event = tsfileInsertEventDeque.pollLast();
-      resetEventCount();
+      if (event == null && !tsfileInsertEventDeque.isEmpty()) {
+        // Always poll the last offered event
+        event = tsfileInsertEventDeque.pollLast();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
+      }
     }
 
     // If no event is available, block until an event is available
@@ -126,7 +132,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event = tsfileInsertEventDeque.pollLast();
-        resetEventCount();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
       }
     }
 
@@ -164,15 +172,5 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public int getTsFileInsertionEventCount() {
     return tsfileInsertEventDeque.size();
-  }
-
-  private void resetEventCount() {
-    long v = 0;
-    while (eventCount.compareAndSet(eventCount.get(), 0)) {
-      v++;
-      if (v > concurrentAttemptLimit) {
-        break;
-      }
-    }
   }
 }
