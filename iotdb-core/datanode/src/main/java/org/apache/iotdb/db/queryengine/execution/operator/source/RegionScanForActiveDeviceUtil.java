@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
@@ -79,12 +77,12 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     while (iterator.hasNext()) {
       DeviceStartEndTime deviceStartEndTime = iterator.next();
       IDeviceID deviceID = deviceStartEndTime.getDevicePath();
-      long startTime = getStartTimeConsideringTTL(deviceID, deviceStartEndTime.getStartTime());
+      long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
       // If this device has already been removed by another TsFileHandle, we should skip it.
       // If the time range is filtered, the devicePath is not active in this time range.
       if (!targetDevices.containsKey(deviceID)
-          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID))) {
         continue;
       }
 
@@ -100,14 +98,6 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       }
     }
     return true;
-  }
-
-  private long getStartTimeConsideringTTL(IDeviceID deviceID, long originalStartTime){
-    long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
-    if(ttl != Long.MAX_VALUE){
-      return Math.max(originalStartTime, CommonDateTimeUtils.currentTime() - ttl);
-    }
-    return originalStartTime;
   }
 
   @Override
@@ -145,7 +135,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       IChunkMetadata valueChunkMetaData = deviceChunkMetaData.nextValueChunkMetadata();
       long startTime = valueChunkMetaData.getStartTime();
       long endTime = valueChunkMetaData.getEndTime();
-      if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
+      if (!timeFilter.satisfyStartEndTime(startTime, endTime, deviceID)) {
         continue;
       }
       String measurement = valueChunkMetaData.getMeasurementUid();

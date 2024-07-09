@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
+import org.apache.iotdb.db.utils.TimeFilterForDeviceTTL;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -49,7 +50,7 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
           + RamUsageEstimator.shallowSizeOfInstance(TimeFilter.class);
 
   protected QueryDataSourceForRegionScan queryDataSource;
-  protected final Filter timeFilter;
+  protected final TimeFilterForDeviceTTL timeFilter;
 
   protected final List<AbstractChunkOffset> chunkToBeScanned = new ArrayList<>();
   protected final List<Statistics<? extends Serializable>> chunkStatistics = new ArrayList<>();
@@ -60,7 +61,7 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
   protected IChunkHandle currentChunkHandle = null;
 
   protected AbstractRegionScanForActiveDataUtil(Filter timeFilter) {
-    this.timeFilter = timeFilter;
+    this.timeFilter = new TimeFilterForDeviceTTL(timeFilter);
   }
 
   public void initQueryDataSource(IQueryDataSource dataSource) {
@@ -146,7 +147,7 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
     IDeviceID curDevice = currentChunkHandle.getDeviceID();
     String curMeasurement = currentChunkHandle.getMeasurement();
     long[] pageStatistics = currentChunkHandle.getPageStatisticsTime();
-    if (!timeFilter.satisfyStartEndTime(pageStatistics[0], pageStatistics[1])) {
+    if (!timeFilter.satisfyStartEndTime(pageStatistics[0], pageStatistics[1], curDevice)) {
       // All the data in current page is not valid, just skip.
       currentChunkHandle.skipCurrentPage();
       return true;

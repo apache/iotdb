@@ -73,7 +73,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
       if (!targetTimeseries.containsKey(deviceID)
-          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID))) {
         continue;
       }
 
@@ -132,7 +132,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       Set<String> measurementForCurrentTsFile = timeSeriesForCurrentTsFile.get(deviceID);
       if (!(measurementForCurrentTsFile != null
               && measurementForCurrentTsFile.contains(measurementId))
-          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
+          || !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID)) {
         continue;
       }
 
