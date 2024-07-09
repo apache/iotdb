@@ -79,8 +79,14 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   protected void writePageToPageBuffer() {
     FollowingBatchCompactionTimeChunkWriter followingBatchCompactionTimeChunkWriter =
         (FollowingBatchCompactionTimeChunkWriter) timeChunkWriter;
-    if (followingBatchCompactionTimeChunkWriter.pageStatistics.isEmpty()) {
+    TimeStatistics pageStatistics = followingBatchCompactionTimeChunkWriter.pageStatistics;
+    if (pageStatistics.isEmpty()) {
       return;
+    }
+    CompactPagePlan alignedTimePage = compactChunkPlan.getPageRecords().get(currentPage);
+    if (alignedTimePage.getTimeRange().getMax() != pageStatistics.getEndTime()) {
+      throw new BatchCompactionCannotAlignedException(
+          pageStatistics, compactChunkPlan, currentPage);
     }
     super.writePageToPageBuffer();
     currentPage++;

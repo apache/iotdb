@@ -255,6 +255,7 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
         .getModFile()
         .write(
             new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
+    unseqResource2.getModFile().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();
@@ -359,6 +360,7 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
     unseqResource1
         .getModFile()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 150));
+    unseqResource1.getModFile().close();
     unseqResources.add(unseqResource1);
 
     TsFileResource unseqResource2 =
@@ -373,6 +375,7 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
     unseqResource2
         .getModFile()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 400));
+    unseqResource2.getModFile().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();

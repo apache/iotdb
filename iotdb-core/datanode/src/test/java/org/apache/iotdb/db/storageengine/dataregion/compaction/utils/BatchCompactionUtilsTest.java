@@ -24,7 +24,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactPagePlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -154,5 +156,77 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
     Assert.assertEquals(1, compactChunkPlan.getTimeRange().getMin());
     Assert.assertEquals(20, compactChunkPlan.getTimeRange().getMax());
     Assert.assertEquals(2, compactChunkPlan.getPageRecords().size());
+  }
+
+  @Test
+  public void testFollowedBatchChunkWriter() throws PageException {
+    List<CompactPagePlan> pages = new ArrayList<>();
+    pages.add(new CompactPagePlan(10, 20, true));
+    pages.add(new CompactPagePlan(30, 50, false));
+    pages.add(new CompactPagePlan(60, 70, true));
+    CompactChunkPlan firstChunk = new CompactChunkPlan(pages);
+    CompactChunkPlan secondChunk = new CompactChunkPlan(100, 200);
+
+    IMeasurementSchema timeSchema = new MeasurementSchema("", TSDataType.TIMESTAMP);
+    List<IMeasurementSchema> valueSchemas = new ArrayList<>();
+    valueSchemas.add(new MeasurementSchema("s0", TSDataType.INT32));
+    FollowingBatchCompactionAlignedChunkWriter chunkWriter =
+        new FollowingBatchCompactionAlignedChunkWriter(timeSchema, valueSchemas, firstChunk);
+    Assert.assertTrue(chunkWriter.isEmpty());
+    Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+    chunkWriter.sealCurrentPage();
+    Assert.assertTrue(chunkWriter.isEmpty());
+    Assert.assertEquals(0, chunkWriter.getCurrentPage());
+
+    // flush page
+    TimeStatistics timeStatistics = new TimeStatistics();
+    timeStatistics.update(10);
+    timeStatistics.update(20);
+    IntegerStatistics statistics = new IntegerStatistics();
+    statistics.update(10, 10);
+    statistics.update(20, 20);
+    chunkWriter.writePageHeaderAndDataIntoTimeBuff(
+        ByteBuffer.allocate(1), new PageHeader(1, 1, timeStatistics));
+    chunkWriter.writePageHeaderAndDataIntoValueBuff(
+        ByteBuffer.allocate(1), new PageHeader(1, 1, statistics), 0);
+    Assert.assertFalse(chunkWriter.isEmpty());
+    Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+    Assert.assertEquals(1, chunkWriter.getCurrentPage());
+
+    // write point
+    for (int i = 30; i <= 50; i++) {
+      chunkWriter.write(i, new TsPrimitiveType[] {new TsPrimitiveType.TsInt(i)});
+    }
+    Assert.assertEquals(2, chunkWriter.getCurrentPage());
+    Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+
+    // flush page
+    timeStatistics = new TimeStatistics();
+    timeStatistics.update(60);
+    timeStatistics.update(70);
+    statistics = new IntegerStatistics();
+    statistics.update(60, 60);
+    statistics.update(70, 70);
+    chunkWriter.writePageHeaderAndDataIntoTimeBuff(
+        ByteBuffer.allocate(1), new PageHeader(1, 1, timeStatistics));
+    chunkWriter.writePageHeaderAndDataIntoValueBuff(
+        ByteBuffer.allocate(1), new PageHeader(1, 1, statistics), 0);
+    Assert.assertFalse(chunkWriter.isEmpty());
+    Assert.assertTrue(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+    Assert.assertEquals(3, chunkWriter.getCurrentPage());
+
+    // next chunk
+    chunkWriter.setCompactChunkPlan(secondChunk);
+    Assert.assertTrue(chunkWriter.isEmpty());
+    Assert.assertTrue(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+    try {
+      chunkWriter.writePageHeaderAndDataIntoTimeBuff(
+          ByteBuffer.allocate(1), new PageHeader(1, 1, timeStatistics));
+      chunkWriter.writePageHeaderAndDataIntoValueBuff(
+          ByteBuffer.allocate(1), new PageHeader(1, 1, statistics), 0);
+    } catch (Exception ignored) {
+      return;
+    }
+    Assert.fail();
   }
 }

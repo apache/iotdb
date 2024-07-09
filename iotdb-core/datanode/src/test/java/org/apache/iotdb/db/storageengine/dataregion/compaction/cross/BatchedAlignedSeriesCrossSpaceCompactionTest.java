@@ -177,11 +177,12 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
             true);
-    seqResources.add(seqResource1);
 
     seqResource1
         .getModFile()
         .write(new Deletion(new PartialPath("root.testsg.d0", "*"), Long.MAX_VALUE, 200000));
+    seqResource1.getModFile().close();
+    seqResources.add(seqResource1);
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -347,6 +348,7 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
     seqResource1
         .getModFile()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 20));
+    seqResource1.getModFile().close();
     seqResources.add(seqResource1);
 
     TsFileResource seqResource2 =

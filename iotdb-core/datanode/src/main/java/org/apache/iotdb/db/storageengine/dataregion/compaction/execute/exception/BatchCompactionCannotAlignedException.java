@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 
 public class BatchCompactionCannotAlignedException extends RuntimeException {
   public BatchCompactionCannotAlignedException(
@@ -32,6 +33,14 @@ public class BatchCompactionCannotAlignedException extends RuntimeException {
         String.format(
             "Current page %s cannot be aligned with time chunk %s, page index is %s",
             pageHeader, compactChunkPlan, pageIndex));
+  }
+
+  public BatchCompactionCannotAlignedException(
+      Statistics pageStatistics, CompactChunkPlan compactChunkPlan, int pageIndex) {
+    super(
+        String.format(
+            "Current page %s cannot be aligned with time chunk %s, page index is %s",
+            pageStatistics, compactChunkPlan, pageIndex));
   }
 
   public BatchCompactionCannotAlignedException(
