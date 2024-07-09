@@ -1065,10 +1065,12 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
-      logger.debug(
-          "Won't insert tablet {}, because {}",
-          insertTabletNode.getSearchIndex(),
-          start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Won't insert tablet {}, because {}",
+            insertTabletNode.getSearchIndex(),
+            start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
+      }
       return true;
     }
 
@@ -2165,7 +2167,11 @@ public class DataRegion implements IDataRegionForQuery {
     // but it's still necessary to write to the WAL, so that iotconsensus can synchronize the delete
     // operation to other nodes.
     if (walFlushListeners.isEmpty()) {
-      walFlushListeners.add(getWALNode().log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode));
+      getWALNode()
+          .ifPresent(
+              walNode ->
+                  walFlushListeners.add(
+                      walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode)));
     }
     return walFlushListeners;
   }
@@ -3581,13 +3587,14 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** This method could only be used in iot consensus */
-  public IWALNode getWALNode() {
+  public Optional<IWALNode> getWALNode() {
     if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-      throw new UnsupportedOperationException();
+      return Optional.empty();
     }
     // identifier should be same with getTsFileProcessor method
-    return WALManager.getInstance()
-        .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+    return Optional.of(
+        WALManager.getInstance()
+            .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId));
   }
 
   /** Wait for this data region successfully deleted */
