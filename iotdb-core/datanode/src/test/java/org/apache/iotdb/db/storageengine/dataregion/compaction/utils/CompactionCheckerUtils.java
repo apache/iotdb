@@ -56,6 +56,7 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.IBatchDataIterator;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.utils.Pair;
@@ -586,10 +587,14 @@ public class CompactionCheckerUtils {
               true);
       while (reader.hasNextBatch()) {
         TsBlock batchData = reader.nextBatch();
-        TsBlock.TsBlockSingleColumnIterator batchDataIterator =
-            batchData.getTsBlockSingleColumnIterator();
-        while (batchDataIterator.hasNextTimeValuePair()) {
-          dataList.add(batchDataIterator.nextTimeValuePair());
+        IPointReader pointReader;
+        if (path instanceof AlignedPath) {
+          pointReader = batchData.getTsBlockAlignedRowIterator();
+        } else {
+          pointReader = batchData.getTsBlockSingleColumnIterator();
+        }
+        while (pointReader.hasNextTimeValuePair()) {
+          dataList.add(pointReader.nextTimeValuePair());
         }
       }
       pathDataMap.put(fullPaths.get(i), dataList);
