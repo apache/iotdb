@@ -159,7 +159,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -2038,13 +2037,12 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedResource,
       long startTime,
       long endTime) {
-    Stream<TsFileResource> tsFileResources =
-        tsFileManager.getTsFileList(true, startTime, endTime).stream();
-    Stream.concat(tsFileResources, tsFileManager.getTsFileList(false, startTime, endTime).stream());
-    sealedResource.addAll(
-        tsFileResources.filter(TsFileResource::isClosed).collect(Collectors.toList()));
-    unsealedResource.addAll(
-        tsFileResources.filter(resource -> !resource.isClosed()).collect(Collectors.toList()));
+    List<TsFileResource> tsFileResources = tsFileManager.getTsFileList(true, startTime, endTime);
+    tsFileResources.addAll(tsFileManager.getTsFileList(false, startTime, endTime));
+    tsFileResources.stream().filter(TsFileResource::isClosed).forEach(sealedResource::add);
+    tsFileResources.stream()
+        .filter(resource -> !resource.isClosed())
+        .forEach(unsealedResource::add);
   }
 
   /**
