@@ -185,6 +185,7 @@ public class WALBuffer extends AbstractWALBuffer {
       workingBuffer = ByteBuffer.allocateDirect(capacity);
       idleBuffer = ByteBuffer.allocateDirect(capacity);
       compressedByteBuffer = ByteBuffer.allocateDirect(capacity);
+      currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
