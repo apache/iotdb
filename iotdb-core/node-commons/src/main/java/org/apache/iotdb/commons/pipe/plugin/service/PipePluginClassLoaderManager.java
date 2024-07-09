@@ -51,7 +51,9 @@ public class PipePluginClassLoaderManager implements IService {
   public void removePluginClassLoader(String pluginName) throws IOException {
     PipePluginClassLoader classLoader =
         pipePluginNameToClassLoaderMap.remove(pluginName.toUpperCase());
-    classLoader.markAsDeprecated();
+    if (classLoader != null) {
+      classLoader.markAsDeprecated();
+    }
   }
 
   public PipePluginClassLoader getPluginClassLoader(String pluginName) {
