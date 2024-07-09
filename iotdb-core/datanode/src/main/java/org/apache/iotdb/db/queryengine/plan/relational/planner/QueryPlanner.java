@@ -91,7 +91,7 @@ public class QueryPlanner {
             .collect(toImmutableList());
 
     List<Expression> orderBy = analysis.getOrderByExpressions(query);
-    if (orderBy.size() > 0) {
+    if (!orderBy.isEmpty()) {
       builder =
           builder.appendProjections(
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
@@ -134,7 +134,8 @@ public class QueryPlanner {
         // Add projections for aggregations required by ORDER BY. After this step, grouping keys and
         // translated
         // aggregations are visible.
-        List<Expression> orderByAggregates = analysis.getOrderByAggregates(node.getOrderBy().get());
+        List<Expression> orderByAggregates =
+            analysis.getOrderByAggregates(node.getOrderBy().orElse(null));
         builder = builder.appendProjections(orderByAggregates, symbolAllocator, queryContext);
       }
 
@@ -146,16 +147,15 @@ public class QueryPlanner {
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
-      List<Symbol> newFields = new ArrayList<>();
-      newFields.addAll(builder.getTranslations().getFieldSymbolsList());
+      List<Symbol> newFields = new ArrayList<>(builder.getTranslations().getFieldSymbolsList());
 
       outputs.stream().map(builder::translate).forEach(newFields::add);
 
-      builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
+      builder = builder.withScope(analysis.getScope(node.getOrderBy().orElse(null)), newFields);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    if (orderBy.size() > 0) {
+    if (!orderBy.isEmpty()) {
       builder =
           builder.appendProjections(
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
@@ -220,7 +220,7 @@ public class QueryPlanner {
     if (node.getFrom().isPresent()) {
       RelationPlan relationPlan =
           new RelationPlanner(analysis, symbolAllocator, queryContext, session, recursiveSubqueries)
-              .process(node.getFrom().get(), null);
+              .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
       throw new IllegalStateException("From clause must not by empty");
