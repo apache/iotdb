@@ -22,7 +22,6 @@ package org.apache.iotdb.db.schemaengine.table;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -47,9 +46,6 @@ public class DataNodeTableCache implements ITableCache {
 
   private final Map<String, Map<String, TsTable>> preCreateTableMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Map<String, List<TsTableColumnSchema>>> preAddColumnMap =
-      new ConcurrentHashMap<>();
-
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private DataNodeTableCache() {
@@ -67,16 +63,16 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void init(byte[] tableInitializationBytes) {
+  public void init(final byte[] tableInitializationBytes) {
     readWriteLock.writeLock().lock();
     try {
       if (tableInitializationBytes == null) {
         return;
       }
-      Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>> tableInfo =
+      final Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>> tableInfo =
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
-      Map<String, List<TsTable>> usingMap = tableInfo.left;
-      Map<String, List<TsTable>> preCreateMap = tableInfo.right;
+      final Map<String, List<TsTable>> usingMap = tableInfo.left;
+      final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
       saveUpdatedTableInfo(usingMap, databaseTableMap);
       saveUpdatedTableInfo(preCreateMap, preCreateTableMap);
       LOGGER.info("Init DataNodeTableCache successfully");
@@ -86,10 +82,11 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private void saveUpdatedTableInfo(
-      Map<String, List<TsTable>> tableMap, Map<String, Map<String, TsTable>> localTableMap) {
-    for (Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
-      Map<String, TsTable> map = new ConcurrentHashMap<>();
-      for (TsTable table : entry.getValue()) {
+      final Map<String, List<TsTable>> tableMap,
+      final Map<String, Map<String, TsTable>> localTableMap) {
+    for (final Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
+      final Map<String, TsTable> map = new ConcurrentHashMap<>();
+      for (final TsTable table : entry.getValue()) {
         map.put(table.getTableName(), table);
       }
       localTableMap.put(entry.getKey(), map);
@@ -97,7 +94,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preCreateTable(String database, TsTable table) {
+  public void preCreateTable(final String database, final TsTable table) {
     readWriteLock.writeLock().lock();
     try {
       preCreateTableMap
@@ -110,7 +107,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void rollbackCreateTable(String database, String tableName) {
+  public void rollbackCreateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreCreateMap(database, tableName);
@@ -120,7 +117,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  private void removeTableFromPreCreateMap(String database, String tableName) {
+  private void removeTableFromPreCreateMap(final String database, final String tableName) {
     preCreateTableMap.compute(
         database,
         (k, v) -> {
@@ -137,10 +134,10 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void commitCreateTable(String database, String tableName) {
+  public void commitCreateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
-      TsTable table = preCreateTableMap.get(database).get(tableName);
+      final TsTable table = preCreateTableMap.get(database).get(tableName);
       databaseTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .put(tableName, table);
@@ -152,78 +149,17 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    readWriteLock.writeLock().lock();
-    try {
-      preAddColumnMap
-          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(tableName, k -> new ArrayList<>())
-          .addAll(columnSchemaList);
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public void commitAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    readWriteLock.writeLock().lock();
-    try {
-      TsTable table = databaseTableMap.get(database).get(tableName);
-      columnSchemaList.forEach(table::addColumnSchema);
-      preAddColumnMap.compute(
-          database,
-          (k, v) -> {
-            if (v == null) {
-              throw new IllegalStateException();
-            }
-            v.remove(tableName);
-            if (v.isEmpty()) {
-              return null;
-            }
-            return v;
-          });
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public void rollbackAddColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    readWriteLock.writeLock().lock();
-    try {
-      preAddColumnMap.compute(
-          database,
-          (k, v) -> {
-            if (v == null) {
-              throw new IllegalStateException();
-            }
-            v.remove(tableName);
-            if (v.isEmpty()) {
-              return null;
-            }
-            return v;
-          });
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public void invalid(String database) {
+  public void invalid(final String database) {
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
       preCreateTableMap.remove(database);
-      preAddColumnMap.remove(database);
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  public TsTable getTable(String database, String tableName) {
+  public TsTable getTable(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
       if (databaseTableMap.containsKey(database)) {
@@ -235,10 +171,10 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public Optional<List<TsTable>> getTables(String database) {
+  public Optional<List<TsTable>> getTables(final String database) {
     readWriteLock.readLock().lock();
     try {
-      Map<String, TsTable> tableMap = databaseTableMap.get(database);
+      final Map<String, TsTable> tableMap = databaseTableMap.get(database);
       return tableMap != null ? Optional.of(new ArrayList<>(tableMap.values())) : Optional.empty();
     } finally {
       readWriteLock.readLock().unlock();
@@ -246,10 +182,10 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   /** Check whether the given path overlap with some table existence. */
-  public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(PartialPath path) {
+  public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(final PartialPath path) {
     readWriteLock.writeLock().lock();
     try {
-      String pathString = path.getFullPath();
+      final String pathString = path.getFullPath();
       Pair<String, String> result = checkTableExistenceOnGivenPath(pathString, databaseTableMap);
       if (result == null) {
         result = checkTableExistenceOnGivenPath(pathString, preCreateTableMap);
@@ -261,16 +197,16 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private Pair<String, String> checkTableExistenceOnGivenPath(
-      String path, Map<String, Map<String, TsTable>> tableMap) {
-    int dbStartIndex = PATH_ROOT.length() + 1;
-    for (Map.Entry<String, Map<String, TsTable>> dbEntry : tableMap.entrySet()) {
-      String database = dbEntry.getKey();
+      final String path, final Map<String, Map<String, TsTable>> tableMap) {
+    final int dbStartIndex = PATH_ROOT.length() + 1;
+    for (final Map.Entry<String, Map<String, TsTable>> dbEntry : tableMap.entrySet()) {
+      final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
         continue;
       }
-      int tableStartIndex = dbStartIndex + database.length() + 1;
-      for (String tableName : dbEntry.getValue().keySet()) {
+      final int tableStartIndex = dbStartIndex + database.length() + 1;
+      for (final String tableName : dbEntry.getValue().keySet()) {
         if (path.startsWith(tableName, tableStartIndex)
             && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
           return new Pair<>(database, tableName);

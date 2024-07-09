@@ -20,31 +20,19 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-
-import java.util.List;
 
 public interface ITableCache {
 
-  void init(byte[] tableInitializationBytes);
+  void init(final byte[] tableInitializationBytes);
 
-  void preCreateTable(String database, TsTable table);
+  void preCreateTable(final String database, final TsTable table);
 
-  void rollbackCreateTable(String database, String tableName);
+  void rollbackCreateTable(final String database, final String tableName);
 
-  void commitCreateTable(String database, String tableName);
-
-  void preAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void commitAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void rollbackAddColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+  void commitCreateTable(final String database, final String tableName);
 
   /**
    * @param database shouldn't start with `root.`
    */
-  void invalid(String database);
+  void invalid(final String database);
 }

@@ -80,15 +80,15 @@ public class CreateTableProcedure
     super();
   }
 
-  public CreateTableProcedure(String database, TsTable table) {
+  public CreateTableProcedure(final String database, final TsTable table) {
     this.database = database;
     this.table = table;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateTableState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final CreateTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case PRE_CREATE:
@@ -127,12 +127,12 @@ public class CreateTableProcedure
     }
   }
 
-  private void preCreateTable(ConfigNodeProcedureEnv env) {
-    PreCreateTablePlan plan = new PreCreateTablePlan(database, table);
+  private void preCreateTable(final ConfigNodeProcedureEnv env) {
+    final PreCreateTablePlan plan = new PreCreateTablePlan(database, table);
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -144,19 +144,21 @@ public class CreateTableProcedure
     }
   }
 
-  private void preReleaseTable(ConfigNodeProcedureEnv env) {
-    TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_CREATE.getOperationType());
+  private void preReleaseTable(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(database, table));
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // All dataNodes must clear the related schema cache
         LOGGER.warn(
             "Failed to sync table {}.{} pre-create info to DataNode {}",
             database,
@@ -169,25 +171,25 @@ public class CreateTableProcedure
     setNextState(CreateTableState.VALIDATE_TIMESERIES_EXISTENCE);
   }
 
-  private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {
-    PathPatternTree patternTree = new PathPatternTree();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    PartialPath path = null;
+  private void validateTimeSeriesExistence(final ConfigNodeProcedureEnv env) {
+    final PathPatternTree patternTree = new PathPatternTree();
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    final PartialPath path;
     try {
       path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
     }
-    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    final ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
-    List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
+    final List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
     DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
         regionTask =
             new DataNodeRegionTaskExecutor<
@@ -201,17 +203,17 @@ public class CreateTableProcedure
 
               @Override
               protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TCheckTimeSeriesExistenceResp response) {
+                  final TDataNodeLocation dataNodeLocation,
+                  final List<TConsensusGroupId> consensusGroupIdList,
+                  final TCheckTimeSeriesExistenceResp response) {
                 respList.add(response);
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   return failedRegionList;
                 }
 
                 if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  final List<TSStatus> subStatus = response.getStatus().getSubStatus();
                   for (int i = 0; i < subStatus.size(); i++) {
                     if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
                         && subStatus.get(i).getCode()
@@ -227,7 +229,8 @@ public class CreateTableProcedure
 
               @Override
               protected void onAllReplicasetFailure(
-                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                  final TConsensusGroupId consensusGroupId,
+                  final Set<TDataNodeLocation> dataNodeLocationSet) {
                 setFailure(
                     new ProcedureException(
                         new MetadataException(
@@ -245,7 +248,7 @@ public class CreateTableProcedure
       return;
     }
 
-    for (TCheckTimeSeriesExistenceResp resp : respList) {
+    for (final TCheckTimeSeriesExistenceResp resp : respList) {
       if (resp.isExists()) {
         setFailure(
             new ProcedureException(
@@ -258,12 +261,12 @@ public class CreateTableProcedure
     setNextState(CreateTableState.COMMIT_CREATE);
   }
 
-  private void commitCreateTable(ConfigNodeProcedureEnv env) {
-    CommitCreateTablePlan plan = new CommitCreateTablePlan(database, table.getTableName());
+  private void commitCreateTable(final ConfigNodeProcedureEnv env) {
+    final CommitCreateTablePlan plan = new CommitCreateTablePlan(database, table.getTableName());
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -275,41 +278,41 @@ public class CreateTableProcedure
     }
   }
 
-  private void commitReleaseTable(ConfigNodeProcedureEnv env) {
-    TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.COMMIT_CREATE.getOperationType());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.COMMIT_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);
       ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (IOException ignored) {
-      //
+    } catch (final IOException ignore) {
+      // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to sync table {}.{} commit-create info to DataNode {}",
             database,
             table.getTableName(),
             dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Commit create table failed")));
+        // TODO: Handle commit failure
         return;
       }
     }
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, CreateTableState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final CreateTableState state)
       throws IOException, InterruptedException, ProcedureException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case PRE_CREATE:
@@ -318,7 +321,7 @@ public class CreateTableProcedure
           break;
         case PRE_RELEASE:
           LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
-          rollbackRelease(env);
+          rollbackPreRelease(env);
           break;
       }
     } finally {
@@ -327,12 +330,13 @@ public class CreateTableProcedure
     }
   }
 
-  private void rollbackCreate(ConfigNodeProcedureEnv env) {
-    RollbackCreateTablePlan plan = new RollbackCreateTablePlan(database, table.getTableName());
+  private void rollbackCreate(final ConfigNodeProcedureEnv env) {
+    final RollbackCreateTablePlan plan =
+        new RollbackCreateTablePlan(database, table.getTableName());
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -343,25 +347,25 @@ public class CreateTableProcedure
     }
   }
 
-  private void rollbackRelease(ConfigNodeProcedureEnv env) {
-    TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE.getOperationType());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);
       ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (IOException ignored) {
-      //
+    } catch (final IOException ignore) {
+      // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to sync table {}.{} rollback-create info to DataNode {}",
@@ -375,12 +379,12 @@ public class CreateTableProcedure
   }
 
   @Override
-  protected CreateTableState getState(int stateId) {
+  protected CreateTableState getState(final int stateId) {
     return CreateTableState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(CreateTableState createTableState) {
+  protected int getStateId(final CreateTableState createTableState) {
     return createTableState.ordinal();
   }
 
@@ -398,7 +402,7 @@ public class CreateTableProcedure
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
@@ -406,17 +410,17 @@ public class CreateTableProcedure
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     database = ReadWriteIOUtils.readString(byteBuffer);
     table = TsTable.deserialize(byteBuffer);
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) return true;
     if (!(o instanceof CreateTableProcedure)) return false;
-    CreateTableProcedure that = (CreateTableProcedure) o;
+    final CreateTableProcedure that = (CreateTableProcedure) o;
     return Objects.equals(database, that.database) && Objects.equals(table, that.table);
   }
 

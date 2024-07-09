@@ -32,7 +32,7 @@ import java.util.List;
 public class TsTableColumnSchemaUtil {
 
   private TsTableColumnSchemaUtil() {
-    // do nothing
+    // Do nothing
   }
 
   public static void serialize(TsTableColumnSchema columnSchema, OutputStream outputStream)
@@ -86,7 +86,7 @@ public class TsTableColumnSchemaUtil {
     try {
       serialize(columnSchemaList, stream);
     } catch (IOException ignored) {
-      // won't happen
+      // ByteArrayOutputStream won't throw IOException
     }
     return stream.toByteArray();
   }
