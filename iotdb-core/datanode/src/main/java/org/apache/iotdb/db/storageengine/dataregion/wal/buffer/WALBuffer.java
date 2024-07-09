@@ -72,7 +72,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFA
 public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  public static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
+  public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
@@ -107,6 +107,8 @@ public class WALBuffer extends AbstractWALBuffer {
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer syncingBuffer;
 
+  private ByteBuffer compressedByteBuffer;
+
   // endregion
   // file status of working buffer, updating file writer's status when syncing
   protected volatile WALFileStatus currentFileStatus;
@@ -133,6 +135,7 @@ public class WALBuffer extends AbstractWALBuffer {
     this.checkpointManager = checkpointManager;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     allocateBuffers();
+    currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     serializeThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.WAL_SERIALIZE.getName() + "(node-" + identifier + ")");
@@ -145,8 +148,9 @@ public class WALBuffer extends AbstractWALBuffer {
 
   private void allocateBuffers() {
     try {
-      workingBuffer = ByteBuffer.allocateDirect(HALF_WAL_BUFFER_SIZE);
-      idleBuffer = ByteBuffer.allocateDirect(HALF_WAL_BUFFER_SIZE);
+      workingBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
+      idleBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
+      compressedByteBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
@@ -154,8 +158,16 @@ public class WALBuffer extends AbstractWALBuffer {
     }
   }
 
+  @Override
+  protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
+    File file = super.rollLogWriter(searchIndex, fileStatus);
+    currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
+    return file;
+  }
+
   @TestOnly
   public void setBufferSize(int size) {
+    int capacity = size / 3;
     buffersLock.lock();
     try {
       if (workingBuffer != null) {
@@ -167,8 +179,12 @@ public class WALBuffer extends AbstractWALBuffer {
       if (syncingBuffer != null) {
         MmapUtil.clean((MappedByteBuffer) syncingBuffer);
       }
-      workingBuffer = ByteBuffer.allocateDirect(size / 2);
-      idleBuffer = ByteBuffer.allocateDirect(size / 2);
+      if (compressedByteBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) compressedByteBuffer);
+      }
+      workingBuffer = ByteBuffer.allocateDirect(capacity);
+      idleBuffer = ByteBuffer.allocateDirect(capacity);
+      compressedByteBuffer = ByteBuffer.allocateDirect(capacity);
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
@@ -240,7 +256,7 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // try to get more WALEntries with blocking interface to enlarge write batch
-      while (totalSize < HALF_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
+      while (totalSize < ONE_THIRD_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         WALEntry walEntry = null;
         try {
           // for better fsync performance, wait a while to enlarge write batch
@@ -685,6 +701,9 @@ public class WALBuffer extends AbstractWALBuffer {
     }
     if (syncingBuffer != null) {
       MmapUtil.clean((MappedByteBuffer) syncingBuffer);
+    }
+    if (compressedByteBuffer != null) {
+      MmapUtil.clean((MappedByteBuffer) compressedByteBuffer);
     }
   }
 
