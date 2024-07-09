@@ -346,8 +346,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     protected ModifiedStatus isPageModified(PageElement pageElement) {
       String file =
           pageElement.getChunkMetadataElement().fileElement.resource.getTsFile().getName();
-      long startTime = pageElement.getChunkMetadataElement().chunkMetadata.getStartTime();
-      long endTime = pageElement.getChunkMetadataElement().chunkMetadata.getEndTime();
+      long startTime = pageElement.getStartTime();
+      long endTime = pageElement.getEndTime();
       return batchCompactionPlan.getAlignedPageModifiedStatus(
           file, new TimeRange(startTime, endTime));
     }
