@@ -88,11 +88,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    try {
-      super.tearDown();
-    } catch (IOException e) {
-      LOGGER.warn("Exception during tearDown will be ignored: ", e);
-    }
+    super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
   }
