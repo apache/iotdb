@@ -413,7 +413,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      // DO NOT FLUSH here
+      // DO NOT FLUSH HERE
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
