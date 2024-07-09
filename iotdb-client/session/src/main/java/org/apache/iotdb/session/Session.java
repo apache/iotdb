@@ -951,8 +951,19 @@ public class Session implements ISession {
     String previousDB = database;
     defaultSessionConnection.executeNonQueryStatement(sql);
     if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
-      for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-        sessionConnection.executeNonQueryStatement(sql);
+      Iterator<Map.Entry<TEndPoint, SessionConnection>> iterator =
+          endPointToSessionConnection.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<TEndPoint, SessionConnection> entry = iterator.next();
+        SessionConnection sessionConnection = entry.getValue();
+        if (sessionConnection != defaultSessionConnection) {
+          try {
+            sessionConnection.executeNonQueryStatement(sql);
+          } catch (Throwable t) {
+            logger.warn("failed to change database for {}", entry.getKey());
+            iterator.remove();
+          }
+        }
       }
     }
   }
