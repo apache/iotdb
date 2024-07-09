@@ -944,6 +944,8 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
+        logger.info(
+            "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
         return;
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
@@ -1079,6 +1081,12 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Won't insert tablet {}, because {}",
+            insertTabletNode.getSearchIndex(),
+            start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
+      }
       return true;
     }
 
@@ -2014,31 +2022,17 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
-  private void separateTsFile(
+  private void getTwoKindsOfTsFiles(
       List<TsFileResource> sealedResource,
       List<TsFileResource> unsealedResource,
       long startTime,
       long endTime) {
-    tsFileManager
-        .getTsFileList(true, startTime, endTime)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
-    tsFileManager
-        .getTsFileList(false, startTime, endTime)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
+    List<TsFileResource> tsFileResources = tsFileManager.getTsFileList(true, startTime, endTime);
+    tsFileResources.addAll(tsFileManager.getTsFileList(false, startTime, endTime));
+    tsFileResources.stream().filter(TsFileResource::isClosed).forEach(sealedResource::add);
+    tsFileResources.stream()
+        .filter(resource -> !resource.isClosed())
+        .forEach(unsealedResource::add);
   }
 
   /**
@@ -2079,7 +2073,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       Set<String> deviceMatchInfo = new HashSet<>();
@@ -2122,7 +2116,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
       writeUnlock();
       releasedLock = true;
@@ -2156,6 +2150,17 @@ public class DataRegion implements IDataRegionForQuery {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
+    }
+    // Some time the deletion operation doesn't have any related tsfile processor or memtable,
+    // but it's still necessary to write to the WAL, so that iotconsensus can synchronize the delete
+    // operation to other nodes.
+    if (walFlushListeners.isEmpty()) {
+      // TODO: IoTConsensusV2 deletion support
+      getWALNode()
+          .ifPresent(
+              walNode ->
+                  walFlushListeners.add(
+                      walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode)));
     }
     return walFlushListeners;
   }
@@ -3584,13 +3589,14 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** This method could only be used in iot consensus */
-  public IWALNode getWALNode() {
+  public Optional<IWALNode> getWALNode() {
     if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-      throw new UnsupportedOperationException();
+      return Optional.empty();
     }
     // identifier should be same with getTsFileProcessor method
-    return WALManager.getInstance()
-        .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+    return Optional.of(
+        WALManager.getInstance()
+            .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId));
   }
 
   /** Wait for this data region successfully deleted */
