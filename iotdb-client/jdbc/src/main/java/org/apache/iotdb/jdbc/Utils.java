@@ -60,19 +60,19 @@ public class Utils {
       int i = subURL.lastIndexOf(COLON);
       host = subURL.substring(0, i);
       params.setHost(host);
-      suffixURL = subURL.substring(i + 1);
-
       i++;
       // parse port
       int port = 0;
       for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
         port = port * 10 + (subURL.charAt(i) - '0');
       }
+      suffixURL = i < subURL.length() ? subURL.substring(i) : "";
       // legal port
       if (port >= 1 && port <= 65535) {
         params.setPort(port);
+
         // parse database
-        if (subURL.charAt(i) == SLASH) {
+        if (i < subURL.length() && subURL.charAt(i) == SLASH) {
           int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
           String database;
           if (endIndex <= i + 1) {
