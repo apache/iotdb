@@ -44,12 +44,12 @@ public class DataNodeTableCache implements ITableCache {
 
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Map<String, TsTable>> preCreateTableMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, TsTable>> preUpdateTableMap = new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private DataNodeTableCache() {
-    // do nothing
+    // Do nothing
   }
 
   private static final class DataNodeTableCacheHolder {
@@ -74,7 +74,7 @@ public class DataNodeTableCache implements ITableCache {
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
       saveUpdatedTableInfo(usingMap, databaseTableMap);
-      saveUpdatedTableInfo(preCreateMap, preCreateTableMap);
+      saveUpdatedTableInfo(preCreateMap, preUpdateTableMap);
       LOGGER.info("Init DataNodeTableCache successfully");
     } finally {
       readWriteLock.writeLock().unlock();
@@ -97,10 +97,10 @@ public class DataNodeTableCache implements ITableCache {
   public void preUpdateTable(final String database, final TsTable table) {
     readWriteLock.writeLock().lock();
     try {
-      preCreateTableMap
+      preUpdateTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .put(table.getTableName(), table);
-      LOGGER.info("Pre-create table {}.{} successfully", database, table);
+      LOGGER.info("Pre-update table {}.{} successfully", database, table);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -110,15 +110,15 @@ public class DataNodeTableCache implements ITableCache {
   public void rollbackUpdateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
-      removeTableFromPreCreateMap(database, tableName);
-      LOGGER.info("Rollback-create table {}.{} successfully", database, tableName);
+      removeTableFromPreUpdateMap(database, tableName);
+      LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  private void removeTableFromPreCreateMap(final String database, final String tableName) {
-    preCreateTableMap.compute(
+  private void removeTableFromPreUpdateMap(final String database, final String tableName) {
+    preUpdateTableMap.compute(
         database,
         (k, v) -> {
           if (v == null) {
@@ -137,12 +137,12 @@ public class DataNodeTableCache implements ITableCache {
   public void commitUpdateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
-      final TsTable table = preCreateTableMap.get(database).get(tableName);
+      final TsTable table = preUpdateTableMap.get(database).get(tableName);
       databaseTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .put(tableName, table);
-      removeTableFromPreCreateMap(database, tableName);
-      LOGGER.info("Commit-create table {}.{} successfully", database, tableName);
+      removeTableFromPreUpdateMap(database, tableName);
+      LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -153,7 +153,7 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
-      preCreateTableMap.remove(database);
+      preUpdateTableMap.remove(database);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -188,7 +188,7 @@ public class DataNodeTableCache implements ITableCache {
       final String pathString = path.getFullPath();
       Pair<String, String> result = checkTableExistenceOnGivenPath(pathString, databaseTableMap);
       if (result == null) {
-        result = checkTableExistenceOnGivenPath(pathString, preCreateTableMap);
+        result = checkTableExistenceOnGivenPath(pathString, preUpdateTableMap);
       }
       return result;
     } finally {
