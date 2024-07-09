@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,11 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
-  protected final Map<String, PipePluginClassLoader> pipePluginNameToClassLoaderMap;
   protected final Map<String, Class<?>> builtinPipePluginNameToClassMap;
 
   public PipePluginMetaKeeper() {
-    pipePluginNameToClassLoaderMap = new ConcurrentHashMap<>();
     builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
     loadBuiltInPlugins();
   }
@@ -49,7 +46,7 @@ public abstract class PipePluginMetaKeeper {
           builtinPipePlugin.getPipePluginName(),
           new PipePluginMeta(
               builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
-      addBuiltInPluginClass(
+      addBuiltinPluginClass(
           builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
     }
   }
@@ -74,24 +71,12 @@ public abstract class PipePluginMetaKeeper {
     return pipePluginNameToMetaMap.containsKey(pluginName.toUpperCase());
   }
 
-  public void addPluginAndClassLoader(String pluginName, PipePluginClassLoader classLoader) {
-    pipePluginNameToClassLoaderMap.put(pluginName.toUpperCase(), classLoader);
-  }
-
-  private void addBuiltInPluginClass(String pluginName, Class<?> builtinPipePluginClass) {
+  private void addBuiltinPluginClass(String pluginName, Class<?> builtinPipePluginClass) {
     builtinPipePluginNameToClassMap.put(pluginName.toUpperCase(), builtinPipePluginClass);
   }
 
-  public PipePluginClassLoader getPluginClassLoader(String pluginName) {
-    return pipePluginNameToClassLoaderMap.get(pluginName.toUpperCase());
-  }
-
-  public Class<?> getBuiltPluginClass(String pluginName) {
+  public Class<?> getBuiltinPluginClass(String pluginName) {
     return builtinPipePluginNameToClassMap.get(pluginName.toUpperCase());
-  }
-
-  public void removePluginClassLoader(String pluginName) {
-    pipePluginNameToClassLoaderMap.remove(pluginName.toUpperCase());
   }
 
   public String getPluginNameByJarName(String jarName) {

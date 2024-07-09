@@ -130,31 +130,6 @@ public class ExecutableManager {
         Paths.get(this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName));
   }
 
-  public boolean hasPluginFileUnderInstallDir(String pluginName, String fileName) {
-    return Files.exists(Paths.get(getPluginInstallPath(pluginName, fileName)));
-  }
-
-  public String getPluginsDirPath(String pluginName) {
-    return this.libRoot + File.separator + INSTALL_DIR + File.separator + pluginName;
-  }
-
-  public void removePluginFileUnderLibRoot(String pluginName, String fileName) throws IOException {
-    String pluginPath = getPluginInstallPath(pluginName, fileName);
-    Path path = Paths.get(pluginPath);
-    Files.deleteIfExists(path);
-    Files.deleteIfExists(path.getParent());
-  }
-
-  public String getPluginInstallPath(String pluginName, String fileName) {
-    return this.libRoot
-        + File.separator
-        + INSTALL_DIR
-        + File.separator
-        + pluginName
-        + File.separator
-        + fileName;
-  }
-
   // endregion
 
   // ======================================================
@@ -276,7 +251,6 @@ public class ExecutableManager {
   private void createParentDir(Path path) throws IOException {
     Path parent = path.getParent();
     if (!Files.exists(parent)) {
-      createParentDir(parent);
       Files.createDirectories(parent);
     }
   }
@@ -297,18 +271,6 @@ public class ExecutableManager {
    */
   public void saveToInstallDir(ByteBuffer byteBuffer, String fileName) throws IOException {
     String destination = this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
-    saveToDir(byteBuffer, destination);
-  }
-
-  /**
-   * @param byteBuffer file
-   * @param pluginName
-   * @param fileName Absolute Path will be libRoot + File_Separator + INSTALL_DIR + File_Separator +
-   *     pluginName + File_Separator + fileName
-   */
-  public void savePluginToInstallDir(ByteBuffer byteBuffer, String pluginName, String fileName)
-      throws IOException {
-    String destination = getPluginInstallPath(pluginName, fileName);
     saveToDir(byteBuffer, destination);
   }
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
+import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -83,10 +84,13 @@ public abstract class PipePluginConstructor {
     }
 
     try {
-
-      PipePluginClassLoader classLoader = pluginMetaKeeper.getPluginClassLoader(pluginName);
+      if (information.isBuiltin()) {
+        Class<?> builtinClass = pluginMetaKeeper.getBuiltinPluginClass(information.getPluginName());
+        return (PipePlugin) builtinClass.getDeclaredConstructor().newInstance();
+      }
+      PipePluginClassLoader classLoader =
+          PipePluginClassLoaderManager.getInstance().getPluginClassLoader(pluginName);
       final Class<?> pluginClass = Class.forName(information.getClassName(), true, classLoader);
-
       return (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
     } catch (InstantiationException
         | InvocationTargetException

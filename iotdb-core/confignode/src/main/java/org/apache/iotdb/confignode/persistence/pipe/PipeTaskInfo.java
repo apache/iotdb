@@ -353,7 +353,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public void validatePipePluginUsageByPipe(String pluginName) {
     acquireReadLock();
-    String exceptionMessage = null;
     try {
       Iterable<PipeMeta> pipeMetas = getPipeMetaList();
       for (PipeMeta pipeMeta : pipeMetas) {
@@ -364,20 +363,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
         if (pluginName.equals(extractorPluginName)) {
-          exceptionMessage =
+          String exceptionMessage =
               String.format(
                   "PipePlugin '%s' is already used by Pipe '%s' as a source.",
                   pluginName, pipeMeta.getStaticMeta().getPipeName());
+          throw new PipeException(exceptionMessage);
         }
 
         PipeParameters processorParameters = pipeMeta.getStaticMeta().getProcessorParameters();
         final String processorPluginName =
             processorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY);
         if (pluginName.equals(processorPluginName)) {
-          exceptionMessage =
+          String exceptionMessage =
               String.format(
                   "PipePlugin '%s' is already used by Pipe '%s' as a processor.",
                   pluginName, pipeMeta.getStaticMeta().getPipeName());
+          throw new PipeException(exceptionMessage);
         }
 
         PipeParameters connectorParameters = pipeMeta.getStaticMeta().getConnectorParameters();
@@ -386,17 +387,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
                 IOTDB_THRIFT_CONNECTOR.getPipePluginName());
         if (pluginName.equals(connectorPluginName)) {
-          exceptionMessage =
+          String exceptionMessage =
               String.format(
                   "PipePlugin '%s' is already used by Pipe '%s' as a sink.",
                   pluginName, pipeMeta.getStaticMeta().getPipeName());
+          throw new PipeException(exceptionMessage);
         }
       }
     } finally {
       releaseReadLock();
-    }
-    if (exceptionMessage != null) {
-      throw new PipeException(exceptionMessage);
     }
   }
 

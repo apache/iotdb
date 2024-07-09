@@ -111,26 +111,29 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
     AtomicReference<PipeTaskInfo> pipeTaskInfo =
         env.getConfigManager().getPipeManager().getPipeTaskCoordinator().tryLock();
-
+    if (pipeTaskInfo == null) {
+      String exceptionMessage =
+          String.format(
+              "ProcedureId %d failed to acquire pipe lock due to high contention with other pipe operations. "
+                  + "The pipeTaskInfo is being frequently accessed by other concurrent pipe activities.",
+              getProcId());
+      LOGGER.warn(exceptionMessage);
+      setFailure(new ProcedureException(exceptionMessage));
+      return Flow.NO_MORE_STATE;
+    }
     pipePluginCoordinator.lock();
 
     try {
       pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
-
-      if (pipeTaskInfo != null) {
-        pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
-      }
-
+      pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
-      pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     } finally {
-      if (pipeTaskInfo != null) {
-        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-      }
+      pipePluginCoordinator.unlock();
+      env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
     }
 
     try {

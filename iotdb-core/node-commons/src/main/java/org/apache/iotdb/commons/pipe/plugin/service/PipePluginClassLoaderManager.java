@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.service.ServiceType;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @NotThreadSafe
 public class PipePluginClassLoaderManager implements IService {
@@ -34,30 +36,35 @@ public class PipePluginClassLoaderManager implements IService {
   private final String libRoot;
 
   /**
-   * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
-   * user executes CREATE PIPEPLUGIN or after the user executes DROP PIPEPLUGIN. Therefore, we need
-   * to continuously maintain the activeClassLoader so that the classes it loads are always
-   * up-to-date.
+   * Each PipePlugin is equipped with a dedicated ClassLoader. When a PipePlugin is created, the
+   * corresponding ClassLoader is generated and used to load the PipePlugin. When the PipePlugin is
+   * deleted, its associated ClassLoader is also removed. The lifecycle of the ClassLoader is
+   * strictly consistent with the lifecycle of the PipePlugin it serves.
    */
-  private volatile PipePluginClassLoader activeClassLoader;
+  private final Map<String, PipePluginClassLoader> pipePluginNameToClassLoaderMap;
 
   private PipePluginClassLoaderManager(String libRoot) throws IOException {
     this.libRoot = libRoot;
-    activeClassLoader = new PipePluginClassLoader(libRoot);
+    pipePluginNameToClassLoaderMap = new ConcurrentHashMap<>();
   }
 
-  public PipePluginClassLoader updateAndGetActiveClassLoader(String pluginDirPath)
+  public void removePluginClassLoader(String pluginName) throws IOException {
+    PipePluginClassLoader classLoader =
+        pipePluginNameToClassLoaderMap.remove(pluginName.toUpperCase());
+    classLoader.markAsDeprecated();
+  }
+
+  public PipePluginClassLoader getPluginClassLoader(String pluginName) {
+    return pipePluginNameToClassLoaderMap.get(pluginName.toUpperCase());
+  }
+
+  public void addPluginAndClassLoader(String pluginName, PipePluginClassLoader classLoader) {
+    pipePluginNameToClassLoaderMap.put(pluginName.toUpperCase(), classLoader);
+  }
+
+  public PipePluginClassLoader createPipePluginClassLoader(String pluginDirPath)
       throws IOException {
-    PipePluginClassLoader deprecatedClassLoader = activeClassLoader;
-    activeClassLoader = new PipePluginClassLoader(pluginDirPath);
-    if (deprecatedClassLoader != null) {
-      deprecatedClassLoader.markAsDeprecated();
-    }
-    return activeClassLoader;
-  }
-
-  public PipePluginClassLoader getActiveClassLoader() {
-    return activeClassLoader;
+    return new PipePluginClassLoader(pluginDirPath);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +75,6 @@ public class PipePluginClassLoaderManager implements IService {
   public void start() throws StartupException {
     try {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-      activeClassLoader = new PipePluginClassLoader(libRoot);
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

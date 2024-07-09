@@ -139,18 +139,19 @@ public class PipeDataNodePluginAgent {
     final String className = pipePluginMeta.getClassName();
 
     try {
+      PipePluginClassLoaderManager classLoaderManager = PipePluginClassLoaderManager.getInstance();
       String pluginDirPath =
           PipePluginExecutableManager.getInstance().getPluginsDirPath(pluginName);
-      final PipePluginClassLoader currentActiveClassLoader =
-          PipePluginClassLoaderManager.getInstance().updateAndGetActiveClassLoader(pluginDirPath);
+      final PipePluginClassLoader pipePluginClassLoader =
+          classLoaderManager.createPipePluginClassLoader(pluginDirPath);
 
-      final Class<?> pluginClass = Class.forName(className, true, currentActiveClassLoader);
+      final Class<?> pluginClass = Class.forName(className, true, pipePluginClassLoader);
 
       @SuppressWarnings("unused") // ensure that it is a PipePlugin class
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
-      pipePluginMetaKeeper.addPluginAndClassLoader(pluginName, currentActiveClassLoader);
+      classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -182,7 +183,7 @@ public class PipeDataNodePluginAgent {
 
       // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
-      pipePluginMetaKeeper.removePluginClassLoader(pluginName);
+      PipePluginClassLoaderManager.getInstance().removePluginClassLoader(pluginName);
 
       // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5
       if (information != null && needToDeleteJar) {

@@ -41,7 +41,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 
 public class PipeDataNodePluginAgentTest {
-  private static final String TMP_LIB_TOOR_DIR = "PipePluginAgentTest_libroot";
+  private static final String TMP_LIB_ROOT_DIR = "PipePluginAgentTest_libroot";
   private static final String TMP_TEMP_LIB_ROOT_DIR = "PipePluginAgentTest_temporarylibroot";
   private static final PipePluginMeta PIPE_PLUGIN_META =
       new PipePluginMeta(
@@ -54,8 +54,8 @@ public class PipeDataNodePluginAgentTest {
   @Before
   public void before() {
     try {
-      PipePluginExecutableManager.setupAndGetInstance(TMP_LIB_TOOR_DIR, TMP_TEMP_LIB_ROOT_DIR);
-      PipePluginClassLoaderManager.setupAndGetInstance(TMP_LIB_TOOR_DIR);
+      PipePluginExecutableManager.setupAndGetInstance(TMP_LIB_ROOT_DIR, TMP_TEMP_LIB_ROOT_DIR);
+      PipePluginClassLoaderManager.setupAndGetInstance(TMP_LIB_ROOT_DIR);
       String pluginPath =
           PipePluginExecutableManager.getInstance()
               .getPluginsDirPath(PIPE_PLUGIN_META.getPluginName());
@@ -74,7 +74,7 @@ public class PipeDataNodePluginAgentTest {
       Files.deleteIfExists(Paths.get(pluginPath));
       Files.deleteIfExists(Paths.get(PipePluginExecutableManager.getInstance().getInstallDir()));
       Files.deleteIfExists(Paths.get(TMP_TEMP_LIB_ROOT_DIR));
-      Files.deleteIfExists(Paths.get(TMP_LIB_TOOR_DIR));
+      Files.deleteIfExists(Paths.get(TMP_LIB_ROOT_DIR));
     } catch (IOException e) {
       Assert.fail();
     }

@@ -30,7 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class PipePluginExecutableManager extends ExecutableManager {
@@ -90,5 +92,42 @@ public class PipePluginExecutableManager extends ExecutableManager {
 
   public static PipePluginExecutableManager getInstance() {
     return instance;
+  }
+
+  public boolean hasPluginFileUnderInstallDir(String pluginName, String fileName) {
+    return Files.exists(Paths.get(getPluginInstallPath(pluginName, fileName)));
+  }
+
+  public String getPluginsDirPath(String pluginName) {
+    return this.libRoot + File.separator + INSTALL_DIR + File.separator + pluginName;
+  }
+
+  public void removePluginFileUnderLibRoot(String pluginName, String fileName) throws IOException {
+    String pluginPath = getPluginInstallPath(pluginName, fileName);
+    Path path = Paths.get(pluginPath);
+    Files.deleteIfExists(path);
+    Files.deleteIfExists(path.getParent());
+  }
+
+  public String getPluginInstallPath(String pluginName, String fileName) {
+    return this.libRoot
+        + File.separator
+        + INSTALL_DIR
+        + File.separator
+        + pluginName
+        + File.separator
+        + fileName;
+  }
+
+  /**
+   * @param byteBuffer file
+   * @param pluginName
+   * @param fileName Absolute Path will be libRoot + File_Separator + INSTALL_DIR + File_Separator +
+   *     pluginName + File_Separator + fileName
+   */
+  public void savePluginToInstallDir(ByteBuffer byteBuffer, String pluginName, String fileName)
+      throws IOException {
+    String destination = getPluginInstallPath(pluginName, fileName);
+    saveToDir(byteBuffer, destination);
   }
 }
