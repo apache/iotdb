@@ -1066,7 +1066,7 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
-      logger.info(
+      logger.debug(
           "Won't insert tablet {}, because {}",
           insertTabletNode.getSearchIndex(),
           start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
@@ -2163,6 +2163,9 @@ public class DataRegion implements IDataRegionForQuery {
         walFlushListeners.add(walFlushListener);
       }
     }
+    // Some time the deletion operation doesn't have any related tsfile processor or memtable,
+    // but it's still necessary to write to the WAL, so that iotconsensus can synchronize the delete
+    // operation to other nodes.
     if (walFlushListeners.isEmpty()) {
       walFlushListeners.add(getWALNode().log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode));
     }

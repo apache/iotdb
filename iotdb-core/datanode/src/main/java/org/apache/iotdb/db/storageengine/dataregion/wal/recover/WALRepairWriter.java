@@ -66,7 +66,7 @@ public class WALRepairWriter {
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
       channel.truncate(truncateSize);
     }
-    // flush metadata TODO: 什么意思
+    // flush metadata
     try (WALWriter walWriter = new WALWriter(logFile, version)) {
       walWriter.updateMetaData(metaData);
     }
