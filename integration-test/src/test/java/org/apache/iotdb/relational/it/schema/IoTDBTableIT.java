@@ -240,6 +240,14 @@ public class IoTDBTableIT {
         assertEquals("550: Table test3.table3 not exists.", e.getMessage());
       }
 
+      statement.execute("drop database test1");
+
+      try {
+        statement.executeQuery("SHOW tables from test1");
+      } catch (SQLException e) {
+        assertEquals("500: Database test1 doesn't exists.", e.getMessage());
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
