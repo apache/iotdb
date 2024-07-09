@@ -91,7 +91,6 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         int templateId = deviceContext.getTemplateId();
         // TODO: use IDeviceID interface to get ttl
         long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
-
         // TODO: make it more readable, like "30 days" or "10 hours"
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 
