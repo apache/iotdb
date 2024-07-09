@@ -35,15 +35,15 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGI
 import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2;
 import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2_BYTES;
 
-/** Check whether the wal file is broken and recover it. */
-public class WALRecoverWriter {
+/** Check whether the wal file is broken and repair it. */
+public class WALRepairWriter {
   private final File logFile;
 
-  public WALRecoverWriter(File logFile) {
+  public WALRepairWriter(File logFile) {
     this.logFile = logFile;
   }
 
-  public void recover(WALMetaData metaData) throws IOException {
+  public void repair(WALMetaData metaData) throws IOException {
     // locate broken data
     long truncateSize;
     WALFileVersion version = WALFileVersion.getVersion(logFile);
