@@ -119,7 +119,7 @@ public class TableDeviceSchemaValidator {
   }
 
   // we need to truncate the tailing null
-  private String[] parseDeviceIdArray(Object[] objects) {
+  public static String[] parseDeviceIdArray(Object[] objects) {
     String[] strings = new String[objects.length];
     int lastNonNullIndex = -1;
     for (int i = 0; i < objects.length; i++) {

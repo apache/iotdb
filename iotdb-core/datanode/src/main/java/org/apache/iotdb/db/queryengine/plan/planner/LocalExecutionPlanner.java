@@ -92,20 +92,7 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
-    // Generate pipelines, return the last pipeline data structure
-    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
-    Operator root;
-    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
-    switch (sqlDialect) {
-      case TREE:
-        root = plan.accept(new OperatorTreeGenerator(), context);
-        break;
-      case TABLE:
-        root = plan.accept(new TableOperatorGenerator(metadata), context);
-        break;
-      default:
-        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
-    }
+    Operator root = generateOperator(instanceContext, context, plan);
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -136,7 +123,7 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(instanceContext, schemaRegion);
 
-    Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    Operator root = generateOperator(instanceContext, context, plan);
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -152,6 +139,25 @@ public class LocalExecutionPlanner {
     context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
+  }
+
+  private Operator generateOperator(
+      FragmentInstanceContext instanceContext, LocalExecutionPlanContext context, PlanNode node) {
+    // Generate pipelines, return the last pipeline data structure
+    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
+    Operator root;
+    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
+    switch (sqlDialect) {
+      case TREE:
+        root = node.accept(new OperatorTreeGenerator(), context);
+        break;
+      case TABLE:
+        root = node.accept(new TableOperatorGenerator(metadata), context);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+    }
+    return root;
   }
 
   private long checkMemory(
