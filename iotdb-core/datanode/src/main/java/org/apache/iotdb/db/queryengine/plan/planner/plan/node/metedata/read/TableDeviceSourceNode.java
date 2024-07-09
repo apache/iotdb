@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class TableDeviceSourceNode extends SourceNode {
@@ -96,5 +97,27 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   @Override
   public int allowedChildCount() {
     return 0;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TableDeviceSourceNode that = (TableDeviceSourceNode) o;
+    return Objects.equals(database, that.database)
+        && Objects.equals(tableName, that.tableName)
+        && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), database, tableName, schemaRegionReplicaSet);
   }
 }
