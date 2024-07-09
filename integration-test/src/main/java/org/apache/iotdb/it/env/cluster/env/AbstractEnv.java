@@ -430,6 +430,22 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
+      throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session =
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .sqlDialect(sqlDialect)
+            .database(database)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
   public ISession getSessionConnection(String userName, String password, String sqlDialect)
       throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
@@ -477,6 +493,21 @@ public abstract class AbstractEnv implements BaseEnv {
         .password(SessionConfig.DEFAULT_PASSWORD)
         .maxSize(maxSize)
         .sqlDialect(sqlDialect)
+        .build();
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool.Builder()
+        .host(dataNode.getIp())
+        .port(dataNode.getPort())
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .sqlDialect(sqlDialect)
+        .database(database)
         .build();
   }
 

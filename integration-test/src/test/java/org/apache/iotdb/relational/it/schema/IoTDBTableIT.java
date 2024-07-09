@@ -129,7 +129,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -150,7 +150,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -167,7 +167,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);

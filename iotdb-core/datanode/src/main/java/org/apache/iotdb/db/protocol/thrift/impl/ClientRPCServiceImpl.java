@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -394,6 +395,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
         return resp;
       }
+    } catch (ParsingException e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     } catch (Exception e) {
       finished = true;
       t = e;

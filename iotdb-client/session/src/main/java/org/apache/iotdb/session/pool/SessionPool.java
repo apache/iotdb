@@ -713,6 +713,7 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
+  @Override
   public IPooledSession getPooledSession() throws IoTDBConnectionException {
     return new SessionWrapper((Session) getSession(), this);
   }

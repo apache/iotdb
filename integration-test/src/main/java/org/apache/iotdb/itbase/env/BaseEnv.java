@@ -174,11 +174,16 @@ public interface BaseEnv {
 
   ISessionPool getSessionPool(int maxSize, String sqlDialect);
 
+  ISessionPool getSessionPool(int maxSize, String sqlDialect, String database);
+
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(TREE_SQL_DIALECT);
   }
 
   ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException;
+
+  ISession getSessionConnectionWithDB(String sqlDialect, String database)
+      throws IoTDBConnectionException;
 
   default ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException {
