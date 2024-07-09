@@ -54,8 +54,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     if (taskInfo.getTotalChunkNum() == 0) {
       return taskInfo.getModificationFileSize();
     }
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     int batchSize = config.getCompactionMaxAlignedSeriesNumInOneBatch();
     int maxConcurrentSeriesNum =
@@ -63,16 +62,17 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
             batchSize <= 0 ? Integer.MAX_VALUE : batchSize, taskInfo.getMaxConcurrentSeriesNum());
 
     long maxConcurrentSeriesSizeOfTotalFiles =
-        averageUncompressedChunkSize
-            * taskInfo.getFileInfoList().size()
-            * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+        averageChunkSize
+                * taskInfo.getFileInfoList().size()
+                * maxConcurrentSeriesNum
+                * taskInfo.getMaxChunkMetadataNumInSeries()
+            + maxConcurrentSeriesNum * tsFileConfig.getPageSizeInByte();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
-    long chunkSizeFromSourceFile = averageUncompressedChunkSize * maxConcurrentSeriesNum;
+    long chunkSizeFromSourceFile =
+        (averageChunkSize + tsFileConfig.getPageSizeInByte()) * maxConcurrentSeriesNum;
 
     return targetChunkWriterSize + chunkSizeFromSourceFile + taskInfo.getModificationFileSize();
   }
