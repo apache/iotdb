@@ -24,8 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -66,11 +68,8 @@ public class LimitOffsetPushDown implements TablePlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
-      PlanNode newNode = node.clone();
-      for (PlanNode child : node.getChildren()) {
-        newNode.addChild(child.accept(this, context));
-      }
-      return newNode;
+      // unexpected PlanNode, just assuming that in this situation Limit cannot be pushed down
+      return node;
     }
 
     @Override
@@ -93,6 +92,24 @@ public class LimitOffsetPushDown implements TablePlanOptimizer {
       }
       node.setChild(node.getChild().accept(this, context));
       return node;
+    }
+
+    @Override
+    public PlanNode visitCollect(CollectNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitMergeSort(MergeSortNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      return newNode;
     }
 
     @Override
