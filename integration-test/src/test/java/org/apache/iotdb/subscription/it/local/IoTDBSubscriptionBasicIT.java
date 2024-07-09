@@ -188,9 +188,11 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      AWAIT.untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
-      Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
-      Assert.assertEquals(0, commitFailureCount.get());
+      AWAIT.untilAsserted(() -> {
+        Assert.assertEquals(200, rowCount.get());
+        Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
+        Assert.assertEquals(0, commitFailureCount.get());
+      });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
