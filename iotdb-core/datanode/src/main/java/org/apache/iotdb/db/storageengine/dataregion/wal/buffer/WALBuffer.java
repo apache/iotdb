@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -170,18 +169,10 @@ public class WALBuffer extends AbstractWALBuffer {
     int capacity = size / 3;
     buffersLock.lock();
     try {
-      if (workingBuffer != null) {
-        MmapUtil.clean((MappedByteBuffer) workingBuffer);
-      }
-      if (idleBuffer != null) {
-        MmapUtil.clean((MappedByteBuffer) workingBuffer);
-      }
-      if (syncingBuffer != null) {
-        MmapUtil.clean((MappedByteBuffer) syncingBuffer);
-      }
-      if (compressedByteBuffer != null) {
-        MmapUtil.clean((MappedByteBuffer) compressedByteBuffer);
-      }
+      MmapUtil.clean(workingBuffer);
+      MmapUtil.clean(workingBuffer);
+      MmapUtil.clean(syncingBuffer);
+      MmapUtil.clean(compressedByteBuffer);
       workingBuffer = ByteBuffer.allocateDirect(capacity);
       idleBuffer = ByteBuffer.allocateDirect(capacity);
       compressedByteBuffer = ByteBuffer.allocateDirect(capacity);
@@ -694,18 +685,10 @@ public class WALBuffer extends AbstractWALBuffer {
     }
     checkpointManager.close();
 
-    if (workingBuffer != null) {
-      MmapUtil.clean((MappedByteBuffer) workingBuffer);
-    }
-    if (idleBuffer != null) {
-      MmapUtil.clean((MappedByteBuffer) workingBuffer);
-    }
-    if (syncingBuffer != null) {
-      MmapUtil.clean((MappedByteBuffer) syncingBuffer);
-    }
-    if (compressedByteBuffer != null) {
-      MmapUtil.clean((MappedByteBuffer) compressedByteBuffer);
-    }
+    MmapUtil.clean(workingBuffer);
+    MmapUtil.clean(workingBuffer);
+    MmapUtil.clean(syncingBuffer);
+    MmapUtil.clean(compressedByteBuffer);
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
