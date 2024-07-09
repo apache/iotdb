@@ -229,4 +229,43 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
     }
     Assert.fail();
   }
+
+  @Test
+  public void testFollowedBatchChunkWriter2() throws PageException {
+    List<CompactPagePlan> pages = new ArrayList<>();
+    pages.add(new CompactPagePlan(30, 50, false));
+    pages.add(new CompactPagePlan(70, 70, false));
+    CompactChunkPlan chunk = new CompactChunkPlan(pages);
+
+    IMeasurementSchema timeSchema = new MeasurementSchema("", TSDataType.TIMESTAMP);
+    List<IMeasurementSchema> valueSchemas = new ArrayList<>();
+    valueSchemas.add(new MeasurementSchema("s0", TSDataType.INT32));
+    FollowingBatchCompactionAlignedChunkWriter chunkWriter =
+        new FollowingBatchCompactionAlignedChunkWriter(timeSchema, valueSchemas, chunk);
+    Assert.assertTrue(chunkWriter.isEmpty());
+    Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+    chunkWriter.sealCurrentPage();
+    Assert.assertTrue(chunkWriter.isEmpty());
+    Assert.assertEquals(0, chunkWriter.getCurrentPage());
+
+    // write point
+    for (int i = 30; i <= 50; i++) {
+      if (i == 40) {
+        Assert.assertFalse(chunkWriter.checkIsUnsealedPageOverThreshold(0, 0, false));
+        Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+      }
+      chunkWriter.write(i, new TsPrimitiveType[] {new TsPrimitiveType.TsInt(i)});
+    }
+    Assert.assertEquals(1, chunkWriter.getCurrentPage());
+    Assert.assertFalse(chunkWriter.checkIsUnsealedPageOverThreshold(0, 0, false));
+    Assert.assertFalse(chunkWriter.checkIsChunkSizeOverThreshold(0, 0, false));
+
+    chunkWriter.write(60, new TsPrimitiveType[] {new TsPrimitiveType.TsInt(60)});
+    try {
+      chunkWriter.sealCurrentPage();
+    } catch (Exception ignored) {
+      return;
+    }
+    Assert.fail();
+  }
 }
