@@ -94,7 +94,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preCreateTable(final String database, final TsTable table) {
+  public void preUpdateTable(final String database, final TsTable table) {
     readWriteLock.writeLock().lock();
     try {
       preCreateTableMap
@@ -107,7 +107,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void rollbackCreateTable(final String database, final String tableName) {
+  public void rollbackUpdateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreCreateMap(database, tableName);
@@ -134,7 +134,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void commitCreateTable(final String database, final String tableName) {
+  public void commitUpdateTable(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       final TsTable table = preCreateTableMap.get(database).get(tableName);

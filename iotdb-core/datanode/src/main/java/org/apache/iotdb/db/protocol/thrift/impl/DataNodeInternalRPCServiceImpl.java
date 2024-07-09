@@ -1449,7 +1449,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         try {
           Pair<String, TsTable> pair =
               TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
-          DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
+          DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         } finally {
           DataNodeSchemaLockManager.getInstance()
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
@@ -1457,13 +1457,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         break;
       case ROLLBACK_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .rollbackCreateTable(
+            .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
       case COMMIT_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .commitCreateTable(
+            .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;

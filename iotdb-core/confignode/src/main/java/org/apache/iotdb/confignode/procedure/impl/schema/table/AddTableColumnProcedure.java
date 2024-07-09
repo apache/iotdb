@@ -169,7 +169,7 @@ public class AddTableColumnProcedure
     try {
       ReadWriteIOUtils.write(database, outputStream);
       ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (final IOException ignore) {
+    } catch (final IOException ignored) {
       // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());

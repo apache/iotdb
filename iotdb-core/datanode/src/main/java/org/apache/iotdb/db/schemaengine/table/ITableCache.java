@@ -25,11 +25,11 @@ public interface ITableCache {
 
   void init(final byte[] tableInitializationBytes);
 
-  void preCreateTable(final String database, final TsTable table);
+  void preUpdateTable(final String database, final TsTable table);
 
-  void rollbackCreateTable(final String database, final String tableName);
+  void rollbackUpdateTable(final String database, final String tableName);
 
-  void commitCreateTable(final String database, final String tableName);
+  void commitUpdateTable(final String database, final String tableName);
 
   /**
    * @param database shouldn't start with `root.`
