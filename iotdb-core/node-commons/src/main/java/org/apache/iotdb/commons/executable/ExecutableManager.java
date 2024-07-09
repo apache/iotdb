@@ -232,7 +232,9 @@ public class ExecutableManager {
     try {
       Path path = Paths.get(destination);
       if (!Files.exists(path)) {
-        createParentDir(path);
+        if (!Files.exists(path.getParent())) {
+          Files.createDirectories(path.getParent());
+        }
         Files.createFile(path);
       }
       // FileOutPutStream is not in append mode by default, so the file will be overridden if it
@@ -245,13 +247,6 @@ public class ExecutableManager {
       LOGGER.warn(
           "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);
       throw e;
-    }
-  }
-
-  private void createParentDir(Path path) throws IOException {
-    Path parent = path.getParent();
-    if (!Files.exists(parent)) {
-      Files.createDirectories(parent);
     }
   }
 
