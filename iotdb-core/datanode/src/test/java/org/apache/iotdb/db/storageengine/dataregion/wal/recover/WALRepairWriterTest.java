@@ -68,9 +68,8 @@ public class WALRepairWriterTest {
     logFile.createNewFile();
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
-    // recover
-    WALRepairWriter walRecoverWriter = new WALRepairWriter(logFile);
-    walRecoverWriter.repair(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + head magic
     // string + tail magic string
     Assert.assertEquals(
@@ -94,9 +93,8 @@ public class WALRepairWriterTest {
     }
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
-    // recover
-    WALRepairWriter walRecoverWriter = new WALRepairWriter(logFile);
-    walRecoverWriter.repair(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + magic string
     Assert.assertEquals(
         Byte.BYTES
@@ -122,9 +120,8 @@ public class WALRepairWriterTest {
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
-    // recover
-    WALRepairWriter walRecoverWriter = new WALRepairWriter(logFile);
-    walRecoverWriter.repair(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());
@@ -146,9 +143,8 @@ public class WALRepairWriterTest {
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
-    // recover
-    WALRepairWriter walRecoverWriter = new WALRepairWriter(logFile);
-    walRecoverWriter.repair(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());
@@ -175,9 +171,8 @@ public class WALRepairWriterTest {
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
       channel.truncate(len - 1);
     }
-    // recover
-    WALRepairWriter walRecoverWriter = new WALRepairWriter(logFile);
-    walRecoverWriter.repair(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());
