@@ -92,11 +92,6 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent poll(final String consumerId) {
-    if (!inputPendingQueue.isEmpty()) {
-      tryPrefetch();
-    }
-
-    // try prefetch again to avoid encountering the tsfile being deduplicated situation
     if (prefetchingQueue.isEmpty()) {
       tryPrefetch();
     }

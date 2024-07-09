@@ -34,13 +34,13 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
 
-  private final Map<Integer, Integer> fetchedTsFiles;
+  private final Map<Integer, Integer> polledTsFiles;
 
   public TsFileDeduplicationBlockingPendingQueue(
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(inputPendingQueue);
 
-    this.fetchedTsFiles = new ConcurrentHashMap<>();
+    this.polledTsFiles = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -49,7 +49,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
-      if (fetchedTsFiles.containsKey(hashcode)) {
+      if (polledTsFiles.containsKey(hashcode)) {
         // commit directly
         LOGGER.info(
             "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
@@ -58,7 +58,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
             TsFileDeduplicationBlockingPendingQueue.class.getName(), true);
         return null;
       }
-      fetchedTsFiles.put(hashcode, hashcode);
+      polledTsFiles.put(hashcode, hashcode);
     }
     return event;
   }
