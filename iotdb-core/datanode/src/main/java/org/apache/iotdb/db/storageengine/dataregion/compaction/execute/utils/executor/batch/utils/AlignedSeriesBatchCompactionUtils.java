@@ -42,7 +42,7 @@ public class AlignedSeriesBatchCompactionUtils {
 
   private AlignedSeriesBatchCompactionUtils() {}
 
-  public static List<IMeasurementSchema> selectColumnGroupToCompact(
+  public static List<IMeasurementSchema> selectColumnBatchToCompact(
       List<IMeasurementSchema> schemaList, Set<String> compactedMeasurements, int batchSize) {
     List<IMeasurementSchema> selectedColumnBatch = new ArrayList<>(batchSize);
     for (IMeasurementSchema schema : schemaList) {

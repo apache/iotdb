@@ -141,7 +141,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
   private void compactFirstBatch()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     List<IMeasurementSchema> firstGroupMeasurements =
-        AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
             valueMeasurementSchemas, compactedMeasurements, batchSize);
     List<IMeasurementSchema> currentBatchMeasurementSchemas =
         new ArrayList<>(firstGroupMeasurements.size() + 1);
@@ -167,7 +167,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     while (compactedMeasurements.size() < valueMeasurementSchemas.size()) {
       List<IMeasurementSchema> selectedValueColumnGroup =
-          AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+          AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
               valueMeasurementSchemas, compactedMeasurements, batchSize);
       List<IMeasurementSchema> currentBatchMeasurementSchemas =
           new ArrayList<>(selectedValueColumnGroup.size() + 1);

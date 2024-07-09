@@ -89,15 +89,15 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   }
 
   private void compactFirstBatch() throws IOException, PageException {
-    List<IMeasurementSchema> firstGroupMeasurements =
-        AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+    List<IMeasurementSchema> firstBatchMeasurements =
+        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
             schemaList, compactedMeasurements, batchSize);
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
         batchedReaderAndChunkMetadataList =
             filterAlignedChunkMetadataList(
                 readerAndChunkMetadataList,
-                firstGroupMeasurements.stream()
+                firstBatchMeasurements.stream()
                     .map(IMeasurementSchema::getMeasurementId)
                     .collect(Collectors.toList()));
     FirstBatchedReadChunkAlignedSeriesCompactionExecutor executor =
@@ -108,21 +108,21 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             writer,
             summary,
             timeSchema,
-            firstGroupMeasurements);
+            firstBatchMeasurements);
     executor.execute();
     System.out.println(batchCompactionPlan);
   }
 
   private void compactLeftBatches() throws PageException, IOException {
     while (compactedMeasurements.size() < schemaList.size()) {
-      List<IMeasurementSchema> selectedColumnGroup =
-          AlignedSeriesBatchCompactionUtils.selectColumnGroupToCompact(
+      List<IMeasurementSchema> selectedColumnBatch =
+          AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
               schemaList, compactedMeasurements, batchSize);
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
           groupReaderAndChunkMetadataList =
               filterAlignedChunkMetadataList(
                   readerAndChunkMetadataList,
-                  selectedColumnGroup.stream()
+                  selectedColumnBatch.stream()
                       .map(IMeasurementSchema::getMeasurementId)
                       .collect(Collectors.toList()));
       FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor executor =
@@ -133,7 +133,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
               writer,
               summary,
               timeSchema,
-              selectedColumnGroup);
+              selectedColumnBatch);
       executor.execute();
     }
   }
