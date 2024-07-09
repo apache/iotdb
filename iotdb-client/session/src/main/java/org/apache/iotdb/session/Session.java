@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -175,6 +176,9 @@ public class Session implements ISession {
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
+  // may be null
+  protected volatile String database;
 
   private static final String REDIRECT_TWICE = "redirect twice";
 
@@ -440,6 +444,7 @@ public class Session implements ISession {
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
+    this.database = builder.database;
   }
 
   @Override
@@ -600,10 +605,17 @@ public class Session implements ISession {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+        session,
+        endpoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   @Override
@@ -936,7 +948,24 @@ public class Session implements ISession {
   @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    String previousDB = database;
     defaultSessionConnection.executeNonQueryStatement(sql);
+    if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
+      Iterator<Map.Entry<TEndPoint, SessionConnection>> iterator =
+          endPointToSessionConnection.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<TEndPoint, SessionConnection> entry = iterator.next();
+        SessionConnection sessionConnection = entry.getValue();
+        if (sessionConnection != defaultSessionConnection) {
+          try {
+            sessionConnection.executeNonQueryStatement(sql);
+          } catch (Throwable t) {
+            logger.warn("failed to change database for {}", entry.getKey());
+            iterator.remove();
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -3826,6 +3855,14 @@ public class Session implements ISession {
     return defaultSessionConnection.fetchAllConnections();
   }
 
+  protected void changeDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
   public static class Builder {
     private String host = SessionConfig.DEFAULT_HOST;
     private int rpcPort = SessionConfig.DEFAULT_PORT;
@@ -3851,6 +3888,8 @@ public class Session implements ISession {
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
     private String sqlDialect = SessionConfig.SQL_DIALECT;
+
+    private String database;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3951,6 +3990,11 @@ public class Session implements ISession {
 
     public Builder sqlDialect(String sqlDialect) {
       this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.database = database;
       return this;
     }
 
