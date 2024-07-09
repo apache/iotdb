@@ -17,24 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.connection;
+package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
+public abstract class SubscriptionBlockingPendingQueue {
 
-public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
+  protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private final BlockingDeque<E> pendingDeque;
-
-  public UnboundedBlockingPendingQueue(final PipeEventCounter eventCounter) {
-    super(new LinkedBlockingDeque<>(), eventCounter);
-    pendingDeque = (BlockingDeque<E>) pendingQueue;
+  public SubscriptionBlockingPendingQueue(
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
+    this.inputPendingQueue = inputPendingQueue;
   }
 
-  public E peekLast() {
-    return pendingDeque.peekLast();
+  public abstract Event waitedPoll();
+
+  public int size() {
+    return inputPendingQueue.size();
+  }
+
+  public boolean isEmpty() {
+    return inputPendingQueue.isEmpty();
   }
 }
