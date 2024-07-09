@@ -58,10 +58,9 @@ public class FetchDevice extends Statement {
     if (partitionKeyList == null) {
       List<IDeviceID> partitionKeyList = new ArrayList<>();
       for (Object[] rawId : deviceIdList) {
-        String[] partitionKey = new String[rawId.length + 1];
-        partitionKey[0] = tableName;
+        String[] partitionKey = new String[rawId.length];
         for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i + 1] = Objects.toString(rawId[i].toString());
+          partitionKey[i] = Objects.toString(rawId[i].toString());
         }
         partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
       }

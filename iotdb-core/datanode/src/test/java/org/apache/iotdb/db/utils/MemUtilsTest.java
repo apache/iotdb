@@ -87,7 +87,8 @@ public class MemUtilsTest {
     dataTypes.add(TSDataType.TEXT);
     // time and index size
     sizeSum += 8 + 4;
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row));
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row,
+        null));
   }
 
   @Test

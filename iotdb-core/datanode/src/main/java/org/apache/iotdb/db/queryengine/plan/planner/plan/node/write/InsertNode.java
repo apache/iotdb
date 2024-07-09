@@ -50,12 +50,14 @@ import java.util.Objects;
 
 public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
 
-  /** this insert node doesn't need to participate in iot consensus */
+  /**
+   * this insert node doesn't need to participate in iot consensus
+   */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
   /**
-   * if use id table, this filed is id form of device path <br>
-   * if not, this filed is device path<br>
+   * if use id table, this filed is id form of device path <br> if not, this filed is device
+   * path<br>
    */
   protected PartialPath devicePath;
 
@@ -71,8 +73,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   protected int failedMeasurementNumber = 0;
 
   /**
-   * device id reference, for reuse device id in both id table and memtable <br>
-   * used in memtable
+   * device id reference, for reuse device id in both id table and memtable <br> used in memtable
    */
   protected IDeviceID deviceID;
 
@@ -82,7 +83,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
 
-  /** Physical address of data region after splitting */
+  /**
+   * Physical address of data region after splitting
+   */
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
@@ -153,6 +156,14 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     return measurements;
   }
 
+  public int measureColumnCnt() {
+    if (columnCategories == null) {
+      return measurements.length;
+    }
+    return (int) Arrays.stream(columnCategories)
+        .filter(col -> col == TsTableColumnCategory.MEASUREMENT).count();
+  }
+
   public boolean isValidMeasurement(int i) {
     return measurementSchemas != null
         && measurementSchemas[i] != null
@@ -204,7 +215,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     return searchIndex;
   }
 
-  /** Search index should start from 1 */
+  /**
+   * Search index should start from 1
+   */
   public void setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
   }
@@ -221,7 +234,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   // region Serialization methods for WAL
 
-  /** Serialized size of measurement schemas, ignoring failed time series */
+  /**
+   * Serialized size of measurement schemas, ignoring failed time series
+   */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
     for (int i = 0; i < measurements.length; i++) {
@@ -234,7 +249,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     return byteLen;
   }
 
-  /** Serialize measurement schemas, ignoring failed time series */
+  /**
+   * Serialize measurement schemas, ignoring failed time series
+   */
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert

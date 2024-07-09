@@ -325,6 +325,12 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+    return partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
+  }
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(
       String database, List<IDeviceID> deviceIDList, String userName) {
     return partitionFetcher.getOrCreateSchemaPartition(

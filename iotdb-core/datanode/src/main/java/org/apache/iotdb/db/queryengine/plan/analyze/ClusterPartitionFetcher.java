@@ -300,7 +300,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         PathPatternTree tree = new PathPatternTree();
         tree.appendPathPattern(new PartialPath(database + "." + MULTI_LEVEL_PATH_WILDCARD));
         TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getSchemaPartitionTable(constructSchemaPartitionReq(tree));
+            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(tree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
