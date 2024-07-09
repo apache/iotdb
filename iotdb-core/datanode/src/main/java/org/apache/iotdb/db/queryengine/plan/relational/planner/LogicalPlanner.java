@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TablePlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
@@ -68,7 +68,7 @@ public class LogicalPlanner {
   private final MPPQueryContext context;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
-  private final List<RelationalPlanOptimizer> relationalPlanOptimizers;
+  private final List<TablePlanOptimizer> tablePlanOptimizers;
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
@@ -82,7 +82,7 @@ public class LogicalPlanner {
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
 
-    this.relationalPlanOptimizers =
+    this.tablePlanOptimizers =
         Arrays.asList(
             new SimplifyExpressions(),
             new PruneUnUsedColumns(),
@@ -90,14 +90,25 @@ public class LogicalPlanner {
             new RemoveRedundantIdentityProjections());
   }
 
+  public LogicalPlanner(
+      MPPQueryContext context,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      List<TablePlanOptimizer> tablePlanOptimizers,
+      WarningCollector warningCollector) {
+    this.context = context;
+    this.metadata = metadata;
+    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.tablePlanOptimizers = tablePlanOptimizers;
+  }
+
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
-
     if (analysis.getStatement() instanceof Query) {
-      relationalPlanOptimizers.forEach(
+      tablePlanOptimizers.forEach(
           optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
     }
-
     return new LogicalQueryPlan(context, planNode);
   }
 
@@ -178,12 +189,6 @@ public class LogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(analysis, symbolAllocator, context, sessionInfo, ImmutableMap.of());
-  }
-
-  private enum Stage {
-    CREATED,
-    OPTIMIZED,
-    OPTIMIZED_AND_VALIDATED
   }
 
   private PlanNode planCreateDevice(CreateDevice statement, Analysis analysis) {
@@ -283,5 +288,11 @@ public class LogicalPlanner {
       }
     }
     return columnHeaderList;
+  }
+
+  private enum Stage {
+    CREATED,
+    OPTIMIZED,
+    OPTIMIZED_AND_VALIDATED
   }
 }

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import java.util.Collections;
 import java.util.List;
 
-public class RemoveRedundantIdentityProjections implements RelationalPlanOptimizer {
+public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
 
   @Override
   public PlanNode optimize(

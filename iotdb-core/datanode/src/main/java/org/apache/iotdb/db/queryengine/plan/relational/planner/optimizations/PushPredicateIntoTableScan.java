@@ -45,12 +45,12 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
@@ -73,7 +73,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
  *     <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule
  *     need to be adapted.
  */
-public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
+public class PushPredicateIntoTableScan implements TablePlanOptimizer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -84,10 +84,10 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext queryContext) {
-    return planNode.accept(new Rewriter(queryContext, analysis, metadata), new RewriterContext());
+    return planNode.accept(new Rewriter(queryContext, analysis, metadata), null);
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter extends PlanVisitor<PlanNode, Void> {
     private final MPPQueryContext queryContext;
     private final Analysis analysis;
     private final Metadata metadata;
@@ -100,20 +100,20 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
 
     @Override
-    public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+    public PlanNode visitPlan(PlanNode node, Void context) {
       throw new IllegalArgumentException(
           String.format("Unexpected plan node: %s in rule PushPredicateIntoTableScan", node));
     }
 
     @Override
-    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, RewriterContext context) {
+    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, Void context) {
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;
     }
 
     @Override
-    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, Void context) {
       List<PlanNode> rewrittenChildren = new ArrayList<>();
       for (PlanNode child : node.getChildren()) {
         rewrittenChildren.add(child.accept(this, context));
@@ -123,7 +123,7 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
 
     @Override
-    public PlanNode visitFilter(FilterNode node, RewriterContext context) {
+    public PlanNode visitFilter(FilterNode node, Void context) {
 
       if (node.getPredicate() != null) {
 
@@ -151,14 +151,11 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode) {
-      List<List<Expression>> splitPredicates = splitPredicate(tableScanNode);
-
-      // exist indexed metadata expressions
-      tableMetadataIndexScan(tableScanNode, splitPredicates.get(0));
+      SplitExpression splitExpression = splitPredicate(tableScanNode);
 
       // exist expressions can push down to scan operator
-      if (!splitPredicates.get(1).isEmpty()) {
-        List<Expression> expressions = splitPredicates.get(1);
+      if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
+        List<Expression> expressions = splitExpression.getExpressionsCanPushDown();
         Expression pushDownPredicate =
             expressions.size() == 1
                 ? expressions.get(0)
@@ -176,9 +173,12 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
         tableScanNode.setPushDownPredicate(null);
       }
 
+      // do index scan after expressionCanPushDown is processed
+      tableMetadataIndexScan(tableScanNode, splitExpression.getMetadataExpressions());
+
       // exist expressions can not push down to scan operator
-      if (!splitPredicates.get(2).isEmpty()) {
-        List<Expression> expressions = splitPredicates.get(2);
+      if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
+        List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
         return new FilterNode(
             queryContext.getQueryId().genPlanNodeId(),
             tableScanNode,
@@ -190,12 +190,7 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
       return tableScanNode;
     }
 
-    /**
-     * splits predicate expression in table model into three parts, index 0 represents
-     * metadataExpressions, index 1 represents expressionsCanPushDownToOperator, index 2 represents
-     * expressionsCannotPushDownToOperator
-     */
-    private List<List<Expression>> splitPredicate(TableScanNode node) {
+    private SplitExpression splitPredicate(TableScanNode node) {
 
       Set<String> idOrAttributeColumnNames =
           node.getIdAndAttributeIndexMap().keySet().stream()
@@ -227,7 +222,7 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
           }
         }
 
-        return Arrays.asList(
+        return new SplitExpression(
             metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
       }
 
@@ -239,23 +234,24 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
         expressionsCannotPushDown.add(predicate);
       }
 
-      return Arrays.asList(metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
+      return new SplitExpression(
+          metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
+    public PlanNode visitTableScan(TableScanNode node, Void context) {
       tableMetadataIndexScan(node, Collections.emptyList());
       return node;
     }
 
     @Override
-    public PlanNode visitInsertTablet(InsertTabletNode node, RewriterContext context) {
+    public PlanNode visitInsertTablet(InsertTabletNode node, Void context) {
       return node;
     }
 
     @Override
     public PlanNode visitRelationalInsertTablet(
-        RelationalInsertTabletNode node, RewriterContext context) {
+        RelationalInsertTabletNode node, Void context) {
       return node;
     }
 
@@ -268,7 +264,8 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
               .map(Symbol::getName)
               .collect(Collectors.toList());
       List<DeviceEntry> deviceEntries =
-          metadata.indexScan(node.getQualifiedObjectName(), metadataExpressions, attributeColumns);
+          metadata.indexScan(
+              node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);
       node.setDeviceEntries(deviceEntries);
 
       if (deviceEntries.isEmpty()) {
@@ -276,11 +273,9 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
         analysis.setEmptyDataSource(true);
       } else {
         Filter timeFilter =
-            node.getTimePredicate().isPresent()
-                ? node.getTimePredicate()
-                    .get()
-                    .accept(new ConvertPredicateToTimeFilterVisitor(), null)
-                : null;
+            node.getTimePredicate()
+                .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
+                .orElse(null);
         node.setTimeFilter(timeFilter);
         String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
         DataPartition dataPartition =
@@ -329,7 +324,7 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     }
   }
 
-  static boolean containsDiffFunction(Expression expression) {
+  public static boolean containsDiffFunction(Expression expression) {
     if (expression instanceof FunctionCall
         && "diff".equalsIgnoreCase(((FunctionCall) expression).getName().toString())) {
       return true;
@@ -346,5 +341,35 @@ public class PushPredicateIntoTableScan implements RelationalPlanOptimizer {
     return false;
   }
 
-  private static class RewriterContext {}
+  private static class SplitExpression {
+    // indexed tag expressions, such as `tag1 = 'A'`
+    List<Expression> metadataExpressions;
+    // expressions can push down into TableScan, such as `time > 1 and s_1 = 1`
+    List<Expression> expressionsCanPushDown;
+    // expressions can not push down into TableScan, such as `s_1 is null`
+    List<Expression> expressionsCannotPushDown;
+
+    public SplitExpression(
+        List<Expression> metadataExpressions,
+        List<Expression> expressionsCanPushDown,
+        List<Expression> expressionsCannotPushDown) {
+      this.metadataExpressions = requireNonNull(metadataExpressions, "metadataExpressions is null");
+      this.expressionsCanPushDown =
+          requireNonNull(expressionsCanPushDown, "expressionsCanPushDown is null");
+      this.expressionsCannotPushDown =
+          requireNonNull(expressionsCannotPushDown, "expressionsCannotPushDown is null");
+    }
+
+    public List<Expression> getMetadataExpressions() {
+      return this.metadataExpressions;
+    }
+
+    public List<Expression> getExpressionsCanPushDown() {
+      return this.expressionsCanPushDown;
+    }
+
+    public List<Expression> getExpressionsCannotPushDown() {
+      return this.expressionsCannotPushDown;
+    }
+  }
 }

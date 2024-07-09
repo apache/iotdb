@@ -57,6 +57,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -97,23 +98,44 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    return getOrCreateSchemaPartition(patternTree, false, null);
-  }
-
-  @Override
-  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
-    return getOrCreateSchemaPartition(patternTree, true, userName);
-  }
-
-  private SchemaPartition getOrCreateSchemaPartition(
-      PathPatternTree patternTree, boolean isAutoCreate, String userName) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      Map<String, List<IDeviceID>> databaseToDevice =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, isAutoCreate, userName);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(databaseToDevice);
+      Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+          partitionCache.getDatabaseToDevice(deviceIDs, true, false, null);
+      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+      if (null == schemaPartition) {
+        TSchemaPartitionTableResp schemaPartitionTableResp =
+            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
+        if (schemaPartitionTableResp.getStatus().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
+          partitionCache.updateSchemaPartitionCache(
+              schemaPartitionTableResp.getSchemaPartitionTable());
+        } else {
+          throw new RuntimeException(
+              new IoTDBException(
+                  schemaPartitionTableResp.getStatus().getMessage(),
+                  schemaPartitionTableResp.getStatus().getCode()));
+        }
+      }
+      return schemaPartition;
+    } catch (ClientManagerException | TException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getSchemaPartition():" + e.getMessage());
+    }
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      patternTree.constructTree();
+      List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+      Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+          partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
+      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
@@ -290,15 +312,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       partitionCache.checkAndAutoCreateDatabase(database, isAutoCreate, userName);
       SchemaPartition schemaPartition =
-          partitionCache.getSchemaPartition(
-              new HashMap<String, List<IDeviceID>>() {
-                {
-                  put(database, deviceIDs);
-                }
-              });
+          partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs));
       if (null == schemaPartition) {
         PathPatternTree tree = new PathPatternTree();
-        tree.appendPathPattern(new PartialPath(database + "." + MULTI_LEVEL_PATH_WILDCARD));
+//        tree.appendPathPattern(new PartialPath(database + "." + MULTI_LEVEL_PATH_WILDCARD));
+        for (IDeviceID deviceID : deviceIDs) {
+          tree.appendPathPattern(new PartialPath(deviceID.toString()));
+        }
         TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(tree));
         if (schemaPartitionTableResp.getStatus().getCode()

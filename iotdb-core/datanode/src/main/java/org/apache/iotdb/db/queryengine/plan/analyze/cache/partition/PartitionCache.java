@@ -256,10 +256,12 @@ public class PartitionCache {
    * @throws RuntimeException if failed to create database
    */
   private void createDatabaseAndUpdateCache(
-      DatabaseCacheResult<?, ?> result, List<IDeviceID> deviceIDs, String userName)
+      final DatabaseCacheResult<?, ?> result,
+      final List<IDeviceID> deviceIDs,
+      final String userName)
       throws ClientManagerException, MetadataException, TException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Try to check whether database need to be created
       result.reset();
@@ -267,8 +269,8 @@ public class PartitionCache {
       getDatabaseMap(result, deviceIDs, false);
       if (!result.isSuccess()) {
         // Try to get database needed to be created from missed device
-        Set<String> databaseNamesNeedCreated = new HashSet<>();
-        for (IDeviceID deviceID : result.getMissedDevices()) {
+        final Set<String> databaseNamesNeedCreated = new HashSet<>();
+        for (final IDeviceID deviceID : result.getMissedDevices()) {
           PartialPath databaseNameNeedCreated =
               MetaUtils.getDatabasePathByLevel(
                   new PartialPath(deviceID), config.getDefaultStorageGroupLevel());
@@ -276,12 +278,12 @@ public class PartitionCache {
         }
 
         // Try to create databases one by one until done or one database fail
-        Set<String> successFullyCreatedDatabase = new HashSet<>();
-        for (String databaseName : databaseNamesNeedCreated) {
-          long startTime = System.nanoTime();
+        final Set<String> successFullyCreatedDatabase = new HashSet<>();
+        for (final String databaseName : databaseNamesNeedCreated) {
+          final long startTime = System.nanoTime();
           try {
             if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-              TSStatus status =
+              final TSStatus status =
                   AuthorityChecker.getTSStatus(
                       AuthorityChecker.checkSystemPermission(
                           userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
@@ -294,12 +296,18 @@ public class PartitionCache {
           } finally {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
           }
-          TDatabaseSchema databaseSchema = new TDatabaseSchema();
+          final TDatabaseSchema databaseSchema = new TDatabaseSchema();
           databaseSchema.setName(databaseName);
-          TSStatus tsStatus = client.setDatabase(databaseSchema);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+          final TSStatus tsStatus = client.setDatabase(databaseSchema);
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+              || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedDatabase.add(databaseName);
-          } else {
+            // In tree model, if the user creates a conflict database concurrently, for instance,
+            // the database created by user is root.db.ss.a, the auto-creation failed database is
+            // root.db, we wait till "getOrCreatePartition" to judge if the time series (like
+            // root.db.ss.a.e / root.db.ss.a) conflicts with the created database. just do not throw
+            // exception here.
+          } else if (TSStatusCode.DATABASE_CONFLICT.getStatusCode() != tsStatus.getCode()) {
             // Try to update cache by databases successfully created
             updateDatabaseCache(successFullyCreatedDatabase);
             logger.warn(
@@ -325,15 +333,15 @@ public class PartitionCache {
    * @param userName the username
    * @throws RuntimeException if failed to create database
    */
-  private void createDatabaseAndUpdateCache(String database, String userName)
+  private void createDatabaseAndUpdateCache(final String database, final String userName)
       throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       long startTime = System.nanoTime();
       try {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          TSStatus status =
+          final TSStatus status =
               AuthorityChecker.getTSStatus(
                   AuthorityChecker.checkSystemPermission(
                       userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
@@ -345,14 +353,14 @@ public class PartitionCache {
       } finally {
         PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
       }
-      TDatabaseSchema databaseSchema = new TDatabaseSchema();
+      final TDatabaseSchema databaseSchema = new TDatabaseSchema();
       databaseSchema.setName(database);
-      TSStatus tsStatus = client.setDatabase(databaseSchema);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        // Try to update database cache when database has already been created
-        updateDatabaseCache(new HashSet<>(Collections.singletonList(database)));
-      } else {
+      final TSStatus tsStatus = client.setDatabase(databaseSchema);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         // Try to update cache by databases successfully created
+        updateDatabaseCache(Collections.singleton(database));
+      } else {
         logger.warn(
             "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
         throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));

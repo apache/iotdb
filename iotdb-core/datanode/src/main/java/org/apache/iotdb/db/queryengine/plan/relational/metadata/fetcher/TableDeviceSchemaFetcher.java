@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -65,6 +66,8 @@ import java.util.stream.Collectors;
 
 public class TableDeviceSchemaFetcher {
 
+  private final SqlParser relationSqlParser = new SqlParser();
+
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaFetcher.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -85,7 +88,7 @@ public class TableDeviceSchemaFetcher {
     return TableDeviceSchemaFetcherHolder.INSTANCE;
   }
 
-  TableDeviceSchemaCache getTableDeviceCache() {
+  public TableDeviceSchemaCache getTableDeviceCache() {
     return cache;
   }
 
@@ -101,12 +104,12 @@ public class TableDeviceSchemaFetcher {
     ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
-            null,
+            relationSqlParser,
             SessionManager.getInstance().getCurrSession(),
             queryId,
             SessionManager.getInstance()
                 .getSessionInfo(SessionManager.getInstance().getCurrSession()),
-            "",
+            "Fetch Device for insert",
             LocalExecutionPlanner.getInstance().metadata,
             config.getQueryTimeoutThreshold());
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -135,26 +138,11 @@ public class TableDeviceSchemaFetcher {
         Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength];
-          int idIndex = 0;
           Map<String, String> attributeMap = new HashMap<>();
-          for (int j = 0; j < columnHeaderList.size(); j++) {
-            TsTableColumnSchema columnSchema =
-                tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
-            if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-              if (columns[j].isNull(i)) {
-                nodes[idIndex] = null;
-              } else {
-                nodes[idIndex] = columns[j].getBinary(i).toString();
-              }
-              idIndex++;
-            } else {
-              if (columns[j].isNull(i)) {
-                attributeMap.put(columnSchema.getColumnName(), null);
-              } else {
-                attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
-              }
-            }
-          }
+
+          constructNodsArrayAndAttributeMap(
+              attributeMap, nodes, 0, columnHeaderList, columns, tableInstance, i);
+
           fetchedDeviceSchema.put(new TableDeviceId(nodes), attributeMap);
         }
       }
@@ -171,7 +159,8 @@ public class TableDeviceSchemaFetcher {
       String database,
       String table,
       List<Expression> expressionList,
-      List<String> attributeColumns) {
+      List<String> attributeColumns,
+      MPPQueryContext queryContext) {
     List<DeviceEntry> deviceEntryList = new ArrayList<>();
 
     TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
@@ -252,7 +241,9 @@ public class TableDeviceSchemaFetcher {
           idPredicateForFetch,
           compactedIdFuzzyPredicate,
           deviceEntryList,
-          idSingleMatchIndexList.size() == idPredicateList.size());
+          // only cache those exact device query
+          idSingleMatchIndexList.size() == idPredicateList.size(),
+          queryContext);
     }
 
     // TODO table metadata:  implement deduplicate during schemaRegion execution
@@ -307,7 +298,8 @@ public class TableDeviceSchemaFetcher {
       List<List<Expression>> idDeterminedPredicateList,
       Expression idFuzzyPredicate,
       List<DeviceEntry> deviceEntryList,
-      boolean cacheFetchedDevice) {
+      boolean cacheFetchedDevice,
+      MPPQueryContext mppQueryContext) {
 
     String table = tableInstance.getTableName();
 
@@ -317,12 +309,14 @@ public class TableDeviceSchemaFetcher {
     ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
-            null,
+            relationSqlParser,
             SessionManager.getInstance().getCurrSession(),
             queryId,
             SessionManager.getInstance()
                 .getSessionInfo(SessionManager.getInstance().getCurrSession()),
-            "",
+            String.format(
+                "fetch device for query %s : %s",
+                mppQueryContext.getQueryId(), mppQueryContext.getSql()),
             LocalExecutionPlanner.getInstance().metadata,
             config.getQueryTimeoutThreshold());
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -334,8 +328,6 @@ public class TableDeviceSchemaFetcher {
     List<ColumnHeader> columnHeaderList =
         coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
     int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    Map<String, String> attributeMap;
-
     Throwable t = null;
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -353,31 +345,11 @@ public class TableDeviceSchemaFetcher {
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength + 1];
           nodes[0] = table;
-          int idIndex = 0;
-          attributeMap = new HashMap<>();
-          for (int j = 0; j < columnHeaderList.size(); j++) {
-            TsTableColumnSchema columnSchema =
-                tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
-            if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-              if (columns[j].isNull(i)) {
-                nodes[idIndex + 1] = null;
-              } else {
-                nodes[idIndex + 1] =
-                    columns[j].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-              }
-              idIndex++;
-            } else {
-              if (columns[j].isNull(i)) {
-                attributeMap.put(columnSchema.getColumnName(), null);
-              } else {
-                attributeMap.put(
-                    columnSchema.getColumnName(),
-                    columns[j].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
-              }
-            }
-          }
+          Map<String, String> attributeMap = new HashMap<>();
+          constructNodsArrayAndAttributeMap(
+              attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
           IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
-          // TODO table metadata: add memory control
+          // TODO table metadata: add memory control in query
           deviceEntryList.add(
               new DeviceEntry(
                   deviceID,
@@ -392,6 +364,42 @@ public class TableDeviceSchemaFetcher {
       throw throwable;
     } finally {
       coordinator.cleanupQueryExecution(queryId, null, t);
+    }
+  }
+
+  private void constructNodsArrayAndAttributeMap(
+      Map<String, String> attributeMap,
+      String[] nodes,
+      int startIndex,
+      List<ColumnHeader> columnHeaderList,
+      Column[] columns,
+      TsTable tableInstance,
+      int rowIndex) {
+    for (int j = 0; j < columnHeaderList.size(); j++) {
+      TsTableColumnSchema columnSchema =
+          tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
+      // means that TsTable tableInstance which previously fetched is outdated, but it's ok that we
+      // ignore that newly added column here
+      if (columnSchema == null) {
+        continue;
+      }
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (columns[j].isNull(rowIndex)) {
+          nodes[startIndex] = null;
+        } else {
+          nodes[startIndex] =
+              columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET);
+        }
+        startIndex++;
+      } else {
+        if (columns[j].isNull(rowIndex)) {
+          attributeMap.put(columnSchema.getColumnName(), null);
+        } else {
+          attributeMap.put(
+              columnSchema.getColumnName(),
+              columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
+        }
+      }
     }
   }
 }

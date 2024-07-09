@@ -474,4 +474,11 @@ public class CommonUtils {
     array[i] = array[j];
     array[j] = tmp;
   }
+
+  public static String qualifyDatabaseName(String databaseName) {
+    if (databaseName != null && !databaseName.startsWith("root.")) {
+      databaseName = "root." + databaseName;
+    }
+    return databaseName;
+  }
 }

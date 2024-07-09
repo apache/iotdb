@@ -241,6 +241,7 @@ public enum PlanNodeType {
   TABLE_MERGESORT_NODE((short) 1007),
   TABLE_TOPK_NODE((short) 1008),
   TABLE_COLLECT_NODE((short) 1009),
+  TABLE_STREAM_SORT_NODE((short) 1010),
 
   RELATIONAL_INSERT_TABLET((short) 2000);
 

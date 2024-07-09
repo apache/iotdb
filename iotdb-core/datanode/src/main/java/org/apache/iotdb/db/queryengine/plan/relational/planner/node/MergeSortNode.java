@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -98,5 +99,25 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   public OrderingScheme getOrderingScheme() {
     return orderingScheme;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    MergeSortNode sortNode = (MergeSortNode) o;
+    return Objects.equal(orderingScheme, sortNode.orderingScheme)
+        && Objects.equal(outputSymbols, sortNode.outputSymbols);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), orderingScheme, outputSymbols);
+  }
+
+  @Override
+  public String toString() {
+    return "MergeSortNode-" + this.getPlanNodeId();
   }
 }

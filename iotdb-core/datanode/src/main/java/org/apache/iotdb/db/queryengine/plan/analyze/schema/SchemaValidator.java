@@ -68,7 +68,10 @@ public class SchemaValidator {
       String databaseName = context.getSession().getDatabaseName().orElse(null);
       final TableSchema incomingSchema = insertStatement.getTableSchema();
       final TableSchema realSchema =
-          metadata.validateTableHeaderSchema(databaseName, incomingSchema, context);
+          metadata.validateTableHeaderSchema(databaseName, incomingSchema, context).orElse(null);
+      if (realSchema == null) {
+        throw new SemanticException("Schema validation failed, table cannot be created: " + incomingSchema);
+      }
       insertStatement.validate(realSchema);
       metadata.validateDeviceSchema(insertStatement, context);
       insertStatement.updateAfterSchemaValidation(context);

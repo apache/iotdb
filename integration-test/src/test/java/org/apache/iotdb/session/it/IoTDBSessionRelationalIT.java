@@ -81,7 +81,7 @@ public class IoTDBSessionRelationalIT {
 
       }
       session.executeNonQueryStatement("CREATE DATABASE db1");
-      session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
               + "m1 double "

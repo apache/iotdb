@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,7 +33,7 @@ import java.util.Optional;
 
 public class LimitNode extends SingleChildProcessNode {
   private final long count;
-  // TODO what's the meaning?
+  // TODO(beyyes) useless variable?
   private final Optional<OrderingScheme> tiesResolvingScheme;
 
   // private final boolean partial;
@@ -85,5 +86,24 @@ public class LimitNode extends SingleChildProcessNode {
 
   public long getCount() {
     return count;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    LimitNode limitNode = (LimitNode) o;
+    return Objects.equal(count, limitNode.count);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), count);
+  }
+
+  @Override
+  public String toString() {
+    return "LimitNode-" + this.getPlanNodeId();
   }
 }

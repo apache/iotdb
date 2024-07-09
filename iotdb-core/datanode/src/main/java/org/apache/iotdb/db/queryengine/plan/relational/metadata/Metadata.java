@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -74,23 +75,34 @@ public interface Metadata {
   List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
-      List<String> attributeColumns);
+      List<String> attributeColumns,
+      MPPQueryContext context);
 
   /**
    * This method is used for table column validation and should be invoked before device validation.
    *
    * <p>This method return all the existing column schemas in the target table.
    *
-   * <p>When table or column is missing, this method will execute auto creation.
+   * <p>The reason that we need to return all the existing column schemas is that the caller need to
+   * know all id columns to construct IDeviceID
+   *
+   * <p>When table or column is missing, this method will execute auto creation if the user have
+   * corresponding authority.
    *
    * <p>When using SQL, the columnSchemaList could be null and there won't be any validation.
    *
-   * <p>When the input dataType or category of one column is null, the column cannot be auto
-   * created.
+   * <p>When the input dataType or category of one column is null, the column won't be auto created.
    *
-   * <p>If validation failed, a SemanticException will be thrown.
+   * <p>The caller need to recheck the dataType of measurement columns to decide whether to do
+   * partial insert
+   *
+   * @return If table doesn't exist and the user have no authority to create table, Optional.empty()
+   *     will be returned. The returned table may not include all the columns
+   *     in @param{tableSchema}, if the user have no authority to alter table.
+   * @throws SemanticException if column category mismatch or data types of id or attribute column
+   *     are not STRING or Category, Type of any missing ColumnSchema is null
    */
-  TableSchema validateTableHeaderSchema(
+  Optional<TableSchema> validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context);
 
   /**

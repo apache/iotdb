@@ -136,7 +136,18 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(instanceContext, schemaRegion);
 
-    Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    Operator root;
+    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
+    switch (sqlDialect) {
+      case TREE:
+        root = plan.accept(new OperatorTreeGenerator(), context);
+        break;
+      case TABLE:
+        root = plan.accept(new TableOperatorGenerator(metadata), context);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+    }
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);

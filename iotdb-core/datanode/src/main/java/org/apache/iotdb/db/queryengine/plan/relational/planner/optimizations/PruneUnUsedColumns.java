@@ -14,7 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -50,7 +49,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
  * attr1, s1`, but the output columns of TableScanNode in `select s1 from table1` query can only be
  * `s1`.
  */
-public class PruneUnUsedColumns implements RelationalPlanOptimizer {
+public class PruneUnUsedColumns implements TablePlanOptimizer {
 
   @Override
   public PlanNode optimize(
@@ -126,19 +125,6 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
       }
       node.setOutputSymbols(newOutputSymbols);
       node.setAssignments(newAssignments);
-
-      int IDIdx = 0, attributeIdx = 0;
-      Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(node.getAssignments().size());
-      for (Symbol symbol : node.getOutputSymbols()) {
-        ColumnSchema columnSchema = node.getAssignments().get(symbol);
-        if (TsTableColumnCategory.ID.equals(columnSchema.getColumnCategory())) {
-          idAndAttributeIndexMap.put(symbol, IDIdx++);
-        } else if (TsTableColumnCategory.ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
-          idAndAttributeIndexMap.put(symbol, attributeIdx++);
-        }
-      }
-      node.setIdAndAttributeIndexMap(idAndAttributeIndexMap);
-
       return node;
     }
   }

@@ -34,6 +34,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,11 +70,38 @@ public class CreateTableDeviceNode extends WritePlanNode {
     super(id);
     this.database = database;
     this.tableName = tableName;
-    this.deviceIdList = deviceIdList;
+    // truncate the tailing null
+    this.deviceIdList = truncateTailingNull(deviceIdList);
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
   }
 
+  private static List<Object[]> truncateTailingNull(List<Object[]> deviceIdList) {
+    List<Object[]> res = new ArrayList<>(deviceIdList.size());
+    for (Object[] device : deviceIdList) {
+      if (device == null || device.length == 0) {
+        throw new IllegalArgumentException("DeviceID's length should be larger than 0.");
+      }
+      int lastNonNullIndex = -1;
+      for (int i = device.length - 1; i >= 0; i--) {
+        if (device[i] != null) {
+          lastNonNullIndex = i;
+          break;
+        }
+      }
+      if (lastNonNullIndex == -1) {
+        throw new IllegalArgumentException("DeviceID shouldn't be all nulls.");
+      }
+      res.add(
+          lastNonNullIndex == device.length - 1
+              ? device
+              : Arrays.copyOf(device, lastNonNullIndex + 1));
+    }
+    return res;
+  }
+
+  // in this constructor, we don't need to truncate tailing nulls for deviceIdList, because this
+  // constructor can only be generated from another CreateTableDeviceNode
   public CreateTableDeviceNode(
       PlanNodeId id,
       TRegionReplicaSet regionReplicaSet,
@@ -122,27 +151,28 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   public List<IDeviceID> getPartitionKeyList() {
     if (partitionKeyList == null) {
-      List<IDeviceID> partitionKeyList = new ArrayList<>();
+      List<IDeviceID> tmpPartitionKeyList = new ArrayList<>();
       for (Object[] rawId : deviceIdList) {
-        String[] partitionKey = new String[rawId.length + 1];
-        partitionKey[0] = tableName;
+        String[] partitionKey = new String[rawId.length];
         for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i + 1] = Objects.toString(rawId[i].toString());
+          partitionKey[i] = (String) rawId[i];
         }
-        partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
+        tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
       }
-      this.partitionKeyList = partitionKeyList;
+      this.partitionKeyList = tmpPartitionKeyList;
     }
     return partitionKeyList;
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return new ArrayList<>();
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public PlanNode clone() {
@@ -163,7 +193,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

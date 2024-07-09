@@ -755,6 +755,28 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
+    // Return empty resp if the partitionSlotsMap is empty
+    if (dbSlotMap.isEmpty()) {
+      return resp.setStatus(StatusUtils.OK).setSchemaPartitionTable(new HashMap<>());
+    }
+
+    GetSchemaPartitionPlan getSchemaPartitionPlan =
+        new GetSchemaPartitionPlan(
+             dbSlotMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
+    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    resp = queryResult.convertToRpcSchemaPartitionTableResp();
+
+    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", dbSlotMap, resp);
+
+    return resp;
+  }
+
+  @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
     // Construct empty response
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();

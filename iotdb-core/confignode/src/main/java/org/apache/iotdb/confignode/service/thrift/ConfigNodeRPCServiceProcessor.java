@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
+import java.util.Map;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -528,6 +530,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getOrCreateSchemaPartition(patternTree);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
+      Map<String, TSeriesPartitionSlot> dbSlotMap) throws TException {
+    return configManager.geto;
   }
 
   @Override

@@ -245,12 +245,12 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return currentDeviceIndex < deviceCount;
+    return !isFinished();
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return currentDeviceIndex >= deviceCount;
+    return currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp();
   }
 
   @Override
