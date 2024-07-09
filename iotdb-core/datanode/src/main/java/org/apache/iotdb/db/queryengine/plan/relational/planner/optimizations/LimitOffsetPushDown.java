@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -46,7 +45,12 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
  *
- * <p>Try to get conjunctive normal forms(CNF) from predicate of FilterNode.
+ * <p>The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the following
+ * conditions are met:
+ * <li>Time series query (not aggregation query).
+ * <li>The query expressions are all scalar expression.
+ * <li>Order by all IDs, limit can be pushed down, set pushDownToEachDevice==false
+ * <li>Order by some IDs or order by time, limit can be pushed down, set pushDownToEachDevice==true
  */
 public class LimitOffsetPushDown implements TablePlanOptimizer {
 
@@ -68,8 +72,11 @@ public class LimitOffsetPushDown implements TablePlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
-      // unexpected PlanNode, just assuming that in this situation Limit cannot be pushed down
-      return node;
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      return newNode;
     }
 
     @Override
@@ -96,15 +103,6 @@ public class LimitOffsetPushDown implements TablePlanOptimizer {
 
     @Override
     public PlanNode visitCollect(CollectNode node, Context context) {
-      PlanNode newNode = node.clone();
-      for (PlanNode child : node.getChildren()) {
-        newNode.addChild(child.accept(this, context));
-      }
-      return newNode;
-    }
-
-    @Override
-    public PlanNode visitMergeSort(MergeSortNode node, Context context) {
       PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
         newNode.addChild(child.accept(this, context));
