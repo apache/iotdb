@@ -148,6 +148,7 @@ import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -428,20 +429,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else if (ctx.SCHEMA() != null) {
       regionType = TConsensusGroupType.SchemaRegion;
     }
-    List<PartialPath> storageGroups = new ArrayList<>();
+    List<PartialPath> databases = null;
     if (ctx.identifier() != null) {
       try {
         // When using the table model, only single level databases are allowed to be used.
         // Therefore, the "root." prefix is omitted from the query syntax, but we need to
         // add it back before querying the server.
-        storageGroups.add(new PartialPath("root." + ctx.identifier().getText()));
+        databases =
+            Collections.singletonList(new PartialPath("root." + ctx.identifier().getText()));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }
     }
     // TODO: This will be left untouched for now, well add filtering later on.
-    List<Integer> nodeIds = new ArrayList<>();
-    return new ShowRegions(regionType, storageGroups, nodeIds);
+    List<Integer> nodeIds = null;
+    return new ShowRegions(regionType, databases, nodeIds);
   }
 
   @Override

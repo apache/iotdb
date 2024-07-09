@@ -33,15 +33,15 @@ import static java.util.Objects.requireNonNull;
 public class ShowRegions extends Statement {
 
   private final TConsensusGroupType regionType;
-  private final List<PartialPath> storageGroups;
+  private final List<PartialPath> databases;
   private final List<Integer> nodeIds;
 
   public ShowRegions(
-      TConsensusGroupType regionType, List<PartialPath> storageGroups, List<Integer> nodeIds) {
+      TConsensusGroupType regionType, List<PartialPath> databases, List<Integer> nodeIds) {
     super(null);
     this.regionType = regionType;
-    this.storageGroups = requireNonNull(storageGroups, "storageGroups is null");
-    this.nodeIds = requireNonNull(nodeIds, "nodeIds is null");
+    this.databases = databases;
+    this.nodeIds = nodeIds;
   }
 
   public ShowRegions(
@@ -51,7 +51,7 @@ public class ShowRegions extends Statement {
       List<Integer> nodeIds) {
     super(requireNonNull(location, "location is null"));
     this.regionType = regionType;
-    this.storageGroups = requireNonNull(storageGroups, "storageGroups is null");
+    this.databases = requireNonNull(storageGroups, "databases is null");
     this.nodeIds = requireNonNull(nodeIds, "nodeIds is null");
   }
 
@@ -59,8 +59,8 @@ public class ShowRegions extends Statement {
     return regionType;
   }
 
-  public List<PartialPath> getStorageGroups() {
-    return storageGroups;
+  public List<PartialPath> getDatabases() {
+    return databases;
   }
 
   public List<Integer> getNodeIds() {
@@ -83,20 +83,20 @@ public class ShowRegions extends Statement {
     if (o == null || getClass() != o.getClass()) return false;
     ShowRegions that = (ShowRegions) o;
     return regionType == that.regionType
-        && Objects.equals(storageGroups, that.storageGroups)
+        && Objects.equals(databases, that.databases)
         && Objects.equals(nodeIds, that.nodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionType, storageGroups, nodeIds);
+    return Objects.hash(regionType, databases, nodeIds);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
         .add("regionType", regionType)
-        .add("storageGroups", storageGroups)
+        .add("databases", databases)
         .add("nodeIds", nodeIds)
         .toString();
   }

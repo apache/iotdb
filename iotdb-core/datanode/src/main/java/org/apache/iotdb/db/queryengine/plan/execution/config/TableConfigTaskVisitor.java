@@ -25,15 +25,15 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDataNodesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowRegionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -59,6 +59,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -122,17 +124,25 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowCluster(
-      ShowCluster showClusterStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowCluster(ShowCluster showCluster, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    return new ShowClusterTask(showClusterStatement);
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    ShowClusterStatement treeStatement = new ShowClusterStatement();
+    treeStatement.setDetails(showCluster.getDetails().orElse(false));
+    return new ShowClusterTask(treeStatement);
   }
 
   @Override
-  protected IConfigTask visitShowRegions(
-      ShowRegions showRegionsStatement, MPPQueryContext context) {
+  protected IConfigTask visitShowRegions(ShowRegions showRegions, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    return new ShowRegionsTask(showRegionsStatement);
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    ShowRegionStatement treeStatement = new ShowRegionStatement();
+    treeStatement.setRegionType(showRegions.getRegionType());
+    treeStatement.setStorageGroups(showRegions.getDatabases());
+    treeStatement.setNodeIds(showRegions.getNodeIds());
+    return new ShowRegionTask(treeStatement);
   }
 
   @Override
