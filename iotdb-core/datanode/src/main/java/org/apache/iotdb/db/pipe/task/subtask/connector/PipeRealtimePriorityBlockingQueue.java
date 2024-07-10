@@ -42,8 +42,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final AtomicInteger eventCount = new AtomicInteger(0);
 
-  private static final int realTimeEventConsumeThreshold =
-      PipeConfig.getInstance().getPipeRealTimeFirstDequeHistoryThreshold();
+  private static final int pollHistoryThreshold =
+      PipeConfig.getInstance().getPipeRealTimeQueuePollHistoryThreshold();
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -79,7 +79,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event directPoll() {
     Event event = null;
-    if (eventCount.get() >= realTimeEventConsumeThreshold) {
+    if (eventCount.get() >= pollHistoryThreshold) {
       event = tsfileInsertEventDeque.pollFirst();
       eventCount.set(0);
     }
@@ -104,18 +104,17 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
    * {@link TsFileInsertionEvent}. If no {@link Event} is available, it blocks until a {@link Event}
    * is available.
    *
-   * @return the freshest insertion {@link Event}. can be {@code null} if no event is available.
+   * @return the freshest insertion {@link Event}. can be {@code null} if no {@link Event} is
+   *     available.
    */
   @Override
   public Event waitedPoll() {
     Event event = null;
-    if (eventCount.get() >= realTimeEventConsumeThreshold) {
+    if (eventCount.get() >= pollHistoryThreshold) {
       event = tsfileInsertEventDeque.pollFirst();
-      if (event != null) {
-        eventCount.set(0);
-      }
+      eventCount.set(0);
     }
-    if (event == null && !super.isEmpty()) {
+    if (event == null) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
       if (event == null && !tsfileInsertEventDeque.isEmpty()) {
