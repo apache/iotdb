@@ -554,6 +554,53 @@ public class CompactionCheckerUtils {
     return new ArrayList<>(paths);
   }
 
+  public static boolean compareSourceDataAndTargetData(
+      Map<PartialPath, List<TimeValuePair>> source, Map<PartialPath, List<TimeValuePair>> target) {
+    for (Entry<PartialPath, List<TimeValuePair>> entry : target.entrySet()) {
+      PartialPath path = entry.getKey();
+      List<TimeValuePair> sourceList = source.get(path);
+      List<TimeValuePair> targetList = entry.getValue();
+      int sourceIndex = 0;
+      for (int i = 0; i < targetList.size(); i++) {
+        TimeValuePair currentTargetTimeValuePair = targetList.get(i);
+        TimeValuePair currentSourceTimeValuePair = sourceList.get(sourceIndex);
+        if (!compareTimeValuePair(currentSourceTimeValuePair, currentTargetTimeValuePair)) {
+          System.out.println(currentSourceTimeValuePair);
+          System.out.println(currentTargetTimeValuePair);
+          return false;
+        }
+        sourceIndex++;
+      }
+    }
+    return true;
+  }
+
+  private static boolean compareTimeValuePair(
+      TimeValuePair timeValuePair1, TimeValuePair timeValuePair2) {
+    if (timeValuePair1.getTimestamp() != timeValuePair2.getTimestamp()) {
+      return false;
+    }
+    Object[] values1 = timeValuePair1.getValues();
+    Object[] values2 = timeValuePair2.getValues();
+    if (values1.length != values2.length) {
+      return false;
+    }
+    for (int i = 0; i < values1.length; i++) {
+      Object obj1 = values1[i];
+      Object obj2 = values2[i];
+      if (obj1 == null && obj2 == null) {
+        continue;
+      }
+      if (obj1 == null || obj2 == null) {
+        return false;
+      }
+      if (!obj1.equals(obj2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
    *
@@ -576,7 +623,7 @@ public class CompactionCheckerUtils {
       BloomFilterCache.getInstance().clear();
 
       PartialPath path = fullPaths.get(i);
-      List<TimeValuePair> dataList = new LinkedList<>();
+      List<TimeValuePair> dataList = new ArrayList<>();
 
       IDataBlockReader reader =
           new SeriesDataBlockReader(

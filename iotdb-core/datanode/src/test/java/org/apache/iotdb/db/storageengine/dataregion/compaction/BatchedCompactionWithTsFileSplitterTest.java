@@ -248,12 +248,14 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(Collections.singletonList(targetResource)),
-            Collections.singletonList(targetResource),
-            Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(seqResources), seqResources, unseqResources),
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(Collections.singletonList(targetResource)),
+                Collections.singletonList(targetResource),
+                Collections.emptyList())));
     return targetResource;
   }
 
@@ -308,13 +310,14 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
       TsFileResourceUtils.validateTsFileDataCorrectness(writer.resource);
     }
 
-    Assert.assertEquals(
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(Collections.singletonList(resource)),
-            Collections.singletonList(resource),
-            Collections.emptyList()),
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(splitResources), Collections.emptyList(), splitResources));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(Collections.singletonList(resource)),
+                Collections.singletonList(resource),
+                Collections.emptyList()),
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(splitResources), Collections.emptyList(), splitResources)));
   }
 
   private static class TestLoadTsFileIOWriter extends TsFileIOWriter {

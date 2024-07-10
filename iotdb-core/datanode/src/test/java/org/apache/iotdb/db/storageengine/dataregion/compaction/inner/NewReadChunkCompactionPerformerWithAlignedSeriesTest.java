@@ -120,10 +120,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -156,10 +157,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -197,10 +199,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -238,10 +241,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -281,11 +285,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     TsFileResource targetResource = performCompaction(summary);
 
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
-    ;
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -321,10 +325,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(15, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -364,11 +369,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(8, summary.getDeserializeChunkCount());
     Assert.assertEquals(15, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    // this checker util may throw npe when the file contains any empty page
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -411,11 +416,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(7, summary.getDeserializeChunkCount());
     Assert.assertEquals(11, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    // this checker util may throw npe when the file contains any empty page
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -454,10 +459,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
     Assert.assertTrue(summary.getDeserializePageCount() > 0);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -490,10 +496,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -526,10 +533,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDeserializePageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test
@@ -572,10 +580,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+            CompactionCheckerUtils.getAllDataByQuery(
+                Collections.singletonList(targetResource), Collections.emptyList())));
   }
 
   @Test

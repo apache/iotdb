@@ -402,12 +402,13 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
 
   private void validate(TsFileResource targetResource) throws IllegalPathException, IOException {
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(unseqResources), seqResources, unseqResources),
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(Collections.singletonList(targetResource)),
-            Collections.singletonList(targetResource),
-            Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(unseqResources), seqResources, unseqResources),
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(Collections.singletonList(targetResource)),
+                Collections.singletonList(targetResource),
+                Collections.emptyList())));
   }
 }

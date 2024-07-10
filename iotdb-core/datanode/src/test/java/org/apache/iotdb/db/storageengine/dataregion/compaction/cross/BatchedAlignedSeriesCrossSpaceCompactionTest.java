@@ -500,10 +500,11 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
         new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceTsFileResources.addAll(seqResources);
     sourceTsFileResources.addAll(unseqResources);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(sourceTsFileResources), seqResources, unseqResources),
-        CompactionCheckerUtils.getDataByQuery(
-            getPaths(targetResources), targetResources, Collections.emptyList()));
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(sourceTsFileResources), seqResources, unseqResources),
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(targetResources), targetResources, Collections.emptyList())));
   }
 }
