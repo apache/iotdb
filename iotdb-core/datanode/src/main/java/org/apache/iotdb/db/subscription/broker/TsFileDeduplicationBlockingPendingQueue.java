@@ -23,24 +23,29 @@ import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQue
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockingPendingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
 
-  private final Map<Integer, Integer> polledTsFiles;
+  private final Cache<Integer, Integer> polledTsFiles;
 
   public TsFileDeduplicationBlockingPendingQueue(
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(inputPendingQueue);
 
-    this.polledTsFiles = new ConcurrentHashMap<>();
+    this.polledTsFiles =
+        Caffeine.newBuilder()
+            .expireAfterWrite(10, TimeUnit.MINUTES) // TODO: config
+            .build();
   }
 
   @Override
@@ -49,7 +54,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
-      if (polledTsFiles.containsKey(hashcode)) {
+      if (Objects.nonNull(polledTsFiles.getIfPresent(hashcode))) {
         // commit directly
         LOGGER.info(
             "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
