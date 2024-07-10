@@ -129,11 +129,10 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
-      setFailure(new ProcedureException(e.getMessage()));
-      return Flow.NO_MORE_STATE;
-    } finally {
       pipePluginCoordinator.unlock();
       env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+      setFailure(new ProcedureException(e.getMessage()));
+      return Flow.NO_MORE_STATE;
     }
 
     try {
@@ -141,7 +140,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
-
     setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
     return Flow.HAS_MORE_STATE;
   }
@@ -176,7 +174,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     LOGGER.info("DropPipePluginProcedure: executeFromUnlock({})", pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
-
+    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
     return Flow.NO_MORE_STATE;
   }
 
@@ -200,6 +198,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     LOGGER.info("DropPipePluginProcedure: rollbackFromLock({})", pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
+    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   private void rollbackFromDropOnDataNodes(ConfigNodeProcedureEnv env) {

@@ -240,6 +240,9 @@ public class PipePluginInfo implements SnapshotProcessor {
       final List<ByteBuffer> jarList = new ArrayList<>();
       for (final String jarName : getPipePluginJarPlan.getJarNames()) {
         String pluginName = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
+        if (pluginName == null) {
+          throw new PipeException(String.format("%s does not exist", jarName));
+        }
         jarList.add(
             ExecutableManager.transferToBytebuffer(
                 PipePluginExecutableManager.getInstance()
