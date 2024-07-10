@@ -1041,12 +1041,19 @@ public class PipeConsensusReceiver {
         // We should synchronously find the idle writer to avoid concurrency issues.
         try {
           lock.lock();
-          diskBuffer =
-              pipeConsensusTsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
-          // We don't need to check diskBuffer.isPresent() here. Since diskBuffers' length is equals
-          // to ReqExecutor's buffer, so the diskBuffer is always present.
+          // We need to check diskBuffer.isPresent() here. Since there may be both retry-sent tsfile
+          // events and real-time-sent tsfile events, causing the receiver's tsFileWriter load to
+          // exceed IOTDB_CONFIG.getPipeConsensusPipelineSize().
+          while (!diskBuffer.isPresent()) {
+            diskBuffer =
+                pipeConsensusTsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
+            Thread.sleep(RETRY_WAIT_TIME);
+          }
           diskBuffer.get().setUsed(true);
           diskBuffer.get().setCommitIdOfCorrespondingHolderEvent(commitId);
+        } catch (InterruptedException e) {
+          LOGGER.warn(
+              "PipeConsensus: receiver thread get interrupted when waiting for borrowing tsFileWriter.");
         } finally {
           lock.unlock();
         }
