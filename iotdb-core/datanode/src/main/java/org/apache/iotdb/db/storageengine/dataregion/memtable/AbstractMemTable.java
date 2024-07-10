@@ -264,9 +264,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
+    int length = insertRowNode.getMeasurements().length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(length);
+    List<TSDataType> dataTypes = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
       // Use measurements[i] to ignore failed partial insert
       if (measurements[i] == null || values[i] == null) {
         schemaList.add(null);
@@ -428,8 +429,9 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    int length = insertTabletNode.getMeasurementSchemas().length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         schemaList.add(null);
       } else {
@@ -451,8 +453,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    int length = insertTabletNode.getMeasurementSchemas().length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         schemaList.add(null);
       } else {

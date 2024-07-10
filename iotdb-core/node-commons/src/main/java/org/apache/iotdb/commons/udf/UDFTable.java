@@ -49,15 +49,16 @@ public class UDFTable {
     for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
         BuiltinTimeSeriesGeneratingFunction.values()) {
       String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
+      String functionNameUpperCase = functionName.toUpperCase();
       udfInformationMap.put(
           functionName,
           new UDFInformation(
-              functionName.toUpperCase(),
+              functionNameUpperCase,
               builtinTimeSeriesGeneratingFunction.getClassName(),
               true,
               false));
       functionToClassMap.put(
-          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
+          functionNameUpperCase, builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }
   }
 

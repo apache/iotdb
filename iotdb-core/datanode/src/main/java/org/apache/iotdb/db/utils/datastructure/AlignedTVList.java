@@ -105,7 +105,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
-    List<List<Object>> values = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>(columnIndex.size());
     List<List<BitMap>> bitMaps = null;
     for (int i = 0; i < columnIndex.size(); i++) {
       // columnIndex == -1 means querying a non-exist column, add null column here
@@ -830,20 +830,22 @@ public abstract class AlignedTVList extends TVList {
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>();
-      for (int i = 0; i < values.get(columnIndex).size(); i++) {
+      int columnSize = values.get(columnIndex).size();
+      List<BitMap> columnBitMaps = new ArrayList<>(columnSize);
+      for (int i = 0; i < columnSize; i++) {
         columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
 
     // if the bitmap in arrayIndex is null, init the bitmap
-    if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
-      bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE));
+    List<BitMap> bitmap = bitMaps.get(columnIndex);
+    if (bitmap.get(arrayIndex) == null) {
+      bitmap.set(arrayIndex, new BitMap(ARRAY_SIZE));
     }
 
     // mark the null value in the current bitmap
-    bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
+    bitmap.get(arrayIndex).mark(elementIndex);
   }
 
   @Override

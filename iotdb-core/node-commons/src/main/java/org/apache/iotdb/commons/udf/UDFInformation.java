@@ -48,6 +48,9 @@ public class UDFInformation {
 
   public UDFInformation(
       String functionName, String className, boolean isBuiltin, boolean isUsingURI) {
+
+    // if only construct this Object at UDFTable, so we can don't use functionName.toUpperCase()
+    // instead of functionName
     this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
