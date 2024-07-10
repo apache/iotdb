@@ -25,16 +25,18 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class TimeFilterForDeviceTTL {
 
   private final Filter timeFilter;
 
-  private Map<IDeviceID, Long> ttlCached;
+  private final Map<IDeviceID, Long> ttlCached;
 
   public TimeFilterForDeviceTTL(Filter timeFilter) {
     this.timeFilter = timeFilter;
+    ttlCached = new HashMap<>();
   }
 
   public boolean satisfyStartEndTime(long startTime, long endTime, IDeviceID deviceID) {
