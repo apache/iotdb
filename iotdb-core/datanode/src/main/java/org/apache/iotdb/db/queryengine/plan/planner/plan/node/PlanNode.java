@@ -222,4 +222,8 @@ public abstract class PlanNode implements IConsensusRequest {
   public List<Symbol> getOutputSymbols() {
     throw new UnsupportedOperationException("This planNode does not support getOutputSymbols().");
   }
+
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -46,6 +46,11 @@ public class LimitNode extends SingleChildProcessNode {
     this.tiesResolvingScheme = tiesResolvingScheme;
   }
 
+  public boolean requiresPreSortedInputs() {
+    // TODO
+    return false;
+  }
+
   @Override
   public PlanNode clone() {
     return new LimitNode(id, child, count, tiesResolvingScheme);

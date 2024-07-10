@@ -78,4 +78,10 @@ public abstract class MultiChildProcessNode extends ProcessNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), children);
   }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    this.children = newChildren;
+    return this;
+  }
 }

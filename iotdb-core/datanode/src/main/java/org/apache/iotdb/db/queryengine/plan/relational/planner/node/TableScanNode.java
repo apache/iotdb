@@ -439,4 +439,9 @@ public class TableScanNode extends SourceNode {
   public String toString() {
     return "TableScanNode-" + this.getPlanNodeId();
   }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return this;
+  }
 }
