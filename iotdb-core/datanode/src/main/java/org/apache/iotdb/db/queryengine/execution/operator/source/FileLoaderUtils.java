@@ -192,8 +192,8 @@ public class FileLoaderUtils {
       if (alignedTimeSeriesMetadata != null) {
         final long t2 = System.nanoTime();
         try {
-          if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
-              > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+          if (alignedTimeSeriesMetadata.getStatistics().getStartTime()
+              > alignedTimeSeriesMetadata.getStatistics().getEndTime()) {
             return null;
           }
           if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
