@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -106,11 +107,13 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   private Flow executeFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromLock({})", pluginName);
+
+    final PipeTaskCoordinator pipeTaskCoordinator =
+        env.getConfigManager().getPipeManager().getPipeTaskCoordinator();
     final PipePluginCoordinator pipePluginCoordinator =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
-    AtomicReference<PipeTaskInfo> pipeTaskInfo =
-        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().tryLock();
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.tryLock();
     if (pipeTaskInfo == null) {
       String exceptionMessage =
           String.format(
@@ -130,7 +133,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       pipePluginCoordinator.unlock();
-      env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+      pipeTaskCoordinator.unlock();
       setFailure(new ProcedureException(e.getMessage()));
       return Flow.NO_MORE_STATE;
     }
