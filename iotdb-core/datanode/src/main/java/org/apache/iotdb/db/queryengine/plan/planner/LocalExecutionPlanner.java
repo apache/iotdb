@@ -246,8 +246,9 @@ public class LocalExecutionPlanner {
           String.format(
               "There is not enough memory for Query %s, the contextHolder is %s,"
                   + "current remaining free memory is %dB, "
-                  + "reserved memory for this context in total is %dB.",
-              queryId, contextHolder, freeMemoryForOperators, reservedBytes));
+                  + "already reserved memory for this context in total is %dB, "
+                  + "the memory requested this time is %dB",
+              queryId, contextHolder, freeMemoryForOperators, reservedBytes, memoryInBytes));
     } else {
       freeMemoryForOperators -= memoryInBytes;
       if (LOGGER.isDebugEnabled()) {
