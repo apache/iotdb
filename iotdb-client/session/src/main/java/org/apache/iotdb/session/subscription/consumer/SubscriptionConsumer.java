@@ -365,8 +365,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return filePath;
     } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
       if (allowFileAlreadyExistsException) {
-        return getFilePath(
-            topicName, fileName + "." + RandomStringGenerator.generate(16), false, true);
+        final String suffix = RandomStringGenerator.generate(16);
+        LOGGER.warn(
+            "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
+            fileName,
+            topicName,
+            suffix);
+        return getFilePath(topicName, fileName + "." + suffix, false, true);
       }
       throw new SubscriptionRuntimeNonCriticalException(
           fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
