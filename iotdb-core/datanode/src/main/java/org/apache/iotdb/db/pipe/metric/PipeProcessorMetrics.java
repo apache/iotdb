@@ -117,40 +117,7 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   private void removeMetrics(final String taskID) {
-    removeAutoGauge(taskID);
     removeRate(taskID);
-  }
-
-  private void removeAutoGauge(final String taskID) {
-    PipeProcessorSubtask processor = processorMap.get(taskID);
-    // pending event count
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.BUFFERED_TABLET_COUNT.toString(),
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.BUFFERED_TSFILE_COUNT.toString(),
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.BUFFERED_HEARTBEAT_COUNT.toString(),
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
   }
 
   private void removeRate(final String taskID) {
@@ -200,9 +167,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!processorMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe processor metrics, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      // Allow calls from schema region tasks
       return;
     }
     if (Objects.nonNull(metricService)) {

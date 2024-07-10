@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeWALInsertNodeCacheMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -78,7 +78,7 @@ public class WALInsertNodeCache {
                 (double) 2 * CONFIG.getWalFileSizeThresholdInByte(),
                 CONFIG.getAllocateMemoryForPipe() * 0.8 / 5);
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(

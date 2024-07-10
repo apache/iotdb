@@ -52,15 +52,20 @@ public class PipeEventCollector implements EventCollector {
 
   private final int regionId;
 
+  private final boolean forceTabletFormat;
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
+  private boolean hasNoGeneratedEvent = true;
 
   public PipeEventCollector(
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
-      final int regionId) {
+      final int regionId,
+      final boolean forceTabletFormat) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
+    this.forceTabletFormat = forceTabletFormat;
   }
 
   @Override
@@ -92,6 +97,7 @@ public class PipeEventCollector implements EventCollector {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } else {
@@ -103,6 +109,7 @@ public class PipeEventCollector implements EventCollector {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } else {
@@ -118,13 +125,14 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!sourceEvent.shouldParseTimeOrPattern()) {
+    if (!forceTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
       collectEvent(sourceEvent);
       return;
     }
 
     try {
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
+        hasNoGeneratedEvent = false;
         collectEvent(parsedEvent);
       }
     } finally {
@@ -146,7 +154,11 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getPipePattern(),
                     deleteDataEvent.isGeneratedByPipe()))
-        .ifPresent(this::collectEvent);
+        .ifPresent(
+            event -> {
+              hasNoGeneratedEvent = false;
+              collectEvent(event);
+            });
   }
 
   private void collectEvent(final Event event) {
@@ -170,8 +182,9 @@ public class PipeEventCollector implements EventCollector {
     pendingQueue.directOffer(event);
   }
 
-  public void resetCollectInvocationCount() {
+  public void resetCollectInvocationCountAndGenerateFlag() {
     collectInvocationCount.set(0);
+    hasNoGeneratedEvent = true;
   }
 
   public long getCollectInvocationCount() {
@@ -180,5 +193,9 @@ public class PipeEventCollector implements EventCollector {
 
   public boolean hasNoCollectInvocationAfterReset() {
     return collectInvocationCount.get() == 0;
+  }
+
+  public boolean hasNoGeneratedEvent() {
+    return hasNoGeneratedEvent;
   }
 }

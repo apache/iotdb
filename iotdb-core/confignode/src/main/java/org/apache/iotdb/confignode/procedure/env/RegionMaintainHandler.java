@@ -667,9 +667,20 @@ public class RegionMaintainHandler {
    */
   public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
       throws ProcedureException {
-    Optional<TDataNodeLocation> newLeaderNode =
-        filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-    newLeaderNode.orElseThrow(() -> new ProcedureException("Cannot find the new leader"));
+    // find new leader
+    final int findNewLeaderTimeLimitSecond = 10;
+    long startTime = System.nanoTime();
+    Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
+    while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
+      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+      if (newLeaderNode.isPresent()) {
+        break;
+      }
+    }
+    newLeaderNode.orElseThrow(
+        () ->
+            new ProcedureException(
+                "Cannot find the new leader after " + findNewLeaderTimeLimitSecond + " seconds"));
 
     // ratis needs DataNode to do election by itself
     long timestamp = System.nanoTime();

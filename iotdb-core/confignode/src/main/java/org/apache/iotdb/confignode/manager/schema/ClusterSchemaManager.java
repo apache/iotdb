@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -154,8 +153,8 @@ public class ClusterSchemaManager {
               "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
     }
 
+    createDatabaseLock.lock();
     try {
-      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
@@ -362,6 +361,7 @@ public class ClusterSchemaManager {
       databaseInfo.setName(database);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
@@ -396,8 +396,9 @@ public class ClusterSchemaManager {
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        long ttl = getDatabaseSchemaByName(database).getTTL();
-        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+        final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
+        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
+        if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }
         infoMap.put(database, ttl);

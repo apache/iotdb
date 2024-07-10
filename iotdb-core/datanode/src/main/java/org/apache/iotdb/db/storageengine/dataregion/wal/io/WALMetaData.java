@@ -40,6 +40,7 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+
   private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
@@ -85,7 +86,7 @@ public class WALMetaData implements SerializedSize {
         + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
   }
 
-  public void serialize(File file, ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     buffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
@@ -129,12 +130,20 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES || !isValidMagicString(channel)) {
+    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
       throw new IOException(String.format("Broken wal file %s", logFile));
     }
+
     // load metadata size
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
+    long position;
+    WALFileVersion version = WALFileVersion.getVersion(channel);
+    position =
+        channel.size()
+            - Integer.BYTES
+            - (version == WALFileVersion.V2
+                ? WALWriter.MAGIC_STRING_V2_BYTES
+                : WALWriter.MAGIC_STRING_V1_BYTES);
     channel.read(metadataSizeBuf, position);
     metadataSizeBuf.flip();
     // load metadata
@@ -159,11 +168,11 @@ public class WALMetaData implements SerializedSize {
   }
 
   private static boolean isValidMagicString(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
+    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
-    return magicString.equals(WALWriter.MAGIC_STRING)
+    return magicString.equals(WALWriter.MAGIC_STRING_V2)
         || magicString.contains(WALWriter.MAGIC_STRING_V1);
   }
 

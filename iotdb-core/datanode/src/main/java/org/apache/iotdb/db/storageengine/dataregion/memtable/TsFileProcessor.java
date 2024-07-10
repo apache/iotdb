@@ -169,6 +169,11 @@ public class TsFileProcessor {
   /** This callback is called before the workMemtable is added into the flushingMemTables. */
   private final DataRegion.UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
+  public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
+
+  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
+
   /** Wal node. */
   private final IWALNode walNode;
 
@@ -195,6 +200,8 @@ public class TsFileProcessor {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  public static final int MEMTABLE_NOT_EXIST = -1;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -1010,8 +1017,7 @@ public class TsFileProcessor {
           "The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
-      WritingMetrics.getInstance()
-          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
       return true;
     }
     return false;
@@ -1361,6 +1367,7 @@ public class TsFileProcessor {
                   storageGroupName,
                   dataRegionInfo.getDataRegion().getDataRegionId());
           flushTask.syncFlushMemTable();
+          memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
           if (writer == null) {
             logger.info(
@@ -2098,6 +2105,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableUpdateTime() {
     return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
+  }
+
+  public long getMemTableFlushPointCount() {
+    return memTableFlushPointCount;
   }
 
   public boolean isSequence() {

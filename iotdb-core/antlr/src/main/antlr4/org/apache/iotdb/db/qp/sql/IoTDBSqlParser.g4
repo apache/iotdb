@@ -322,7 +322,7 @@ setTTL
 
 // ---- Unset TTL
 unsetTTL
-    : UNSET TTL TO path=prefixPath
+    : UNSET TTL (TO | FROM) path=prefixPath
     ;
 
 // ---- Show TTL

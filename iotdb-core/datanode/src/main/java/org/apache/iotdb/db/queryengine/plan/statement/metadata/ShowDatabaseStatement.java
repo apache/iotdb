@@ -97,14 +97,15 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
           .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
       builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
+      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       if (isDetailed) {
-        builder.getColumnBuilder(4).writeInt(storageGroupInfo.getSchemaRegionNum());
-        builder.getColumnBuilder(5).writeInt(storageGroupInfo.getMinSchemaRegionNum());
-        builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
-        builder.getColumnBuilder(7).writeInt(storageGroupInfo.getDataRegionNum());
-        builder.getColumnBuilder(8).writeInt(storageGroupInfo.getMinDataRegionNum());
-        builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
+        builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMinSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
+        builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
+        builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
       }
       builder.declarePosition();
     }

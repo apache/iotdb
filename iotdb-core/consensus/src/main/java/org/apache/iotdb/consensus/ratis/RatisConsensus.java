@@ -278,7 +278,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(groupId) && Utils.rejectWrite()) {
+    if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {

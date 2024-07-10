@@ -587,7 +587,7 @@ public class IoTDBRpcDataSet {
   public Object getObjectByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return curTsBlock.getTimeByIndex(tsBlockIndex);
+      return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {

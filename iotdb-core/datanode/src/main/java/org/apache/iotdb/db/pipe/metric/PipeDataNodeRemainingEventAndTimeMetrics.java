@@ -103,6 +103,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),

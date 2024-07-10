@@ -81,11 +81,11 @@ public class TabletInsertionDataContainer {
   private boolean shouldReport = false;
 
   private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
-  private static final Map<Integer, List<Integer>> cachedFullRowIndexList = new HashMap<>();
+  private static final Map<Integer, List<Integer>> CACHED_FULL_ROW_INDEX_LIST = new HashMap<>();
 
   static {
     for (int rowCount = 0; rowCount <= CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER; ++rowCount) {
-      cachedFullRowIndexList.put(
+      CACHED_FULL_ROW_INDEX_LIST.put(
           rowCount, IntStream.range(0, rowCount).boxed().collect(Collectors.toList()));
     }
   }
@@ -435,7 +435,7 @@ public class TabletInsertionDataContainer {
 
   private static List<Integer> generateFullRowIndexList(final int rowCount) {
     if (rowCount <= CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER) {
-      return cachedFullRowIndexList.get(rowCount);
+      return CACHED_FULL_ROW_INDEX_LIST.get(rowCount);
     }
     return IntStream.range(0, rowCount).boxed().collect(Collectors.toList());
   }

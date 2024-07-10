@@ -465,7 +465,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -1138,7 +1138,7 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
-  private CompressionType WALCompressionAlgorithm = CompressionType.UNCOMPRESSED;
+  private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
   IoTDBConfig() {}
 
@@ -1670,6 +1670,9 @@ public class IoTDBConfig {
   }
 
   public void setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
     this.queryThreadCount = queryThreadCount;
     this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }

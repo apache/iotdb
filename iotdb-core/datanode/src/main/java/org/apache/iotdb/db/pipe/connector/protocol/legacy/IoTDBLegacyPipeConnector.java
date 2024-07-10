@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -303,7 +304,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    if (!(event instanceof PipeHeartbeatEvent)) {
+    if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
     }

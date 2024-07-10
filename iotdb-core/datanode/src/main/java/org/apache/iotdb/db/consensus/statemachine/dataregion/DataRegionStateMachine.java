@@ -289,7 +289,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public DataSet read(IConsensusRequest request) {
     if (request instanceof GetConsensusReqReaderPlan) {
-      return region.getWALNode();
+      return region.getWALNode().orElseThrow(UnsupportedOperationException::new);
     } else {
       FragmentInstance fragmentInstance;
       try {
