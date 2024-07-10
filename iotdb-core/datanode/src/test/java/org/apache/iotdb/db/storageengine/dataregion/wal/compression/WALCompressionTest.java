@@ -228,6 +228,8 @@ public class WALCompressionTest {
     IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
     WALTestUtils.setMinCompressionSize(0);
     try (WALWriter writer = new WALWriter(walFile)) {
+      writer.setCompressedByteBuffer(
+          ByteBuffer.allocateDirect(WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE));
       buf.position(buf.limit());
       writer.write(buf);
     }
