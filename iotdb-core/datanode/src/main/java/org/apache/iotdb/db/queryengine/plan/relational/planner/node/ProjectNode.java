@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -93,6 +94,11 @@ public class ProjectNode extends SingleChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return assignments.getOutputs();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new ProjectNode(id, Iterables.getOnlyElement(newChildren), assignments);
   }
 
   @Override

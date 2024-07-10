@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
@@ -95,6 +96,7 @@ public class LogicalPlanner {
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     Set<Rule<?>> rules =
         ImmutableSet.of(
+            new PruneOutputSourceColumns(),
             new PruneFilterColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 
 import java.util.List;
 import java.util.Objects;
@@ -89,11 +88,5 @@ public abstract class SingleChildProcessNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), child);
-  }
-
-  @Override
-  public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    this.child = Iterables.getOnlyElement(newChildren);
-    return this;
   }
 }

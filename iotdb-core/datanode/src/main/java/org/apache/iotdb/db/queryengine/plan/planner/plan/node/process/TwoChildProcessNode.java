@@ -98,11 +98,4 @@ public abstract class TwoChildProcessNode extends ProcessNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), leftChild, rightChild);
   }
-
-  @Override
-  public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    this.leftChild = newChildren.get(0);
-    this.rightChild = newChildren.get(1);
-    return this;
-  }
 }
