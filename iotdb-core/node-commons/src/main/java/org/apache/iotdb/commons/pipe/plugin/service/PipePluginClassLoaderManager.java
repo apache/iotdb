@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.pipe.api.PipePlugin;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -36,11 +37,12 @@ public class PipePluginClassLoaderManager implements IService {
   private final String libRoot;
 
   /**
-   * Each PipePlugin is equipped with a dedicated {@link PipePluginClassLoader}. When a PipePlugin
-   * is created, the corresponding {@link PipePluginClassLoader} is generated and used to load the
-   * PipePlugin. When the PipePlugin is deleted, its associated {@link PipePluginClassLoader} is
-   * also removed. The lifecycle of the {@link PipePluginClassLoader} is strictly consistent with
-   * the lifecycle of the PipePlugin it serves.
+   * Each {@link PipePlugin} is equipped with a dedicated {@link PipePluginClassLoader}. When a
+   * {@link PipePlugin} is created, the corresponding {@link PipePluginClassLoader} is generated and
+   * used to load the {@link PipePlugin}. When the {@link PipePlugin} is deleted, its associated
+   * {@link PipePluginClassLoader} is also removed. The lifecycle of the {@link
+   * PipePluginClassLoader} is strictly consistent with the lifecycle of the {@link PipePlugin} it
+   * serves.
    */
   private final Map<String, PipePluginClassLoader> pipePluginNameToClassLoaderMap;
 

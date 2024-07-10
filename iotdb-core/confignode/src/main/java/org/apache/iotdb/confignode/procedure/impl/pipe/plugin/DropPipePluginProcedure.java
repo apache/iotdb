@@ -114,8 +114,8 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     if (pipeTaskInfo == null) {
       String exceptionMessage =
           String.format(
-              "ProcedureId %d failed to acquire pipe lock due to high contention with other pipe operations. "
-                  + "The pipeTaskInfo is being frequently accessed by other concurrent pipe activities.",
+              "ProcedureId %d failed to acquire pipe lock due to high competition with other pipe operations. "
+                  + "The PipeTaskInfo is frequently accessed by other operations.",
               getProcId());
       LOGGER.warn(exceptionMessage);
       setFailure(new ProcedureException(exceptionMessage));

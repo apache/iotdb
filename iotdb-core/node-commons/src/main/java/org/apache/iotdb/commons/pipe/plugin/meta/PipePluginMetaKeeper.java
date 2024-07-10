@@ -37,10 +37,10 @@ public abstract class PipePluginMetaKeeper {
 
   public PipePluginMetaKeeper() {
     builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
-    loadBuiltInPlugins();
+    loadBuiltinPlugins();
   }
 
-  protected void loadBuiltInPlugins() {
+  protected void loadBuiltinPlugins() {
     for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
       addPipePluginMeta(
           builtinPipePlugin.getPipePluginName(),
