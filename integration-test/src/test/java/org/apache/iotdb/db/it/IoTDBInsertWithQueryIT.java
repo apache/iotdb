@@ -149,19 +149,19 @@ public class IoTDBInsertWithQueryIT {
 
   @Test
   public void insertNegativeTimestampWithQueryTest() {
-    //    // insert
-    //    insertData(-1000, 1);
-    //
-    //    // select
-    //    selectAndCount(1001);
-    //
-    //    // insert
-    //    insertData(-2000, -1000);
-    //
-    //    // select
-    //    selectAndCount(2001);
-    //
-    //    negativeTimestampAggregationTest();
+    // insert
+    insertData(-1000, 1);
+
+    // select
+    selectAndCount(1001);
+
+    // insert
+    insertData(-2000, -1000);
+
+    // select
+    selectAndCount(2001);
+
+    negativeTimestampAggregationTest();
 
     insertNegativeTimestampTypeData();
 
