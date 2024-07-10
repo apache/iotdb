@@ -25,7 +25,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
@@ -75,10 +75,10 @@ public class PipeMemoryWeightUtil {
     }
 
     // values
-    final List<MeasurementSchema> timeseries = tablet.getSchemas();
+    final List<IMeasurementSchema> timeseries = tablet.getSchemas();
     if (timeseries != null) {
       for (int column = 0; column < timeseries.size(); column++) {
-        final MeasurementSchema measurementSchema = timeseries.get(column);
+        final IMeasurementSchema measurementSchema = timeseries.get(column);
         if (measurementSchema == null) {
           continue;
         }
