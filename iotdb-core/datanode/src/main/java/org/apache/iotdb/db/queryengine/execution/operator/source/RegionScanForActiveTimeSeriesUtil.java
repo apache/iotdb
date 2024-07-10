@@ -49,8 +49,8 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       RamUsageEstimator.shallowSizeOfInstance(Map.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.class);
 
-  public RegionScanForActiveTimeSeriesUtil(Filter timeFilter) {
-    super(timeFilter);
+  public RegionScanForActiveTimeSeriesUtil(Filter timeFilter, Map<IDeviceID, Long> ttlCache) {
+    super(timeFilter, ttlCache);
     this.timeSeriesForCurrentTsFile = new HashMap<>();
     this.activeTimeSeries = new HashMap<>();
   }
@@ -161,6 +161,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       measurements.remove(measurementPath);
       if (measurements.isEmpty()) {
         timeSeriesForCurrentTsFile.remove(deviceID);
+        timeFilter.removeTTLCache(deviceID);
       }
     }
   }

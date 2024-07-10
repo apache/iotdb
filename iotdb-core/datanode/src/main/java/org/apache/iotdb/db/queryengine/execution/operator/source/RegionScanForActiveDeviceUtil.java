@@ -50,8 +50,8 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
   private final Set<IDeviceID> deviceSetForCurrentTsFile;
   private final List<IDeviceID> activeDevices;
 
-  public RegionScanForActiveDeviceUtil(Filter timeFilter) {
-    super(timeFilter);
+  public RegionScanForActiveDeviceUtil(Filter timeFilter, Map<IDeviceID, Long> ttlCache) {
+    super(timeFilter, ttlCache);
     this.deviceSetForCurrentTsFile = new HashSet<>();
     this.activeDevices = new ArrayList<>();
   }
@@ -123,6 +123,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     // Chunk is active means relating device is active, too.
     deviceSetForCurrentTsFile.remove(deviceID);
     activeDevices.add(deviceID);
+    timeFilter.removeTTLCache(deviceID);
     currentChunkHandle = null;
   }
 

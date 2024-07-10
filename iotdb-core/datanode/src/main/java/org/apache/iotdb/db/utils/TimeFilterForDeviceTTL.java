@@ -20,12 +20,10 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class TimeFilterForDeviceTTL {
@@ -34,9 +32,9 @@ public class TimeFilterForDeviceTTL {
 
   private final Map<IDeviceID, Long> ttlCached;
 
-  public TimeFilterForDeviceTTL(Filter timeFilter) {
+  public TimeFilterForDeviceTTL(Filter timeFilter, Map<IDeviceID, Long> ttlCached) {
     this.timeFilter = timeFilter;
-    ttlCached = new HashMap<>();
+    this.ttlCached = ttlCached;
   }
 
   public boolean satisfyStartEndTime(long startTime, long endTime, IDeviceID deviceID) {
@@ -64,11 +62,15 @@ public class TimeFilterForDeviceTTL {
   }
 
   private long getTTL(IDeviceID deviceID) {
-    if (ttlCached.containsKey(deviceID)) {
-      return ttlCached.get(deviceID);
+    Long ttl = ttlCached.get(deviceID);
+    if (ttl == null) {
+      throw new IllegalArgumentException(
+          "deviceID should not be empty in getTTL method in TimeFilterForDeviceTTL");
     }
-    long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
-    ttlCached.put(deviceID, ttl);
     return ttl;
+  }
+
+  public void removeTTLCache(IDeviceID deviceID) {
+    ttlCached.remove(deviceID);
   }
 }

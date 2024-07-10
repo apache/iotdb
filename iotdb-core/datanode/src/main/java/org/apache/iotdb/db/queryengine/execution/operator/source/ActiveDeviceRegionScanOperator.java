@@ -57,12 +57,13 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
       PlanNodeId sourceId,
       Map<IDeviceID, DeviceContext> deviceContextMap,
       Filter timeFilter,
+      Map<IDeviceID, Long> ttlCache,
       boolean outputCount) {
     this.outputCount = outputCount;
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.deviceContextMap = deviceContextMap;
-    this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter);
+    this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter, ttlCache);
   }
 
   @Override

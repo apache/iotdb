@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractRegionScanForActiveDataUtil implements Accountable {
 
@@ -60,8 +61,8 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
   protected Iterator<IChunkHandle> chunkHandleIterator = null;
   protected IChunkHandle currentChunkHandle = null;
 
-  protected AbstractRegionScanForActiveDataUtil(Filter timeFilter) {
-    this.timeFilter = new TimeFilterForDeviceTTL(timeFilter);
+  protected AbstractRegionScanForActiveDataUtil(Filter timeFilter, Map<IDeviceID, Long> ttlCache) {
+    this.timeFilter = new TimeFilterForDeviceTTL(timeFilter, ttlCache);
   }
 
   public void initQueryDataSource(IQueryDataSource dataSource) {
