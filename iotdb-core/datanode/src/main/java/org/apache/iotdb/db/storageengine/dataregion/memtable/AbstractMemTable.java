@@ -89,6 +89,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   private boolean shouldFlush = false;
+  private boolean reachChunkSizeOrPointNumThreshold = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
@@ -409,7 +410,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
     if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      shouldFlush = true;
+      reachChunkSizeOrPointNumThreshold = true;
     }
   }
 
@@ -422,7 +423,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
     if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      shouldFlush = true;
+      reachChunkSizeOrPointNumThreshold = true;
     }
   }
 
@@ -444,7 +445,7 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList,
         start,
         end)) {
-      shouldFlush = true;
+      reachChunkSizeOrPointNumThreshold = true;
     }
   }
 
@@ -470,7 +471,7 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList,
         start,
         end)) {
-      shouldFlush = true;
+      reachChunkSizeOrPointNumThreshold = true;
     }
   }
 
@@ -517,11 +518,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean reachTotalPointNumThreshold() {
-    if (totalPointsNum == 0) {
-      return false;
-    }
-    return totalPointsNum >= totalPointsNumThreshold;
+  public boolean reachChunkSizeOrPointNumThreshold() {
+    return reachChunkSizeOrPointNumThreshold;
   }
 
   @Override
