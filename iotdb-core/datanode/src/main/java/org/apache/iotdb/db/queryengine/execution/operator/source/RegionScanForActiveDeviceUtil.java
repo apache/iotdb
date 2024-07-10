@@ -86,10 +86,10 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
         continue;
       }
 
-      if ((timeFilter.satisfy(startTime, null)
+      if ((timeFilter.satisfy(startTime, deviceID)
               && !curFileScanHandle.isDeviceTimeDeleted(deviceID, startTime))
           || (endTime >= 0
-              && timeFilter.satisfy(endTime, null)
+              && timeFilter.satisfy(endTime, deviceID)
               && !curFileScanHandle.isDeviceTimeDeleted(deviceID, endTime))) {
         activeDevices.add(deviceID);
       } else {
@@ -141,9 +141,9 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       String measurement = valueChunkMetaData.getMeasurementUid();
       // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
       // time range.
-      if ((timeFilter.satisfy(startTime, null)
+      if ((timeFilter.satisfy(startTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, startTime))
-          || (timeFilter.satisfy(endTime, null)
+          || (timeFilter.satisfy(endTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, endTime))) {
         return true;
       }

@@ -153,10 +153,10 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
       return true;
     }
 
-    if ((timeFilter.satisfy(pageStatistics[0], null)
+    if ((timeFilter.satisfy(pageStatistics[0], curDevice)
             && !curFileScanHandle.isTimeSeriesTimeDeleted(
                 curDevice, curMeasurement, pageStatistics[0]))
-        || (timeFilter.satisfy(pageStatistics[1], null)
+        || (timeFilter.satisfy(pageStatistics[1], curDevice)
             && !curFileScanHandle.isTimeSeriesTimeDeleted(
                 curDevice, curMeasurement, pageStatistics[1]))) {
       // If the page in curChunk has valid start time, curChunk is active in this time range.
@@ -167,7 +167,7 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
     // 3. check page data
     long[] timeDataForPage = currentChunkHandle.getDataTime();
     for (long time : timeDataForPage) {
-      if (!timeFilter.satisfy(time, null)) {
+      if (!timeFilter.satisfy(time, curDevice)) {
         continue;
       }
 
