@@ -55,6 +55,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,6 +71,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCompactionTest {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(RewriteCrossSpaceCompactionWithFastPerformerTest.class);
 
   private final String oldThreadName = Thread.currentThread().getName();
 
