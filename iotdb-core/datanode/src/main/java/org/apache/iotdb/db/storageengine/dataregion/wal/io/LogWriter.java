@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 
@@ -36,7 +35,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -99,13 +97,8 @@ public abstract class LogWriter implements ILogWriter {
     int uncompressedSize = bufferSize;
     if (compressionType != CompressionType.UNCOMPRESSED
         /* Do not compress buffer that is less than min size */
-        && bufferSize > MIN_COMPRESSION_SIZE) {
-      if (Objects.isNull(compressedByteBuffer)) {
-        // TODO: Use a dynamic strategy to enlarge the buffer size
-        compressedByteBuffer =
-            ByteBuffer.allocate(
-                compressor.getMaxBytesForCompression(WALBuffer.HALF_WAL_BUFFER_SIZE));
-      }
+        && bufferSize > MIN_COMPRESSION_SIZE
+        && compressedByteBuffer != null) {
       compressedByteBuffer.clear();
       if (compressor.getType() != compressionType) {
         compressor = ICompressor.getCompressor(compressionType);
@@ -180,6 +173,10 @@ public abstract class LogWriter implements ILogWriter {
         logStream.close();
       }
     }
+  }
+
+  public void setCompressedByteBuffer(ByteBuffer compressedByteBuffer) {
+    this.compressedByteBuffer = compressedByteBuffer;
   }
 
   public long getOffset() throws IOException {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -29,6 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.commons.collections4.map.LRUMap;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 
@@ -58,8 +59,7 @@ public abstract class AbstractCompactionEstimator {
   protected Map<TsFileResource, DeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio() + 1;
+  protected TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
 

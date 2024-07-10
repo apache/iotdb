@@ -111,6 +111,14 @@ public class SessionPool implements ISessionPool {
 
   private String trustStorePwd;
   private ZoneId zoneId;
+  // this field only take effect in write request, nothing to do with any other type requests,
+  // like query, load and so on.
+  // if set to true, it means that we may redirect the write request to its corresponding leader
+  // if set to false, it means that we will only send write request to first available DataNode(it
+  // may be changed while current DataNode is not available, for example, we may retry to connect
+  // to another available DataNode)
+  // so even if enableRedirection is set to false, we may also send write request to another
+  // datanode while encountering retriable errors in current DataNode
   private boolean enableRedirection;
   private boolean enableRecordsAutoConvertTablet;
   private boolean enableQueryRedirection = false;
@@ -147,8 +155,13 @@ public class SessionPool implements ISessionPool {
 
   private INodeSupplier availableNodes;
 
+  // set to true, means that we will start a background thread to fetch all available (Status is
+  // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
   private boolean enableAutoFetch = true;
 
+  // max retry count, if set to 0, means that we won't do any retry
+  // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
+  // or nodeUrls user specified) to retry, even if enableRedirection is false
   protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
@@ -3517,6 +3530,15 @@ public class SessionPool implements ISessionPool {
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
+
+    // this field only take effect in write request, nothing to do with any other type requests,
+    // like query, load and so on.
+    // if set to true, it means that we may redirect the write request to its corresponding leader
+    // if set to false, it means that we will only send write request to first available DataNode(it
+    // may be changed while current DataNode is not available, for example, we may retry to connect
+    // to another available DataNode)
+    // so even if enableRedirection is set to false, we may also send write request to another
+    // datanode while encountering retriable errors in current DataNode
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private boolean enableRecordsAutoConvertTablet =
         SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
@@ -3527,10 +3549,16 @@ public class SessionPool implements ISessionPool {
     private String trustStore;
     private String trustStorePwd;
 
+    // set to true, means that we will start a background thread to fetch all available (Status is
+    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
     private boolean enableAutoFetch;
 
+    // max retry count, if set to 0, means that we won't do any retry
+    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
+    // or nodeUrls user specified) to retry, even if enableRedirection is false
     private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
+    // sleep time between each retry
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
     private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;

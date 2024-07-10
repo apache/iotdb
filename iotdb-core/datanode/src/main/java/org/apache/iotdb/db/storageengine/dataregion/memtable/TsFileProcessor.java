@@ -201,6 +201,8 @@ public class TsFileProcessor {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  public static final int MEMTABLE_NOT_EXIST = -1;
+
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
       String storageGroupName,
