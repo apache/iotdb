@@ -97,12 +97,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   /**
-   * When the number of polls exceeds the realtimeConsumeThreshold, the {@link TsFileInsertionEvent}
-   * of the earliest write to the queue is returned. if the realtimeConsumeThreshold is not reached
-   * then an attempt is made to poll the queue for the latest insertion {@link Event}. First, it
-   * tries to poll the first provided If there is no such {@link Event}, poll the last supplied
-   * {@link TsFileInsertionEvent}. If no {@link Event} is available, it blocks until a {@link Event}
-   * is available.
+   * When the number of polls exceeds the pollHistoryThreshold, the {@link TsFileInsertionEvent} of
+   * the earliest write to the queue is returned. if the pollHistoryThreshold is not reached then an
+   * attempt is made to poll the queue for the latest insertion {@link Event}. First, it tries to
+   * poll the first provided If there is no such {@link Event}, poll the last supplied {@link
+   * TsFileInsertionEvent}. If no {@link Event} is available, it blocks until a {@link Event} is
+   * available.
    *
    * @return the freshest insertion {@link Event}. can be {@code null} if no {@link Event} is
    *     available.
