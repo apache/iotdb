@@ -99,6 +99,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -1108,18 +1109,17 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTable(database, tableName);
   }
 
-  public synchronized Pair<TSStatus, List<TsTableColumnSchema>> tableColumnCheckForColumnExtension(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    Map<String, List<TsTable>> currentUsingTable = clusterSchemaInfo.getAllUsingTables();
-    TsTable targetTable = null;
-    for (TsTable table : currentUsingTable.get(database)) {
-      if (table.getTableName().equals(tableName)) {
-        targetTable = table;
-        break;
-      }
-    }
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final TsTable originalTable =
+        clusterSchemaInfo.getAllUsingTables().get(database).stream()
+            .filter(tsTable -> tsTable.getTableName().equals(tableName))
+            .findAny()
+            .orElse(null);
 
-    if (targetTable == null) {
+    if (Objects.isNull(originalTable)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
@@ -1127,15 +1127,18 @@ public class ClusterSchemaManager {
           null);
     }
 
-    List<TsTableColumnSchema> copiedList = new ArrayList<>();
-    for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      TsTableColumnSchema existingColumnSchema =
-          targetTable.getColumnSchema(columnSchema.getColumnName());
-      if (existingColumnSchema == null) {
-        copiedList.add(columnSchema);
-      }
-    }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, copiedList);
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+
+    columnSchemaList.removeIf(
+        columnSchema -> {
+          if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            expandedTable.addColumnSchema(columnSchema);
+            return false;
+          }
+          return true;
+        });
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
   public synchronized TSStatus addTableColumn(

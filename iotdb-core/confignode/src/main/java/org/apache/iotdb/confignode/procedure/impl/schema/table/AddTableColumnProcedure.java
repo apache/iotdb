@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
@@ -63,27 +65,26 @@ public class AddTableColumnProcedure
 
   private String queryId;
 
-  private List<TsTableColumnSchema> inputColumnList;
-
-  private List<TsTableColumnSchema> actualAddedColumnList;
+  private List<TsTableColumnSchema> addedColumnList;
+  private TsTable table;
 
   public AddTableColumnProcedure() {}
 
   public AddTableColumnProcedure(
-      String database,
-      String tableName,
-      String queryId,
-      List<TsTableColumnSchema> inputColumnList) {
+      final String database,
+      final String tableName,
+      final String queryId,
+      final List<TsTableColumnSchema> addedColumnList) {
     this.database = database;
     this.tableName = tableName;
     this.queryId = queryId;
-    this.inputColumnList = inputColumnList;
+    this.addedColumnList = addedColumnList;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddTableColumnState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case COLUMN_CHECK:
@@ -118,74 +119,85 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(ConfigNodeProcedureEnv env) {
-    Pair<TSStatus, List<TsTableColumnSchema>> result =
+  private void columnCheck(final ConfigNodeProcedureEnv env) {
+    final Pair<TSStatus, TsTable> result =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .tableColumnCheckForColumnExtension(database, tableName, inputColumnList);
-    TSStatus status = result.getLeft();
+            .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+    final TSStatus status = result.getLeft();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
       return;
     }
-    actualAddedColumnList = result.getRight();
+    table = result.getRight();
     setNextState(AddTableColumnState.PRE_RELEASE);
   }
 
-  private void preRelease(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  private void preRelease(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
+    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(database, table));
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-
-    TUpdateTableReq req =
-        new TUpdateTableReq(
-            TsTableInternalRPCType.PRE_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
-
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // All dataNodes must clear the related schema cache
         LOGGER.warn(
-            "Failed to pre-release column extension info of table {}.{}", database, tableName);
+            "Failed to pre-release column extension info of table {}.{} to DataNode {}",
+            database,
+            table.getTableName(),
+            dataNodeLocationMap.get(entry.getKey()));
         setFailure(
             new ProcedureException(
                 new MetadataException("Pre-release table column extension info failed")));
         return;
       }
     }
+
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
-  private void commitRelease(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  private void commitRelease(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.COMMIT_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(database, outputStream);
+      ReadWriteIOUtils.write(table.getTableName(), outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream will not throw IOException
+    }
+    req.setTableInfo(outputStream.toByteArray());
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-
-    TUpdateTableReq req =
-        new TUpdateTableReq(
-            TsTableInternalRPCType.COMMIT_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
-
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failed to commit column extension info of table {}.{}", database, tableName);
-        // todo async retry until success
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to commit column extension info of table {}.{} to DataNode {}",
+            database,
+            table.getTableName(),
+            dataNodeLocationMap.get(entry.getKey()));
+        // TODO: Handle commit failure
         return;
       }
     }
-    setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
-  private void addColumn(ConfigNodeProcedureEnv env) {
-    TSStatus status =
+  private void addColumn(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, inputColumnList);
+            .addTableColumn(database, tableName, addedColumnList);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -194,16 +206,16 @@ public class AddTableColumnProcedure
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, AddTableColumnState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws IOException, InterruptedException, ProcedureException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case ADD_COLUMN:
           rollbackAddColumn(env);
           break;
         case PRE_RELEASE:
-          rollbackUpdateCache(env);
+          rollbackPreRelease(env);
           break;
       }
     } finally {
@@ -212,61 +224,59 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void rollbackAddColumn(ConfigNodeProcedureEnv env) {
-    if (actualAddedColumnList == null) {
+  private void rollbackAddColumn(final ConfigNodeProcedureEnv env) {
+    if (table == null) {
       return;
     }
-    TSStatus status =
+    final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .rollbackAddTableColumn(database, tableName, actualAddedColumnList);
+            .rollbackAddTableColumn(database, tableName, addedColumnList);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
-  private void rollbackUpdateCache(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(database, outputStream);
+      ReadWriteIOUtils.write(table.getTableName(), outputStream);
+    } catch (final IOException ignore) {
+      // ByteArrayOutputStream will not throw IOException
+    }
+    req.setTableInfo(outputStream.toByteArray());
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-
-    TUpdateTableReq req =
-        new TUpdateTableReq(
-            TsTableInternalRPCType.ROLLBACK_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
-
-    DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failed to rollback cache of table {}.{}", database, tableName);
-        setFailure(new ProcedureException(new MetadataException("Rollback table cache failed")));
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to rollback pre-release column extension info of table {}.{} rollback-create info to DataNode {}",
+            database,
+            table.getTableName(),
+            dataNodeLocationMap.get(entry.getKey()));
+        setFailure(
+            new ProcedureException(
+                new MetadataException("Rollback pre-release table column extension info failed")));
         return;
       }
     }
   }
 
-  private ByteBuffer getCacheRequestInfo() {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, stream);
-      ReadWriteIOUtils.write(tableName, stream);
-
-      TsTableColumnSchemaUtil.serialize(actualAddedColumnList, stream);
-    } catch (IOException ignored) {
-      // won't happen
-    }
-    return ByteBuffer.wrap(stream.toByteArray());
-  }
-
   @Override
-  protected AddTableColumnState getState(int stateId) {
+  protected AddTableColumnState getState(final int stateId) {
     return AddTableColumnState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(AddTableColumnState state) {
+  protected int getStateId(final AddTableColumnState state) {
     return state.ordinal();
   }
 
@@ -287,12 +297,8 @@ public class AddTableColumnProcedure
     return queryId;
   }
 
-  public List<TsTableColumnSchema> getInputColumnList() {
-    return inputColumnList;
-  }
-
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
@@ -300,26 +306,33 @@ public class AddTableColumnProcedure
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(queryId, stream);
 
-    TsTableColumnSchemaUtil.serialize(inputColumnList, stream);
-    TsTableColumnSchemaUtil.serialize(actualAddedColumnList, stream);
+    TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
+    if (Objects.nonNull(table)) {
+      ReadWriteIOUtils.write(true, stream);
+      table.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     this.database = ReadWriteIOUtils.readString(byteBuffer);
     this.tableName = ReadWriteIOUtils.readString(byteBuffer);
     this.queryId = ReadWriteIOUtils.readString(byteBuffer);
 
-    this.inputColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
-    this.actualAddedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
+    this.addedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      this.table = TsTable.deserialize(byteBuffer);
+    }
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) return true;
     if (!(o instanceof AddTableColumnProcedure)) return false;
-    AddTableColumnProcedure that = (AddTableColumnProcedure) o;
+    final AddTableColumnProcedure that = (AddTableColumnProcedure) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(queryId, that.queryId);

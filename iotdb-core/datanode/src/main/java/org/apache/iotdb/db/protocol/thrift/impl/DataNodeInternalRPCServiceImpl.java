@@ -58,7 +58,6 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -1443,51 +1442,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTable(TUpdateTableReq req) throws TException {
+  public TSStatus updateTable(TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
-      case PRE_CREATE:
+      case PRE_CREATE_OR_ADD_COLUMN:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
               TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
-          DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
+          DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         } finally {
           DataNodeSchemaLockManager.getInstance()
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         }
         break;
-      case ROLLBACK_CREATE:
+      case ROLLBACK_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .rollbackCreateTable(
+            .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case COMMIT_CREATE:
+      case COMMIT_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .commitCreateTable(
+            .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
-        break;
-      case PRE_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .preAddTableColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
-        break;
-      case COMMIT_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .commitAddTableColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
-        break;
-      case ROLLBACK_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .rollbackAddColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
