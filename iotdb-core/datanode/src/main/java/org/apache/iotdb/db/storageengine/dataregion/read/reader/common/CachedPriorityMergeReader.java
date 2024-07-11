@@ -39,6 +39,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   private Long lastTimestamp = null;
 
   public CachedPriorityMergeReader(TSDataType dataType) {
+    super(false);
     for (int i = 0; i < CACHE_SIZE; i++) {
       timeValuePairCache[i] = TimeValuePairUtils.getEmptyTimeValuePair(dataType);
     }
