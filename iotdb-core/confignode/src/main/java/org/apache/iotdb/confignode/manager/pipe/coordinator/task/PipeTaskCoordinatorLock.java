@@ -38,7 +38,7 @@ public class PipeTaskCoordinatorLock {
   private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
   private final AtomicLong idGenerator = new AtomicLong(0);
 
-  void lock() {
+  public void lock() {
     try {
       final long id = idGenerator.incrementAndGet();
       LOGGER.info(
