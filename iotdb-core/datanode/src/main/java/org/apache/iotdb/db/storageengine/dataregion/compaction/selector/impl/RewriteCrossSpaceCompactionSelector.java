@@ -539,6 +539,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (status == InsertionCompactionCandidateStatus.NOT_VALID) {
         return false;
       }
+      // The selected unseq file should not overlap with the previous unseq file
+      // Example:
+      // seq files:
+      // 1-1-0-0.tsfile (device timestamps: [1-5]) 10-2-0-0.tsfile (device timestamps:[30-40])
+      // unseq files:
+      // 20-3-0-0.tsfile (device timestamps: [1-20]) 30-4-0-0.tsfile (device timestamps: [15-20])
+      // If 30-40-0-0.tsfile is moved to the sequential area and a merge is triggered later, a
+      // target file 1-1-1-0.tsfile will be generated.
+      // Then, the version of the data originally in 30-4-0-0.tsfile changes to 1, and will be
+      // overwritten by the overlapping data in 20-3-0-0.tsfile during query.
       if (status != InsertionCompactionCandidateStatus.NOT_CHECKED) {
         return true;
       }
