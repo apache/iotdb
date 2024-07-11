@@ -84,12 +84,7 @@ public interface IMemTable extends WALEntryValue {
   /** only used when mem control enabled */
   long getTVListsRamCost();
 
-  /**
-   * only used when mem control enabled
-   *
-   * @return whether the average number of points in each WritableChunk reaches the threshold
-   */
-  boolean reachTotalPointNumThreshold();
+  boolean reachChunkSizeOrPointNumThreshold();
 
   int getSeriesNumber();
 
