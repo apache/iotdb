@@ -29,8 +29,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JVMCommonUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(JVMCommonUtils.class);
   /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
@@ -67,7 +71,9 @@ public class JVMCommonUtils {
 
   public static double getDiskFreeRatio(String dir) {
     File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    dirFile.mkdirs();
+    if (!dirFile.mkdirs() && !dirFile.isDirectory()) {
+      LOGGER.error("Cannot create directory {}", dir);
+    }
     return 1.0 * dirFile.getFreeSpace() / dirFile.getTotalSpace();
   }
 
