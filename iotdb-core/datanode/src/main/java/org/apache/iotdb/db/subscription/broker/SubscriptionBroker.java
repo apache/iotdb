@@ -122,7 +122,9 @@ public class SubscriptionBroker {
    * @return list of successful commit contexts
    */
   public List<SubscriptionCommitContext> commit(
-      final List<SubscriptionCommitContext> commitContexts, final boolean nack) {
+      final String consumerId,
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
@@ -138,11 +140,11 @@ public class SubscriptionBroker {
         continue;
       }
       if (!nack) {
-        if (prefetchingQueue.ack(commitContext)) {
+        if (prefetchingQueue.ack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(commitContext)) {
+        if (prefetchingQueue.nack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       }
@@ -169,7 +171,7 @@ public class SubscriptionBroker {
       topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTabletsQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTabletQueue(brokerId, topicName, inputPendingQueue);
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     }
@@ -186,18 +188,23 @@ public class SubscriptionBroker {
     // mark prefetching queue closed first
     prefetchingQueue.markClosed();
 
-    // clean up events in prefetching queue, this operation is idempotent
-    prefetchingQueue.cleanup();
-
-    // mark prefetching queue completed only for topic of query mode
-    if (SubscriptionAgent.topic().getTopicMode(topicName).equals(TopicConstant.MODE_QUERY_VALUE)) {
+    // mark prefetching queue completed only for topic of snapshot mode
+    if (SubscriptionAgent.topic()
+        .getTopicMode(topicName)
+        .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
       prefetchingQueue.markCompleted();
     }
 
     if (doRemove) {
-      topicNameToPrefetchingQueue.remove(topicName);
+      // clean up events in prefetching queue
+      prefetchingQueue.cleanup();
+
+      // deregister metrics
       SubscriptionPrefetchingQueueMetrics.getInstance()
           .deregister(prefetchingQueue.getPrefetchingQueueId());
+
+      // remove prefetching queue
+      topicNameToPrefetchingQueue.remove(topicName);
     }
   }
 

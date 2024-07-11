@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +31,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
@@ -160,8 +158,8 @@ public class ClusterSchemaManager {
               "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
     }
 
+    createDatabaseLock.lock();
     try {
-      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
@@ -360,6 +358,7 @@ public class ClusterSchemaManager {
       databaseInfo.setName(database);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
@@ -394,14 +393,11 @@ public class ClusterSchemaManager {
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        long ttl = getDatabaseSchemaByName(database).getTTL();
-        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+        final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
+        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
+        if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }
-        ttl =
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-        ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
         infoMap.put(database, ttl);
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);

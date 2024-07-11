@@ -37,14 +37,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
-
 public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static SystemPropertiesHandler systemPropertiesHandler =
+  private static final SystemPropertiesHandler systemPropertiesHandler =
       ConfigNodeSystemPropertiesHandler.getInstance();
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
@@ -59,6 +56,7 @@ public class SystemPropertiesUtils {
   private static final String SCHEMA_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol_class";
   private static final String SERIES_PARTITION_SLOT_NUM = "series_partition_slot_num";
   private static final String SERIES_PARTITION_EXECUTOR_CLASS = "series_partition_executor_class";
+  private static final String TIME_PARTITION_ORIGIN = "time_partition_origin";
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   private SystemPropertiesUtils() {
@@ -90,31 +88,17 @@ public class SystemPropertiesUtils {
    */
   public static void checkSystemProperties() throws IOException {
     Properties systemProperties = systemPropertiesHandler.read();
-    boolean needReWrite = false;
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
             + " Your configuration: {} will be forced update to: {}";
 
-    // Cluster configuration
-    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName == null) {
-      needReWrite = true;
-    } else if (!clusterName.equals(conf.getClusterName())) {
-      LOGGER.warn(format, CLUSTER_NAME, conf.getClusterName(), clusterName);
-      conf.setClusterName(clusterName);
-    }
-
     String internalAddress = systemProperties.getProperty(CN_INTERNAL_ADDRESS, null);
-    if (internalAddress == null) {
-      needReWrite = true;
-    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+    if (!internalAddress.equals(conf.getInternalAddress())) {
       LOGGER.warn(format, CN_INTERNAL_ADDRESS, conf.getInternalAddress(), internalAddress);
       conf.setInternalAddress(internalAddress);
     }
 
-    if (systemProperties.getProperty(CN_INTERNAL_PORT, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(CN_INTERNAL_PORT, null) != null) {
       int internalPort = Integer.parseInt(systemProperties.getProperty(CN_INTERNAL_PORT));
       if (internalPort != conf.getInternalPort()) {
         LOGGER.warn(format, CN_INTERNAL_PORT, conf.getInternalPort(), internalPort);
@@ -122,9 +106,7 @@ public class SystemPropertiesUtils {
       }
     }
 
-    if (systemProperties.getProperty(CN_CONSENSUS_PORT, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(CN_CONSENSUS_PORT, null) != null) {
       int consensusPort = Integer.parseInt(systemProperties.getProperty(CN_CONSENSUS_PORT));
       if (consensusPort != conf.getConsensusPort()) {
         LOGGER.warn(format, CN_CONSENSUS_PORT, conf.getConsensusPort(), consensusPort);
@@ -132,9 +114,7 @@ public class SystemPropertiesUtils {
       }
     }
 
-    if (systemProperties.getProperty(TIMESTAMP_PRECISION, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(TIMESTAMP_PRECISION, null) != null) {
       String timestampPrecision = systemProperties.getProperty(TIMESTAMP_PRECISION);
       if (!timestampPrecision.equals(COMMON_CONFIG.getTimestampPrecision())) {
         LOGGER.warn(
@@ -146,10 +126,7 @@ public class SystemPropertiesUtils {
     // Consensus protocol configuration
     String configNodeConsensusProtocolClass =
         systemProperties.getProperty(CN_CONSENSUS_PROTOCOL, null);
-    if (configNodeConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!configNodeConsensusProtocolClass.equals(
-        conf.getConfigNodeConsensusProtocolClass())) {
+    if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           CN_CONSENSUS_PROTOCOL,
@@ -160,10 +137,7 @@ public class SystemPropertiesUtils {
 
     String dataRegionConsensusProtocolClass =
         systemProperties.getProperty(DATA_CONSENSUS_PROTOCOL, null);
-    if (dataRegionConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!dataRegionConsensusProtocolClass.equals(
-        conf.getDataRegionConsensusProtocolClass())) {
+    if (!dataRegionConsensusProtocolClass.equals(conf.getDataRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           DATA_CONSENSUS_PROTOCOL,
@@ -174,10 +148,7 @@ public class SystemPropertiesUtils {
 
     String schemaRegionConsensusProtocolClass =
         systemProperties.getProperty(SCHEMA_CONSENSUS_PROTOCOL, null);
-    if (schemaRegionConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!schemaRegionConsensusProtocolClass.equals(
-        conf.getSchemaRegionConsensusProtocolClass())) {
+    if (!schemaRegionConsensusProtocolClass.equals(conf.getSchemaRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           SCHEMA_CONSENSUS_PROTOCOL,
@@ -187,9 +158,7 @@ public class SystemPropertiesUtils {
     }
 
     // PartitionSlot configuration
-    if (systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM, null) != null) {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM));
       if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
@@ -200,10 +169,7 @@ public class SystemPropertiesUtils {
 
     String seriesPartitionSlotExecutorClass =
         systemProperties.getProperty(SERIES_PARTITION_EXECUTOR_CLASS, null);
-    if (seriesPartitionSlotExecutorClass == null) {
-      needReWrite = true;
-    } else if (!Objects.equals(
-        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+    if (!Objects.equals(seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       LOGGER.warn(
           format,
           SERIES_PARTITION_EXECUTOR_CLASS,
@@ -212,9 +178,20 @@ public class SystemPropertiesUtils {
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
-    if (systemProperties.getProperty(TIME_PARTITION_INTERVAL, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(TIME_PARTITION_ORIGIN, null) != null) {
+      long timePartitionOrigin =
+          Long.parseLong(systemProperties.getProperty(TIME_PARTITION_ORIGIN));
+      if (timePartitionOrigin != COMMON_CONFIG.getTimePartitionOrigin()) {
+        LOGGER.warn(
+            format,
+            TIME_PARTITION_ORIGIN,
+            COMMON_CONFIG.getTimePartitionOrigin(),
+            timePartitionOrigin);
+        COMMON_CONFIG.setTimePartitionOrigin(timePartitionOrigin);
+      }
+    }
+
+    if (systemProperties.getProperty(TIME_PARTITION_INTERVAL, null) != null) {
       long timePartitionInterval =
           Long.parseLong(systemProperties.getProperty(TIME_PARTITION_INTERVAL));
       if (timePartitionInterval != COMMON_CONFIG.getTimePartitionInterval()) {
@@ -261,8 +238,6 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
-    systemProperties.setProperty("cluster_name", conf.getClusterName());
-    LOGGER.info("[SystemProperties] store cluster_name: {}", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
     LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
     systemProperties.setProperty(
@@ -289,6 +264,8 @@ public class SystemPropertiesUtils {
         SERIES_PARTITION_SLOT_NUM, String.valueOf(conf.getSeriesSlotNum()));
     systemProperties.setProperty(
         SERIES_PARTITION_EXECUTOR_CLASS, conf.getSeriesPartitionExecutorClass());
+    systemProperties.setProperty(
+        TIME_PARTITION_ORIGIN, String.valueOf(COMMON_CONFIG.getTimePartitionOrigin()));
     systemProperties.setProperty(
         TIME_PARTITION_INTERVAL, String.valueOf(COMMON_CONFIG.getTimePartitionInterval()));
     systemProperties.setProperty(TIMESTAMP_PRECISION, COMMON_CONFIG.getTimestampPrecision());
@@ -319,26 +296,6 @@ public class SystemPropertiesUtils {
     }
     systemPropertiesHandler.put(
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
-  }
-
-  /**
-   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
-   * restarted.
-   *
-   * @return The property of cluster_name in confignode-system.properties file
-   * @throws IOException When load confignode-system.properties file failed
-   */
-  public static String loadClusterNameWhenRestarted() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
-    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName == null) {
-      LOGGER.warn(
-          "Lack cluster_name field in "
-              + "data/confignode/system/confignode-system.properties, set it as defaultCluster");
-      systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
-      return systemProperties.getProperty(CLUSTER_NAME, null);
-    }
-    return clusterName;
   }
 
   /**

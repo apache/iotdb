@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Config;
@@ -160,6 +161,8 @@ public interface BaseEnv {
   void setTestMethodName(String testCaseName);
 
   void dumpTestJVMSnapshot();
+
+  List<AbstractNodeWrapper> getNodeWrapperList();
 
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 

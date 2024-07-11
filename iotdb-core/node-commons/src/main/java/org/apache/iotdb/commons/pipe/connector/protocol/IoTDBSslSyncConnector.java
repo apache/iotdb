@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
@@ -144,8 +145,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      final String pipeName,
-      final long creationTime,
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
       final File file,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
@@ -171,11 +171,13 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                   isMultiFile
                       ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
                       : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
-          rateLimitIfNeeded(
-              pipeName,
-              creationTime,
-              clientAndStatus.getLeft().getEndPoint(),
-              req.getBody().length);
+          pipe2WeightMap.forEach(
+              (namePair, weight) ->
+                  rateLimitIfNeeded(
+                      namePair.getLeft(),
+                      namePair.getRight(),
+                      clientAndStatus.getLeft().getEndPoint(),
+                      (long) (req.getBody().length * weight)));
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
                   clientAndStatus.getLeft().pipeTransfer(req));

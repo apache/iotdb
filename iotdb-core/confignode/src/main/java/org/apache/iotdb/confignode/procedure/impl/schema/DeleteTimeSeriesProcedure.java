@@ -145,7 +145,7 @@ public class DeleteTimeSeriesProcedure
     List<TSStatus> successResult = new ArrayList<>();
     DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
         new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
-            "construct schemaengine black list",
+            "construct schema engine black list",
             env,
             targetSchemaRegionGroup,
             CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
@@ -249,7 +249,7 @@ public class DeleteTimeSeriesProcedure
   private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
     DeleteTimeSeriesRegionTaskExecutor<TDeleteTimeSeriesReq> deleteTimeSeriesTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
-            "delete timeseries schemaengine",
+            "delete time series in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             CnToDnRequestType.DELETE_TIMESERIES,
@@ -286,7 +286,7 @@ public class DeleteTimeSeriesProcedure
     if (deleteTimeSeriesState == DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST) {
       DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
           new DeleteTimeSeriesRegionTaskExecutor<>(
-              "roll back schemaengine black list",
+              "roll back schema engine black list",
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
               CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
@@ -395,13 +395,13 @@ public class DeleteTimeSeriesProcedure
     DeleteTimeSeriesRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
         boolean executeOnAllReplicaset,
         CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,
-          targetSchemaRegionGroup,
+          targetDataRegionGroup,
           executeOnAllReplicaset,
           dataNodeRequestType,
           dataNodeRequestGenerator);
@@ -438,8 +438,12 @@ public class DeleteTimeSeriesProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete timeseries %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      "Delete time series %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      requestMessage,
+                      taskName,
+                      consensusGroupId.type,
+                      consensusGroupId.id,
+                      dataNodeLocationSet))));
       interruptTask();
     }
   }

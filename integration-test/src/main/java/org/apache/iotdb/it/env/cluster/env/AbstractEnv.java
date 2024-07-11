@@ -679,6 +679,13 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
+  }
+
+  @Override
   public List<ConfigNodeWrapper> getConfigNodeWrapperList() {
     return configNodeWrapperList;
   }
@@ -686,12 +693,6 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
-  }
-
-  public List<AbstractNodeWrapper> getNodeWrapperList() {
-    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
-    result.addAll(dataNodeWrapperList);
-    return result;
   }
 
   /**
