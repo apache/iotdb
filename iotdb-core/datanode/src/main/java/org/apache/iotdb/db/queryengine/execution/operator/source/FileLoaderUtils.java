@@ -50,6 +50,7 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
+import static org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils.DEBUG_LOGGER;
 
 public class FileLoaderUtils {
 
@@ -184,6 +185,12 @@ public class FileLoaderUtils {
               new MemAlignedChunkMetadataLoader(resource, alignedPath, context, globalTimeFilter));
           // mem's modification already done in generating chunkmetadata
         }
+        DEBUG_LOGGER.info(
+            "Get timeseries: {}.{}  metadata in file: {}  from memtable: {}.",
+            alignedPath.getDevice(),
+            alignedPath.getMeasurementList(),
+            resource,
+            alignedTimeSeriesMetadata);
       }
 
       if (alignedTimeSeriesMetadata != null) {
@@ -340,11 +347,18 @@ public class FileLoaderUtils {
    *     IOException will be thrown
    */
   public static List<IPageReader> loadPageReaderList(
-      IChunkMetadata chunkMetaData, Filter globalTimeFilter) throws IOException {
+      IChunkMetadata chunkMetaData, Filter globalTimeFilter, QueryContext context)
+      throws IOException {
     checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
-    return chunkReader.loadPageReaderList();
+
+    List<IPageReader> res = chunkReader.loadPageReaderList();
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info("get PageReaderList from {}, {}", chunkReader, res);
+    }
+
+    return res;
   }
 }

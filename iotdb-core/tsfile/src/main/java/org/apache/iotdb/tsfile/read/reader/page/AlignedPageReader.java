@@ -476,4 +476,24 @@ public class AlignedPageReader implements IPageReader {
       builder = new TsBlockBuilder((int) timePageReader.getStatistics().getCount(), dataTypes);
     }
   }
+
+  @Override
+  public String toString() {
+    return "AlignedPageReader{"
+        + "timePageReader="
+        + timePageReader
+        + ", valuePageReaderList="
+        + valuePageReaderList
+        + ", valueCount="
+        + valueCount
+        + ", globalTimeFilter="
+        + globalTimeFilter
+        + ", pushDownFilter="
+        + pushDownFilter
+        + ", paginationController="
+        + paginationController
+        + ", isModified="
+        + isModified
+        + '}';
+  }
 }

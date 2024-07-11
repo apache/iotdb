@@ -213,6 +213,9 @@ public class DistributionPlanner {
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
       setSinkForRootInstance(subPlan, fragmentInstances);
+      if (analysis.isDebug()) {
+        fragmentInstances.forEach(fragmentInstance -> fragmentInstance.setDebug(true));
+      }
     }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);

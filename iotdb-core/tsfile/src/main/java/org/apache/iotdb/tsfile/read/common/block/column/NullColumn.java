@@ -125,4 +125,9 @@ public class NullColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public String toString() {
+    return "NullColumn{" + "positionCount=" + positionCount + '}';
+  }
 }

@@ -235,7 +235,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(queryStatement.isDebug());
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
 
     try {

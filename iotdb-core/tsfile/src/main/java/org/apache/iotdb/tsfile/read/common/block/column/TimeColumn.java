@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
+
 import static io.airlift.slice.SizeOf.sizeOfLongArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
@@ -147,5 +149,17 @@ public class TimeColumn implements Column {
   @Override
   public int getInstanceSize() {
     return INSTANCE_SIZE;
+  }
+
+  @Override
+  public String toString() {
+    return "TimeColumn{"
+        + "arrayOffset="
+        + arrayOffset
+        + ", positionCount="
+        + positionCount
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
   }
 }

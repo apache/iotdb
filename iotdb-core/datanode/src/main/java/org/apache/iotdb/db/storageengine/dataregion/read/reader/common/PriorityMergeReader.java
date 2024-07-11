@@ -177,5 +177,10 @@ public class PriorityMergeReader implements IPointReader {
     public int hashCode() {
       return Objects.hash(version, offset);
     }
+
+    @Override
+    public String toString() {
+      return "MergeReaderPriority{" + "version=" + version + ", offset=" + offset + '}';
+    }
   }
 }

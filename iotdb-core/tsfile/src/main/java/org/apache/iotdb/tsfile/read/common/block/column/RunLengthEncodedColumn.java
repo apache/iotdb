@@ -214,4 +214,9 @@ public class RunLengthEncodedColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public String toString() {
+    return "RunLengthEncodedColumn{" + "value=" + value + ", positionCount=" + positionCount + '}';
+  }
 }

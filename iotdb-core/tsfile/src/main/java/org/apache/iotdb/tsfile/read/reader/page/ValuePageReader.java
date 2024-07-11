@@ -553,4 +553,22 @@ public class ValuePageReader {
   public byte[] getBitmap() {
     return Arrays.copyOf(bitmap, bitmap.length);
   }
+
+  @Override
+  public String toString() {
+    return "ValuePageReader{"
+        + "pageHeader="
+        + pageHeader
+        + ", dataType="
+        + dataType
+        + ", bitmap="
+        + Arrays.toString(bitmap)
+        + ", size="
+        + size
+        + ", deleteIntervalList="
+        + deleteIntervalList
+        + ", deleteCursor="
+        + deleteCursor
+        + '}';
+  }
 }

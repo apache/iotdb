@@ -149,6 +149,8 @@ public class FragmentInstanceManager {
                                 instance.getGlobalTimePredicate(),
                                 dataNodeQueryContextMap));
 
+                context.setDebug(instance.isDebug());
+
                 try {
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(
@@ -230,6 +232,8 @@ public class FragmentInstanceManager {
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
                               fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+
+              context.setDebug(instance.isDebug());
 
               try {
                 List<PipelineDriverFactory> driverFactories =

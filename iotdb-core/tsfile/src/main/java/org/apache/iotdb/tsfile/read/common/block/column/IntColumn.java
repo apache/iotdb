@@ -165,4 +165,18 @@ public class IntColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public String toString() {
+    return "IntColumn{"
+        + "arrayOffset="
+        + arrayOffset
+        + ", positionCount="
+        + positionCount
+        + ", valueIsNull="
+        + Arrays.toString(valueIsNull)
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
+  }
 }

@@ -213,4 +213,14 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   public TimeseriesMetadata getTimeseriesMetadata() {
     return timeseriesMetadata;
   }
+
+  @Override
+  public String toString() {
+    return "AlignedTimeSeriesMetadata{"
+        + "timeseriesMetadata="
+        + timeseriesMetadata
+        + ", valueTimeseriesMetadataList="
+        + valueTimeseriesMetadataList
+        + '}';
+  }
 }

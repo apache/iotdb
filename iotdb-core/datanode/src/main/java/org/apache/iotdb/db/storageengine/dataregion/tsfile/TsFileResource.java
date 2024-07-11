@@ -703,7 +703,7 @@ public class TsFileResource {
     if (startAndEndTime == null) {
       if (debug) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+            "Path: {} file {} is not satisfied because of no device!", deviceId, this);
       }
       return false;
     }
@@ -713,7 +713,7 @@ public class TsFileResource {
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
+        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", this);
       }
       return false;
     }
@@ -722,7 +722,7 @@ public class TsFileResource {
       boolean res = globalTimeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
+            "Path: {} file {} is not satisfied because of time filter!", deviceId, this);
       }
       return res;
     }
@@ -746,7 +746,7 @@ public class TsFileResource {
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
+        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", this);
       }
       return false;
     }
@@ -754,7 +754,7 @@ public class TsFileResource {
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
-        DEBUG_LOGGER.info("Path: file {} is not satisfied because of time filter!", fsFactory);
+        DEBUG_LOGGER.info("Path: file {} is not satisfied because of time filter!", this);
       }
       return res;
     }
@@ -766,7 +766,7 @@ public class TsFileResource {
     if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+            "Path: {} file {} is not satisfied because of no device!", deviceId, this);
       }
       return false;
     }
@@ -788,7 +788,7 @@ public class TsFileResource {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
+            "Path: {} file {} is not satisfied because of time filter!", deviceId, this);
       }
       return res;
     }

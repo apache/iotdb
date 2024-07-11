@@ -290,8 +290,19 @@ public class Analysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
+  private final boolean debug;
+
+  public Analysis(boolean debug) {
+    this.debug = debug;
+  }
+
   public Analysis() {
+    this.debug = false;
     this.finishQueryAfterAnalyze = false;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
