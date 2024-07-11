@@ -133,21 +133,18 @@ public class LogicalPlanner {
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
-    planOptimizers.forEach(
-        optimizer ->
-            optimizer.optimize(
-                planNode,
-                new PlanOptimizer.Context(
-                    sessionInfo,
-                    context.getTypeProvider(),
-                    symbolAllocator,
-                    context.getQueryId(),
-                    warningCollector,
-                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector())));
-
-    tablePlanOptimizers.forEach(
-        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
-
+    for (PlanOptimizer optimizer : planOptimizers) {
+      planNode =
+          optimizer.optimize(
+              planNode,
+              new PlanOptimizer.Context(
+                  sessionInfo,
+                  context.getTypeProvider(),
+                  symbolAllocator,
+                  context.getQueryId(),
+                  warningCollector,
+                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+    }
     return new LogicalQueryPlan(context, planNode);
   }
 

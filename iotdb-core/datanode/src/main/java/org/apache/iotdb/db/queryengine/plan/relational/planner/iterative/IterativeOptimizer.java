@@ -148,7 +148,7 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
     boolean progress = false;
 
     while (!done) {
-      // context.checkTimeoutNotExhausted();
+      context.checkTimeoutNotExhausted();
 
       done = true;
       Iterator<Rule<?>> possiblyMatchingRules = ruleIndex.getCandidates(node).iterator();

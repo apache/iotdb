@@ -69,8 +69,16 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
       return Optional.empty();
     }
 
-    node.setOutputSymbols(newOutputs);
-    node.setAssignments(newAssignments);
-    return Optional.of(node);
+    return Optional.of(
+        new TableScanNode(
+            node.getPlanNodeId(),
+            node.getQualifiedObjectName(),
+            newOutputs,
+            newAssignments,
+            node.getDeviceEntries(),
+            node.getIdAndAttributeIndexMap(),
+            node.getScanOrder(),
+            node.getTimePredicate().orElse(null),
+            node.getPushDownPredicate()));
   }
 }

@@ -85,7 +85,7 @@ final class Util {
 
   /**
    * @return The original node, with identity projections possibly inserted between node and each
-   *     child, limiting the columns to those permitted. Returns a present Optional iff at least one
+   *     child, limiting the columns to those permitted. Returns a present Optional if at least one
    *     child was rewritten.
    */
   @SafeVarargs
