@@ -618,7 +618,12 @@ struct TFetchFragmentInstanceStatisticsResp {
   14: optional i64 blockQueuedTime
   15: optional string ip
   16: optional string state
+  17: optional i64 alignedTimeSeriesMetadataModificationCount
+  18: optional i64 nonAlignedTimeSeriesMetadataModificationCount
+  19: optional i64 alignedTimeSeriesMetadataModificationTime
+  20: optional i64 nonAlignedTimeSeriesMetadataModificationTime
 }
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
