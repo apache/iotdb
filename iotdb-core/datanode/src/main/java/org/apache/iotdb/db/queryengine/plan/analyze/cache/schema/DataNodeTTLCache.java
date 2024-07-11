@@ -75,7 +75,6 @@ public class DataNodeTTLCache {
   }
 
   public long getTTL(IDeviceID deviceID) {
-    lock.readLock().lock();
     try {
       // TODO Tien change this way
       return getTTL(deviceID.toString());
