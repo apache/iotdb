@@ -30,7 +30,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionFakeExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHeartbeatExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
@@ -242,13 +241,13 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private void constructRealtimeExtractor(final PipeParameters parameters)
       throws IllegalPathException {
-    // Enable realtime extractor by default
+    // Use heartbeat only extractor if disable realtime extractor
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
-      realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
+      realtimeExtractor = new PipeRealtimeDataRegionHeartbeatExtractor();
       LOGGER.info(
-          "Pipe: '{}' is set to false, use fake realtime extractor.",
+          "Pipe: '{}' is set to false, use heartbeat realtime extractor.",
           EXTRACTOR_REALTIME_ENABLE_KEY);
       return;
     }
