@@ -681,6 +681,13 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getPageReadersDecodeNonAlignedDiskTime().get());
 
     SeriesScanCostMetricSet.getInstance()
+        .recordTimeSeriesMetadataModification(
+            getQueryStatistics().getAlignedTimeSeriesMetadataModificationCount().get(),
+            getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationCount().get(),
+            getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().get(),
+            getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .updatePageReaderMemoryUsage(getQueryStatistics().getPageReaderMaxUsedMemorySize().get());
   }
 

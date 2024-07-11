@@ -69,8 +69,8 @@ public class QueryStatistics {
   private final AtomicLong pageReadersDecodeNonAlignedMemCount = new AtomicLong(0);
   private final AtomicLong pageReadersDecodeNonAlignedMemTime = new AtomicLong(0);
 
-  private final AtomicLong timeSeriesMetadataModificationCount = new AtomicLong(0);
-  private final AtomicLong timeSeriesMetadataModificationTime = new AtomicLong(0);
+  private final AtomicLong nonAlignedTimeSeriesMetadataModificationCount = new AtomicLong(0);
+  private final AtomicLong nonAlignedTimeSeriesMetadataModificationTime = new AtomicLong(0);
   private final AtomicLong alignedTimeSeriesMetadataModificationCount = new AtomicLong(0);
   private final AtomicLong alignedTimeSeriesMetadataModificationTime = new AtomicLong(0);
 
@@ -205,12 +205,12 @@ public class QueryStatistics {
     return pageReadersDecodeNonAlignedMemTime;
   }
 
-  public AtomicLong getTimeSeriesMetadataModificationCount() {
-    return timeSeriesMetadataModificationCount;
+  public AtomicLong getNonAlignedTimeSeriesMetadataModificationCount() {
+    return nonAlignedTimeSeriesMetadataModificationCount;
   }
 
-  public AtomicLong getTimeSeriesMetadataModificationTime() {
-    return timeSeriesMetadataModificationTime;
+  public AtomicLong getNonAlignedTimeSeriesMetadataModificationTime() {
+    return nonAlignedTimeSeriesMetadataModificationTime;
   }
 
   public AtomicLong getAlignedTimeSeriesMetadataModificationCount() {

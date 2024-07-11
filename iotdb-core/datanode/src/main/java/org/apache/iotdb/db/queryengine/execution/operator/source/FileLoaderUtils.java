@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
 
@@ -107,13 +106,11 @@ public class FileLoaderUtils {
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
           long costTime = System.nanoTime() - t2;
-          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_NONALIGNED, costTime);
           context
               .getQueryStatistics()
-              .getTimeSeriesMetadataModificationCount()
+              .getNonAlignedTimeSeriesMetadataModificationCount()
               .getAndAdd(pathModifications.size());
-          context.getQueryStatistics().getTimeSeriesMetadataModificationTime().getAndAdd(costTime);
+          context.getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationTime().getAndAdd(costTime);
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -333,8 +330,6 @@ public class FileLoaderUtils {
     }
     alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
     long costTime = System.nanoTime() - startTime;
-    SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-        TIMESERIES_METADATA_MODIFICATION_NONALIGNED, costTime);
     context.getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().getAndAdd(costTime);
     return res;
   }
