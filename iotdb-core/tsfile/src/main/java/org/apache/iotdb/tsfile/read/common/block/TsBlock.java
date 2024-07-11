@@ -484,6 +484,11 @@ public class TsBlock {
       }
       return true;
     }
+
+    @Override
+    public String toString() {
+      return "TsBlockAlignedRowIterator{" + this + "}";
+    }
   }
 
   private long updateRetainedSize() {
