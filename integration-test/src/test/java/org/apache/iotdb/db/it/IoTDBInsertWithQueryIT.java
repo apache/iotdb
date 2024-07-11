@@ -162,6 +162,10 @@ public class IoTDBInsertWithQueryIT {
     selectAndCount(2001);
 
     negativeTimestampAggregationTest();
+
+    insertNegativeTimestampTypeData();
+
+    queryNegativeTimestampTypeDataTest();
   }
 
   @Test
@@ -421,6 +425,36 @@ public class IoTDBInsertWithQueryIT {
     } catch (SQLException e) {
       e.printStackTrace();
     }
+  }
+
+  private void insertNegativeTimestampTypeData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.fans.d0.s2 with datatype = timestamp");
+      statement.execute(
+          String.format(
+              "insert into root.fans.d0(time,s2) values(%s,%s)",
+              Long.MIN_VALUE + 1, Long.MIN_VALUE + 1));
+      statement.execute("insert into root.fans.d0(time,s2) values(-999999,-9999999)");
+      statement.execute(
+          "insert into root.fans.d0(time,s2) values(1900-01-01 10:00:00,1900-01-01 10:00:00)");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void queryNegativeTimestampTypeDataTest() {
+    String[] expectedHeader =
+        new String[] {
+          "Time", "root.fans.d0.s2",
+        };
+    String[] retArray =
+        new String[] {
+          "-9223372036854775807,-9223372036854775807,",
+          "-2208952800000,-2208952800000,",
+          "-999999,-9999999,"
+        };
+    resultSetEqualTest("SELECT s2 FROM root.fans.d0;", expectedHeader, retArray);
   }
 
   private void flush() {

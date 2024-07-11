@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -49,7 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
+class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
@@ -67,7 +65,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
-      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();

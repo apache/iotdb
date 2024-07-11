@@ -319,7 +319,8 @@ public class SetTemplateProcedure
                     new ProcedureException(
                         new MetadataException(
                             String.format(
-                                "Set template %s to %s failed when [check timeseries existence on DataNode] because all replicaset of schemaRegion %s failed. %s",
+                                "Set template %s to %s failed when [check time series existence on DataNode] because "
+                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failure nodes: %s",
                                 templateName,
                                 templateSetPath,
                                 consensusGroupId.id,
