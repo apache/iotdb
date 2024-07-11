@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -130,10 +131,12 @@ public class TsTable {
     }
   }
 
-  public String getPropValue(String propKey) {
+  public Optional<String> getPropValue(final String propKey) {
     readWriteLock.readLock().lock();
     try {
-      return props == null ? null : props.get(propKey);
+      return props != null && props.containsKey(propKey)
+          ? Optional.of(props.get(propKey))
+          : Optional.empty();
     } finally {
       readWriteLock.readLock().unlock();
     }

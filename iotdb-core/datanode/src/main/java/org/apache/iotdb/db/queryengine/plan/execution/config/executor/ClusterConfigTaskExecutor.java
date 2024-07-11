@@ -2806,7 +2806,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Database %s doesn't exists.", useDB.getDatabase().getValue()),
+                String.format("Unknown database '%s'", useDB.getDatabase().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (IOException | ClientManagerException | TException e) {
@@ -2960,9 +2960,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to show tables in database {} in config node, status is {}.",
             database,
             resp.getStatus());
-        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.setException(
+            new IoTDBException(
+                resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+                    ? String.format("Unknown database '%s'", database)
+                    : resp.getStatus().message,
+                resp.getStatus().code));
+        return future;
       }
       ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
     } catch (final Exception e) {

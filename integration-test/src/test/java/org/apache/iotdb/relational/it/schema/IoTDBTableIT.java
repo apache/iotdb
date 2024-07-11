@@ -177,7 +177,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("SHOW tables from test3");
       } catch (SQLException e) {
-        assertEquals("500: Database test3 doesn't exists.", e.getMessage());
+        assertEquals("500: Unknown database 'test3'", e.getMessage());
       }
 
       // describe
@@ -245,7 +245,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("SHOW tables from test1");
       } catch (SQLException e) {
-        assertEquals("500: Database test1 doesn't exists.", e.getMessage());
+        assertEquals("500: Unknown database 'test1'", e.getMessage());
       }
 
     } catch (SQLException e) {

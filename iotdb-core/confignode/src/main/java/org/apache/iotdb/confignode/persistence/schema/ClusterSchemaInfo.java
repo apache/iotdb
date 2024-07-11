@@ -97,6 +97,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
@@ -1086,7 +1087,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       tsTable ->
                           new TTableInfo(
                               tsTable.getTableName(),
-                              tsTable.getPropValue(COLUMN_TTL.toLowerCase(Locale.ENGLISH))))
+                              tsTable
+                                  .getPropValue(COLUMN_TTL.toLowerCase(Locale.ENGLISH))
+                                  .orElse(TTL_INFINITE)))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new TShowTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
