@@ -384,7 +384,7 @@ public class AlterLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Alter view %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
+                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
                       viewPathToSourceMap.keySet(),
                       taskName,
                       consensusGroupId.id,

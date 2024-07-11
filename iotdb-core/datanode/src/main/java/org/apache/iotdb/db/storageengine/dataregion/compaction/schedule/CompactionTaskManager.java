@@ -240,6 +240,14 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
+  public boolean shouldSelectCrossSpaceCompactionTask() {
+    // If the queue size accounts for less than 0.8 of the total capacity, select cross space
+    // compaction task
+    int waitingQueueRestSize =
+        candidateCompactionTaskQueue.getMaxSize() - candidateCompactionTaskQueue.size();
+    return 5 * waitingQueueRestSize >= candidateCompactionTaskQueue.size();
+  }
+
   public boolean isWaitingQueueFull() {
     return candidateCompactionTaskQueue.size() == candidateCompactionTaskQueue.getMaxSize();
   }

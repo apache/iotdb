@@ -152,6 +152,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
   }
 
+  public double getPipeTsFileScanParsingThreshold() {
+    return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -341,6 +345,7 @@ public class PipeConfig {
         getPipeRemainingTimeCommitAutoSwitchSeconds());
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

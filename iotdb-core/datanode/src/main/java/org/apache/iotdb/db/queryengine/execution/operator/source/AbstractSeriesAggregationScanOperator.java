@@ -94,7 +94,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.timeRangeIterator = timeRangeIterator;
 
     this.cachedRawDataSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
+        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
     this.outputEndTime = outputEndTime;
     this.canUseStatistics = canUseStatistics;

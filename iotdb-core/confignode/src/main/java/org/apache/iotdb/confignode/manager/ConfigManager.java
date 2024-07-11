@@ -539,7 +539,7 @@ public class ConfigManager implements IManager {
         CONF.getSchemaRegionConsensusProtocolClass());
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setTimePartitionOrigin(COMMON_CONF.getTimePartitionOrigin());
     clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
@@ -1255,10 +1255,6 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
 
-    if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
-      return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
-    }
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
@@ -1514,6 +1510,7 @@ public class ConfigManager implements IManager {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
       if (CONF.getConfigNodeId() == req.getNodeId()) {
         return tsStatus;
       }
@@ -1541,11 +1538,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus loadConfiguration() {
+  public TSStatus submitLoadConfigurationTask() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
+        ? RpcUtils.squashResponseStatusList(nodeManager.submitLoadConfigurationTask())
         : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    throw new UnsupportedOperationException("not implement yet");
   }
 
   @Override

@@ -31,7 +31,7 @@ import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
-import org.apache.iotdb.commons.client.request.Utils;
+import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
@@ -196,7 +196,7 @@ public class ClusterManager {
         new TSender()
             .setConfigNodeLocation(
                 ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
-    return Utils.testConnectionsImpl(
+    return TestConnectionUtils.testConnectionsImpl(
         configNodeLocations,
         sender,
         TConfigNodeLocation::getConfigNodeId,
@@ -205,8 +205,7 @@ public class ClusterManager {
         CnToCnNodeRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, CnToCnNodeRequestType, TConfigNodeLocation>
                 handler) ->
-            CnToCnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            CnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> badConfigNodeConnectionResult(
@@ -221,7 +220,7 @@ public class ClusterManager {
         new TSender()
             .setConfigNodeLocation(
                 ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
-    return Utils.testConnectionsImpl(
+    return TestConnectionUtils.testConnectionsImpl(
         dataNodeLocations,
         sender,
         TDataNodeLocation::getDataNodeId,
@@ -229,8 +228,7 @@ public class ClusterManager {
         TServiceType.DataNodeInternalService,
         CnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation> handler) ->
-            CnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> badDataNodeConnectionResult(

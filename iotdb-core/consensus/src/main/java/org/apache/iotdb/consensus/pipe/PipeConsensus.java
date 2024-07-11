@@ -434,6 +434,12 @@ public class PipeConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    PipeConsensusServerImpl impl = stateMachineMap.get(groupId);
+    return impl != null ? impl.getPeers().size() : 0;
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
   }

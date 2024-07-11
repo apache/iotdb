@@ -241,7 +241,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Tag.DATABASE.toString(),
             database,
             Tag.REGION.toString(),
-            dataRegionId);
+            dataRegionId,
+            Tag.TYPE.toString(),
+            Metric.MEMTABLE_POINT_COUNT.toString());
     if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
       MetricService.getInstance()
           .count(
@@ -253,7 +255,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.DATABASE.toString(),
               database,
               Tag.REGION.toString(),
-              dataRegionId);
+              dataRegionId,
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
     }
   }
 
@@ -293,7 +297,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Tag.DATABASE.toString(),
             database,
             Tag.REGION.toString(),
-            dataRegionId);
+            dataRegionId,
+            Tag.TYPE.toString(),
+            Metric.MEMTABLE_POINT_COUNT.toString());
     if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
       MetricService.getInstance()
           .count(
@@ -305,7 +311,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.DATABASE.toString(),
               database,
               Tag.REGION.toString(),
-              dataRegionId);
+              dataRegionId,
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
     }
   }
 
@@ -329,7 +337,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.DATABASE.toString(),
               database,
               Tag.REGION.toString(),
-              dataRegionId);
+              dataRegionId,
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
       if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
         MetricService.getInstance()
             .count(
@@ -341,7 +351,9 @@ public abstract class AbstractMemTable implements IMemTable {
                 Tag.DATABASE.toString(),
                 database,
                 Tag.REGION.toString(),
-                dataRegionId);
+                dataRegionId,
+                Tag.TYPE.toString(),
+                Metric.MEMTABLE_POINT_COUNT.toString());
       }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
@@ -368,7 +380,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.DATABASE.toString(),
               database,
               Tag.REGION.toString(),
-              dataRegionId);
+              dataRegionId,
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
       if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
         MetricService.getInstance()
             .count(
@@ -380,7 +394,9 @@ public abstract class AbstractMemTable implements IMemTable {
                 Tag.DATABASE.toString(),
                 database,
                 Tag.REGION.toString(),
-                dataRegionId);
+                dataRegionId,
+                Tag.TYPE.toString(),
+                Metric.MEMTABLE_POINT_COUNT.toString());
       }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);

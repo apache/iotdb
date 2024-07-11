@@ -37,6 +37,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ConfigurationFileUtils {
 
@@ -71,7 +74,7 @@ public class ConfigurationFileUtils {
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
           .toString();
-  ;
+  private static Map<String, String> configuration2DefaultValue;
 
   // This is a temporary implementations
   private static final Set<String> ignoreConfigKeys =
@@ -88,7 +91,6 @@ public class ConfigurationFileUtils {
               "dn_data_region_consensus_port",
               "dn_seed_config_node",
               "dn_session_timeout_threshold",
-              "cluster_name",
               "config_node_consensus_protocol_class",
               "schema_replication_factor",
               "data_replication_factor",
@@ -156,12 +158,60 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
+  public static void getConfigurationDefaultValue() throws IOException {
+    if (configuration2DefaultValue != null) {
+      return;
+    }
+    configuration2DefaultValue = new HashMap<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      String line;
+      Pattern pattern = Pattern.compile("^[^#].*?=.*$");
+      while ((line = reader.readLine()) != null) {
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+          String[] parts = line.split("=");
+          if (parts.length == 2) {
+            configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
+          } else if (parts.length == 1) {
+            configuration2DefaultValue.put(parts[0].trim(), null);
+          } else {
+            logger.error("Failed to parse configuration template: {}", line);
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+  }
+
+  // This function is used to get the default value for the configuration that enables hot
+  // modification.
+  public static String getConfigurationDefaultValue(String parameterName) throws IOException {
+    parameterName = parameterName.trim();
+    if (configuration2DefaultValue != null) {
+      return configuration2DefaultValue.get(parameterName);
+    } else {
+      getConfigurationDefaultValue();
+      return configuration2DefaultValue.getOrDefault(parameterName, null);
+    }
+  }
+
+  public static void releaseDefault() {
+    configuration2DefaultValue = null;
+  }
+
   public static String readConfigurationTemplateFile() throws IOException {
     StringBuilder content = new StringBuilder();
     try (InputStream inputStream =
             ConfigurationFileUtils.class
                 .getClassLoader()
-                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_NAME);
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
@@ -188,46 +238,46 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
-    // read configuration file
-    List<String> lines = new ArrayList<>();
-    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-      String line = null;
-      while ((line = reader.readLine()) != null) {
-        lines.add(line);
+    File lockFile = new File(file.getPath() + lockFileSuffix);
+    acquireTargetFileLock(lockFile);
+    try {
+      // read configuration file
+      List<String> lines = new ArrayList<>();
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+          lines.add(line);
+        }
       }
-    }
-    // generate new configuration file content in memory
-    StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
-    for (String currentLine : lines) {
-      if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
-        continue;
-      }
-      int equalsIndex = currentLine.indexOf('=');
-      // replace old config
-      if (equalsIndex != -1) {
-        String key = currentLine.substring(0, equalsIndex).trim();
-        String value = currentLine.substring(equalsIndex + 1).trim();
-        if (!newConfigItems.containsKey(key)) {
+      // generate new configuration file content in memory
+      StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
+      for (String currentLine : lines) {
+        if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
           contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
           continue;
         }
-        if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
-          newConfigItems.remove(key);
-        } else {
-          contentsOfNewConfigurationFile.append("#").append(currentLine).append(lineSeparator);
+        int equalsIndex = currentLine.indexOf('=');
+        // replace old config
+        if (equalsIndex != -1) {
+          String key = currentLine.substring(0, equalsIndex).trim();
+          String value = currentLine.substring(equalsIndex + 1).trim();
+          if (!newConfigItems.containsKey(key)) {
+            contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
+            continue;
+          }
+          if (newConfigItems.getProperty(key).equals(value)) {
+            contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
+            newConfigItems.remove(key);
+          } else {
+            contentsOfNewConfigurationFile.append("#").append(currentLine).append(lineSeparator);
+          }
         }
       }
-    }
-    if (newConfigItems.isEmpty()) {
-      // No configuration needs to be modified
-      return;
-    }
-    File lockFile = new File(file.getPath() + lockFileSuffix);
-    acquireTargetFileLock(lockFile);
-    logger.info("Updating configuration file {}", file.getAbsolutePath());
-    try {
+      if (newConfigItems.isEmpty()) {
+        // No configuration needs to be modified
+        return;
+      }
+      logger.info("Updating configuration file {}", file.getAbsolutePath());
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
         // Properties.store is not used as Properties.store may generate '\' automatically

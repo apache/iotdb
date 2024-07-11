@@ -251,11 +251,6 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public boolean isSyncFromLeaderWhenUsingIoTConsensus() {
-    return insertNode.isSyncFromLeaderWhenUsingIoTConsensus();
-  }
-
-  @Override
   public void markFailedMeasurement(int index) {
     insertNode.markFailedMeasurement(index);
   }

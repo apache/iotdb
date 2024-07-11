@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.TTL_PROPERTY;
 
 public class ShowTablesTask implements IConfigTask {
 
@@ -72,7 +72,7 @@ public class ShowTablesTask implements IConfigTask {
           .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
-          .writeLong(Long.parseLong(table.getPropValue(COLUMN_TTL.toLowerCase(Locale.ENGLISH))));
+          .writeLong(Long.parseLong(table.getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
       builder.declarePosition();
     }
 

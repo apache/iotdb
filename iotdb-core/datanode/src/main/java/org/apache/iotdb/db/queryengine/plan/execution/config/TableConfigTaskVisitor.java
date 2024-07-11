@@ -60,7 +60,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 
@@ -70,8 +69,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   private static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
 
+  public static final String TTL_PROPERTY = "TTL";
+
   static {
-    TABLE_ALLOWED_PROPERTIES.add(COLUMN_TTL.toLowerCase(Locale.ENGLISH));
+    TABLE_ALLOWED_PROPERTIES.add(TTL_PROPERTY.toLowerCase(Locale.ENGLISH));
   }
 
   private final IClientSession clientSession;

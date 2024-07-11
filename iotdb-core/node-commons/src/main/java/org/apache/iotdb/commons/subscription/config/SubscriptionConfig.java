@@ -35,12 +35,20 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTabletBatchMaxDelayInMs();
   }
 
-  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
-    return COMMON_CONFIG.getSubscriptionMaxTabletsSizeInBytesPerPrefetching();
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTsFileBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes();
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -59,7 +67,7 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public int getSubscriptionReadFileBufferSize() {
+  public long getSubscriptionReadFileBufferSize() {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
@@ -72,10 +80,17 @@ public class SubscriptionConfig {
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
-        "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+        "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
+        getSubscriptionPrefetchTabletBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionMaxTabletsSizeInBytesPerPrefetching: {}",
-        getSubscriptionMaxTabletsSizeInBytesPerPrefetching());
+        "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}",
+        getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}",
+        getSubscriptionPrefetchTsFileBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
+        getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());

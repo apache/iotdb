@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -70,7 +71,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
+  public void loadCommonProps(Properties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -93,7 +94,7 @@ public class CommonDescriptor {
     }
     tierTTLStr =
         properties
-            .getProperty("default_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
+            .getProperty("tier_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
             .split(IoTDBConstant.TIER_SEPARATOR);
     long[] tierTTL = new long[tierTTLStr.length];
     for (int i = 0; i < tierTTL.length; ++i) {
@@ -103,13 +104,6 @@ public class CommonDescriptor {
       }
     }
     config.setTierTTLInMs(tierTTL);
-
-    int ttlRuleCapacity =
-        Integer.parseInt(
-            properties.getProperty(
-                "ttl_rule_capacity", String.valueOf(config.getTTlRuleCapacity())));
-    ttlRuleCapacity = ttlRuleCapacity < 0 ? Integer.MAX_VALUE : ttlRuleCapacity;
-    config.setTTlRuleCapacity(ttlRuleCapacity);
 
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
@@ -227,6 +221,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
+
+    config.setTimePartitionOrigin(
+        Long.parseLong(
+            properties.getProperty(
+                "time_partition_origin", String.valueOf(config.getTimePartitionOrigin()))));
 
     config.setTimePartitionInterval(
         Long.parseLong(
@@ -559,6 +558,11 @@ public class CommonDescriptor {
                     "pipe_remaining_time_commit_rate_average_time",
                     String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
                 .trim()));
+    config.setPipeTsFileScanParsingThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_tsfile_scan_parsing_threshold",
+                String.valueOf(config.getPipeTsFileScanParsingThreshold()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(
@@ -591,16 +595,26 @@ public class CommonDescriptor {
     if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
       config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
     }
-    config.setSubscriptionMaxTabletsPerPrefetching(
+    config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_tablets_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
-    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+                "subscription_prefetch_tablet_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_prefetch_tablet_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxSizeInBytes()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_tablets_size_in_bytes_per_prefetching",
-                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
+                "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxDelayInMs()))));
+    config.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
@@ -622,28 +636,33 @@ public class CommonDescriptor {
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
     config.setSubscriptionReadFileBufferSize(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
   }
 
-  public void loadRetryProperties(Properties properties) {
+  public void loadRetryProperties(Properties properties) throws IOException {
     config.setRemoteWriteMaxRetryDurationInMs(
         Long.parseLong(
             properties.getProperty(
                 "write_request_remote_dispatch_max_retry_duration_in_ms",
-                String.valueOf(config.getRemoteWriteMaxRetryDurationInMs()))));
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "write_request_remote_dispatch_max_retry_duration_in_ms"))));
 
     config.setRetryForUnknownErrors(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_retry_for_unknown_error",
-                String.valueOf(config.isRetryForUnknownErrors()))));
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "enable_retry_for_unknown_error"))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setTimestampPrecision(globalConfig.timestampPrecision);
+    config.setTimePartitionOrigin(
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionOrigin, config.getTimestampPrecision()));
     config.setTimePartitionInterval(
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));
