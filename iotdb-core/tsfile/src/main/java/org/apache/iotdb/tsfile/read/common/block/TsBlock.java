@@ -330,6 +330,11 @@ public class TsBlock {
     public void setRowIndex(int rowIndex) {
       this.rowIndex = rowIndex;
     }
+
+    @Override
+    public String toString() {
+      return "TsBlockSingleColumnIterator{" + this + '}';
+    }
   }
 
   /** Mainly used for UDF framework. Note that the timestamps are at the last column. */

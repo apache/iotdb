@@ -78,12 +78,12 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @Override
   protected PriorityMergeReader getPriorityMergeReader() {
-    return new AlignedPriorityMergeReader();
+    return new AlignedPriorityMergeReader(context.isDebug());
   }
 
   @Override
   protected DescPriorityMergeReader getDescPriorityMergeReader() {
-    return new AlignedDescPriorityMergeReader();
+    return new AlignedDescPriorityMergeReader(context.isDebug());
   }
 
   @Override

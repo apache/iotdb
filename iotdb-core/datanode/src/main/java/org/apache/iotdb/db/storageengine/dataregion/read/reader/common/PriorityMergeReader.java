@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.PriorityQueue;
 
+import static org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils.DEBUG_LOGGER;
+
 /** This class implements {@link IPointReader} for data sources with different priorities. */
 @SuppressWarnings("ConstantConditions") // heap is ensured by hasNext non-empty
 public class PriorityMergeReader implements IPointReader {
@@ -39,7 +41,9 @@ public class PriorityMergeReader implements IPointReader {
 
   protected long usedMemorySize = 0;
 
-  public PriorityMergeReader() {
+  protected boolean debug;
+
+  public PriorityMergeReader(boolean debug) {
     heap =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -48,6 +52,7 @@ public class PriorityMergeReader implements IPointReader {
                       o1.getTimeValuePair().getTimestamp(), o2.getTimeValuePair().getTimestamp());
               return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
+    this.debug = debug;
   }
 
   @TestOnly
@@ -62,6 +67,13 @@ public class PriorityMergeReader implements IPointReader {
 
   public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
       throws IOException {
+    if (debug) {
+      DEBUG_LOGGER.info(
+          "IPointReader {} is added into MergeReader, MergeReaderPriority is {}, endTime is {} ",
+          reader,
+          priority,
+          endTime);
+    }
     if (reader.hasNextTimeValuePair()) {
       Element element = new Element(reader, reader.nextTimeValuePair(), priority);
       heap.add(element);

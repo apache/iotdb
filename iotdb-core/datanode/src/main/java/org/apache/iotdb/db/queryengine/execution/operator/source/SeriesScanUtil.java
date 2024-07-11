@@ -172,11 +172,11 @@ public class SeriesScanUtil {
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
-    return new PriorityMergeReader();
+    return new PriorityMergeReader(context.isDebug());
   }
 
   protected DescPriorityMergeReader getDescPriorityMergeReader() {
-    return new DescPriorityMergeReader();
+    return new DescPriorityMergeReader(context.isDebug());
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

@@ -23,6 +23,10 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 public class AlignedDescPriorityMergeReader extends DescPriorityMergeReader {
 
+  public AlignedDescPriorityMergeReader(boolean debug) {
+    super(debug);
+  }
+
   /**
    * In the case of aligned time seres, like d1.s1, d1.s2, d1.s3, we may first only write d1.s2,
    * d1.s3 (2, 3)and then flush it into one tsfile, and then an unseq record come, it contains only
