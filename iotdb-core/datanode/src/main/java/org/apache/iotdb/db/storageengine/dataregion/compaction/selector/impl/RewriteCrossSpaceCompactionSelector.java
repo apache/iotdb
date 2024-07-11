@@ -426,7 +426,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           TsFileResourceCandidate unseqFile = unseqFiles.get(i);
           // skip unseq file which is overlapped with files in seq space or overlapped with previous
           // unseq files
-          if (isValidInsertionCompactionCandidate(unseqFiles, i)) {
+          if (!isValidInsertionCompactionCandidate(unseqFiles, i)) {
             continue;
           }
           result = selectCurrentUnSeqFile(unseqFile);
