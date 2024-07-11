@@ -169,11 +169,11 @@ public abstract class SubscriptionPrefetchingQueue {
 
       if (event instanceof TabletInsertionEvent) {
         if (onEvent((TabletInsertionEvent) event)) {
-          break;
+          return;
         }
       } else if (event instanceof PipeTsFileInsertionEvent) {
         if (onEvent((PipeTsFileInsertionEvent) event)) {
-          break;
+          return;
         }
       } else {
         // TODO:
@@ -184,11 +184,10 @@ public abstract class SubscriptionPrefetchingQueue {
             "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
             this,
             event);
-        if (trySealBatch()) {
-          break;
-        }
       }
     }
+
+    trySealBatch();
   }
 
   /**
