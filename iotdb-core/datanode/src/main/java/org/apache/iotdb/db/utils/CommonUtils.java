@@ -93,7 +93,7 @@ public class CommonUtils {
           }
         case TIMESTAMP:
           try {
-            if (StringUtils.isNumeric(value)) {
+            if (TypeInferenceUtils.isNumber(value)) {
               return Long.parseLong(value);
             } else {
               return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
