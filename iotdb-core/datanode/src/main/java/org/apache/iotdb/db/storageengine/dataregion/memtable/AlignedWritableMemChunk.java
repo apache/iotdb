@@ -88,22 +88,22 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLong(long t, long v) {
+  public boolean putLongWithFlushCheck(long t, long v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putInt(long t, int v) {
+  public boolean putIntWithFlushCheck(long t, int v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putFloat(long t, float v) {
+  public boolean putFloatWithFlushCheck(long t, float v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putDouble(long t, double v) {
+  public boolean putDoubleWithFlushCheck(long t, double v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -113,33 +113,33 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBoolean(long t, boolean v) {
+  public boolean putBooleanWithFlushCheck(long t, boolean v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
   public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
     list.putAlignedValue(t, v);
-    return list.reachMaxChunkSizeThreshold();
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
+  public boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
+  public boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
+  public boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
+  public boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -150,7 +150,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+  public boolean putBooleansWithFlushCheck(
+      long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -158,7 +159,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
     list.putAlignedValues(t, v, bitMaps, start, end);
-    return list.reachMaxChunkSizeThreshold();
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
