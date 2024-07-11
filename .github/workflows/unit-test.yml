@@ -15,7 +15,7 @@ on:
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - 'rc/*'
       - pipe-meta-sync
     paths-ignore:
       - 'docs/**'

@@ -12,7 +12,7 @@ on:
   pull_request:
     branches:
       - master
-      - 'rel/1.*'
+      - 'rc/*'
       - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
