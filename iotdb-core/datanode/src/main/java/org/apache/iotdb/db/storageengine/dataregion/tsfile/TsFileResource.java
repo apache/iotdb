@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -160,7 +161,8 @@ public class TsFileResource {
 
   private ProgressIndex maxProgressIndex;
 
-  private boolean isInsertionCompactionTaskCandidate = true;
+  private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
+      InsertionCompactionCandidateStatus.NOT_CHECKED;
 
   @TestOnly
   public TsFileResource() {
@@ -1134,10 +1136,15 @@ public class TsFileResource {
   }
 
   public boolean isInsertionCompactionTaskCandidate() {
-    return !isSeq && isInsertionCompactionTaskCandidate;
+    return !isSeq
+        && insertionCompactionCandidateStatus != InsertionCompactionCandidateStatus.NOT_VALID;
   }
 
-  public void setInsertionCompactionTaskCandidate(boolean insertionCompactionTaskCandidate) {
-    isInsertionCompactionTaskCandidate = insertionCompactionTaskCandidate;
+  public InsertionCompactionCandidateStatus getInsertionCompactionCandidateStatus() {
+    return insertionCompactionCandidateStatus;
+  }
+
+  public void setInsertionCompactionTaskCandidate(InsertionCompactionCandidateStatus status) {
+    insertionCompactionCandidateStatus = status;
   }
 }
