@@ -333,7 +333,7 @@ public class TsBlock {
 
     @Override
     public String toString() {
-      return "TsBlockSingleColumnIterator{" + this + '}';
+      return "TsBlockSingleColumnIterator{" + TsBlock.super.toString() + '}';
     }
   }
 
@@ -487,7 +487,7 @@ public class TsBlock {
 
     @Override
     public String toString() {
-      return "TsBlockAlignedRowIterator{" + this + "}";
+      return "TsBlockAlignedRowIterator{" + TsBlock.super.toString() + "}";
     }
   }
 
