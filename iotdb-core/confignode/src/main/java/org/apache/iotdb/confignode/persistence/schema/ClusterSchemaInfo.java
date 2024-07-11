@@ -150,7 +150,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Set Database
       TDatabaseSchema databaseSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(databaseSchema.getName());
-      mTree.setStorageGroup(partialPathName);
+      mTree.setDatabase(partialPathName);
 
       // Set DatabaseSchema
       mTree
@@ -1068,13 +1068,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllUsingTablesUnderSpecificDatabase(databasePath);
+    } catch (final MetadataException e) {
+      return Collections.emptyList();
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree.getAllUsingTables();
-    } catch (MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      throw new RuntimeException(e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

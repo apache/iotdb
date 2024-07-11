@@ -57,6 +57,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,6 +67,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -109,7 +111,7 @@ public class ConfigMTree {
    *
    * @param path path
    */
-  public void setStorageGroup(final PartialPath path) throws MetadataException {
+  public void setDatabase(final PartialPath path) throws MetadataException {
     final String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -630,11 +632,12 @@ public class ConfigMTree {
 
   // region table management
 
-  public void preCreateTable(PartialPath database, TsTable table) throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    IConfigMNode node = databaseNode.getChild(table.getTableName());
+  public void preCreateTable(final PartialPath database, final TsTable table)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final IConfigMNode node = databaseNode.getChild(table.getTableName());
     if (node == null) {
-      ConfigTableNode tableNode =
+      final ConfigTableNode tableNode =
           (ConfigTableNode)
               databaseNode.addChild(
                   table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
@@ -648,41 +651,52 @@ public class ConfigMTree {
     }
   }
 
-  public void rollbackCreateTable(PartialPath database, String tableName) throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+  public void rollbackCreateTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     databaseNode.deleteChild(tableName);
   }
 
-  public void commitCreateTable(PartialPath database, String tableName) throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+  public void commitCreateTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
       throw new TableNotExistsException(
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
-    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
     if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
-  public Map<String, List<TsTable>> getAllUsingTables() throws MetadataException {
-    Map<String, List<TsTable>> result = new HashMap<>();
-    List<PartialPath> databaseList = getAllDatabasePaths();
-    for (PartialPath databasePath : databaseList) {
-      String database = databasePath.getFullPath().substring(ROOT.length() + 1);
-      IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
-      for (IConfigMNode child : databaseNode.getChildren().values()) {
-        if (child instanceof ConfigTableNode) {
-          ConfigTableNode tableNode = (ConfigTableNode) child;
-          if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
-            continue;
-          }
-          result.computeIfAbsent(database, k -> new ArrayList<>()).add(tableNode.getTable());
-        }
-      }
-    }
-    return result;
+  public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+    return databaseNode.getChildren().values().stream()
+        .filter(
+            child ->
+                child instanceof ConfigTableNode
+                    && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING))
+        .map(child -> ((ConfigTableNode) child).getTable())
+        .collect(Collectors.toList());
+  }
+
+  public Map<String, List<TsTable>> getAllUsingTables() {
+    return getAllDatabasePaths().stream()
+        .collect(
+            Collectors.toMap(
+                databasePath -> databasePath.getFullPath().substring(ROOT.length() + 1),
+                databasePath -> {
+                  try {
+                    return getAllUsingTablesUnderSpecificDatabase(databasePath);
+                  } catch (final MetadataException ignore) {
+                    // Database path must exist because the "getAllDatabasePaths()" is called in
+                    // databaseReadWriteLock.readLock().
+                  }
+                  return Collections.emptyList();
+                }));
   }
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
