@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDa
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionFakeExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHeartbeatExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionTsFileExtractor;
@@ -252,14 +253,15 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
 
+    // Use heartbeat only extractor if enable snapshot mode
     final String extractorModeValue =
         parameters.getStringOrDefault(
             Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
     if (extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE)
         || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)) {
-      realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
+      realtimeExtractor = new PipeRealtimeDataRegionHeartbeatExtractor();
       LOGGER.info(
-          "Pipe: '{}' is set to {}, use fake realtime extractor.",
+          "Pipe: '{}' is set to {}, use heartbeat realtime extractor.",
           EXTRACTOR_MODE_KEY,
           EXTRACTOR_MODE_SNAPSHOT_VALUE);
       return;

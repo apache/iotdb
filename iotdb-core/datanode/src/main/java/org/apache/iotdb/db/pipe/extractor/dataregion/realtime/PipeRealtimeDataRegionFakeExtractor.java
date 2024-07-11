@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -46,36 +45,12 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-
-    while (realtimeEvent != null) {
-      Event suppliedEvent = null;
-
-      // only supply PipeHeartbeatEvent
-      if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      }
-
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-    }
-
-    // means the pending queue is empty.
     return null;
   }
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
-    // only extract PipeHeartbeatEvent
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
-      extractHeartbeat(event);
-    }
+    // do nothing
   }
 
   @Override
@@ -86,6 +61,11 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
   @Override
   public boolean isNeedListenToInsertNode() {
     return false;
+  }
+
+  @Override
+  public void close() {
+    // do nothing
   }
 
   @Override
