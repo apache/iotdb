@@ -42,6 +42,12 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetTTL);
   }
 
+  public SetTTLPlan(long TTL, String... pathPatterns) {
+    super(ConfigPhysicalPlanType.SetTTL);
+    this.pathPattern = pathPatterns;
+    this.TTL = TTL;
+  }
+
   public SetTTLPlan(List<String> pathPattern, long TTL) {
     this();
     this.pathPattern = pathPattern.toArray(new String[0]);

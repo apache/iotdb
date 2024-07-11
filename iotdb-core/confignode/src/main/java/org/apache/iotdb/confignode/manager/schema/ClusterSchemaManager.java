@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +31,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
@@ -81,8 +79,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -101,6 +97,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -160,8 +157,8 @@ public class ClusterSchemaManager {
               "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
     }
 
+    createDatabaseLock.lock();
     try {
-      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
@@ -190,17 +187,9 @@ public class ClusterSchemaManager {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
-    } catch (MetadataException metadataException) {
+    } catch (final MetadataException metadataException) {
       // Reject if Database already set
-      if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      } else if (metadataException instanceof DatabaseAlreadySetException) {
-        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
-      } else if (metadataException instanceof SchemaQuotaExceededException) {
-        result = new TSStatus(TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
-      } else {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
+      result = new TSStatus(metadataException.getErrorCode());
       result.setMessage(metadataException.getMessage());
     } finally {
       createDatabaseLock.unlock();
@@ -368,6 +357,7 @@ public class ClusterSchemaManager {
       databaseInfo.setName(database);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
@@ -402,14 +392,11 @@ public class ClusterSchemaManager {
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        long ttl = getDatabaseSchemaByName(database).getTTL();
-        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+        final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
+        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
+        if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }
-        ttl =
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-        ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
         infoMap.put(database, ttl);
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);
@@ -1118,18 +1105,17 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTable(database, tableName);
   }
 
-  public synchronized Pair<TSStatus, List<TsTableColumnSchema>> tableColumnCheckForColumnExtension(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    Map<String, List<TsTable>> currentUsingTable = clusterSchemaInfo.getAllUsingTables();
-    TsTable targetTable = null;
-    for (TsTable table : currentUsingTable.get(database)) {
-      if (table.getTableName().equals(tableName)) {
-        targetTable = table;
-        break;
-      }
-    }
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final TsTable originalTable =
+        clusterSchemaInfo.getAllUsingTables().get(database).stream()
+            .filter(tsTable -> tsTable.getTableName().equals(tableName))
+            .findAny()
+            .orElse(null);
 
-    if (targetTable == null) {
+    if (Objects.isNull(originalTable)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
@@ -1137,15 +1123,18 @@ public class ClusterSchemaManager {
           null);
     }
 
-    List<TsTableColumnSchema> copiedList = new ArrayList<>();
-    for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      TsTableColumnSchema existingColumnSchema =
-          targetTable.getColumnSchema(columnSchema.getColumnName());
-      if (existingColumnSchema == null) {
-        copiedList.add(columnSchema);
-      }
-    }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, copiedList);
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+
+    columnSchemaList.removeIf(
+        columnSchema -> {
+          if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            expandedTable.addColumnSchema(columnSchema);
+            return false;
+          }
+          return true;
+        });
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
   public synchronized TSStatus addTableColumn(

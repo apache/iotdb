@@ -87,6 +87,10 @@ public class TableScanNode extends SourceNode {
   // push down offset for result set. The default value is 0
   private long pushDownOffset;
 
+  // pushLimitToEachDevice == true means that each device in TableScanNode need to return
+  // `pushDownLimit` row number
+  // pushLimitToEachDevice == false means that all devices in TableScanNode totally need to return
+  // `pushDownLimit` row number
   private boolean pushLimitToEachDevice = false;
 
   // The id of DataRegion where the node will run
@@ -379,12 +383,24 @@ public class TableScanNode extends SourceNode {
     return this.pushDownLimit;
   }
 
+  public void setPushDownLimit(long pushDownLimit) {
+    this.pushDownLimit = pushDownLimit;
+  }
+
   public long getPushDownOffset() {
     return this.pushDownOffset;
   }
 
+  public void setPushDownOffset(long pushDownOffset) {
+    this.pushDownOffset = pushDownOffset;
+  }
+
   public Expression getPushDownPredicate() {
     return this.pushDownPredicate;
+  }
+
+  public void setPushLimitToEachDevice(boolean pushLimitToEachDevice) {
+    this.pushLimitToEachDevice = pushLimitToEachDevice;
   }
 
   public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {

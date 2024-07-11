@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -261,7 +260,6 @@ public class LogicalPlanner {
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
-    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
     TableDeviceFetchNode fetchNode =
         new TableDeviceFetchNode(
             context.getQueryId().genPlanNodeId(),
@@ -270,7 +268,6 @@ public class LogicalPlanner {
             statement.getDeviceIdList(),
             columnHeaderList,
             null);
-    mergeNode.addChild(fetchNode);
 
     SchemaPartition schemaPartition =
         metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList());
@@ -280,7 +277,7 @@ public class LogicalPlanner {
       analysis.setFinishQueryAfterAnalyze();
     }
 
-    return mergeNode;
+    return fetchNode;
   }
 
   private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
@@ -289,7 +286,6 @@ public class LogicalPlanner {
     List<ColumnHeader> columnHeaderList =
         getColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
-    SchemaQueryMergeNode mergeNode = new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId());
     TableDeviceQueryNode queryNode =
         new TableDeviceQueryNode(
             context.getQueryId().genPlanNodeId(),
@@ -299,7 +295,6 @@ public class LogicalPlanner {
             statement.getIdFuzzyPredicate(),
             columnHeaderList,
             null);
-    mergeNode.addChild(queryNode);
 
     SchemaPartition schemaPartition =
         statement.isIdDetermined()
@@ -311,7 +306,7 @@ public class LogicalPlanner {
       analysis.setFinishQueryAfterAnalyze();
     }
 
-    return mergeNode;
+    return queryNode;
   }
 
   private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {

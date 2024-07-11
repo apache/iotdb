@@ -173,7 +173,8 @@ public class SessionConnectionTest {
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
             SessionConfig.RETRY_INTERVAL_IN_MS,
-            "tree");
+            "tree",
+            null);
   }
 
   @Test(expected = IoTDBConnectionException.class)
@@ -194,7 +195,8 @@ public class SessionConnectionTest {
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
             SessionConfig.RETRY_INTERVAL_IN_MS,
-            "tree");
+            "tree",
+            null);
   }
 
   @Test

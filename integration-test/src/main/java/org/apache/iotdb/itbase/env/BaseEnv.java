@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Config;
@@ -161,6 +162,8 @@ public interface BaseEnv {
 
   void dumpTestJVMSnapshot();
 
+  List<AbstractNodeWrapper> getNodeWrapperList();
+
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
   List<DataNodeWrapper> getDataNodeWrapperList();
@@ -174,11 +177,16 @@ public interface BaseEnv {
 
   ISessionPool getSessionPool(int maxSize, String sqlDialect);
 
+  ISessionPool getSessionPool(int maxSize, String sqlDialect, String database);
+
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(TREE_SQL_DIALECT);
   }
 
   ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException;
+
+  ISession getSessionConnectionWithDB(String sqlDialect, String database)
+      throws IoTDBConnectionException;
 
   default ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException {

@@ -112,8 +112,8 @@ public class ConfigNodeInfo {
   public void loadConfigNodeList() {
     long startTime = System.currentTimeMillis();
     // properties contain CONFIG_NODE_LIST only when start as Data node
+    configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      configNodeInfoReadWriteLock.writeLock().lock();
       Properties properties = systemPropertiesHandler.read();
 
       if (properties.containsKey(CONFIG_NODE_LIST)) {

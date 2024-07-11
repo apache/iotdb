@@ -1182,7 +1182,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.loadConfiguration();
+        tsStatus = client.submitLoadConfigurationTask();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
@@ -2828,14 +2828,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = client.deleteDatabases(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+        if (dropDB.isExists()) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          LOGGER.info(
+              "Failed to DROP DATABASE {}, because it doesn't exist",
+              dropDB.getDbName().getValue());
+          future.setException(
+              new IoTDBException(
+                  String.format("Database %s doesn't exist", dropDB.getDbName().getValue()),
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+        }
+      } else {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
             dropDB.getDbName().getValue(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.getCode()));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -2853,22 +2865,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
-      // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        // If database already exists when loading, we do not throw exceptions to avoid printing too
-        // many logs
-        if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
-            && createDB.isSetIfNotExists()) {
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+        if (createDB.isSetIfNotExists()) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
-          LOGGER.warn(
-              "Failed to execute create database {} in config node, status is {}.",
-              createDB.getDbName(),
-              tsStatus);
-          future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+          LOGGER.info(
+              "Failed to CREATE DATABASE {}, because it already exists", createDB.getDbName());
+          future.setException(
+              new IoTDBException(
+                  String.format("Database %s already exists", createDB.getDbName()),
+                  TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        LOGGER.warn(
+            "Failed to execute create database {} in config node, status is {}.",
+            createDB.getDbName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
     } catch (ClientManagerException | TException e) {
       future.setException(e);

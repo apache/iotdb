@@ -94,7 +94,8 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
-    return broker.commit(commitContexts, nack);
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.commit(consumerId, commitContexts, nack);
   }
 
   /////////////////////////////// broker ///////////////////////////////

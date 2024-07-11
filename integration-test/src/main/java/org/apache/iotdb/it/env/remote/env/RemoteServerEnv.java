@@ -30,6 +30,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.env.remote.config.RemoteClusterConfig;
@@ -181,6 +182,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    return null;
+  }
+
+  @Override
   public List<ConfigNodeWrapper> getConfigNodeWrapperList() {
     return null;
   }
@@ -217,12 +223,48 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
+    return new SessionPool.Builder()
+        .host(SessionConfig.DEFAULT_HOST)
+        .port(SessionConfig.DEFAULT_PORT)
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .waitToGetSessionTimeoutInMs(60_000)
+        .enableCompression(false)
+        .zoneId(null)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
+        .version(SessionConfig.DEFAULT_VERSION)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .sqlDialect(sqlDialect)
+        .database(database)
+        .build();
+  }
+
+  @Override
   public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
     Session session =
         new Session.Builder()
             .host(ip_addr)
             .port(Integer.parseInt(port))
             .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder()
+            .host(ip_addr)
+            .port(Integer.parseInt(port))
+            .sqlDialect(sqlDialect)
+            .database(database)
             .build();
     session.open();
     return session;

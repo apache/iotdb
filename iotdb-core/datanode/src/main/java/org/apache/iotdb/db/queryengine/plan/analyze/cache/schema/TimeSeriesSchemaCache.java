@@ -415,7 +415,7 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public int updateValue(int index, SchemaCacheEntry value) {
-              return DataNodeLastCacheManager.invalidateLastCache(value);
+              return -DataNodeLastCacheManager.invalidateLastCache(value);
             }
           });
     } else {

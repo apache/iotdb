@@ -120,6 +120,7 @@ PARAMS="-s $PARAMS"
 #initEnv is in iotdb-common.sh
 initConfigNodeEnv
 
+CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS $IOTDB_HEAP_DUMP_COMMAND"
 
 CLASSPATH=""
 for f in "${CONFIGNODE_HOME}"/lib/*.jar; do

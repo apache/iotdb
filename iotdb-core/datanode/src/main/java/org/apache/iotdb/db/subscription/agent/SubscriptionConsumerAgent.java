@@ -199,7 +199,7 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  public Set<String> getTopicsSubscribedByConsumer(
+  public Set<String> getTopicNamesSubscribedByConsumer(
       final String consumerGroupId, final String consumerId) {
     acquireReadLock();
     try {

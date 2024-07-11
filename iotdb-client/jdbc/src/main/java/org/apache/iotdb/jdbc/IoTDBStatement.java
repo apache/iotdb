@@ -321,6 +321,10 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
+    if (execResp.isSetDatabase()) {
+      connection.changeDefaultDatabase(execResp.getDatabase());
+    }
+
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryResult == null) {

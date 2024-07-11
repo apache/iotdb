@@ -137,9 +137,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
   }
 
   public Analysis analyzeFileByFile() {
-    context.setQueryType(QueryType.WRITE);
-
-    Analysis analysis = new Analysis();
+    final Analysis analysis = new Analysis();
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
@@ -514,7 +512,12 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
                   schemaFetcher,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+          // In tree model, if the user creates a conflict database concurrently, for instance, the
+          // database created by user is root.db.ss.a, the auto-creation failed database is root.db,
+          // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /
+          // root.db.ss.a) conflicts with the created database. just do not throw exception here.
+          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
         LOGGER.warn(
             "Create database error, statement: {}, result status is: {}", statement, result.status);
         throw new LoadFileException(

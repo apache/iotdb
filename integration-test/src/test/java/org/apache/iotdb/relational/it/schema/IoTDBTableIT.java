@@ -129,7 +129,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -150,7 +150,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -167,7 +167,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getInt(2));
+          assertEquals(ttls[cnt], resultSet.getLong(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -238,6 +238,14 @@ public class IoTDBTableIT {
         statement.executeQuery("describe test3.table3");
       } catch (SQLException e) {
         assertEquals("550: Table test3.table3 not exists.", e.getMessage());
+      }
+
+      statement.execute("drop database test1");
+
+      try {
+        statement.executeQuery("SHOW tables from test1");
+      } catch (SQLException e) {
+        assertEquals("500: Database test1 doesn't exists.", e.getMessage());
       }
 
     } catch (SQLException e) {

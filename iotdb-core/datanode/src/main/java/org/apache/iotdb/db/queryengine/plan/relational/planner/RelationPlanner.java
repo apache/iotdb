@@ -125,16 +125,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
     }
 
+    QualifiedObjectName qualifiedObjectName =
+        new QualifiedObjectName(
+            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
+            qualifiedName.getSuffix());
+    Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
+    analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
     TableScanNode tableScanNode =
         new TableScanNode(
             idAllocator.genPlanNodeId(),
-            new QualifiedObjectName(
-                qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-                qualifiedName.getSuffix()),
+            qualifiedObjectName,
             outputSymbols,
-            symbolToColumnSchema.build(),
+            tableColumnSchema,
             idAndAttributeIndexMap);
-
     return new RelationPlan(tableScanNode, scope, outputSymbols);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
@@ -156,13 +159,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
   }
 
-  // ================================ Implemented later =====================================
   @Override
   protected RelationPlan visitTableSubquery(TableSubquery node, Void context) {
     RelationPlan plan = process(node.getQuery(), context);
     // TODO transmit outerContext
     return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
   }
+
+  // ================================ Implemented later =====================================
 
   @Override
   protected RelationPlan visitValues(Values node, Void context) {

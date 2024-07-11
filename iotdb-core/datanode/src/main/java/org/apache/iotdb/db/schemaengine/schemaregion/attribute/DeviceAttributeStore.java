@@ -123,9 +123,11 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
-      value = valueList[i] == null ? null : valueList[i].toString();
-      attributeMap.put(nameList.get(i), value);
-      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+      value = valueList[i] == null ? null : (String) valueList[i];
+      if (value != null) {
+        attributeMap.put(nameList.get(i), value);
+        memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+      }
     }
     deviceAttributeList.add(attributeMap);
     requestMemory(memUsage);
@@ -142,15 +144,17 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     String value;
     for (int i = 0; i < nameList.size(); i++) {
       String key = nameList.get(i);
-      originMemUsage =
-          attributeMap.containsKey(key)
-              ? 0
-              : MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key));
+      value = valueList[i] == null ? null : (String) valueList[i];
+      if (value != null) {
+        originMemUsage =
+            attributeMap.containsKey(key)
+                ? 0
+                : MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key));
 
-      value = valueList[i] == null ? null : valueList[i].toString();
-      attributeMap.put(key, value);
-      updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
-      memUsageDelta += updatedMemUsage - originMemUsage;
+        attributeMap.put(key, value);
+        updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
+        memUsageDelta += (updatedMemUsage - originMemUsage);
+      }
     }
     requestMemory(memUsageDelta);
   }
