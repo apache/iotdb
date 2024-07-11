@@ -139,9 +139,9 @@ public class PlanBuilder {
       }
     }
 
-    if (mappings.isEmpty()) {
+    /*if (mappings.isEmpty()) {
       return this;
-    }
+    }*/
 
     return new PlanBuilder(
         getTranslations().withAdditionalMappings(mappings),

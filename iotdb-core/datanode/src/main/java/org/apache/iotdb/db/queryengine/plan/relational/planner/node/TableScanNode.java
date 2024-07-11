@@ -49,7 +49,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class TableScanNode extends SourceNode {
 
   private final QualifiedObjectName qualifiedObjectName;
+  // Indicate the column this node need to output
   private List<Symbol> outputSymbols;
+  // Indicate the column this node need to fetch from StorageEngine,
+  // the number of fetched columns may be more than output columns when there are predicates push
+  // down.
   private Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;

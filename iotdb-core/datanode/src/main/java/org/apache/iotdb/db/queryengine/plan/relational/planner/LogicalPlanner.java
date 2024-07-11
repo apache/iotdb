@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
@@ -96,8 +98,10 @@ public class LogicalPlanner {
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     Set<Rule<?>> rules =
         ImmutableSet.of(
-            new PruneOutputSourceColumns(),
             new PruneFilterColumns(),
+            new PruneLimitColumns(),
+            new PruneOffsetColumns(),
+            new PruneOutputSourceColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableScanColumns(metadata));
@@ -111,8 +115,8 @@ public class LogicalPlanner {
         Arrays.asList(
             new SimplifyExpressions(),
             // new PruneUnUsedColumns(),
-            new PushPredicateIntoTableScan(),
-            new RemoveRedundantIdentityProjections());
+            new RemoveRedundantIdentityProjections(),
+            new PushPredicateIntoTableScan());
   }
 
   @TestOnly
@@ -133,6 +137,11 @@ public class LogicalPlanner {
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
+    // TODO remove after all optimizer rewritten as Trino-like
+    for (TablePlanOptimizer optimizer : tablePlanOptimizers) {
+      planNode = optimizer.optimize(planNode, analysis, metadata, sessionInfo, context);
+    }
+
     for (PlanOptimizer optimizer : planOptimizers) {
       planNode =
           optimizer.optimize(
@@ -145,6 +154,10 @@ public class LogicalPlanner {
                   warningCollector,
                   PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
     }
+
+    // TODO remove after introduce InlineProjections and RemoveRedundantIdentityProjections
+    planNode =
+        tablePlanOptimizers.get(1).optimize(planNode, analysis, metadata, sessionInfo, context);
     return new LogicalQueryPlan(context, planNode);
   }
 

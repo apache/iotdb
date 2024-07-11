@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
@@ -29,7 +30,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.tableScan;
 
 /** This is a special case of PushProjectionIntoTableScan that performs only column pruning. */
@@ -60,7 +60,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
     List<Symbol> newOutputs = new ArrayList<>();
     Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
     for (Symbol symbol : node.getOutputSymbols()) {
-      if (TIME.equalsIgnoreCase(symbol.getName()) || referencedOutputs.contains(symbol)) {
+      if (referencedOutputs.contains(symbol)) {
         newOutputs.add(symbol);
         newAssignments.put(symbol, node.getAssignments().get(symbol));
       }
@@ -68,6 +68,20 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
     if (newOutputs.size() == node.getOutputSymbols().size()) {
       return Optional.empty();
     }
+
+    // add entry in PushDownPredicate
+    if (node.getPushDownPredicate() != null) {
+      SymbolsExtractor.extractUnique(node.getPushDownPredicate())
+          .forEach(symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol)));
+    }
+
+    // add time entry if TimePredicate exists
+    node.getTimePredicate()
+        .ifPresent(
+            timePredicate -> {
+              Symbol time = Symbol.of("time");
+              newAssignments.put(time, node.getAssignments().get(time));
+            });
 
     return Optional.of(
         new TableScanNode(

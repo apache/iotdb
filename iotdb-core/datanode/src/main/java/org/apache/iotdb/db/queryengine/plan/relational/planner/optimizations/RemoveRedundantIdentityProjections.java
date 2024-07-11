@@ -54,8 +54,7 @@ public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
     @Override
     public PlanNode visitProject(ProjectNode projectNode, RewriterContext context) {
       // TODO change the impl using the method of context.getParent()
-      if (projectNode.getChild() instanceof ProjectNode
-          && projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
+      if (projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
         if (context.getParent() instanceof SingleChildProcessNode) {
           ((SingleChildProcessNode) context.getParent()).setChild(projectNode.getChild());
         } else {
