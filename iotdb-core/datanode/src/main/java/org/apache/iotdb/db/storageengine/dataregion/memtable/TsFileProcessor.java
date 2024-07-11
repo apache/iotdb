@@ -1003,7 +1003,8 @@ public class TsFileProcessor {
       return true;
     }
     if (workMemTable.reachChunkSizeOrPointNumThreshold()) {
-      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+      WritingMetrics.getInstance()
+          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
       return true;
     }
     return false;
