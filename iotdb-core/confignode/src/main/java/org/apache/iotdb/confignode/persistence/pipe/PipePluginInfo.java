@@ -100,13 +100,6 @@ public class PipePluginInfo implements SnapshotProcessor {
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
-
-    if (pipePluginMetaKeeper.jarNameExistsAndMatchesMd5(jarName, jarMD5)) {
-      throw new PipeException(
-          String.format(
-              "Failed to create PipePlugin [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              pluginName, jarName, jarMD5));
-    }
   }
 
   public void validateBeforeDroppingPipePlugin(final String pluginName) {
