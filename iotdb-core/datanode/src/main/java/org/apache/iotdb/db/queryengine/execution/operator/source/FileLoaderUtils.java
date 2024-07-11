@@ -110,7 +110,10 @@ public class FileLoaderUtils {
               .getQueryStatistics()
               .getNonAlignedTimeSeriesMetadataModificationCount()
               .getAndAdd(pathModifications.size());
-          context.getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationTime().getAndAdd(costTime);
+          context
+              .getQueryStatistics()
+              .getNonAlignedTimeSeriesMetadataModificationTime()
+              .getAndAdd(costTime);
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
