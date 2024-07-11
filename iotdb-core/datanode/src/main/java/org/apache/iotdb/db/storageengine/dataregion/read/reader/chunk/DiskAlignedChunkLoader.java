@@ -109,8 +109,8 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       return chunkReader;
     } finally {
       long time = System.nanoTime() - t1;
-      context.getQueryStatistics().constructAlignedChunkReadersDiskCount.getAndAdd(1);
-      context.getQueryStatistics().constructAlignedChunkReadersDiskTime.getAndAdd(time);
+      context.getQueryStatistics().getConstructAlignedChunkReadersDiskCount().getAndAdd(1);
+      context.getQueryStatistics().getConstructAlignedChunkReadersDiskTime().getAndAdd(time);
     }
   }
 }
