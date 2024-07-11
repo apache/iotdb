@@ -1212,13 +1212,15 @@ public class SeriesScanUtil {
         if (!ascending) {
           tsBlock.reverse();
         }
-        DEBUG_LOGGER.info(
-            "TsBlock from version {} is {}, isSeq: {}, isAligned: {}, isMem: {}",
-            version,
-            tsBlock,
-            isSeq,
-            isAligned,
-            isMem);
+        if (context.isDebug()) {
+          DEBUG_LOGGER.info(
+              "TsBlock from version {} is {}, isSeq: {}, isAligned: {}, isMem: {}",
+              version,
+              tsBlock,
+              isSeq,
+              isAligned,
+              isMem);
+        }
         return tsBlock;
       } finally {
         long time = System.nanoTime() - startTime;

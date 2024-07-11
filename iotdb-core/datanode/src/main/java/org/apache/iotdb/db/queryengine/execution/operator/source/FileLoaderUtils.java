@@ -187,12 +187,14 @@ public class FileLoaderUtils {
               new MemAlignedChunkMetadataLoader(resource, alignedPath, context, globalTimeFilter));
           // mem's modification already done in generating chunkmetadata
         }
-        DEBUG_LOGGER.info(
-            "Get timeseries: {}.{}  metadata in file: {}  from memtable: {}.",
-            alignedPath.getDevice(),
-            alignedPath.getMeasurementList(),
-            resource,
-            alignedTimeSeriesMetadata);
+        if (context.isDebug()) {
+          DEBUG_LOGGER.info(
+              "Get timeseries: {}.{}  metadata in file: {}  from memtable: {}.",
+              alignedPath.getDevice(),
+              alignedPath.getMeasurementList(),
+              resource,
+              alignedTimeSeriesMetadata);
+        }
       }
 
       if (alignedTimeSeriesMetadata != null) {
