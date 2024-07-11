@@ -122,6 +122,13 @@ public abstract class InsertBaseStatement extends Statement {
     this.measurementSchemas = measurementSchemas;
   }
 
+  public void setMeasurementSchema(MeasurementSchema measurementSchema, int i) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    measurementSchemas[i] = measurementSchema;
+  }
+
   public boolean isAligned() {
     return isAligned;
   }

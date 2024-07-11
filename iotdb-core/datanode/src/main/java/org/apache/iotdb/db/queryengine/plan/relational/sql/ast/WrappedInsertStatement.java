@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+
+import java.util.Arrays;
+import java.util.Collections;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -29,12 +35,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 public abstract class WrappedInsertStatement extends WrappedStatement
     implements ITableDeviceSchemaValidation {
@@ -93,7 +103,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   /**
-   * Adjust the order of ID columns in this insertion to be consistent with that from the schema region.
+   * Adjust the order of ID columns in this insertion to be consistent with that from the schema
+   * region.
+   *
    * @param realColumnSchemas column order from the schema region
    */
   public void adjustIdColumns(List<ColumnSchema> realColumnSchemas) {
@@ -154,5 +166,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
               "Inconsistent column category of column %s: %s/%s",
               incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
     }
+    TSDataType tsDataType = InternalTypeManager.getTSDataType(
+        real.getType());
+    MeasurementSchema measurementSchema = new MeasurementSchema(real.getName(), tsDataType,
+        getDefaultEncoding(tsDataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+    innerTreeStatement.setMeasurementSchema(measurementSchema, i);
   }
 }

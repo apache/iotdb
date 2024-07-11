@@ -15,6 +15,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -56,7 +57,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
@@ -414,7 +414,7 @@ public class DistributedPlanGenerator
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
 
     String database = ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
-    database = CommonUtils.qualifyDatabaseName(database);
+    database = PathUtils.qualifyDatabaseName(database);
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()

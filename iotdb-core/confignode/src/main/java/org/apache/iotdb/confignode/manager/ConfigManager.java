@@ -701,10 +701,10 @@ public class ConfigManager implements IManager {
   @Override
   public TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree) {
     // Construct empty response
-    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
@@ -737,21 +737,9 @@ public class ConfigManager implements IManager {
       }
     }
 
-    // Return empty resp if the partitionSlotsMap is empty
-    if (partitionSlotsMap.isEmpty()) {
-      return resp.setStatus(StatusUtils.OK).setSchemaPartitionTable(new HashMap<>());
-    }
-
-    GetSchemaPartitionPlan getSchemaPartitionPlan =
-        new GetSchemaPartitionPlan(
-            partitionSlotsMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
-    resp = queryResult.convertToRpcSchemaPartitionTableResp();
-
-    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
-
-    return resp;
+    Map<String, List<TSeriesPartitionSlot>> databaseSlotMap = new HashMap<>();
+    partitionSlotsMap.forEach((db, slots) -> databaseSlotMap.put(db, new ArrayList<>(slots)));
+    return  getSchemaPartition(databaseSlotMap);
   }
 
   @Override
@@ -778,11 +766,11 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    // Construct empty response
-    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Construct empty response
+      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
@@ -790,40 +778,44 @@ public class ConfigManager implements IManager {
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     for (IDeviceID deviceID : devicePaths) {
       for (String database : databases) {
         if (PathUtils.isStartWith(deviceID, database)) {
           partitionSlotsMap
-              .computeIfAbsent(database, key -> new ArrayList<>())
+              .computeIfAbsent(database, key -> new HashSet<>())
               .add(getPartitionManager().getSeriesPartitionSlot(deviceID));
           break;
         }
       }
     }
+
+    Map<String, List<TSeriesPartitionSlot>> partitionSlotListMap = new HashMap<>();
+    partitionSlotsMap.forEach((db, slots) -> partitionSlotListMap.put(db, new ArrayList<>(slots)));
+    return getOrCreateSchemaPartition(partitionSlotListMap);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp;
     GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
-        new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
+        new GetOrCreateSchemaPartitionPlan(dbSlotMap);
 
     SchemaPartitionResp queryResult =
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     if (CONF.isEnablePrintingNewlyCreatedPartition()) {
-      printNewCreatedSchemaPartition(devicePaths, resp);
+      printNewCreatedSchemaPartition(dbSlotMap, resp);
     }
 
     return resp;
   }
 
-  private void printNewCreatedSchemaPartition(
-      List<IDeviceID> deviceIDS, TSchemaPartitionTableResp resp) {
+  private String partitionTableRespToString(TSchemaPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
-    StringBuilder devicePathString = new StringBuilder("{");
-    for (IDeviceID deviceID : deviceIDS) {
-      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
-    }
-    devicePathString.append(lineSeparator).append("}");
-
     StringBuilder schemaPartitionRespString = new StringBuilder("{");
     schemaPartitionRespString
         .append(lineSeparator)
@@ -853,11 +845,37 @@ public class ConfigManager implements IManager {
       schemaPartitionRespString.append(lineSeparator).append("\t},");
     }
     schemaPartitionRespString.append(lineSeparator).append("}");
-    LOGGER.debug(
-        "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
-        lineSeparator,
-        devicePathString,
-        schemaPartitionRespString);
+    return schemaPartitionRespString.toString();
+  }
+
+  private void printNewCreatedSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> databaseNameSlotMap, TSchemaPartitionTableResp resp) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return TSchemaPartitionTableResp: {}",
+          System.lineSeparator(),
+          databaseNameSlotMap,
+          partitionTableRespToString(resp));
+    }
+  }
+
+  private void printNewCreatedSchemaPartition(
+      List<IDeviceID> deviceIDS, TSchemaPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
+    StringBuilder devicePathString = new StringBuilder("{");
+    for (IDeviceID deviceID : deviceIDS) {
+      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
+    }
+    devicePathString.append(lineSeparator).append("}");
+
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+          lineSeparator,
+          devicePathString,
+          partitionTableRespToString(resp));
+    }
   }
 
   @Override

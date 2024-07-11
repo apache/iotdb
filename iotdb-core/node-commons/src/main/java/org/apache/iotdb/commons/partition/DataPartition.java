@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
@@ -196,8 +197,7 @@ public class DataPartition extends Partition {
     // more than 1 Regions for one timeSlot
     List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-        dataBasePartitionMap = dataPartitionMap.get(databaseName);
-    LOGGER.info("DataPartitionMap {} and database name {}", dataPartitionMap, databaseName);
+        dataBasePartitionMap = dataPartitionMap.get(PathUtils.qualifyDatabaseName(databaseName));
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {

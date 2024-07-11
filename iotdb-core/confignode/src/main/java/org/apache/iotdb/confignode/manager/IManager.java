@@ -372,6 +372,13 @@ public interface IManager {
   TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
+   * Get or create SchemaPartition with <databaseName, seriesSlot>.
+   *
+   * @return TSchemaPartitionResp
+   */
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(Map<String, List<TSeriesPartitionSlot>> dbSlotMap);
+
+  /**
    * Create SchemaNodeManagementPartition for child paths node management.
    *
    * @return TSchemaNodeManagementResp

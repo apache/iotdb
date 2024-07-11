@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void preCreateTable(String database, TsTable table) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preCreateTableMap
@@ -111,6 +113,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void rollbackCreateTable(String database, String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreCreateMap(database, tableName);
@@ -138,6 +141,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void commitCreateTable(String database, String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       TsTable table = preCreateTableMap.get(database).get(tableName);
@@ -154,6 +158,7 @@ public class DataNodeTableCache implements ITableCache {
   @Override
   public void preAddTableColumn(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preAddColumnMap
@@ -168,6 +173,7 @@ public class DataNodeTableCache implements ITableCache {
   @Override
   public void commitAddTableColumn(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       TsTable table = databaseTableMap.get(database).get(tableName);
@@ -192,6 +198,7 @@ public class DataNodeTableCache implements ITableCache {
   @Override
   public void rollbackAddColumn(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preAddColumnMap.compute(
@@ -224,6 +231,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public TsTable getTable(String database, String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       if (databaseTableMap.containsKey(database)) {
@@ -236,6 +244,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public Optional<List<TsTable>> getTables(String database) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       Map<String, TsTable> tableMap = databaseTableMap.get(database);

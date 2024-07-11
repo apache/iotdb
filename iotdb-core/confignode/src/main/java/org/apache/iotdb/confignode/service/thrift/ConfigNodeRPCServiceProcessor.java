@@ -526,6 +526,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    return configManager.getSchemaPartition(dbSlotMap);
+  }
+
+  @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
@@ -534,8 +540,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
-      Map<String, TSeriesPartitionSlot> dbSlotMap) throws TException {
-    return configManager.geto;
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    return configManager.getOrCreateSchemaPartition(dbSlotMap);
   }
 
   @Override
