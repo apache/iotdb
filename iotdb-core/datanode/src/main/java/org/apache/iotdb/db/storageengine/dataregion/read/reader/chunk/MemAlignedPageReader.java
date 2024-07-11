@@ -210,4 +210,18 @@ public class MemAlignedPageReader implements IPageReader {
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     builder = new TsBlockBuilder(dataTypes);
   }
+
+  @Override
+  public String toString() {
+    return "MemAlignedPageReader{"
+        + "tsBlock="
+        + tsBlock
+        + ", chunkMetadata="
+        + chunkMetadata
+        + ", recordFilter="
+        + recordFilter
+        + ", paginationController="
+        + paginationController
+        + '}';
+  }
 }

@@ -115,4 +115,16 @@ public class TimePageReader {
     }
     return false;
   }
+
+  @Override
+  public String toString() {
+    return "TimePageReader{"
+        + "pageHeader="
+        + pageHeader
+        + ", deleteIntervalList="
+        + deleteIntervalList
+        + ", deleteCursor="
+        + deleteCursor
+        + '}';
+  }
 }

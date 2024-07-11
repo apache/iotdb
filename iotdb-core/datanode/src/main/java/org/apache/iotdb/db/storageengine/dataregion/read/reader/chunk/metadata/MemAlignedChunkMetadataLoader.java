@@ -34,6 +34,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CHUNK_METADATA_FILTER_ALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM;
+import static org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils.DEBUG_LOGGER;
 
 public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
@@ -85,6 +86,14 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         }
       }
 
+      if (context.isDebug()) {
+        DEBUG_LOGGER.info(
+            "Before filter ChunkMetadataList from {}, version is {}, {}",
+            resource,
+            resource.getVersion(),
+            chunkMetadataList);
+      }
+
       // when chunkMetadataList.size() == 1, it means that the chunk statistics is same as
       // the time series metadata, so we don't need to filter it again.
       if (chunkMetadataList.size() > 1) {
@@ -96,6 +105,14 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
                     || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
             CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      }
+
+      if (context.isDebug()) {
+        DEBUG_LOGGER.info(
+            "After filter ChunkMetadataList from {}, version is {}, {}",
+            resource,
+            resource.getVersion(),
+            chunkMetadataList);
       }
 
       for (IChunkMetadata metadata : chunkMetadataList) {

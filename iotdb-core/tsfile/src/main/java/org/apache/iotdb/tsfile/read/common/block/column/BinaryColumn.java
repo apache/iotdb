@@ -167,4 +167,18 @@ public class BinaryColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public String toString() {
+    return "BinaryColumn{"
+        + "arrayOffset="
+        + arrayOffset
+        + ", positionCount="
+        + positionCount
+        + ", valueIsNull="
+        + Arrays.toString(valueIsNull)
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
+  }
 }

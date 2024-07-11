@@ -64,4 +64,9 @@ public class MemAlignedChunkReader implements IChunkReader {
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
   }
+
+  @Override
+  public String toString() {
+    return "MemAlignedChunkReader{" + "pageReaderList=" + pageReaderList + '}';
+  }
 }

@@ -303,9 +303,19 @@ public class Analysis implements IAnalysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
+  private final boolean debug;
+
+  public Analysis(boolean debug) {
+    this.debug = debug;
+  }
 
   public Analysis() {
+    this.debug = false;
     this.finishQueryAfterAnalyze = false;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {

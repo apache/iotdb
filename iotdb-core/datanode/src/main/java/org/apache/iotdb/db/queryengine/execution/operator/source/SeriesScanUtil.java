@@ -62,6 +62,7 @@ import java.util.function.ToLongFunction;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
+import static org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils.DEBUG_LOGGER;
 
 public class SeriesScanUtil {
 
@@ -544,7 +545,8 @@ public class SeriesScanUtil {
 
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter());
+        FileLoaderUtils.loadPageReaderList(
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), context);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -1210,6 +1212,13 @@ public class SeriesScanUtil {
         if (!ascending) {
           tsBlock.reverse();
         }
+        DEBUG_LOGGER.info(
+            "TsBlock from version {} is {}, isSeq: {}, isAligned: {}, isMem: {}",
+            version,
+            tsBlock,
+            isSeq,
+            isAligned,
+            isMem);
         return tsBlock;
       } finally {
         long time = System.nanoTime() - startTime;

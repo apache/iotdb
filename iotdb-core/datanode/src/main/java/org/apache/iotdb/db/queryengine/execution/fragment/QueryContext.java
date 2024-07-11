@@ -130,6 +130,10 @@ public class QueryContext {
     return debug;
   }
 
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
+
   public long getQueryTimeLowerBound() {
     return queryTimeLowerBound;
   }

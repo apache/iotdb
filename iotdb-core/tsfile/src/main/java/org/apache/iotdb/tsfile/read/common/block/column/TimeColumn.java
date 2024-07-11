@@ -22,6 +22,8 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
+import java.util.Arrays;
+
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfLongArray;
 
@@ -148,5 +150,17 @@ public class TimeColumn implements Column {
   @Override
   public int getInstanceSize() {
     return INSTANCE_SIZE;
+  }
+
+  @Override
+  public String toString() {
+    return "TimeColumn{"
+        + "arrayOffset="
+        + arrayOffset
+        + ", positionCount="
+        + positionCount
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
   }
 }

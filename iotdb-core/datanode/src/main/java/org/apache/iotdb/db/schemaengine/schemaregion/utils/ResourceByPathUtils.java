@@ -52,6 +52,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -66,6 +69,8 @@ import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
  * MeasurementPath have different implementations, and the default PartialPath should not use it.
  */
 public abstract class ResourceByPathUtils {
+
+  public static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public static ResourceByPathUtils getResourceInstance(PartialPath path) {
     if (path instanceof AlignedPath) {
@@ -213,14 +218,39 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     if (!containsMeasurement) {
       return null;
     }
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "TVList before sorting for Memtable {} is {}, schemaList is {}",
+          memTable.getMemTableId(),
+          alignedMemChunk.getTVList(),
+          alignedMemChunk.getSchemaList());
+    }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "TVList after sorting for Memtable {} is {}, schemaList is {}",
+          memTable.getMemTableId(),
+          alignedMemChunk.getTVList(),
+          partialPath.getSchemaList());
+    }
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(
-        context, getMeasurementSchema(), alignedTvListCopy, deletionList);
+    AlignedReadOnlyMemChunk readOnlyMemChunk =
+        new AlignedReadOnlyMemChunk(
+            context, getMeasurementSchema(), alignedTvListCopy, deletionList);
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "TsBlock from Memtable {} is {}, ChunkMetadata is {}",
+          memTable.getMemTableId(),
+          readOnlyMemChunk.getTsBlock(),
+          readOnlyMemChunk.getChunkMetaData());
+    }
+
+    return readOnlyMemChunk;
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -382,6 +412,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getProps(),
         deletionList);
   }
+
   /**
    * construct a deletion list from a memtable.
    *
@@ -404,6 +435,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     }
     return TimeRange.sortAndMerge(deletionList);
   }
+
   /** get modifications from a memtable. */
   @Override
   protected List<Modification> getModificationsForMemtable(

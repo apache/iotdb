@@ -720,4 +720,38 @@ public abstract class AbstractMemTable implements IMemTable {
   public boolean isTotallyGeneratedByPipe() {
     return this.isTotallyGeneratedByPipe.get();
   }
+
+  @Override
+  public String toString() {
+    return "AbstractMemTable{"
+        + "memTableId="
+        + memTableId
+        + ", createdTime="
+        + createdTime
+        + ", updateTime="
+        + updateTime
+        + ", memTableMap="
+        + memTableMap
+        + ", shouldFlush="
+        + shouldFlush
+        + ", memSize="
+        + memSize
+        + ", tvListRamCost="
+        + tvListRamCost
+        + ", seriesNumber="
+        + seriesNumber
+        + ", totalPointsNum="
+        + totalPointsNum
+        + ", totalPointsNumThreshold="
+        + totalPointsNumThreshold
+        + ", database='"
+        + database
+        + '\''
+        + ", dataRegionId='"
+        + dataRegionId
+        + '\''
+        + ", lastTotalPointsNum="
+        + lastTotalPointsNum
+        + '}';
+  }
 }

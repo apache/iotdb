@@ -82,6 +82,8 @@ public class FragmentInstance implements IConsensusRequest {
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
+  private boolean debug = false;
+
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
@@ -223,6 +225,7 @@ public class FragmentInstance implements IConsensusRequest {
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
+    fragmentInstance.debug = ReadWriteIOUtils.readBool(buffer);
     return fragmentInstance;
   }
 
@@ -247,11 +250,20 @@ public class FragmentInstance implements IConsensusRequest {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
       ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
+      ReadWriteIOUtils.write(debug, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurs when serializing this FragmentInstance.", e);
       throw new SerializationRunTimeException(e);
     }
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   @Override

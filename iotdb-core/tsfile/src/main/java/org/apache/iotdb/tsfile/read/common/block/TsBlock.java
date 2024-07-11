@@ -553,4 +553,16 @@ public class TsBlock {
       }
     }
   }
+
+  @Override
+  public String toString() {
+    return "TsBlock{"
+        + "timeColumn="
+        + timeColumn
+        + ", valueColumns="
+        + Arrays.toString(valueColumns)
+        + ", positionCount="
+        + positionCount
+        + '}';
+  }
 }

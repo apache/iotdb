@@ -165,4 +165,18 @@ public class LongColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public String toString() {
+    return "LongColumn{"
+        + "arrayOffset="
+        + arrayOffset
+        + ", positionCount="
+        + positionCount
+        + ", valueIsNull="
+        + Arrays.toString(valueIsNull)
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
+  }
 }
