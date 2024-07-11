@@ -108,6 +108,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -268,7 +269,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -2948,17 +2948,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showTables(String database) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showTables(final String database) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    Optional<List<TsTable>> tableList = DataNodeTableCache.getInstance().getTables(database);
-    if (tableList.isPresent()) {
-      ShowTablesTask.buildTsBlock(tableList.get(), future);
-    } else {
-      future.setException(
-          new IoTDBException(
-              String.format("Database %s doesn't exists.", database),
-              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowTableResp resp = configNodeClient.showTables(database);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+        LOGGER.warn(
+            "Failed to show tables in database {} in config node, status is {}.",
+            database,
+            resp.getStatus());
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+    } catch (final Exception e) {
+      future.setException(e);
     }
     return future;
   }

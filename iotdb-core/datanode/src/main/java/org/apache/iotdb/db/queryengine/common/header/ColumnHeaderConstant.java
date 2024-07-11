@@ -531,7 +531,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),

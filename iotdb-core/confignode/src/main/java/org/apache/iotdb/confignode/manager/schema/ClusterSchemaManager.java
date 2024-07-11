@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
@@ -1066,6 +1067,10 @@ public class ClusterSchemaManager {
   }
 
   // region table management
+
+  public TShowTableResp showTables(final String database) {
+    return clusterSchemaInfo.showTables(database);
+  }
 
   public byte[] getAllTableInfoForDataNodeActivation() {
     return TsTableInternalRPCUtil.serializeTableInitializationInfo(

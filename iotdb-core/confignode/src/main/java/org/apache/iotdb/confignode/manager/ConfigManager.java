@@ -191,6 +191,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -2368,10 +2369,11 @@ public class ConfigManager implements IManager {
         : new TThrottleQuotaResp(status);
   }
 
-  public TSStatus createTable(ByteBuffer tableInfo) {
-    TSStatus status = confirmLeader();
+  @Override
+  public TSStatus createTable(final ByteBuffer tableInfo) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Pair<String, TsTable> pair =
+      final Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
     } else {
@@ -2379,8 +2381,9 @@ public class ConfigManager implements IManager {
     }
   }
 
-  public TSStatus alterTable(TAlterTableReq req) {
-    TSStatus status = confirmLeader();
+  @Override
+  public TSStatus alterTable(final TAlterTableReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       switch (AlterTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
@@ -2390,6 +2393,16 @@ public class ConfigManager implements IManager {
       }
     } else {
       return status;
+    }
+  }
+
+  @Override
+  public TShowTableResp showTables(final String database) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.showTables(database);
+    } else {
+      return new TShowTableResp(status);
     }
   }
 }
