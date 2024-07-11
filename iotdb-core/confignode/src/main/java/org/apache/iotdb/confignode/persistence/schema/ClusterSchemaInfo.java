@@ -155,7 +155,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Set Database
       TDatabaseSchema databaseSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(databaseSchema.getName());
-      mTree.setDatabase(partialPathName);
+      mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
       mTree

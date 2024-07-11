@@ -111,7 +111,7 @@ public class ConfigMTree {
    *
    * @param path path
    */
-  public void setDatabase(final PartialPath path) throws MetadataException {
+  public void setStorageGroup(final PartialPath path) throws MetadataException {
     final String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {

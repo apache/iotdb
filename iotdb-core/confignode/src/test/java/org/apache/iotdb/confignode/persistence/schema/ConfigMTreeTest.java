@@ -61,22 +61,22 @@ public class ConfigMTreeTest {
   @SuppressWarnings("squid:S5783")
   public void testSetStorageGroupExceptionMessage() {
     try {
-      root.setDatabase(new PartialPath("root.edge1.access"));
-      root.setDatabase(new PartialPath("root.edge1"));
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      root.setStorageGroup(new PartialPath("root.edge1"));
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals(
           "some children of root.edge1 have already been created as database", e.getMessage());
     }
     try {
-      root.setDatabase(new PartialPath("root.edge2"));
-      root.setDatabase(new PartialPath("root.edge2.access"));
+      root.setStorageGroup(new PartialPath("root.edge2"));
+      root.setStorageGroup(new PartialPath("root.edge2.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals("root.edge2 has already been created as database", e.getMessage());
     }
     try {
-      root.setDatabase(new PartialPath("root.edge1.access"));
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals("root.edge1.access has already been created as database", e.getMessage());
@@ -86,7 +86,7 @@ public class ConfigMTreeTest {
   @Test
   public void testAddAndPathExist() throws MetadataException {
     String path1 = "root";
-    root.setDatabase(new PartialPath("root.laptop"));
+    root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isDatabaseAlreadySet(new PartialPath(path1)));
     assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
     assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
@@ -95,7 +95,7 @@ public class ConfigMTreeTest {
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
     try {
-      root.setDatabase(new PartialPath("root.laptop.d1"));
+      root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
       assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1.s1")));
     } catch (MetadataException e) {
@@ -103,12 +103,12 @@ public class ConfigMTreeTest {
       fail(e.getMessage());
     }
     try {
-      root.setDatabase(new PartialPath("root.laptop.d2"));
+      root.setStorageGroup(new PartialPath("root.laptop.d2"));
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
     try {
-      root.setDatabase(new PartialPath("root.laptop"));
+      root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
           "some children of root.laptop have already been created as database", e.getMessage());
@@ -128,8 +128,8 @@ public class ConfigMTreeTest {
   @Test
   public void testGetAllFileNamesByPath() {
     try {
-      root.setDatabase(new PartialPath("root.laptop.d1"));
-      root.setDatabase(new PartialPath("root.laptop.d2"));
+      root.setStorageGroup(new PartialPath("root.laptop.d1"));
+      root.setStorageGroup(new PartialPath("root.laptop.d2"));
 
       List<PartialPath> list = new ArrayList<>();
 
@@ -155,7 +155,7 @@ public class ConfigMTreeTest {
       assertTrue(
           root.getBelongedDatabases(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
 
-      root.setDatabase(new PartialPath("root.vehicle"));
+      root.setStorageGroup(new PartialPath("root.vehicle"));
       assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle.device0")).isEmpty());
       assertFalse(
@@ -163,7 +163,7 @@ public class ConfigMTreeTest {
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1")).isEmpty());
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device0")).isEmpty());
 
-      root.setDatabase(new PartialPath("root.vehicle1.device0"));
+      root.setStorageGroup(new PartialPath("root.vehicle1.device0"));
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device1")).isEmpty());
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device2")).isEmpty());
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device3")).isEmpty());
@@ -177,7 +177,7 @@ public class ConfigMTreeTest {
   @Test
   public void testIllegalStorageGroup() {
     try {
-      root.setDatabase(new PartialPath("root.\"sg.ln\""));
+      root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
       Assert.assertEquals("root.\"sg.ln\" is not a legal path", e.getMessage());
     }
@@ -185,13 +185,13 @@ public class ConfigMTreeTest {
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
-    root.setDatabase(new PartialPath("root.sg1"));
-    root.setDatabase(new PartialPath("root.a.sg1"));
-    root.setDatabase(new PartialPath("root.a.b.sg1"));
-    root.setDatabase(new PartialPath("root.sg2"));
-    root.setDatabase(new PartialPath("root.a.sg2"));
-    root.setDatabase(new PartialPath("root.sg3"));
-    root.setDatabase(new PartialPath("root.a.b.sg3"));
+    root.setStorageGroup(new PartialPath("root.sg1"));
+    root.setStorageGroup(new PartialPath("root.a.sg1"));
+    root.setStorageGroup(new PartialPath("root.a.b.sg1"));
+    root.setStorageGroup(new PartialPath("root.sg2"));
+    root.setStorageGroup(new PartialPath("root.a.sg2"));
+    root.setStorageGroup(new PartialPath("root.sg3"));
+    root.setStorageGroup(new PartialPath("root.a.b.sg3"));
 
     assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), ALL_MATCH_SCOPE, false));
     assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), ALL_MATCH_SCOPE, false));
@@ -205,9 +205,9 @@ public class ConfigMTreeTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    root.setDatabase(new PartialPath("root.sg1"));
+    root.setStorageGroup(new PartialPath("root.sg1"));
 
-    root.setDatabase(new PartialPath("root.sg2"));
+    root.setStorageGroup(new PartialPath("root.sg2"));
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
         root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, ALL_MATCH_SCOPE);
@@ -226,10 +226,10 @@ public class ConfigMTreeTest {
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    root.setDatabase(new PartialPath("root.test.`001.002.003`"));
-    root.setDatabase(new PartialPath("root.test.g_0.s_0_b001"));
-    root.setDatabase(new PartialPath("root.sg"));
-    root.setDatabase(new PartialPath("root.ln"));
+    root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
+    root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
+    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.ln"));
 
     result =
         root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true, ALL_MATCH_SCOPE);
@@ -252,7 +252,7 @@ public class ConfigMTreeTest {
           new PartialPath("root.a.a.b.sg")
         };
     for (int i = 0; i < pathList.length; i++) {
-      root.setDatabase(pathList[i]);
+      root.setStorageGroup(pathList[i]);
       IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
@@ -300,7 +300,7 @@ public class ConfigMTreeTest {
 
   @Test
   public void testSetTemplate() throws MetadataException {
-    root.setDatabase(new PartialPath("root.a"));
+    root.setStorageGroup(new PartialPath("root.a"));
     PartialPath path = new PartialPath("root.a.template0");
     try {
       root.checkTemplateOnPath(path);
