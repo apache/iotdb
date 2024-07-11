@@ -2806,7 +2806,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database '%s'", useDB.getDatabase().getValue()),
+                String.format("Unknown database %s", useDB.getDatabase().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (IOException | ClientManagerException | TException e) {
@@ -2963,7 +2963,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IoTDBException(
                 resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-                    ? String.format("Unknown database '%s'", database)
+                    ? String.format("Unknown database %s", database)
                     : resp.getStatus().message,
                 resp.getStatus().code));
         return future;
