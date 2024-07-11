@@ -43,11 +43,11 @@ import java.util.Set;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /**
- * Remove unused columns in TableScanNode.
+ * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>For example, The output columns of TableScanNode in `select * from table1` query are `tag1,
- * attr1, s1`, but the output columns of TableScanNode in `select s1 from table1` query can only be
- * `s1`.
+ * <p>Remove unused columns in TableScanNode. For example, The output columns of TableScanNode in
+ * `select * from table1` query are `tag1, attr1, s1`, but the output columns of TableScanNode in
+ * `select s1 from table1` query can only be `s1`.
  */
 public class PruneUnUsedColumns implements TablePlanOptimizer {
 
@@ -58,10 +58,15 @@ public class PruneUnUsedColumns implements TablePlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
-    return planNode.accept(new Rewriter(), new RewriterContext());
+    return planNode.accept(new Rewriter(analysis), new RewriterContext());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+    private final Analysis analysis;
+
+    public Rewriter(Analysis analysis) {
+      this.analysis = analysis;
+    }
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
@@ -80,6 +85,7 @@ public class PruneUnUsedColumns implements TablePlanOptimizer {
 
     @Override
     public PlanNode visitSort(SortNode node, RewriterContext context) {
+      analysis.setSortNode(true);
       context.allUsedSymbolSet.addAll(node.getOutputSymbols());
       node.getChild().accept(this, context);
       return node;

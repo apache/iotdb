@@ -48,7 +48,7 @@ public class ProjectNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new ProjectNode(id, child, assignments);
+    return new ProjectNode(id, null, assignments);
   }
 
   @Override

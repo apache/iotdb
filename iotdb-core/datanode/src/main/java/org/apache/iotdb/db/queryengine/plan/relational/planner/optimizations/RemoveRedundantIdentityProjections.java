@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import java.util.Collections;
 import java.util.List;
 
+/** <b>Optimization phase:</b> Logical plan planning. */
 public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
 
   @Override
@@ -36,13 +37,13 @@ public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
-    return planNode.accept(new Rewriter(), new RewriterContext());
+    return planNode.accept(new Rewriter(), new Context());
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
 
     @Override
-    public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+    public PlanNode visitPlan(PlanNode node, Context context) {
       PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
         context.setParent(node);
@@ -52,7 +53,7 @@ public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
     }
 
     @Override
-    public PlanNode visitProject(ProjectNode projectNode, RewriterContext context) {
+    public PlanNode visitProject(ProjectNode projectNode, Context context) {
       // TODO change the impl using the method of context.getParent()
       if (projectNode.getChild() instanceof ProjectNode
           && projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
@@ -77,15 +78,13 @@ public class RemoveRedundantIdentityProjections implements TablePlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
+    public PlanNode visitTableScan(TableScanNode node, Context context) {
       return node;
     }
   }
 
-  private static class RewriterContext {
+  private static class Context {
     private PlanNode parent;
-
-    public RewriterContext() {}
 
     public PlanNode getParent() {
       return this.parent;

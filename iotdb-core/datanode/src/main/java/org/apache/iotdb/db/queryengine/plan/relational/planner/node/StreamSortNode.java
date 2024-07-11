@@ -56,6 +56,11 @@ public class StreamSortNode extends SortNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return new StreamSortNode(id, null, orderingScheme, partial, streamCompareKeyEndIndex);
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);

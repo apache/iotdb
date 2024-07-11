@@ -41,7 +41,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.AddStreamSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
@@ -87,7 +89,8 @@ public class SortTest {
           new SimplifyExpressions(),
           new PruneUnUsedColumns(),
           new PushPredicateIntoTableScan(),
-          new RemoveRedundantIdentityProjections());
+          new RemoveRedundantIdentityProjections(),
+          new AddStreamSort());
 
   /*
    * order by time, others, some_ids
@@ -851,9 +854,9 @@ public class SortTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
-    SortNode sortNode =
-        (SortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+            instanceof StreamSortNode);
+    StreamSortNode sortNode =
+        (StreamSortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -903,9 +906,9 @@ public class SortTest {
             .map(Symbol::getName)
             .collect(Collectors.toList()));
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof StreamSortNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    sortNode = (SortNode) mergeSortNode.getChildren().get(1);
+    sortNode = (StreamSortNode) mergeSortNode.getChildren().get(1);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1028,9 +1031,9 @@ public class SortTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
-    SortNode sortNode =
-        (SortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+            instanceof StreamSortNode);
+    StreamSortNode sortNode =
+        (StreamSortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1082,7 +1085,7 @@ public class SortTest {
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    sortNode = (SortNode) mergeSortNode.getChildren().get(1);
+    sortNode = (StreamSortNode) mergeSortNode.getChildren().get(1);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1205,9 +1208,9 @@ public class SortTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
-    SortNode sortNode =
-        (SortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+            instanceof StreamSortNode);
+    StreamSortNode sortNode =
+        (StreamSortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1257,9 +1260,9 @@ public class SortTest {
             .map(Symbol::getName)
             .collect(Collectors.toList()));
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof StreamSortNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    sortNode = (SortNode) mergeSortNode.getChildren().get(1);
+    sortNode = (StreamSortNode) mergeSortNode.getChildren().get(1);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1296,7 +1299,7 @@ public class SortTest {
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree() instanceof IdentitySinkNode);
     assertTrue(
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0)
-            instanceof SortNode);
+            instanceof StreamSortNode);
     assertTrue(
         distributedQueryPlan
                 .getFragments()
@@ -1382,9 +1385,9 @@ public class SortTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof OffsetNode);
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
-    SortNode sortNode =
-        (SortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+            instanceof StreamSortNode);
+    StreamSortNode sortNode =
+        (StreamSortNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1434,9 +1437,9 @@ public class SortTest {
             .map(Symbol::getName)
             .collect(Collectors.toList()));
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof StreamSortNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    sortNode = (SortNode) mergeSortNode.getChildren().get(1);
+    sortNode = (StreamSortNode) mergeSortNode.getChildren().get(1);
     assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
@@ -1473,7 +1476,7 @@ public class SortTest {
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree() instanceof IdentitySinkNode);
     assertTrue(
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0)
-            instanceof SortNode);
+            instanceof StreamSortNode);
     assertTrue(
         distributedQueryPlan
                 .getFragments()

@@ -63,16 +63,15 @@ public class TableDistributionPlanner {
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 
-    // distribute plan optimize rule
-    this.optimizers.forEach(
-        optimizer ->
-            optimizer.optimize(
-                distributedPlanResult.get(0), analysis, null, null, mppQueryContext));
+    PlanNode optimizedPlanNode = distributedPlanResult.get(0);
+    for (TablePlanOptimizer optimizer : optimizers) {
+      optimizedPlanNode =
+          optimizer.optimize(optimizedPlanNode, analysis, null, null, mppQueryContext);
+    }
 
     // add exchange node for distributed plan
     PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(mppQueryContext)
-            .addExchangeNodes(distributedPlanResult.get(0), planContext);
+        new AddExchangeNodes(mppQueryContext).addExchangeNodes(optimizedPlanNode, planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
