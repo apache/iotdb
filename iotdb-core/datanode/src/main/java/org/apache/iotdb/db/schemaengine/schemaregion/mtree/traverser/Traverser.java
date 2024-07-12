@@ -175,6 +175,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     if (child == null) {
       child = store.getChild(parent, childName);
+      if (skipPreDeletedSchema
+          && child.isMeasurement()
+          && child.getAsMeasurementMNode().isPreDeleted()) {
+        child = null;
+      }
     }
     return child;
   }
