@@ -62,7 +62,8 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
-          new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0, false)));
+          new Element(
+              reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0, false)));
     } else {
       reader.close();
     }
