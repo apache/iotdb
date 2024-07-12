@@ -49,8 +49,8 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       RamUsageEstimator.shallowSizeOfInstance(Map.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.class);
 
-  public RegionScanForActiveTimeSeriesUtil(Filter timeFilter) {
-    super(timeFilter);
+  public RegionScanForActiveTimeSeriesUtil(Filter timeFilter, Map<IDeviceID, Long> ttlCache) {
+    super(timeFilter, ttlCache);
     this.timeSeriesForCurrentTsFile = new HashMap<>();
     this.activeTimeSeries = new HashMap<>();
   }
@@ -73,7 +73,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
       if (!targetTimeseries.containsKey(deviceID)
-          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID))) {
         continue;
       }
 
@@ -132,13 +132,13 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       Set<String> measurementForCurrentTsFile = timeSeriesForCurrentTsFile.get(deviceID);
       if (!(measurementForCurrentTsFile != null
               && measurementForCurrentTsFile.contains(measurementId))
-          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
+          || !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID)) {
         continue;
       }
 
-      if ((timeFilter.satisfy(startTime, null)
+      if ((timeFilter.satisfy(startTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurementId, startTime))
-          || (timeFilter.satisfy(endTime, null)
+          || (timeFilter.satisfy(endTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurementId, endTime))) {
         removeTimeSeriesForCurrentTsFile(deviceID, measurementId);
         activeTimeSeries.computeIfAbsent(deviceID, k -> new ArrayList<>()).add(measurementId);
@@ -161,6 +161,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       measurements.remove(measurementPath);
       if (measurements.isEmpty()) {
         timeSeriesForCurrentTsFile.remove(deviceID);
+        timeFilter.removeTTLCache(deviceID);
       }
     }
   }

@@ -3631,14 +3631,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Filter filter = context.getGlobalTimeFilter();
 
     Map<IDeviceID, DeviceContext> deviceIDToContext = new HashMap<>();
+    Map<IDeviceID, Long> ttlCache = new HashMap<>();
     for (Map.Entry<PartialPath, DeviceContext> entry :
         node.getDevicePathToContextMap().entrySet()) {
-      deviceIDToContext.put(
-          IDeviceID.Factory.DEFAULT_FACTORY.create(entry.getKey().getFullPath()), entry.getValue());
+      PartialPath devicePath = entry.getKey();
+      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
+      deviceIDToContext.put(deviceID, entry.getValue());
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
-            operatorContext, node.getPlanNodeId(), deviceIDToContext, filter, node.isOutputCount());
+            operatorContext,
+            node.getPlanNodeId(),
+            deviceIDToContext,
+            filter,
+            ttlCache,
+            node.isOutputCount());
 
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
     dataDriverContext.addSourceOperator(regionScanOperator);
@@ -3662,12 +3670,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
 
     Map<IDeviceID, Map<String, TimeseriesContext>> timeseriesToSchemaInfo = new HashMap<>();
+    Map<IDeviceID, Long> ttlCache = new HashMap<>();
     for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap :
         node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
+      PartialPath devicePath = entryMap.getKey();
+      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
-      timeseriesToSchemaInfo.put(
-          entryMap.getValue().keySet().iterator().next().getIDeviceID(), timeseriesSchemaInfoMap);
+      timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
         new ActiveTimeSeriesRegionScanOperator(
@@ -3675,6 +3686,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             timeseriesToSchemaInfo,
             filter,
+            ttlCache,
             node.isOutputCount());
 
     dataDriverContext.addSourceOperator(regionScanOperator);
