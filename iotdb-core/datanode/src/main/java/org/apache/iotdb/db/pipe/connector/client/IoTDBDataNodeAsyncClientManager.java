@@ -199,6 +199,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           }
         };
 
+    client.setShouldReturnSelf(false);
     // Try to handshake by PipeTransferHandshakeV2Req.
     final HashMap<String, String> params = new HashMap<>();
     params.put(
@@ -233,7 +234,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           callback);
       waitHandshakeFinished(isHandshakeFinished);
     }
-
+    client.setShouldReturnSelf(true);
+    client.returnSelf();
     if (exception.get() != null) {
       throw new PipeConnectionException("Failed to handshake.", exception.get());
     }
