@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -69,7 +69,7 @@ public class AuthOperationProcedureTest {
       for (int i = begin; i <= end; i++) {
         final AuthOperationProcedure proc =
             new AuthOperationProcedure(
-                new AuthorPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.values()[i],
                     "user1",
                     "role1",

@@ -21,9 +21,11 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -37,17 +39,22 @@ public interface IAuthorityFetcher {
   boolean checkRole(String username, String rolename);
 
   List<Integer> checkUserPathPrivileges(
-      String username, List<? extends PartialPath> allPath, int permission);
+      String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivileges(String username, int permisssion);
+  TSStatus checkUserSysPrivileges(String username, PrivilegeType permisssion);
 
-  boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> paths, int permission);
+  boolean checkUserPrivilegeGrantOpt(String username, PrivilegeType permission, Object... targets);
 
-  PathPatternTree getAuthorizedPatternTree(String username, int permission) throws AuthException;
+  PathPatternTree getAuthorizedPatternTree(String username, PrivilegeType permission)
+      throws AuthException;
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 
   SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
+
+  SettableFuture<ConfigTaskResult> operatePermission(RelationalAuthorStatement authorStatement);
+
+  SettableFuture<ConfigTaskResult> queryPermission(RelationalAuthorStatement authorStatement);
 
   IAuthorCache getAuthorCache();
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -1286,10 +1287,10 @@ public class ConfigManager implements IManager {
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(
-      String username, List<PartialPath> paths, int permission) {
+      String username, PrivilegeType permission, Object... targets) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.checkUserPrivileges(username, paths, permission);
+      return permissionManager.checkUserPrivileges(username, permission, targets);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
       resp.setStatus(status);
@@ -1313,10 +1314,6 @@ public class ConfigManager implements IManager {
       resp.setStatus(status);
       return resp;
     }
-  }
-
-  public void checkUserPathPrivilege() {
-    permissionManager.checkUserPathPrivilege();
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(

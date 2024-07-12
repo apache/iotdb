@@ -339,6 +339,17 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
 }
 
+struct TAuthorizerRelationalReq {
+   1: required i32 authorType
+   2: required string userName
+   3: required string roleName
+   4: required string password
+   5: required string database
+   6: required string table
+   7: required i32 privilege
+   8: required bool grantopt
+}
+
 struct TAuthorizerResp {
   1: required common.TSStatus status
   2: optional string tag
@@ -352,8 +363,9 @@ struct TUserResp {
   3: required list<TPathPrivilege> privilegeList
   4: required set<i32> sysPriSet
   5: required set<i32> sysPriSetGrantOpt
-  6: required list<string> roleList
+  6: required set<string> roleSet
   7: required bool isOpenIdUser
+  8: required map<string, TDBPrivilege> dbPrivilegeMap
 }
 
 struct TRoleResp {
@@ -361,12 +373,26 @@ struct TRoleResp {
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+  5: required map<string, TDBPrivilege> dbPrivilegeMap
 }
 
 struct TPathPrivilege {
   1: required string path
   2: required set<i32> priSet
   3: required set<i32> priGrantOpt
+}
+
+struct TTablePrivilege {
+    1: required string tablename
+    2: required set<i32> privileges
+    3: required set<i32> grantOption
+}
+
+struct TDBPrivilege {
+    1: required string databasename
+    2: required set<i32> privileges
+    3: required set<i32> grantOpt
+    4: optional map<string, TTablePrivilege> tableinfo
 }
 
 struct TPermissionInfoResp {
@@ -391,9 +417,20 @@ struct TLoginReq {
 
 struct TCheckUserPrivilegesReq {
   1: required string username
-  2: required binary paths
-  3: required i32 permission
-  4: optional bool grantOpt
+  2: required i32 reqtype
+  3: optional binary paths
+  4: optional string database
+  5: optional string table
+  6: required i32 permission
+  7: required bool grantOpt
+}
+
+struct TCheckUserRelationalPrivilegesReq {
+   1:required string username
+   2: required string database
+   3: optional string tablename
+   4: required i32 permission
+   5: optional bool grantOpt
 }
 
 // ConfigNode
@@ -1359,6 +1396,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   common.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operateRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Execute permission read operations such as list user
@@ -1369,6 +1407,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+  TAuthorizerResp queryRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Authenticate user login

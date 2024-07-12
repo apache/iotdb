@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
-import java.util.Map;
 
 /** This interface provides accesses to users. */
 public interface IUserManager extends SnapshotProcessor {
@@ -126,37 +125,4 @@ public interface IUserManager extends SnapshotProcessor {
    * @return A list that contains all users'name.
    */
   List<String> listAllUsers();
-
-  /**
-   * Whether data water-mark is enabled for user 'userName'.
-   *
-   * @param userName
-   * @return
-   * @throws AuthException if the user does not exist
-   */
-  boolean isUserUseWaterMark(String userName) throws AuthException;
-
-  /**
-   * Enable or disable data water-mark for user 'userName'.
-   *
-   * @param userName
-   * @param useWaterMark
-   * @throws AuthException if the user does not exist.
-   */
-  void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
-
-  /**
-   * clear all old users info, replace the old users with the new one. The caller should guarantee
-   * that no other methods of this interface are invoked concurrently when this method is called.
-   *
-   * @param users new users info
-   * @throws AuthException
-   */
-  void replaceAllUsers(Map<String, User> users) throws AuthException;
-
-  void setPreVersion(boolean perVersion);
-
-  boolean preVersion();
-
-  void checkAndRefreshPathPri();
 }

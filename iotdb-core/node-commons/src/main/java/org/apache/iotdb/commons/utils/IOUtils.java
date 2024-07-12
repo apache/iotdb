@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
-import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.TablePrivilege;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -32,8 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -163,7 +162,7 @@ public class IOUtils {
           new Pair<>(new String(strBuffer, 0, absLength, encoding), length > 0);
       return result;
     }
-    return null;
+    throw new IOException("Read auth string got null");
   }
 
   /**
@@ -173,59 +172,17 @@ public class IOUtils {
    * @param encoding string encoding like 'utf-8'.
    * @param strBufferLocal a ThreadLocal buffer may be passed to avoid frequently memory
    *     allocations. A null may also be passed to use a local buffer.
-   * @param compatible A boolean value used to indicate whether the old version of permission
-   *     deserialization method should be employed.
    * @return a PathPrivilege read from the stream.
    * @throws IOException when an exception raised during operating the stream.
    */
   public static PathPrivilege readPathPrivilege(
-      DataInputStream inputStream,
-      String encoding,
-      ThreadLocal<byte[]> strBufferLocal,
-      boolean compatible)
+      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
       throws IOException, IllegalPathException {
     String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
-    if (compatible) {
-      int privilegeNum = inputStream.readInt();
-      PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
-      for (int i = 0; i < privilegeNum; i++) {
-        // Need to check the corresponding relationship of permissions
-        pathPrivilege.getPrivileges().add(inputStream.readInt());
-      }
-      return pathPrivilege;
-    } else {
-      PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
-      int privileges = inputStream.readInt();
-      pathPrivilege.setAllPrivileges(privileges);
-      return pathPrivilege;
-    }
-  }
-
-  // Because pre version's privilege will stored by path + privilege
-  // This func will turn the privilege info into role's path privileges.
-  // for the global privilege, they were stored by root + privilege.
-
-  public static void loadRolePrivilege(
-      Role role, DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
-      throws IOException, IllegalPathException {
-    role.setSysPrivilegeSet(0);
-    int pathPriNum = inputStream.readInt();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    for (int i = 0; i < pathPriNum; i++) {
-      String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
-      PartialPath ppath = new PartialPath(path);
-      PathPrivilege pathPriv = new PathPrivilege(ppath);
-      int priNum = inputStream.readInt();
-      for (int j = 0; j < priNum; j++) {
-        PriPrivilegeType priType = PriPrivilegeType.values()[inputStream.readInt()];
-        if (priType.isAccept()) {
-          pathPriv.grantPrivilege(priType.ordinal(), false);
-        }
-      }
-      pathPrivilegeList.add(pathPriv);
-    }
-    role.setPrivilegeList(pathPrivilegeList);
-    role.setServiceReady(false);
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
+    int privileges = inputStream.readInt();
+    pathPrivilege.setAllPrivileges(privileges);
+    return pathPrivilege;
   }
 
   /**
@@ -246,6 +203,38 @@ public class IOUtils {
       throws IOException {
     writeString(outputStream, pathPrivilege.getPath().getFullPath(), encoding, encodingBufferLocal);
     writeInt(outputStream, pathPrivilege.getAllPrivileges(), encodingBufferLocal);
+  }
+
+  public static DatabasePrivilege readObjectPrivilege(
+      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
+      throws IOException {
+    String databaseName = IOUtils.readString(inputStream, encoding, strBufferLocal);
+    DatabasePrivilege databasePrivilege = new DatabasePrivilege(databaseName);
+    databasePrivilege.setPrivileges(inputStream.readInt());
+    int tableNum = inputStream.readInt();
+    for (int i = 0; i < tableNum; i++) {
+      String tableName = IOUtils.readString(inputStream, encoding, strBufferLocal);
+      TablePrivilege tablePrivilege = new TablePrivilege(tableName);
+      tablePrivilege.setPrivileges(inputStream.readInt());
+      databasePrivilege.getTablePrivilegeMap().put(tableName, tablePrivilege);
+    }
+    return databasePrivilege;
+  }
+
+  public static void writeObjectPrivilege(
+      OutputStream outputStream,
+      DatabasePrivilege databasePrivilege,
+      String encoding,
+      ThreadLocal<ByteBuffer> encodingBufferLocal)
+      throws IOException {
+    writeString(outputStream, databasePrivilege.getDatabaseName(), encoding, encodingBufferLocal);
+    writeInt(outputStream, databasePrivilege.getAllPrivileges(), encodingBufferLocal);
+    writeInt(outputStream, databasePrivilege.getTablePrivilegeMap().size(), encodingBufferLocal);
+    for (Map.Entry<String, TablePrivilege> entry :
+        databasePrivilege.getTablePrivilegeMap().entrySet()) {
+      writeString(outputStream, entry.getValue().getTableName(), encoding, encodingBufferLocal);
+      writeInt(outputStream, entry.getValue().getAllPrivileges(), encodingBufferLocal);
+    }
   }
 
   /**

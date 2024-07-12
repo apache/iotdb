@@ -128,6 +128,16 @@ statement
     | showCurrentTimestampStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUser
+    | createRole
+    | dropUser
+    | dropRole
+    | grantUserRole
+    | revokeUserRole
+    | listUserPrivileges
+    | listRolePrivileges
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -530,6 +540,7 @@ localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
 
+<<<<<<< HEAD
 showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
@@ -547,8 +558,111 @@ showCurrentTimestampStatement
     ;
 
 
+=======
+// ------------------------------------------- Authority Statement -----------------------------------------------------
+
+createUser
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRole
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUser
+    : DROP USER userName=identifier
+    ;
+
+dropRole
+    : DROP ROLE roleName=identifier
+    ;
+
+alterUser
+    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    ;
+
+grantUserRole
+    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    ;
+
+revokeUserRole
+    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    ;
+>>>>>>> 60b3d48da8 (add auth relation sql.)
 
 
+grantStatement
+    : GRANT grantPrivilegeObject TO HolderType roleName=identifier (GrantOpt)?
+    ;
+
+listUserPrivileges
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivileges
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+
+revokeStatement
+    : REVOKE revokePrivilegeObject FROM HolderType  roleName=identifier
+    ;
+
+
+grantPrivilegeObject
+    : SYSTEM_PRIVILEGE
+    | ObjectPrivilege ON ObjectType objectName=identifier
+    | ObjectPrivilege ON objectScope
+    | ObjectPrivilege ON ANY
+    ;
+
+objectScope
+    : dbname=identifier '.' tbname=identifier;
+
+SYSTEM_PRIVILEGE
+    : MANAGE_USER
+    | MANAGE_ROLE
+    | USE_TRIGGER
+    | MAINTAIN
+    ;
+
+ObjectPrivilege
+    : CREATE
+    | DROP
+    | ALTER
+    | SELECT
+    | UPDATE
+    | INSERT
+    | DELETE
+    ;
+
+ObjectType
+    : TABLE
+    | DATABASE
+    ;
+
+HolderType
+    : USER
+    | ROLE
+    ;
+
+GrantOpt
+    : WITH GRANT OPTION
+    ;
+
+RevokeGrantOpt
+    : GRANT OPTION FOR
+    ;
+
+revokePrivilegeObject
+    : SYSTEM_PRIVILEGE
+    | ObjectPrivilege ON ObjectType objectName=identifier
+    | ObjectPrivilege ON ANY
+    | ObjectPrivilege ON objectScope
+    | RevokeGrantOpt ObjectPrivilege ON ObjectType objectName=identifier
+    | RevokeGrantOpt SYSTEM_PRIVILEGE
+    | RevokeGrantOpt ObjectPrivilege ON ANY
+    ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
@@ -1139,6 +1253,7 @@ LEVEL: 'LEVEL';
 LIKE: 'LIKE';
 LIMIT: 'LIMIT';
 LINEAR: 'LINEAR';
+LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOCAL: 'LOCAL';
@@ -1199,6 +1314,7 @@ PASSING: 'PASSING';
 PAST: 'PAST';
 PATH: 'PATH';
 PATTERN: 'PATTERN';
+PASSWORD: 'PASSWORD';
 PER: 'PER';
 PERIOD: 'PERIOD';
 PERMUTE: 'PERMUTE';
@@ -1354,6 +1470,18 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
+MANAGE_DATABASE: 'MANAGE_DATABASE';
+MANAGE_USER: 'MANAGE_USER';
+MANAGE_ROLE: 'MANAGE_ROLE';
+USE_TRIGGER: 'USE_TRIGGER';
+USE_UDF: 'USE_UDF';
+USE_PIPE: 'USE_PIPE';
+EXTEND_TEMPLATE: 'EXTEND_TEMPLATE';
+MAINTAIN: 'MAINTAIN';
+USE_MODEL: 'USE_MODEL';
+
+
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

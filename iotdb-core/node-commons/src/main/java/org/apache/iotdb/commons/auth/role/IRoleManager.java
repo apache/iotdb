@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
-import java.util.Map;
 
 /** This interface maintains roles in memory and is responsible for their modifications. */
 public interface IRoleManager extends SnapshotProcessor {
@@ -91,19 +90,4 @@ public interface IRoleManager extends SnapshotProcessor {
    * @return A list that contains names of all roles.
    */
   List<String> listAllRoles();
-
-  /**
-   * clear all old roles info, replace the old roles with the new one. The caller should guarantee
-   * that no other methods of this interface are invoked concurrently when this method is called.
-   *
-   * @param roles new roles info
-   * @throws AuthException
-   */
-  void replaceAllRoles(Map<String, Role> roles) throws AuthException;
-
-  void setPreVersion(boolean preVersion);
-
-  boolean preVersion();
-
-  void checkAndRefreshPathPri();
 }

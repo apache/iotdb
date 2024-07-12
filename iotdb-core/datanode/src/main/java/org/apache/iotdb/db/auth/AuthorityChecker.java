@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,6 +96,16 @@ public class AuthorityChecker {
 
   public static SettableFuture<ConfigTaskResult> operatePermission(
       AuthorStatement authorStatement) {
+    return authorityFetcher.get().operatePermission(authorStatement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> queryPermission(
+      RelationalAuthorStatement authorStatement) {
+    return authorityFetcher.get().queryPermission(authorStatement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> operatePermission(
+      RelationalAuthorStatement authorStatement) {
     return authorityFetcher.get().operatePermission(authorStatement);
   }
 
@@ -165,7 +176,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkFullPathPermission(
-      String userName, PartialPath fullPath, int permission) {
+      String userName, PartialPath fullPath, PrivilegeType permission) {
     return authorityFetcher
         .get()
         .checkUserPathPrivileges(userName, Collections.singletonList(fullPath), permission)
@@ -173,21 +184,21 @@ public class AuthorityChecker {
   }
 
   public static List<Integer> checkFullPathListPermission(
-      String userName, List<? extends PartialPath> fullPaths, int permission) {
+      String userName, List<? extends PartialPath> fullPaths, PrivilegeType permission) {
     return authorityFetcher.get().checkUserPathPrivileges(userName, fullPaths, permission);
   }
 
   public static List<Integer> checkPatternPermission(
-      String userName, List<? extends PartialPath> pathPatterns, int permission) {
+      String userName, List<? extends PartialPath> pathPatterns, PrivilegeType permission) {
     return authorityFetcher.get().checkUserPathPrivileges(userName, pathPatterns, permission);
   }
 
-  public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
+  public static PathPatternTree getAuthorizedPathTree(String userName, PrivilegeType permission)
       throws AuthException {
     return authorityFetcher.get().getAuthorizedPatternTree(userName, permission);
   }
 
-  public static boolean checkSystemPermission(String userName, int permission) {
+  public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
     return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
@@ -198,7 +209,7 @@ public class AuthorityChecker {
       if (!authorityFetcher
           .get()
           .checkUserPrivilegeGrantOpt(
-              userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()).ordinal())) {
+              userName, PrivilegeType.valueOf(s.toUpperCase()), nodeNameList)) {
         return false;
       }
     }

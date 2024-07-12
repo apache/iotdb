@@ -36,9 +36,9 @@ public class LocalFileRoleManager extends BasicRoleManager {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    accessor.cleanRoleFolder();
-    for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
-      accessor.saveRole(entry.getValue());
+    accessor.cleanEntryFolder();
+    for (Map.Entry<String, Role> entry : entryMap.entrySet()) {
+      accessor.saveEntry(entry.getValue());
     }
     return accessor.processTakeSnapshot(snapshotDir);
   }

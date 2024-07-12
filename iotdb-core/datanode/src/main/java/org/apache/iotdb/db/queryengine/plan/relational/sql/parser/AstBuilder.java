@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
@@ -180,6 +182,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -1340,6 +1343,199 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
     return new ExplainAnalyze(
         getLocation(ctx), ctx.VERBOSE() != null, (Statement) visit(ctx.query()));
+  }
+
+  // ********************** author expressions ********************
+
+  private String stripQuotes(String text) {
+    if (text != null && text.length() >= 2 && text.startsWith("'") && text.endsWith("'")) {
+      return text.substring(1, text.length() - 1).replace("''", "'");
+    }
+    return text;
+  }
+
+  @Override
+  public Node visitCreateUser(RelationalSqlParser.CreateUserContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.CREATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+  @Override
+  public Node visitCreateRole(RelationalSqlParser.CreateRoleContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.CREATE_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropUser(RelationalSqlParser.DropUserContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.DROP_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropRole(RelationalSqlParser.DropRoleContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.DROP_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitAlterUser(RelationalSqlParser.AlterUserContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.UPDATE_USER);
+    stmt.setRoleName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantUserRole(RelationalSqlParser.GrantUserRoleContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.GRANT_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitRevokeUserRole(RelationalSqlParser.RevokeUserRoleContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.REVOKE_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserPrivileges(RelationalSqlParser.ListUserPrivilegesContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListRolePrivileges(RelationalSqlParser.ListRolePrivilegesContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
+    boolean toUser;
+    String username;
+    toUser = ctx.HolderType().getText().equalsIgnoreCase("user");
+    username = ctx.roleName.getText();
+    boolean grantOption = ctx.GrantOpt() != null;
+    boolean toTable = false;
+
+    // SYSTEM PRIVILEGES
+    if (ctx.grantPrivilegeObject().ON() == null) {
+      String privilegeText = ctx.grantPrivilegeObject().SYSTEM_PRIVILEGE().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      return new RelationalAuthorStatement(
+          toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
+          priv,
+          toUser ? username : "",
+          toUser ? "" : username,
+          grantOption);
+    } else {
+      String privilegeText = ctx.grantPrivilegeObject().ObjectPrivilege().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
+      // ON TABLE / DB
+      if (ctx.grantPrivilegeObject().ObjectType() != null) {
+        toTable = ctx.grantPrivilegeObject().ObjectType().getText().equalsIgnoreCase("table");
+        String obj = ctx.grantPrivilegeObject().objectName.getText();
+        return new RelationalAuthorStatement(
+            toUser
+                ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
+                : toTable ? AuthorRType.GRANT_ROLE_TB : AuthorRType.GRANT_ROLE_DB,
+            toTable ? "" : obj,
+            toTable ? obj : "",
+            priv,
+            toUser ? username : "",
+            toUser ? "" : username,
+            grantOption);
+      } else if (!ctx.grantPrivilegeObject().objectScope().isEmpty()) {
+        String db = ctx.grantPrivilegeObject().objectScope().dbname.getText();
+        String tb = ctx.grantPrivilegeObject().objectScope().tbname.getText();
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_ROLE_TB,
+            db,
+            tb,
+            priv,
+            toUser ? username : "",
+            toUser ? "" : username,
+            grantOption);
+      } else if (ctx.grantPrivilegeObject().ANY() != null) {
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_ANY : AuthorRType.GRANT_ROLE_ANY,
+            priv,
+            toUser ? username : "",
+            toUser ? "" : username,
+            grantOption);
+      }
+    }
+    return new RelationalAuthorStatement(AuthorRType.INVALID);
+  }
+
+  public Node visitRevokeStatement(RelationalSqlParser.RevokeStatementContext ctx) {
+    boolean fromUser;
+    String username;
+    fromUser = ctx.HolderType().getText().equalsIgnoreCase("user");
+    username = ctx.roleName.getText();
+    boolean grantOption = !ctx.revokePrivilegeObject().RevokeGrantOpt().getText().isEmpty();
+    boolean fromTable = false;
+
+    // SYSTEM PRIVILEGES
+    if (ctx.revokePrivilegeObject().ON() == null) {
+      String privilegeText = ctx.revokePrivilegeObject().SYSTEM_PRIVILEGE().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      return new RelationalAuthorStatement(
+          fromUser ? AuthorRType.REVOKE_USER_SYS : AuthorRType.REVOKE_ROLE_SYS,
+          priv,
+          fromUser ? username : "",
+          fromUser ? "" : username,
+          grantOption);
+    } else {
+      String privilegeText = ctx.revokePrivilegeObject().ObjectPrivilege().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      // ON TABLE / DB
+      if (ctx.revokePrivilegeObject().ObjectType() != null) {
+        fromTable = ctx.revokePrivilegeObject().ObjectType().getText().equalsIgnoreCase("table");
+        String obj = ctx.revokePrivilegeObject().objectName.getText();
+        return new RelationalAuthorStatement(
+            fromUser
+                ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
+                : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
+            fromTable ? "" : obj,
+            fromTable ? obj : "",
+            priv,
+            fromUser ? username : "",
+            fromUser ? "" : username,
+            grantOption);
+      } else if (!ctx.revokePrivilegeObject().objectScope().isEmpty()) {
+        String db = ctx.revokePrivilegeObject().objectScope().dbname.getText();
+        String tb = ctx.revokePrivilegeObject().objectScope().tbname.getText();
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_ROLE_TB,
+            db,
+            tb,
+            priv,
+            fromUser ? username : "",
+            fromUser ? "" : username,
+            grantOption);
+      } else if (ctx.revokePrivilegeObject().ANY() != null) {
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_ANY : AuthorRType.REVOKE_ROLE_ANY,
+            priv,
+            fromUser ? username : "",
+            fromUser ? "" : username,
+            grantOption);
+      }
+    }
+    return new RelationalAuthorStatement(AuthorRType.INVALID);
   }
 
   // ********************** query expressions ********************
