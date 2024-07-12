@@ -27,7 +27,7 @@ import org.apache.thrift.transport.TTransport;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+  private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
 
   public ConfigNodeRPCServiceHandler() {
     MetricService.getInstance()
@@ -35,14 +35,16 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
   }
 
   @Override
-  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
+  public ServerContext createContext(TProtocol input, TProtocol output) {
+    RequestContext.set(output.getTransport());
     thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
   @Override
-  public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
+  public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
     thriftConnectionNumber.decrementAndGet();
+    RequestContext.remove();
   }
 
   @Override
@@ -51,7 +53,7 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
   }
 
   @Override
-  public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
+  public void processContext(ServerContext serverContext, TTransport input, TTransport output) {
     // nothing
   }
 }
