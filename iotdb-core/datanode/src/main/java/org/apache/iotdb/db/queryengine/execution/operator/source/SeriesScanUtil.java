@@ -1199,7 +1199,7 @@ public class SeriesScanUtil implements Accountable {
     VersionPageReader(
         QueryContext context, long version, long offset, IPageReader data, boolean isSeq) {
       this.context = context;
-      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
+      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
       this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
