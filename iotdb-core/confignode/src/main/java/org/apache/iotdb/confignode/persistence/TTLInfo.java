@@ -108,20 +108,22 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   public TSStatus unsetTTL(SetTTLPlan plan) {
+    TSStatus status;
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(plan.getPathPattern());
-      if (plan.isDataBase()) {
+      status = ttlCache.unsetTTL(plan.getPathPattern());
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode() && plan.isDataBase()) {
         // unset ttl to path.**
-        ttlCache.unsetTTL(
-            new PartialPath(plan.getPathPattern())
-                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-                .getNodes());
+        status =
+            ttlCache.unsetTTL(
+                new PartialPath(plan.getPathPattern())
+                    .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                    .getNodes());
       }
     } finally {
       lock.writeLock().unlock();
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return status;
   }
 
   public ShowTTLResp showTTL(ShowTTLPlan plan) {

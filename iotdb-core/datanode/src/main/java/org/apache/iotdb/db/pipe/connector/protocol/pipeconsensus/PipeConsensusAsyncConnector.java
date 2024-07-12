@@ -122,16 +122,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       throws Exception {
     super.customize(parameters, configuration);
 
+    // Get consensusGroupId from parameters passed by PipeConsensusImpl
+    consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
+    // Get consensusPipeName from parameters passed by PipeConsensusImpl
+    consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
+
     // initialize metric components
     pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
         .addConsensusPipeConnector(this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
-
-    // Get consensusGroupId from parameters passed by PipeConsensusImpl
-    consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
-    // Get consensusPipeName from parameters passed by PipeConsensusImpl
-    consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we

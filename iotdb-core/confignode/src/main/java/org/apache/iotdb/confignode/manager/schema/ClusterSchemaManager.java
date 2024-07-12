@@ -153,8 +153,8 @@ public class ClusterSchemaManager {
               "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
     }
 
+    createDatabaseLock.lock();
     try {
-      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
@@ -396,7 +396,8 @@ public class ClusterSchemaManager {
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        long ttl = getDatabaseSchemaByName(database).getTTL();
+        final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
+        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
         if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }

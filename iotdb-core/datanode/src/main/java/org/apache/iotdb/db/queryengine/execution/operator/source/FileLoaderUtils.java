@@ -51,8 +51,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
 
@@ -102,10 +100,20 @@ public class FileLoaderUtils {
                     resource.getTimeIndexType() != 1,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
+          long t2 = System.nanoTime();
           List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
+          long costTime = System.nanoTime() - t2;
+          context
+              .getQueryStatistics()
+              .getNonAlignedTimeSeriesMetadataModificationCount()
+              .getAndAdd(pathModifications.size());
+          context
+              .getQueryStatistics()
+              .getNonAlignedTimeSeriesMetadataModificationTime()
+              .getAndAdd(costTime);
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -118,18 +126,12 @@ public class FileLoaderUtils {
       }
 
       if (timeSeriesMetadata != null) {
-        long t2 = System.nanoTime();
-        try {
-          if (timeSeriesMetadata.getStatistics().getStartTime()
-              > timeSeriesMetadata.getStatistics().getEndTime()) {
-            return null;
-          }
-          if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
-            return null;
-          }
-        } finally {
-          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_NONALIGNED, System.nanoTime() - t2);
+        if (timeSeriesMetadata.getStatistics().getStartTime()
+            > timeSeriesMetadata.getStatistics().getEndTime()) {
+          return null;
+        }
+        if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
+          return null;
         }
       }
       return timeSeriesMetadata;
@@ -137,19 +139,19 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemSeqTime().getAndAdd(costTime);
         } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqTime().getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqTime().getAndAdd(costTime);
         } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqTime().getAndAdd(costTime);
         }
       }
     }
@@ -190,18 +192,12 @@ public class FileLoaderUtils {
       }
 
       if (alignedTimeSeriesMetadata != null) {
-        final long t2 = System.nanoTime();
-        try {
-          if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
-              > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
-            return null;
-          }
-          if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
-            return null;
-          }
-        } finally {
-          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_ALIGNED, System.nanoTime() - t2);
+        if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
+            > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+          return null;
+        }
+        if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
+          return null;
         }
       }
       return alignedTimeSeriesMetadata;
@@ -209,24 +205,33 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
-        } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemSeqCount().getAndAdd(1);
           context
               .getQueryStatistics()
-              .loadTimeSeriesMetadataAlignedMemUnSeqTime
+              .getLoadTimeSeriesMetadataAlignedMemSeqTime()
+              .getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqCount().getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedMemUnSeqTime()
               .getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
-        } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskSeqCount().getAndAdd(1);
           context
               .getQueryStatistics()
-              .loadTimeSeriesMetadataAlignedDiskUnSeqTime
+              .getLoadTimeSeriesMetadataAlignedDiskSeqTime()
+              .getAndAdd(costTime);
+        } else {
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedDiskUnSeqCount()
+              .getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedDiskUnSeqTime()
               .getAndAdd(costTime);
         }
       }
@@ -306,6 +311,7 @@ public class FileLoaderUtils {
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
       AlignedPath alignedPath,
       QueryContext context) {
+    long startTime = System.nanoTime();
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
     List<List<Modification>> res = new ArrayList<>();
@@ -317,11 +323,17 @@ public class FileLoaderUtils {
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());
+        context
+            .getQueryStatistics()
+            .getAlignedTimeSeriesMetadataModificationCount()
+            .getAndAdd(pathModifications.size());
       } else {
         res.add(Collections.emptyList());
       }
     }
     alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
+    long costTime = System.nanoTime() - startTime;
+    context.getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().getAndAdd(costTime);
     return res;
   }
 

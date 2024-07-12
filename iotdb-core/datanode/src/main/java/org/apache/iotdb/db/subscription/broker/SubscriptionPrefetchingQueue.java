@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -56,7 +55,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   protected final String brokerId; // consumer group id
   protected final String topicName;
-  protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final SubscriptionBlockingPendingQueue inputPendingQueue;
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
@@ -68,7 +67,7 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
-      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
@@ -76,6 +75,21 @@ public abstract class SubscriptionPrefetchingQueue {
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
+
+  public void cleanup() {
+    // clean up uncommitted events
+    uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
+    uncommittedEvents.clear();
+
+    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
+    // in uncommittedEvents
+    prefetchingQueue.clear();
+
+    // no need to clean up events in inputPendingQueue, see
+    // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
+  }
+
+  /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
@@ -121,23 +135,12 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
-  /**
-   * @return {@code true} if a new event has been prefetched.
-   */
-  protected abstract boolean onEvent(final TabletInsertionEvent event);
+  /////////////////////////////// prefetch ///////////////////////////////
+
+  public abstract void executePrefetch();
 
   /**
-   * @return {@code true} if a new event has been prefetched.
-   */
-  protected abstract boolean onEvent(final PipeTsFileInsertionEvent event);
-
-  /**
-   * @return {@code true} if a new event has been prefetched.
-   */
-  protected abstract boolean trySealBatch();
-
-  /**
-   * prefetch at most one subscription event from {@link
+   * prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
    * SubscriptionPrefetchingQueue#prefetchingQueue}
    */
@@ -188,27 +191,27 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  public abstract void executePrefetch();
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final TabletInsertionEvent event);
 
-  public void cleanup() {
-    // clean up uncommitted events
-    uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
-    uncommittedEvents.clear();
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final PipeTsFileInsertionEvent event);
 
-    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
-    // in uncommittedEvents
-    prefetchingQueue.clear();
-
-    // no need to clean up events in inputPendingQueue, see
-    // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
-  }
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean trySealBatch();
 
   /////////////////////////////// commit ///////////////////////////////
 
   /**
    * @return {@code true} if ack successfully
    */
-  public boolean ack(final SubscriptionCommitContext commitContext) {
+  public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -236,9 +239,20 @@ public abstract class SubscriptionPrefetchingQueue {
       return false;
     }
 
+    // check if a consumer acks event from another consumer group...
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    if (!Objects.equals(consumerGroupId, brokerId)) {
+      LOGGER.warn(
+          "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+          brokerId,
+          consumerGroupId,
+          consumerId,
+          commitContext,
+          this);
+    }
+
     event.ack();
     event.cleanup();
-
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
     return true;
@@ -247,7 +261,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if nack successfully
    */
-  public boolean nack(final SubscriptionCommitContext commitContext) {
+  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -256,6 +270,19 @@ public abstract class SubscriptionPrefetchingQueue {
           this);
       return false;
     }
+
+    // check if a consumer nacks event from another consumer group...
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    if (!Objects.equals(consumerGroupId, brokerId)) {
+      LOGGER.warn(
+          "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+          brokerId,
+          consumerGroupId,
+          consumerId,
+          commitContext,
+          this);
+    }
+
     event.nack();
     return true;
   }

@@ -465,7 +465,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -1475,10 +1475,16 @@ public class IoTDBConfig {
   }
 
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
-    final String[] newLoadTsFileDirs = new String[tierDataDirs.length];
-    for (int i = 0; i < tierDataDirs.length; i++) {
+    if (tierDataDirs.length < 1) {
+      logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
+      return;
+    }
+
+    final String[] firstTierDataDirs = tierDataDirs[0];
+    final String[] newLoadTsFileDirs = new String[firstTierDataDirs.length];
+    for (int i = 0; i < firstTierDataDirs.length; i++) {
       newLoadTsFileDirs[i] =
-          tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+          firstTierDataDirs[i] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
     }
 
     // Update loadTsFileDirs after all newLoadTsFileDirs are generated,

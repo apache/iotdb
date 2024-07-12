@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -34,7 +35,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class Utils {
+public class TestConnectionUtils {
+  private static int dataNodeServiceRequestTimeout =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+  private static int configNodeServiceRequestTimeout =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+
   public static <ServiceProviderLocation, RequestType>
       List<TTestConnectionResult> testConnectionsImpl(
           List<ServiceProviderLocation> nodeLocations,
@@ -74,5 +80,34 @@ public class Utils {
               results.add(result);
             });
     return results;
+  }
+
+  public static int calculateCnLeaderToAllCnMaxTime() {
+    return
+    // SUBMIT_TEST_CONNECTION_TASK rpc timeout
+    configNodeServiceRequestTimeout
+        // cn internal service
+        + configNodeServiceRequestTimeout
+        // dn internal service
+        + dataNodeServiceRequestTimeout;
+  }
+
+  public static int calculateCnLeaderToAllDnMaxTime() {
+    return
+    // SUBMIT_TEST_CONNECTION_TASK rpc timeout
+    configNodeServiceRequestTimeout
+        // cn internal service
+        + configNodeServiceRequestTimeout
+        // dn internal, external, mpp service
+        + 3 * dataNodeServiceRequestTimeout;
+  }
+
+  public static int calculateCnLeaderToAllNodeMaxTime() {
+    return (int) ((calculateCnLeaderToAllCnMaxTime() + calculateCnLeaderToAllDnMaxTime()) * 1.1);
+  }
+
+  public static int calculateDnToCnLeaderMaxTime() {
+    return calculateCnLeaderToAllDnMaxTime()
+        + CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   }
 }

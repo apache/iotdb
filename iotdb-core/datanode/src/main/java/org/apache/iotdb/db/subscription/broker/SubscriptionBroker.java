@@ -122,7 +122,9 @@ public class SubscriptionBroker {
    * @return list of successful commit contexts
    */
   public List<SubscriptionCommitContext> commit(
-      final List<SubscriptionCommitContext> commitContexts, final boolean nack) {
+      final String consumerId,
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
@@ -138,11 +140,11 @@ public class SubscriptionBroker {
         continue;
       }
       if (!nack) {
-        if (prefetchingQueue.ack(commitContext)) {
+        if (prefetchingQueue.ack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(commitContext)) {
+        if (prefetchingQueue.nack(consumerId, commitContext)) {
           successfulCommitContexts.add(commitContext);
         }
       }
@@ -164,12 +166,14 @@ public class SubscriptionBroker {
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTsFileQueue(
+              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTabletQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTabletQueue(
+              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     }

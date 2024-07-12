@@ -39,7 +39,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.readCompressedPageData;
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
 public class CompactionChunkReader {
@@ -101,6 +100,22 @@ public class CompactionChunkReader {
     // clear chunk data to release memory
     chunkDataBuffer = null;
     return pages;
+  }
+
+  public static ByteBuffer readCompressedPageData(PageHeader pageHeader, ByteBuffer chunkBuffer)
+      throws IOException {
+    int compressedPageBodyLength = pageHeader.getCompressedSize();
+    if (compressedPageBodyLength > chunkBuffer.remaining()) {
+      throw new IOException(
+          "do not have a complete page body. Expected:"
+              + compressedPageBodyLength
+              + ". Actual:"
+              + chunkBuffer.remaining());
+    }
+    ByteBuffer pageBodyBuffer = chunkBuffer.slice();
+    pageBodyBuffer.limit(compressedPageBodyLength);
+    chunkBuffer.position(chunkBuffer.position() + compressedPageBodyLength);
+    return pageBodyBuffer;
   }
 
   /**

@@ -39,7 +39,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class PipeTableResp implements DataSet {
@@ -105,25 +109,62 @@ public class PipeTableResp implements DataSet {
     final List<TShowPipeInfo> showPipeInfoList = new ArrayList<>();
 
     for (final PipeMeta pipeMeta : allPipeMeta) {
+      final Map<String, Set<Integer>> pipeExceptionMessage2RegionIdsMap = new HashMap<>();
+      final Map<String, Set<Integer>> pipeExceptionMessage2NodeIdsMap = new HashMap<>();
       final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
       final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
-      for (final PipeRuntimeException e :
-          runtimeMeta.getNodeId2PipeRuntimeExceptionMap().values()) {
-        exceptionMessageBuilder
-            .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
-            .append(", ")
-            .append(e.getMessage())
-            .append("\n");
+
+      for (final Map.Entry<Integer, PipeRuntimeException> entry :
+          runtimeMeta.getNodeId2PipeRuntimeExceptionMap().entrySet()) {
+        final Integer nodeId = entry.getKey();
+        final PipeRuntimeException e = entry.getValue();
+        final String exceptionMessage =
+            DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
+
+        pipeExceptionMessage2NodeIdsMap
+            .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
+            .add(nodeId);
       }
-      for (final PipeTaskMeta pipeTaskMeta :
-          runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
-        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-          exceptionMessageBuilder
-              .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
-              .append(", ")
-              .append(e.getMessage())
-              .append("\n");
+
+      for (final Map.Entry<Integer, PipeTaskMeta> entry :
+          runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
+        final Integer regionId = entry.getKey();
+        for (final PipeRuntimeException e : entry.getValue().getExceptionMessages()) {
+          final String exceptionMessage =
+              DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
+          pipeExceptionMessage2RegionIdsMap
+              .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
+              .add(regionId);
+        }
+      }
+
+      for (final Map.Entry<String, Set<Integer>> entry :
+          pipeExceptionMessage2NodeIdsMap.entrySet()) {
+        final String exceptionMessage = entry.getKey();
+        final Set<Integer> nodeIds = entry.getValue();
+        exceptionMessageBuilder
+            .append("nodeIds: ")
+            .append(nodeIds)
+            .append(", ")
+            .append(exceptionMessage)
+            .append("; ");
+      }
+
+      final int size = pipeExceptionMessage2RegionIdsMap.size();
+      int count = 0;
+
+      for (final Map.Entry<String, Set<Integer>> entry :
+          pipeExceptionMessage2RegionIdsMap.entrySet()) {
+        final String exceptionMessage = entry.getKey();
+        final Set<Integer> regionIds = entry.getValue();
+        exceptionMessageBuilder
+            .append("regionIds: ")
+            .append(regionIds)
+            .append(", ")
+            .append(exceptionMessage);
+        if (++count < size) {
+          exceptionMessageBuilder.append("; ");
         }
       }
 

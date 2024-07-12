@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -49,7 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
+class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
@@ -67,7 +65,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
-      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
@@ -92,6 +90,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           return null;
         });
   }
+
+  /////////////////////////////// poll ///////////////////////////////
 
   @Override
   public SubscriptionEvent poll(final String consumerId) {
@@ -257,6 +257,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return event;
   }
 
+  /////////////////////////////// prefetch ///////////////////////////////
+
+  @Override
+  public synchronized void executePrefetch() {
+    super.tryPrefetch();
+
+    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
+    for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
+      try {
+        event.prefetchRemainingResponses();
+        event.trySerializeRemainingResponses();
+      } catch (final IOException ignored) {
+      }
+    }
+  }
+
   @Override
   protected boolean onEvent(final TabletInsertionEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
@@ -337,18 +353,21 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  @Override
-  public synchronized void executePrefetch() {
-    tryPrefetch();
+  /////////////////////////////// commit ///////////////////////////////
 
-    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
-    for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
-      try {
-        event.prefetchRemainingResponses();
-        event.trySerializeRemainingResponses();
-      } catch (final IOException ignored) {
+  /**
+   * @return {@code true} if nack successfully
+   */
+  @Override
+  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
+    if (super.nack(consumerId, commitContext)) {
+      final SubscriptionEvent event = consumerIdToSubscriptionEventMap.get(consumerId);
+      if (Objects.nonNull(event) && Objects.equals(commitContext, event.getCommitContext())) {
+        consumerIdToSubscriptionEventMap.remove(consumerId);
       }
+      return true;
     }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -397,7 +416,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
       consumerIdToSubscriptionEventMap.remove(entry.getKey());
 
-      event.resetCurrentResponseIndex();
+      event.nack();
       consumerIdToSubscriptionEventMap.put(consumerId, event);
 
       event.recordLastPolledConsumerId(consumerId);
