@@ -169,12 +169,16 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       return Collections.emptyList();
     }
 
-    String[] coordinateStrings = coordinatesString.split(":");
+    // Multiple coordinates are separated by ","
+    String[] coordinateStrings = coordinatesString.split(",");
     List<NodeCoordinate> coordinates = new ArrayList<>(coordinateStrings.length);
     for (String coordinate : coordinateStrings) {
+      // If the string contains a ":" then this is an IP+Port configuration
       if (coordinate.contains(":")) {
         coordinates.add(new NodeCoordinateIP(UrlUtils.parseTEndPointIpv4AndIpv6Url(coordinate)));
-      } else if (NumberUtils.isCreatable(coordinate)) {
+      }
+      // In the other case, we expect it to be a numeric value referring to the node-id
+      else if (NumberUtils.isCreatable(coordinate)) {
         coordinates.add(new NodeCoordinateNodeId(Integer.parseInt(coordinate)));
       }
     }
