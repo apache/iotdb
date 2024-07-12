@@ -63,17 +63,23 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+  private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
 
   @Before
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+    SystemInfo.getInstance().setMemorySizeForCompaction(100 * 1024 * 1024);
   }
 
   @After
   public void tearDown() throws StorageEngineException, IOException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
+    SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
   }
 
   @Test
