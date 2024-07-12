@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -44,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
+class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
@@ -60,7 +58,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
-      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
     this.currentBatchRef.set(

@@ -1480,7 +1480,10 @@ max_number_of_points_in_page=10000
 # Datatype: int
 pattern_matching_threshold=1000000
 
-# Floating-point precision
+# Floating-point precision of query results.
+# Only effective for RLE and TS_2DIFF encodings.
+# Due to the limitation of machine precision, some values may not be interpreted strictly.
+# E.g.: 1.111111 with precision=3 will be shown as 1.11100001
 # effectiveMode: hot_reload
 # Datatype: int
 float_precision=2

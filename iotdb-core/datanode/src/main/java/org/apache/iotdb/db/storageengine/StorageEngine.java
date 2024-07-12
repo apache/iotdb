@@ -163,13 +163,9 @@ public class StorageEngine implements IService {
   }
 
   /** block insertion if the insertion is rejected by memory control */
-  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
-      throws WriteProcessRejectException {
+  public static void blockInsertionIfReject() throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
-      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
-        break;
-      }
       try {
         TimeUnit.MILLISECONDS.sleep(CONFIG.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > CONFIG.getMaxWaitingTimeWhenInsertBlocked()) {

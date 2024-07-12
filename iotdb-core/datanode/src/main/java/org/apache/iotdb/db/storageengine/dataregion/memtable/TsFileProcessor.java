@@ -48,7 +48,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -106,6 +105,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -200,6 +200,8 @@ public class TsFileProcessor {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  public static final int MEMTABLE_NOT_EXIST = -1;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -932,7 +934,22 @@ public class TsFileProcessor {
     if (dataRegionInfo.needToReportToSystem()) {
       try {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(dataRegionInfo, this)) {
-          StorageEngine.blockInsertionIfReject(this);
+          long startTime = System.currentTimeMillis();
+          while (SystemInfo.getInstance().isRejected()) {
+            if (workMemTable.shouldFlush()) {
+              break;
+            }
+            try {
+              TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+              if (System.currentTimeMillis() - startTime
+                  > config.getMaxWaitingTimeWhenInsertBlocked()) {
+                throw new WriteProcessRejectException(
+                    "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
         }
       } catch (WriteProcessRejectException e) {
         dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
@@ -1008,13 +1025,10 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       return true;
     }
-    if (workMemTable.reachTotalPointNumThreshold()) {
-      logger.info(
-          "The avg series points num {} of tsfile {} reaches the threshold",
-          workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
-          tsFileResource.getTsFile().getAbsolutePath());
+    if (workMemTable.reachChunkSizeOrPointNumThreshold()) {
       WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
       return true;
     }

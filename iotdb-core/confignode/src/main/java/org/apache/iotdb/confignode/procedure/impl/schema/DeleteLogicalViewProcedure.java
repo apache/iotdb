@@ -139,7 +139,7 @@ public class DeleteLogicalViewProcedure
     List<TSStatus> successResult = new ArrayList<>();
     DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
         new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
-            "construct view schemaengine black list",
+            "construct view schema engine black list",
             env,
             targetSchemaRegionGroup,
             CnToDnRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
@@ -208,7 +208,7 @@ public class DeleteLogicalViewProcedure
   private void deleteViewSchema(ConfigNodeProcedureEnv env) {
     DeleteLogicalViewRegionTaskExecutor<TDeleteViewSchemaReq> deleteTimeSeriesTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "delete view schemaengine",
+            "delete view in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             CnToDnRequestType.DELETE_VIEW,
@@ -244,7 +244,7 @@ public class DeleteLogicalViewProcedure
       throws IOException, InterruptedException, ProcedureException {
     DeleteLogicalViewRegionTaskExecutor<TRollbackViewSchemaBlackListReq> rollbackStateTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "roll back view schemaengine black list",
+            "roll back view schema engine black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             CnToDnRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
@@ -379,7 +379,7 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
+                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
                       requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
       interruptTask();
     }

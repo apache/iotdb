@@ -166,12 +166,14 @@ public class SubscriptionBroker {
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTsFileQueue(
+              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
       final SubscriptionPrefetchingQueue queue =
-          new SubscriptionPrefetchingTabletQueue(brokerId, topicName, inputPendingQueue);
+          new SubscriptionPrefetchingTabletQueue(
+              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
       topicNameToPrefetchingQueue.put(topicName, queue);
     }

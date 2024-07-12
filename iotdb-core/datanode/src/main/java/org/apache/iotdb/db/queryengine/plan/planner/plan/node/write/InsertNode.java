@@ -25,11 +25,9 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -46,10 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
-
-  /** this insert node doesn't need to participate in iot consensus */
-  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -71,12 +66,6 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
    * used in memtable
    */
   protected IDeviceID deviceID;
-
-  /**
-   * this index is used by wal search, its order should be protected by the upper layer, and the
-   * value should start from 1
-   */
-  protected long searchIndex = NO_CONSENSUS_INDEX;
 
   protected boolean isGeneratedByRemoteConsensusLeader = false;
 
@@ -165,15 +154,6 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
-  }
-
-  public long getSearchIndex() {
-    return searchIndex;
-  }
-
-  /** Search index should start from 1 */
-  public void setSearchIndex(long searchIndex) {
-    this.searchIndex = searchIndex;
   }
 
   public boolean isGeneratedByRemoteConsensusLeader() {
