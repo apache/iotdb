@@ -235,7 +235,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       waitHandshakeFinished(isHandshakeFinished);
     }
     client.setShouldReturnSelf(true);
-    client.returnSelf();
     if (exception.get() != null) {
       throw new PipeConnectionException("Failed to handshake.", exception.get());
     }
