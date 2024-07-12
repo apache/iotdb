@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,6 +50,8 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,6 +65,8 @@ import java.util.stream.Collectors;
 public class BatchedFastAlignedSeriesCompactionExecutor
     extends FastAlignedSeriesCompactionExecutor {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final Set<String> compactedMeasurements;
   private final IMeasurementSchema timeSchema;
   private final List<IMeasurementSchema> valueMeasurementSchemas;
@@ -160,7 +165,10 @@ public class BatchedFastAlignedSeriesCompactionExecutor
             currentBatchMeasurementSchemas,
             summary);
     executor.execute();
-    System.out.println(batchCompactionPlan);
+    LOGGER.debug(
+        "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
+        deviceId,
+        batchCompactionPlan);
   }
 
   private void compactLeftBatches()

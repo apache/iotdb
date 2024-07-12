@@ -122,12 +122,6 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     }
     dataSize += ReadWriteIOUtils.write(pageStartTime, stream);
     dataSize += ReadWriteIOUtils.write(pageEndTime, stream);
-    System.out.print(
-        "current measurement is "
-            + chunkHeaderList.get(chunkHeaderList.size() - 1).getMeasurementID()
-            + ", ");
-    System.out.println(
-        "write decode value page, start time: " + pageStartTime + ", end time: " + pageEndTime);
   }
 
   @Override
@@ -223,9 +217,6 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       long endTime = ReadWriteIOUtils.readLong(stream);
       statistics.setStartTime(startTime);
       statistics.setEndTime(endTime);
-      System.out.print("current measurement is " + chunkHeader.getMeasurementID() + ", ");
-      System.out.println(
-          "write decode value page, start time: " + startTime + ", end time: " + endTime);
 
       valueChunkWriter.sealCurrentPage();
     }

@@ -722,7 +722,7 @@ public class IoTDBConfig {
    * How many chunk will be compact in aligned series compaction, 10 by default. Set to
    * Integer.MAX_VALUE when less than or equal to 0.
    */
-  private int compactionMaxAlignedSeriesNumInOneBatch = 2;
+  private int compactionMaxAlignedSeriesNumInOneBatch = 10;
 
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).

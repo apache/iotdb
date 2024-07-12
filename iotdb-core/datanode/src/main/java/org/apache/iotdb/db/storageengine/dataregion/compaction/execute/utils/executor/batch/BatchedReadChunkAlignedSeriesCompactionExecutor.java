@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -47,6 +48,8 @@ import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -58,6 +61,8 @@ import java.util.stream.Collectors;
 
 public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final Set<String> compactedMeasurements;
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
   private final int batchSize =
@@ -110,7 +115,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             timeSchema,
             firstBatchMeasurements);
     executor.execute();
-    System.out.println(batchCompactionPlan);
+    LOGGER.debug(
+        "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
+        device,
+        batchCompactionPlan);
   }
 
   private void compactLeftBatches() throws PageException, IOException {

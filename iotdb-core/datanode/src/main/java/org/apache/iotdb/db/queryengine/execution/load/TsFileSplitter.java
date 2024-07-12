@@ -148,7 +148,6 @@ public class TsFileSplitter {
   private void processTimeChunkOrNonAlignedChunk(TsFileSequenceReader reader, byte marker)
       throws IOException {
     long chunkOffset = reader.position();
-    System.out.println("consume by new time chunk");
     timeChunkIndexOfCurrentValueColumn = pageIndex2TimesList.size();
     consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
     handleModification(offset2Deletions, chunkOffset);
@@ -364,13 +363,6 @@ public class TsFileSplitter {
       TsFileSequenceReader reader, String measurement) throws IOException {
     int index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
     if (index != timeChunkIndexOfCurrentValueColumn) {
-      System.out.println(
-          "consume by value chunk "
-              + measurement
-              + " index = "
-              + index
-              + " current time chunk index = "
-              + timeChunkIndexOfCurrentValueColumn);
       consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
     }
     timeChunkIndexOfCurrentValueColumn = index;
