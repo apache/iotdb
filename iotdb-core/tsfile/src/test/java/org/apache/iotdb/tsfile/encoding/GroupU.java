@@ -1,6 +1,7 @@
 package org.apache.iotdb.tsfile.encoding;
 
 import java.util.Arrays;
+import java.util.HashMap;
 
 import static java.lang.Math.pow;
 
@@ -16,7 +17,63 @@ public class GroupU{
     public long[] sorted_value_list; // cdf
     public int[] invert;
     public int[] invert2;
+    HashMap<Integer, int[]> map = new HashMap<>();
 
+
+    public void getBetaArray(int max_delta_value, int gamma, GroupL[] groupL) {
+        int max_bit_width = getBitWith(max_delta_value) + 1;
+        int max_this_group = max_delta_value - (int) pow(2, gamma - 1);
+        int min_this_group = max_delta_value - (int) pow(2, gamma) + 1;
+        int alpha_max = getBitWith(max_delta_value-min_this_group);
+        for (int i = 1; i <= alpha_max; i++) {
+            int k1_start = (int) pow(2, i-1);
+//            int k2_end = (int) (max_delta_value - pow(2, i));
+            if (k1_start > max_this_group) break;
+            int[] cur_cur_k1_array = new int[max_bit_width * 2];
+            int cur_cur_k1_index = 0;
+            GroupL cur_group_alpha = groupL[i - 1];
+            int alpha_unique_number = cur_group_alpha.unique_number;
+            long[] alpha_sorted = cur_group_alpha.sorted_value_list;
+            int k1_end = (int) ( pow(2, i));
+            int max_beta = getBitWith(max_this_group - k1_start);
+            int min_beta = getBitWith(min_this_group- k1_end);
+            for (int beta = min_beta; beta <= max_beta; beta++) {
+//                if(beta>=gamma && beta >= i) break;
+                int pow_2_beta = (int) pow(2, beta);
+                int x_l_i_end = 0;
+//                if(gamma > beta ){
+                    x_l_i_end =  max_this_group - ( pow_2_beta + k1_start);
+//                }else {
+//                    x_l_i_end = max_this_group - (pow_2_beta + k1_end + 2);
+//                }
+
+//                int accumulate = alpha_unique_number>0 ? cur_group_alpha.getCount(alpha_sorted[0]):0;
+//                int x_u_i_end = k2_end - (pow_2_beta + min_this_group + 2);
+                if(x_l_i_end<k1_start && x_l_i_end>0)
+                    for (int unique_i = 0; unique_i < alpha_unique_number - 1; unique_i++) {
+                        int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_i]);
+//                        int cur_cur_k1 = cur_group_alpha.getCount(alpha_sorted[unique_i+1]);
+//                        accumulate += cur_cur_k1;
+                        if (x_l_i > x_l_i_end) {
+                            int cur_cur_k1 = cur_group_alpha.getCount(alpha_sorted[unique_i]);
+                            cur_cur_k1_array[cur_cur_k1_index] = x_l_i;
+                            cur_cur_k1_index++;
+                            cur_cur_k1_array[cur_cur_k1_index] = cur_cur_k1;
+                            cur_cur_k1_index++;
+                            break;
+                        }
+                    }
+
+            }
+            int[] cur_cur_k1_array_new = new int[cur_cur_k1_index];
+            System.arraycopy(cur_cur_k1_array, 0, cur_cur_k1_array_new, 0, cur_cur_k1_index);
+            map.put(i, cur_cur_k1_array_new);
+        }
+    }
+//        public static int getBitWithgamma(int num) {
+//            if (num == 0) return 1;
+//            else return 32 - Integer.numberOfLeadingZeros(num);
+//        }
     public int getCount(long long1) {
         return ((int) (long1 & this.mask));
     }

@@ -1084,23 +1084,23 @@ public class TSDIFFBOSHExample {
             encode_pos =  BOSBlockEncoder(data_name,data, i, block_size, block_size,encode_pos,encoded_result);
         }
 
-        int remaining_length = length_all - block_num * block_size;
-        if (remaining_length <= 3) {
-            for (int i = remaining_length; i > 0; i--) {
-                int2Bytes(data[data.length - i], encode_pos, encoded_result);
-                encode_pos += 4;
-            }
-
-        }
-        else {
-
-            int start = block_num * block_size;
-            int remaining = length_all-start;
-
-
-            encode_pos = BOSBlockEncoder(data_name,data, block_num, block_size,remaining, encode_pos,encoded_result);
-
-        }
+//        int remaining_length = length_all - block_num * block_size;
+//        if (remaining_length <= 3) {
+//            for (int i = remaining_length; i > 0; i--) {
+//                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+//                encode_pos += 4;
+//            }
+//
+//        }
+//        else {
+//
+//            int start = block_num * block_size;
+//            int remaining = length_all-start;
+//
+//
+//            encode_pos = BOSBlockEncoder(data_name,data, block_num, block_size,remaining, encode_pos,encoded_result);
+//
+//        }
 
 
         return encode_pos;

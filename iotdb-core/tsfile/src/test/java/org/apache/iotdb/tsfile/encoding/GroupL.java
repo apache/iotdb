@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import static java.lang.Math.pow;
 
@@ -17,6 +18,61 @@ public class GroupL {
     public int mask;
     public int left_shift;
 
+    HashMap<Integer, int[]> map = new HashMap<>();
+
+
+    public void getBetaArray(int max_delta_value, int alpha, GroupU[] groupU){
+        int max_bit_width = getBitWith(max_delta_value) + 1;
+        int min_this_group = (int) pow(2,alpha-1); // down line
+        int max_this_group = (int) pow(2,alpha)-1; // up line
+        int gamma_max = getBitWith(max_delta_value-min_this_group);
+        for(int i=1; i<=gamma_max; i++){ // transverse every gamma
+            int gamma_pow_i = (int) pow(2,i);
+            int k2_end = max_delta_value-gamma_pow_i; // left line
+            int[] cur_cur_k2_array = new int[max_bit_width*2];
+            int cur_cur_k2_index = 0;
+            GroupU cur_group_gamma = groupU[i];
+            int gamma_unique_number = cur_group_gamma.unique_number;
+            long[] gamma_sorted = cur_group_gamma.sorted_value_list;
+            int gamma_pow_i_1 = (int) pow(2,i-1);
+            int k2_start = (int) (max_delta_value-gamma_pow_i_1);
+            int min_beta = getBitWith(k2_end - max_this_group);
+            int max_beta = getBitWith(k2_start - min_this_group);
+            for(int beta = min_beta;beta<=max_beta;beta++){
+//                if(beta>=alpha && beta >= i) break;
+
+                int pow_2_beta = (int) pow(2,beta);
+                int x_u_i_end = 0;
+//                if(alpha > beta ) {
+//                    System.out.println("ads0d0s0d0s0");
+                    x_u_i_end = k2_start - (pow_2_beta + min_this_group);
+//                }else {
+//                    x_u_i_end = k2_start - (pow_2_beta + max_this_group);
+//                }
+//                int accumulate = gamma_unique_number>0? cur_group_gamma.getCount(gamma_sorted[0]):0;
+                if(x_u_i_end<gamma_pow_i_1 && x_u_i_end>0)
+                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+                        int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
+    //                    int cur_cur_k2 = cur_group_gamma.getCount(gamma_sorted[unique_i+1]);
+
+    //                    accumulate += cur_cur_k2;
+                        if (x_u_i > x_u_i_end) {
+                            int cur_cur_k2 = cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                            cur_cur_k2_array[cur_cur_k2_index] = x_u_i;
+                            cur_cur_k2_index ++;
+                            cur_cur_k2_array[cur_cur_k2_index] = cur_cur_k2;
+                            cur_cur_k2_index ++;
+                            break;
+                        }
+                    }
+
+            }
+            int[] cur_cur_k2_array_new = new int[cur_cur_k2_index];
+            System.arraycopy(cur_cur_k2_array, 0, cur_cur_k2_array_new, 0, cur_cur_k2_index);
+            map.put(i, cur_cur_k2_array_new);
+        }
+
+    }
     public int getCount(long long1) {
         return ((int) (long1 & this.mask));
     }
