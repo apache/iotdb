@@ -1083,28 +1083,16 @@ public class SortTest {
             .map(Symbol::getName)
             .collect(Collectors.toList()));
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof ProjectNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    sortNode = (StreamSortNode) mergeSortNode.getChildren().get(1);
-    assertTrue(sortNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(sortNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
+    ProjectNode projectNode = (ProjectNode) mergeSortNode.getChildren().get(1);
+    assertTrue(projectNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(projectNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     assertTrue(
-        sortNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
-    assertTrue(
-        sortNode.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
+        projectNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof TableScanNode);
     tableScanNode =
-        (TableScanNode)
-            sortNode
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0);
+        (TableScanNode) projectNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(
         Arrays.asList(
@@ -1122,24 +1110,12 @@ public class SortTest {
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree() instanceof IdentitySinkNode);
     assertTrue(
         distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0)
-            instanceof SortNode);
-    assertTrue(
-        distributedQueryPlan
-                .getFragments()
-                .get(1)
-                .getPlanNodeTree()
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
             instanceof ProjectNode);
     assertTrue(
         distributedQueryPlan
                 .getFragments()
                 .get(1)
                 .getPlanNodeTree()
-                .getChildren()
-                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -1160,8 +1136,6 @@ public class SortTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-                .getChildren()
-                .get(0)
             instanceof TableScanNode);
     tableScanNode =
         (TableScanNode)
@@ -1169,8 +1143,6 @@ public class SortTest {
                 .getFragments()
                 .get(1)
                 .getPlanNodeTree()
-                .getChildren()
-                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()

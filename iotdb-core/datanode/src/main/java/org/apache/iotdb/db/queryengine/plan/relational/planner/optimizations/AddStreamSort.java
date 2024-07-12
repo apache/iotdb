@@ -118,8 +118,6 @@ public class AddStreamSort implements TablePlanOptimizer {
   private static class Context {
     private TableScanNode tableScanNode;
 
-    public Context() {}
-
     public TableScanNode getTableScanNode() {
       return tableScanNode;
     }
