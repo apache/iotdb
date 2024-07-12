@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -63,6 +65,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -154,7 +157,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeCreatePipeInternal(TCreatePipeReq createPipeRequest)
+  private void checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
       throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return;
@@ -556,11 +559,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     pipeMetaKeeper.clear();
 
+    // This method is only triggered by pipe sync / meta report currently
+    // And is guaranteed to print log finally
+    final Optional<Logger> logger =
+        PipeConfigNodeResourceManager.log()
+            .schedule(
+                PipeTaskInfo.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
-              LOGGER.info("Recording pipe meta: {}", pipeMeta);
+              logger.ifPresent(l -> l.info("Recording pipe meta: {}", pipeMeta));
             });
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -680,26 +692,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
           continue;
         }
 
-        resp.getExceptionMessages()
+        resp.getExceptionMessages().stream()
+            .filter(message -> pipeMetaKeeper.containsPipeMeta(message.getPipeName()))
             .forEach(
                 message -> {
-                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
-                    final PipeRuntimeMeta runtimeMeta =
-                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+                  final PipeRuntimeMeta runtimeMeta =
+                      pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
-                    // Mark the status of the pipe with exception as stopped
-                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                    runtimeMeta.setIsStoppedByRuntimeException(true);
+                  // Mark the status of the pipe with exception as stopped
+                  runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                  runtimeMeta.setIsStoppedByRuntimeException(true);
 
-                    final Map<Integer, PipeRuntimeException> exceptionMap =
-                        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                    if (!exceptionMap.containsKey(dataNodeId)
-                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
-                      exceptionMap.put(
-                          dataNodeId,
-                          new PipeRuntimeCriticalException(
-                              message.getMessage(), message.getTimeStamp()));
-                    }
+                  final Map<Integer, PipeRuntimeException> exceptionMap =
+                      runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
+                  if (!exceptionMap.containsKey(dataNodeId)
+                      || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                    exceptionMap.put(
+                        dataNodeId,
+                        new PipeRuntimeCriticalException(
+                            message.getMessage(), message.getTimeStamp()));
                   }
                 });
       }

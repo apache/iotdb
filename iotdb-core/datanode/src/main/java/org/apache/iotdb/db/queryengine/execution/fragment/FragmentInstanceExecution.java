@@ -311,6 +311,8 @@ public class FragmentInstanceExecution {
             exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
                 instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
 
+            context.releaseMemoryReservationManager();
+
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }

@@ -276,6 +276,17 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
 
+  public void updateProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex == null) {
+      return;
+    }
+
+    this.progressIndex =
+        (this.progressIndex == null)
+            ? progressIndex
+            : this.progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+  }
+
   // region serialize & deserialize methods for WAL
   /** Serialized size for wal. */
   @Override

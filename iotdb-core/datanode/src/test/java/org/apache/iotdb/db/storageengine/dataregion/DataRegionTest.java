@@ -123,9 +123,9 @@ public class DataRegionTest {
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
     DataNodeTableCache.getInstance()
-        .preCreateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
     DataNodeTableCache.getInstance()
-        .commitCreateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName());
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName());
   }
 
   @After

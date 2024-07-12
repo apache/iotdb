@@ -127,6 +127,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // Get consensusPipeName from parameters passed by PipeConsensusImpl
     consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
 
+    // initialize metric components
+    pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
+    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
+        .addConsensusPipeConnector(this);
+    MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
+
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
@@ -147,12 +153,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // currently, tablet batch is false by default in PipeConsensus;
     isTabletBatchModeEnabled = false;
-
-    // initialize metric components
-    pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
-    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(this);
-    MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
   }
 
   /**

@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
-  private List<Object[]> deviceIdList;
+  private final List<Object[]> deviceIdList;
 
   public TableDeviceFetchNode(
       PlanNodeId id,
@@ -49,6 +49,10 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       TRegionReplicaSet regionReplicaSet) {
     super(id, database, tableName, columnHeaderList, regionReplicaSet);
     this.deviceIdList = deviceIdList;
+  }
+
+  public void addDeviceId(Object[] deviceId) {
+    deviceIdList.add(deviceId);
   }
 
   public List<Object[]> getDeviceIdList() {

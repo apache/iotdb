@@ -70,6 +70,8 @@ struct TSExecuteStatementResp {
   12: optional TSTracingInfo tracingInfo
   13: optional list<binary> queryResult
   14: optional bool moreData
+  // only be set while executing use XXX successfully
+  15: optional string database
 }
 
 enum TSProtocolVersion {

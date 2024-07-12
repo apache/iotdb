@@ -30,8 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -68,6 +70,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -156,6 +159,9 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+
+  private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
+      new HashMap<>();
 
   private DataPartition dataPartition;
 
@@ -573,6 +579,15 @@ public class Analysis implements IAnalysis {
 
   public boolean isAliased(Relation relation) {
     return aliasedRelations.contains(NodeRef.of(relation));
+  }
+
+  public void addTableSchema(
+      QualifiedObjectName qualifiedObjectName, Map<Symbol, ColumnSchema> tableColumnSchema) {
+    tableColumnSchemas.put(qualifiedObjectName, tableColumnSchema);
+  }
+
+  public Map<Symbol, ColumnSchema> getTableColumnSchema(QualifiedObjectName qualifiedObjectName) {
+    return tableColumnSchemas.get(qualifiedObjectName);
   }
 
   public boolean hasValueFilter() {

@@ -92,6 +92,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -300,6 +302,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     StatementType statementType = null;
     Throwable t = null;
+    boolean useDatabase = false;
     try {
       // create and cache dataset
       ExecutionResult result;
@@ -339,6 +342,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
             relationSqlParser.createStatement(statement, clientSession.getZoneId());
+
+        if (s instanceof Use) {
+          useDatabase = true;
+        }
 
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
@@ -382,9 +389,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         } else {
           finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
+          // set for use XX
+          if (useDatabase) {
+            resp.setDatabase(clientSession.getDatabaseName());
+          }
         }
         return resp;
       }
+    } catch (ParsingException e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     } catch (Exception e) {
       finished = true;
       t = e;
@@ -1194,6 +1210,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
       return resp.setSessionId(-1);
     }
+    Optional<String> database = parseDatabase(req);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
     BasicOpenSessionResp openSessionResp =
         SESSION_MANAGER.login(
             SESSION_MANAGER.getCurrSession(),
@@ -1204,6 +1222,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             clientVersion,
             sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
+      clientSession.setDatabaseName(database.get());
+    }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
   }
@@ -1230,6 +1252,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } else {
       return IClientSession.SqlDialect.TREE;
     }
+  }
+
+  private Optional<String> parseDatabase(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration == null ? Optional.empty() : Optional.ofNullable(configuration.get("db"));
   }
 
   @Override

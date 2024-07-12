@@ -70,8 +70,8 @@ public class IndexController {
   }
 
   public void update(long index, boolean forcePersist) {
+    lock.writeLock().lock();
     try {
-      lock.writeLock().lock();
       long newCurrentIndex = Math.max(currentIndex, index);
       logger.debug(
           "update index from currentIndex {} to {} for file prefix {} in {}",
@@ -87,8 +87,8 @@ public class IndexController {
   }
 
   public long getCurrentIndex() {
+    lock.readLock().lock();
     try {
-      lock.readLock().lock();
       return currentIndex;
     } finally {
       lock.readLock().unlock();

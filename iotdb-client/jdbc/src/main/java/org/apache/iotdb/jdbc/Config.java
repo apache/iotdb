@@ -83,4 +83,6 @@ public class Config {
   public static final String TRUST_STORE_PWD = "trust_store_pwd";
 
   public static final String SQL_DIALECT = "sql_dialect";
+
+  public static final String DATABASE = "db";
 }

@@ -499,6 +499,7 @@ public class IoTDBConnection implements Connection {
     openReq.setZoneId(getTimeZone());
     openReq.putToConfiguration(Config.VERSION, params.getVersion().toString());
     openReq.putToConfiguration(Config.SQL_DIALECT, params.getSqlDialect());
+    params.getDb().ifPresent(db -> openReq.putToConfiguration(Config.DATABASE, db));
 
     TSOpenSessionResp openResp = null;
     try {
@@ -592,5 +593,9 @@ public class IoTDBConnection implements Connection {
 
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
+  }
+
+  protected void changeDefaultDatabase(String database) {
+    params.setDb(database);
   }
 }

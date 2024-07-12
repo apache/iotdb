@@ -38,7 +38,9 @@ public class IoTDBCounter extends AbstractMetricMBean implements Counter, IoTDBC
 
   @Override
   public void inc(long n) {
-    this.count.add(n);
+    if (n != 0) {
+      this.count.add(n);
+    }
   }
 
   @Override

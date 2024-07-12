@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LimitOffsetPushDown;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TablePlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import java.util.Collections;
@@ -44,12 +46,14 @@ public class TableDistributionPlanner {
   private final Analysis analysis;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
+  private final List<TablePlanOptimizer> optimizers;
 
   public TableDistributionPlanner(
       Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = mppQueryContext;
+    this.optimizers = Collections.singletonList(new LimitOffsetPushDown());
   }
 
   public DistributedQueryPlan plan() {
@@ -60,6 +64,12 @@ public class TableDistributionPlanner {
         new DistributedPlanGenerator(mppQueryContext, analysis)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+
+    // distribute plan optimize rule
+    this.optimizers.forEach(
+        optimizer ->
+            optimizer.optimize(
+                distributedPlanResult.get(0), analysis, null, null, mppQueryContext));
 
     // add exchange node for distributed plan
     PlanNode outputNodeWithExchange =

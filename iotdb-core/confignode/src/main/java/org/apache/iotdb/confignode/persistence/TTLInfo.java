@@ -66,10 +66,14 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       // check ttl rule capacity
-      if (getTTLCount() >= CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity()) {
+      final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
+      if (getTTLCount() >= tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
-            "The number of TTL stored in the system has reached threshold, please increase the ttl_rule_capacity parameter.");
+            String.format(
+                "The number of TTL rules has reached the limit (%d). Please delete "
+                    + "some existing rules first.",
+                tTlRuleCapacity));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
@@ -104,20 +108,22 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   public TSStatus unsetTTL(SetTTLPlan plan) {
+    TSStatus status;
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(plan.getPathPattern());
-      if (plan.isDataBase()) {
+      status = ttlCache.unsetTTL(plan.getPathPattern());
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode() && plan.isDataBase()) {
         // unset ttl to path.**
-        ttlCache.unsetTTL(
-            new PartialPath(plan.getPathPattern())
-                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-                .getNodes());
+        status =
+            ttlCache.unsetTTL(
+                new PartialPath(plan.getPathPattern())
+                    .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                    .getNodes());
       }
     } finally {
       lock.writeLock().unlock();
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return status;
   }
 
   public ShowTTLResp showTTL(ShowTTLPlan plan) {

@@ -124,6 +124,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(String.format("Predicate: %s", predicate));
     }
 
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -152,6 +154,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
 
     boxValue.add(String.format("QueryAllSensors: %s", node.isQueryAllSensors()));
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -172,6 +175,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (predicate != null) {
       boxValue.add(String.format("Predicate: %s", predicate));
     }
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -195,6 +199,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (predicate != null) {
       boxValue.add(String.format("Predicate: %s", predicate));
     }
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }

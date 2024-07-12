@@ -506,6 +506,8 @@ public interface IManager {
   /** Stop repair data task */
   TSStatus stopRepairData();
 
+  TSStatus submitLoadConfigurationTask();
+
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();
 

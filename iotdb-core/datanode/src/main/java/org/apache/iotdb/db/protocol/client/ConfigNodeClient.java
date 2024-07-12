@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -215,12 +216,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     connectAndSync();
   }
 
-  public void connect(TEndPoint endpoint) throws TException {
+  public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
     try {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               // As there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs());
+              endpoint.getIp(), endpoint.getPort(), timeoutMs);
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -234,18 +235,28 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private void connectAndSync() throws TException {
     try {
-      tryToConnect();
+      tryToConnect(property.getConnectionTimeoutMs());
     } catch (TException e) {
       // Can not connect to each config node
       syncLatestConfigNodeList();
-      tryToConnect();
+      tryToConnect(property.getConnectionTimeoutMs());
     }
   }
 
-  private void tryToConnect() throws TException {
+  private void connectAndSync(int timeoutMs) throws TException {
+    try {
+      tryToConnect(timeoutMs);
+    } catch (TException e) {
+      // Can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect(timeoutMs);
+    }
+  }
+
+  private void tryToConnect(int timeoutMs) throws TException {
     if (configLeader != null) {
       try {
-        connect(configLeader);
+        connect(configLeader, timeoutMs);
         return;
       } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", configLeader);
@@ -270,7 +281,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       TEndPoint tryEndpoint = configNodes.get(cursor);
 
       try {
-        connect(tryEndpoint);
+        connect(tryEndpoint, timeoutMs);
         return;
       } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
@@ -690,9 +701,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus loadConfiguration() throws TException {
+  public TSStatus submitLoadConfigurationTask() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.loadConfiguration(), status -> !updateConfigNodeLeader(status));
+        () -> client.submitLoadConfigurationTask(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus loadConfiguration() throws TException {
+    throw new UnsupportedOperationException("Please call submitLoadConfigurationTask instead");
   }
 
   @Override
@@ -758,9 +774,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TTestConnectionResp submitTestConnectionTaskToLeader() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.submitTestConnectionTaskToLeader(),
-        resp -> !updateConfigNodeLeader(resp.getStatus()));
+    try {
+      // this rpc need special timeout
+      connectAndSync(TestConnectionUtils.calculateDnToCnLeaderMaxTime());
+      return executeRemoteCallWithRetry(
+          () -> client.submitTestConnectionTaskToLeader(),
+          resp -> !updateConfigNodeLeader(resp.getStatus()));
+    } finally {
+      // reset timeout to default
+      connectAndSync();
+    }
   }
 
   @Override

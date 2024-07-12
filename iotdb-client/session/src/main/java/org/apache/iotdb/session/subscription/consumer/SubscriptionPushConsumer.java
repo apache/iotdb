@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
@@ -161,12 +162,13 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
         return;
       }
 
-      if (subscribedTopicNames.isEmpty()) {
+      if (subscribedTopics.isEmpty()) {
         return;
       }
 
       try {
-        final List<SubscriptionMessage> messages = poll(subscribedTopicNames, autoPollTimeoutMs);
+        final List<SubscriptionMessage> messages =
+            poll(subscribedTopics.keySet(), autoPollTimeoutMs);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
@@ -309,5 +311,28 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     public SubscriptionPushConsumer buildPushConsumer() {
       return new SubscriptionPushConsumer(this);
     }
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPushConsumer" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("ackStrategy", ackStrategy.toString());
+    return coreReportMessage;
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("ackStrategy", ackStrategy.toString());
+    allReportMessage.put("autoPollIntervalMs", String.valueOf(autoPollIntervalMs));
+    allReportMessage.put("autoPollTimeoutMs", String.valueOf(autoPollTimeoutMs));
+    return allReportMessage;
   }
 }

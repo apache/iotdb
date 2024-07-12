@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -48,12 +50,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
+public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
 
-  /**
-   * this insert node doesn't need to participate in iot consensus
-   */
-  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * if use id table, this filed is id form of device path <br> if not, this filed is device
@@ -77,11 +76,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
    */
   protected IDeviceID deviceID;
 
-  /**
-   * this index is used by wal search, its order should be protected by the upper layer, and the
-   * value should start from 1
-   */
-  protected long searchIndex = NO_CONSENSUS_INDEX;
+  protected boolean isGeneratedByRemoteConsensusLeader = false;
 
   /**
    * Physical address of data region after splitting
@@ -211,15 +206,22 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     this.deviceID = deviceID;
   }
 
-  public long getSearchIndex() {
-    return searchIndex;
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    switch (config.getDataRegionConsensusProtocolClass()) {
+      case ConsensusFactory.IOT_CONSENSUS:
+      case ConsensusFactory.IOT_CONSENSUS_V2:
+      case ConsensusFactory.FAST_IOT_CONSENSUS:
+      case ConsensusFactory.RATIS_CONSENSUS:
+        return isGeneratedByRemoteConsensusLeader;
+      case ConsensusFactory.SIMPLE_CONSENSUS:
+        return false;
+    }
+    return false;
   }
 
-  /**
-   * Search index should start from 1
-   */
-  public void setSearchIndex(long searchIndex) {
-    this.searchIndex = searchIndex;
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    isGeneratedByRemoteConsensusLeader = true;
   }
 
   @Override
@@ -288,15 +290,6 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   }
 
   public abstract long getMinTime();
-
-  /**
-   * Notice: Call this method ONLY when using IOT_CONSENSUS, other consensus protocol cannot
-   * distinguish whether the insertNode sync from leader by this method.
-   * isSyncFromLeaderWhenUsingIoTConsensus == true means this node is a follower
-   */
-  public boolean isSyncFromLeaderWhenUsingIoTConsensus() {
-    return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
-  }
 
   // region partial insert
   @TestOnly

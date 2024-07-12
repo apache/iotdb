@@ -103,6 +103,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
@@ -208,6 +215,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     } else {
       operator.markSchemaRegionCommit();
     }
+  }
+
+  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
+      return;
+    }
+
+    operator.markCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////

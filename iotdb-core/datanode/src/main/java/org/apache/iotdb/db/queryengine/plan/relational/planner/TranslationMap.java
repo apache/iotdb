@@ -226,18 +226,16 @@ public class TranslationMap {
           public Expression rewriteFieldReference(
               FieldReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
             Optional<SymbolReference> mapped = tryGetMapping(node);
-            if (mapped.isPresent()) {
-              return mapped.get();
-            }
-
-            return getSymbolForColumn(node)
-                .map(Symbol::toSymbolReference)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            format(
-                                "No symbol mapping for node '%s' (%s)",
-                                node, node.getFieldIndex())));
+            return mapped.orElseGet(
+                () ->
+                    getSymbolForColumn(node)
+                        .map(Symbol::toSymbolReference)
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    format(
+                                        "No symbol mapping for node '%s' (%s)",
+                                        node, node.getFieldIndex()))));
           }
 
           @Override
@@ -266,7 +264,7 @@ public class TranslationMap {
 
             List<Expression> newArguments =
                 node.getArguments().stream()
-                    .map(argument -> rewrite(argument))
+                    .map(TranslationMap.this::rewrite)
                     .collect(Collectors.toList());
             return new FunctionCall(node.getName(), node.isDistinct(), newArguments);
           }
@@ -323,8 +321,7 @@ public class TranslationMap {
 
   private static void verifyAstExpression(Expression astExpression) {
     verify(
-        AstUtil.preOrder(astExpression)
-            .noneMatch(expression -> expression instanceof SymbolReference),
+        AstUtil.preOrder(astExpression).noneMatch(SymbolReference.class::isInstance),
         "symbol references are not allowed");
   }
 

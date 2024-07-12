@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -143,7 +144,14 @@ public class Session implements ISession {
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
-  // Cluster version cache
+  // this field only take effect in write request, nothing to do with any other type requests,
+  // like query, load and so on.
+  // if set to true, it means that we may redirect the write request to its corresponding leader
+  // if set to false, it means that we will only send write request to first available DataNode(it
+  // may be changed while current DataNode is not available, for example, we may retry to connect
+  // to another available DataNode)
+  // so even if enableRedirection is set to false, we may also send write request to another
+  // datanode while encountering retriable errors in current DataNode
   protected boolean enableRedirection;
   protected boolean enableRecordsAutoConvertTablet =
       SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
@@ -167,14 +175,21 @@ public class Session implements ISession {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
-  // default enable
+  // set to true, means that we will start a background thread to fetch all available (Status is
+  // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
   protected boolean enableAutoFetch = true;
 
+  // max retry count, if set to 0, means that we won't do any retry
+  // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
+  // or nodeUrls user specified) to retry, even if enableRedirection is false
   protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
   protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
+  // may be null
+  protected volatile String database;
 
   private static final String REDIRECT_TWICE = "redirect twice";
 
@@ -440,6 +455,7 @@ public class Session implements ISession {
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
+    this.database = builder.database;
   }
 
   @Override
@@ -600,10 +616,17 @@ public class Session implements ISession {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
+        session,
+        endpoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   @Override
@@ -936,7 +959,24 @@ public class Session implements ISession {
   @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    String previousDB = database;
     defaultSessionConnection.executeNonQueryStatement(sql);
+    if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
+      Iterator<Map.Entry<TEndPoint, SessionConnection>> iterator =
+          endPointToSessionConnection.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<TEndPoint, SessionConnection> entry = iterator.next();
+        SessionConnection sessionConnection = entry.getValue();
+        if (sessionConnection != defaultSessionConnection) {
+          try {
+            sessionConnection.executeNonQueryStatement(sql);
+          } catch (Throwable t) {
+            logger.warn("failed to change database for {}", entry.getKey());
+            iterator.remove();
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -3852,6 +3892,14 @@ public class Session implements ISession {
     return defaultSessionConnection.fetchAllConnections();
   }
 
+  protected void changeDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
   public static class Builder {
 
     private String host = SessionConfig.DEFAULT_HOST;
@@ -3862,22 +3910,38 @@ public class Session implements ISession {
     private ZoneId zoneId = null;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    // this field only take effect in write request, nothing to do with any other type requests,
+    // like query, load and so on.
+    // if set to true, it means that we may redirect the write request to its corresponding leader
+    // if set to false, it means that we will only send write request to first available DataNode(it
+    // may be changed while current DataNode is not available, for example, we may retry to connect
+    // to another available DataNode)
+    // so even if enableRedirection is set to false, we may also send write request to another
+    // datanode while encountering retriable errors in current DataNode
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private boolean enableRecordsAutoConvertTablet =
         SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
+
+    // set to true, means that we will start a background thread to fetch all available (Status is
+    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
     private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
 
     private boolean useSSL = false;
     private String trustStore;
     private String trustStorePwd;
 
+    // max retry count, if set to 0, means that we won't do any retry
+    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
+    // or nodeUrls user specified) to retry, even if enableRedirection is false
     private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
     private String sqlDialect = SessionConfig.SQL_DIALECT;
+
+    private String database;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3978,6 +4042,11 @@ public class Session implements ISession {
 
     public Builder sqlDialect(String sqlDialect) {
       this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.database = database;
       return this;
     }
 

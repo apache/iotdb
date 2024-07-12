@@ -17,8 +17,8 @@
 #
 
 # Pandas Export
-pandas>=1.3.5
-numpy>=1.21.4
+pandas>=1.0.0
+numpy>=1.0.0
 thrift>=0.14.1
 # SQLAlchemy Dialect
 sqlalchemy<1.5,>=1.4

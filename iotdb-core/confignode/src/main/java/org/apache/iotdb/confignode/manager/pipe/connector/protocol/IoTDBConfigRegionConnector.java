@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -188,9 +189,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
-    transferFilePieces(pipeName, creationTime, snapshotFile, clientAndStatus, true);
+    transferFilePieces(
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+        snapshotFile,
+        clientAndStatus,
+        true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(pipeName, creationTime, templateFile, clientAndStatus, true);
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          templateFile,
+          clientAndStatus,
+          true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;

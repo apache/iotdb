@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -82,7 +84,22 @@ public class DataNodeTTLCache {
     }
   }
 
+  /** Get ttl with time precision conversion. */
   public long getTTL(String[] path) {
+    lock.readLock().lock();
+    try {
+      long ttl = ttlCache.getClosestTTL(path);
+      return ttl == Long.MAX_VALUE
+          ? ttl
+          : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+              ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /** Get ttl without time precision conversion. */
+  public long getTTLInMS(String[] path) {
     lock.readLock().lock();
     try {
       return ttlCache.getClosestTTL(path);
@@ -91,8 +108,11 @@ public class DataNodeTTLCache {
     }
   }
 
-  /** Get ttl of one specific path node. If this node does not set ttl, then return -1. */
-  public long getNodeTTL(String path) throws IllegalPathException {
+  /**
+   * Get ttl of one specific path node without time precision conversion. If this node does not set
+   * ttl, then return -1.
+   */
+  public long getNodeTTLInMS(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
       return ttlCache.getLastNodeTTL(PathUtils.splitPathToDetachedNodes(path));
