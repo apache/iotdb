@@ -131,7 +131,8 @@ public class WALMetaData implements SerializedSize {
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
     if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
-      throw new IOException(String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+      throw new IOException(
+          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
     }
 
     // load metadata size
@@ -144,8 +145,8 @@ public class WALMetaData implements SerializedSize {
           channel.size()
               - Integer.BYTES
               - (version == WALFileVersion.V2
-              ? WALWriter.MAGIC_STRING_V2_BYTES
-              : WALWriter.MAGIC_STRING_V1_BYTES);
+                  ? WALWriter.MAGIC_STRING_V2_BYTES
+                  : WALWriter.MAGIC_STRING_V1_BYTES);
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       // load metadata
@@ -167,7 +168,8 @@ public class WALMetaData implements SerializedSize {
         }
       }
     } catch (IllegalArgumentException e) {
-      throw new IOException(String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+      throw new IOException(
+          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
     }
     return metaData;
   }

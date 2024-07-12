@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
-import java.nio.channels.FileChannel;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -46,6 +45,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -160,10 +160,12 @@ public class WALFileTest {
   @Test
   public void testReadMetadataFromBrokenFile() throws IOException {
     ILogWriter walWriter = new WALWriter(walFile);
-    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath())));
+    assertThrows(
+        IOException.class,
+        () -> WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath())));
     walWriter.close();
-    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile,
-        FileChannel.open(walFile.toPath()));
+    WALMetaData walMetaData =
+        WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath()));
     assertTrue(walMetaData.getMemTablesId().isEmpty());
   }
 
