@@ -79,7 +79,7 @@ public class PipeEndPointRateLimiter {
   private boolean tryAcquireWithPipeCheck(final RateLimiter rateLimiter, final int bytes) {
     while (!rateLimiter.tryAcquire(
         bytes,
-        PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
       final PipeTaskAgent finalTaskAgent = taskAgent;
       if (Objects.nonNull(finalTaskAgent)
