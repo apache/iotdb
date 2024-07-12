@@ -24,62 +24,72 @@ import java.util.Set;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
-  READ_DATA(true),
-  WRITE_DATA(true),
-  READ_SCHEMA(true),
-  WRITE_SCHEMA(true),
-  MANAGE_USER,
-  MANAGE_ROLE,
-  USE_TRIGGER,
+  READ_DATA(PrivilegeModelType.TREE),
+  WRITE_DATA(PrivilegeModelType.TREE),
+  READ_SCHEMA(PrivilegeModelType.TREE),
+  WRITE_SCHEMA(PrivilegeModelType.TREE),
+  MANAGE_USER(PrivilegeModelType.SYSTEM),
+  MANAGE_ROLE(PrivilegeModelType.SYSTEM),
+  USE_TRIGGER(PrivilegeModelType.SYSTEM),
+  USE_UDF(PrivilegeModelType.SYSTEM),
+  USE_CQ(PrivilegeModelType.SYSTEM),
+  USE_PIPE(PrivilegeModelType.SYSTEM),
+  USE_MODEL(PrivilegeModelType.SYSTEM),
 
-  USE_UDF,
+  EXTEND_TEMPLATE(PrivilegeModelType.SYSTEM),
+  MANAGE_DATABASE(PrivilegeModelType.SYSTEM),
+  MAINTAIN(PrivilegeModelType.SYSTEM),
+  CREATE(PrivilegeModelType.RELATIONAL),
+  DROP(PrivilegeModelType.RELATIONAL),
+  ALTER(PrivilegeModelType.RELATIONAL),
+  SELECT(PrivilegeModelType.RELATIONAL),
+  UPDATE(PrivilegeModelType.RELATIONAL),
+  INSERT(PrivilegeModelType.RELATIONAL),
+  DELETE(PrivilegeModelType.RELATIONAL),
+  INVALID(PrivilegeModelType.INVALID);
 
-  USE_CQ,
-  USE_PIPE,
-  USE_MODEL,
+  private static final int PRIVILEGE_COUNT = values().length - 1;
 
-  EXTEND_TEMPLATE,
-  MANAGE_DATABASE,
-  MAINTAIN;
+  private PrivilegeModelType modelType = PrivilegeModelType.INVALID;
 
-  private static final int PRIVILEGE_COUNT = values().length;
-
-  private final boolean isPathRelevant;
-
-  PrivilegeType() {
-    this.isPathRelevant = false;
+  PrivilegeType(PrivilegeModelType modelType) {
+    this.modelType = modelType;
   }
 
-  PrivilegeType(boolean isPathRelevant) {
-    this.isPathRelevant = isPathRelevant;
+  public boolean isPathPrivilege() {
+    return this.modelType == PrivilegeModelType.TREE;
   }
 
-  public boolean isPathRelevant() {
-    return isPathRelevant;
+  public boolean isSystemPrivilege() {
+    return this.modelType == PrivilegeModelType.SYSTEM;
   }
 
-  public static boolean isPathRelevant(int ordinal) {
-    return ordinal < 4;
+  public boolean isObjectPrivilege() {
+    return this.modelType == PrivilegeModelType.RELATIONAL;
   }
 
-  public static int getSysPriCount() {
+  public static int getPrivilegeCount(PrivilegeModelType type) {
     int size = 0;
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (!item.isPathRelevant()) {
-        size++;
+      switch (type) {
+        case TREE:
+          size += item.isPathPrivilege() ? 1 : 0;
+          break;
+        case SYSTEM:
+          size += item.isSystemPrivilege() ? 1 : 0;
+          break;
+        case RELATIONAL:
+          size += item.isObjectPrivilege() ? 1 : 0;
+          break;
+        default:
+          //
       }
     }
     return size;
   }
 
-  public static int getPathPriCount() {
-    int size = 0;
-    for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isPathRelevant()) {
-        size++;
-      }
-    }
-    return size;
+  public static int getPrivilegeCount() {
+    return PRIVILEGE_COUNT;
   }
 
   public static Set<PrivilegeType> toPriType(Set<Integer> priSet) {

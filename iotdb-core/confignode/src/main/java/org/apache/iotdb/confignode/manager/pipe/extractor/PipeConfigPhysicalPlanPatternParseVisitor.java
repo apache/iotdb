@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -187,21 +188,22 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
       final AuthorPlan pathRelatedAuthorPlan, final IoTDBPipePattern pattern) {
+    AuthorTreePlan plan = (AuthorTreePlan) pathRelatedAuthorPlan;
     final List<PartialPath> intersectedPaths =
-        pathRelatedAuthorPlan.getNodeNameList().stream()
+        plan.getNodeNameList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     return !intersectedPaths.isEmpty()
         ? Optional.of(
-            new AuthorPlan(
-                pathRelatedAuthorPlan.getAuthorType(),
-                pathRelatedAuthorPlan.getUserName(),
-                pathRelatedAuthorPlan.getRoleName(),
-                pathRelatedAuthorPlan.getPassword(),
-                pathRelatedAuthorPlan.getNewPassword(),
-                pathRelatedAuthorPlan.getPermissions(),
-                pathRelatedAuthorPlan.getGrantOpt(),
+            new AuthorTreePlan(
+                plan.getAuthorType(),
+                plan.getUserName(),
+                plan.getRoleName(),
+                plan.getPassword(),
+                plan.getNewPassword(),
+                plan.getPermissions(),
+                plan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();
   }

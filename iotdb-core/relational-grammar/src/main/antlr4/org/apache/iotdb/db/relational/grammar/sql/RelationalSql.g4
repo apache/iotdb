@@ -102,6 +102,16 @@ statement
     | loadConfigurationStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUser
+    | createRole
+    | dropUser
+    | dropRole
+    | grantUserRole
+    | revokeUserRole
+    | listUserPrivileges
+    | listRolePrivileges
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -336,6 +346,107 @@ loadConfigurationStatement
 localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
+
+// ------------------------------------------- Authority Statement -----------------------------------------------------
+
+createUser
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRole
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUser
+    : DROP USER userName=identifier
+    ;
+
+dropRole
+    : DROP ROLE roleName=identifier
+    ;
+
+grantUserRole
+    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    ;
+
+revokeUserRole
+    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    ;
+
+
+grantStatement
+    : GRANT grantPrivilegeObject TO roleType roleName=identifier (grantOpt)?
+    ;
+
+listUserPrivileges
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivileges
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+
+revokeStatement
+    : REVOKE revokePrivilegeObject FROM roleType  role_name=identifier
+    ;
+
+grantPrivilegeObject
+    : SYSTEM_PRIVILEGE
+    | objectPrivilege ON objectType objectName
+    | objectPrivilege ON databaseName=identifier '.' tablename=identifier
+    | objectPrivilege ON ANY
+    ;
+
+SYSTEM_PRIVILEGE
+    : MANAGE_DATABASE
+    | MANAGE_USER
+    | MANAGE_ROLE
+    | USE_TRIGGER
+    | USE_UDF
+    | USE_PIPE
+    | EXTEND_TEMPLATE
+    | MAINTAIN
+    ;
+
+objectPrivilege
+    : CREATE
+    | DROP
+    | ALTER
+    | SELECT
+    | UPDATE
+    | INSERT
+    | DELETE
+    ;
+
+objectType
+    : TABLE
+    | DATABASE
+    ;
+
+roleType
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+objectName
+    : IDENTIFIER
+    ;
+
+revokePrivilegeObject
+    : SYSTEM_PRIVILEGE
+    | objectPrivilege ON objectType objectName
+    | objectPrivilege ON ANY
+    | objectPrivilege ON databaseName=identifier '.' tableName=identifier
+    | GRANT OPTION FOR objectPrivilege ON objectType objectName
+    | GRANT OPTION FOR SYSTEM_PRIVILEGE
+    | GRANT OPTION FOR objectPrivilege ON ANY
+    ;
+
 
 
 
@@ -1097,6 +1208,18 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
+MANAGE_DATABASE: 'MANAGE_DATABASE';
+MANAGE_USER: 'MANAGE_USER';
+MANAGE_ROLE: 'MANAGE_ROLE';
+USE_TRIGGER: 'USE_TRIGGER';
+USE_UDF: 'USE_UDF';
+USE_PIPE: 'USE_PIPE';
+EXTEND_TEMPLATE: 'EXTEND_TEMPLATE';
+MAINTAIN: 'MAINTAIN';
+USE_MODEL: 'USE_MODEL';
+
+
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

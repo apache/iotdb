@@ -19,80 +19,40 @@
 
 package org.apache.iotdb.confignode.consensus.request.auth;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
-public class AuthorPlan extends ConfigPhysicalPlan {
-  private static final Logger logger = org.slf4j.LoggerFactory.getLogger(AuthorPlan.class);
+public abstract class AuthorPlan extends ConfigPhysicalPlan {
 
-  private ConfigPhysicalPlanType authorType;
-  private String roleName;
-  private String password;
-  private String newPassword;
-  private Set<Integer> permissions;
-  private List<PartialPath> nodeNameList;
-  private String userName;
-  private boolean grantOpt;
+  protected String roleName;
+  protected String password;
+  protected String newPassword;
+  protected String userName;
+  protected boolean grantOpt;
 
   public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
-    authorType = type;
   }
 
-  /**
-   * {@link AuthorPlan} Constructor.
-   *
-   * @param authorType author type
-   * @param userName user name
-   * @param roleName role name
-   * @param password password
-   * @param newPassword new password
-   * @param permissions permissions
-   * @param grantOpt with grant option, only grant statement can set grantOpt = true
-   * @param nodeNameList node name in Path structure
-   */
   public AuthorPlan(
-      final ConfigPhysicalPlanType authorType,
-      final String userName,
-      final String roleName,
-      final String password,
-      final String newPassword,
-      final Set<Integer> permissions,
-      final boolean grantOpt,
-      final List<PartialPath> nodeNameList) {
-    this(authorType);
-    this.authorType = authorType;
+      ConfigPhysicalPlanType type,
+      String userName,
+      String roleName,
+      String password,
+      String newPassword,
+      boolean grantOpt) {
+    super(type);
     this.userName = userName;
     this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
-    this.permissions = permissions;
     this.grantOpt = grantOpt;
-    this.nodeNameList = nodeNameList;
   }
 
   public ConfigPhysicalPlanType getAuthorType() {
-    return authorType;
-  }
-
-  public void setAuthorType(ConfigPhysicalPlanType authorType) {
-    this.authorType = authorType;
+    return super.getType();
   }
 
   public String getRoleName() {
@@ -119,28 +79,12 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.newPassword = newPassword;
   }
 
-  public Set<Integer> getPermissions() {
-    return permissions;
-  }
-
-  public void setPermissions(Set<Integer> permissions) {
-    this.permissions = permissions;
-  }
-
   public boolean getGrantOpt() {
     return this.grantOpt;
   }
 
   public void setGrantOpt(boolean grantOpt) {
     this.grantOpt = grantOpt;
-  }
-
-  public List<PartialPath> getNodeNameList() {
-    return nodeNameList;
-  }
-
-  public void setNodeNameList(List<PartialPath> nodeNameList) {
-    this.nodeNameList = nodeNameList;
   }
 
   public String getUserName() {
@@ -152,124 +96,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(getPlanType(authorType), stream);
-    BasicStructureSerDeUtil.write(userName, stream);
-    BasicStructureSerDeUtil.write(roleName, stream);
-    BasicStructureSerDeUtil.write(password, stream);
-    BasicStructureSerDeUtil.write(newPassword, stream);
-    if (permissions == null) {
-      stream.write((byte) 0);
-    } else {
-      stream.write((byte) 1);
-      stream.writeInt(permissions.size());
-      for (int permission : permissions) {
-        stream.writeInt(permission);
-      }
-    }
-    BasicStructureSerDeUtil.write(nodeNameList.size(), stream);
-    for (PartialPath partialPath : nodeNameList) {
-      BasicStructureSerDeUtil.write(partialPath.getFullPath(), stream);
-    }
-    BasicStructureSerDeUtil.write(grantOpt ? 1 : 0, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    userName = BasicStructureSerDeUtil.readString(buffer);
-    roleName = BasicStructureSerDeUtil.readString(buffer);
-    password = BasicStructureSerDeUtil.readString(buffer);
-    newPassword = BasicStructureSerDeUtil.readString(buffer);
-    final byte hasPermissions = buffer.get();
-    if (hasPermissions == (byte) 0) {
-      this.permissions = null;
-    } else {
-      int permissionsSize = buffer.getInt();
-      this.permissions = new HashSet<>();
-      for (int i = 0; i < permissionsSize; i++) {
-        permissions.add(buffer.getInt());
-      }
-    }
-
-    int nodeNameListSize = BasicStructureSerDeUtil.readInt(buffer);
-    nodeNameList = new ArrayList<>(nodeNameListSize);
-    try {
-      for (int i = 0; i < nodeNameListSize; i++) {
-        nodeNameList.add(new PartialPath(BasicStructureSerDeUtil.readString(buffer)));
-      }
-    } catch (MetadataException e) {
-      logger.error("Invalid path when deserialize authPlan: {}", nodeNameList, e);
-    }
-    grantOpt = false;
-    if (this.authorType.ordinal() >= ConfigPhysicalPlanType.CreateUser.ordinal()) {
-      grantOpt = BasicStructureSerDeUtil.readInt(buffer) > 0;
-    }
-  }
-
-  private short getPlanType(ConfigPhysicalPlanType configPhysicalPlanType) {
-    short type;
-    switch (configPhysicalPlanType) {
-      case CreateUser:
-        type = ConfigPhysicalPlanType.CreateUser.getPlanType();
-        break;
-      case CreateRole:
-        type = ConfigPhysicalPlanType.CreateRole.getPlanType();
-        break;
-      case DropUser:
-        type = ConfigPhysicalPlanType.DropUser.getPlanType();
-        break;
-      case DropRole:
-        type = ConfigPhysicalPlanType.DropRole.getPlanType();
-        break;
-      case GrantRole:
-        type = ConfigPhysicalPlanType.GrantRole.getPlanType();
-        break;
-      case GrantUser:
-        type = ConfigPhysicalPlanType.GrantUser.getPlanType();
-        break;
-      case GrantRoleToUser:
-        type = ConfigPhysicalPlanType.GrantRoleToUser.getPlanType();
-        break;
-      case RevokeUser:
-        type = ConfigPhysicalPlanType.RevokeUser.getPlanType();
-        break;
-      case RevokeRole:
-        type = ConfigPhysicalPlanType.RevokeRole.getPlanType();
-        break;
-      case RevokeRoleFromUser:
-        type = ConfigPhysicalPlanType.RevokeRoleFromUser.getPlanType();
-        break;
-      case UpdateUser:
-        type = ConfigPhysicalPlanType.UpdateUser.getPlanType();
-        break;
-      case ListUser:
-        type = ConfigPhysicalPlanType.ListUser.getPlanType();
-        break;
-      case ListRole:
-        type = ConfigPhysicalPlanType.ListRole.getPlanType();
-        break;
-      case ListUserPrivilege:
-        type = ConfigPhysicalPlanType.ListUserPrivilege.getPlanType();
-        break;
-      case ListRolePrivilege:
-        type = ConfigPhysicalPlanType.ListRolePrivilege.getPlanType();
-        break;
-      case ListUserRoles:
-        type = ConfigPhysicalPlanType.ListUserRoles.getPlanType();
-        break;
-      case ListRoleUsers:
-        type = ConfigPhysicalPlanType.ListRoleUsers.getPlanType();
-        break;
-      case CreateUserWithRawPassword:
-        type = ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType();
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown operator: " + configPhysicalPlanType);
-    }
-    return type;
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -278,36 +104,29 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       return false;
     }
     AuthorPlan that = (AuthorPlan) o;
-    return Objects.equals(authorType, that.authorType)
+    return Objects.equals(super.getType(), that.getAuthorType())
         && Objects.equals(userName, that.userName)
         && Objects.equals(roleName, that.roleName)
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
-        && Objects.equals(permissions, that.permissions)
-        && grantOpt == that.grantOpt
-        && Objects.equals(nodeNameList, that.nodeNameList);
+        && grantOpt == that.grantOpt;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeNameList, grantOpt);
+    return Objects.hash(super.getType(), userName, roleName, password, newPassword, grantOpt);
   }
 
   @Override
   public String toString() {
     return "[type:"
-        + authorType
+        + super.getType()
         + ", username:"
         + userName
         + ", rolename:"
         + roleName
-        + ", permissions:"
-        + PrivilegeType.toPriType(permissions)
         + ", grant option:"
         + grantOpt
-        + ", paths:"
-        + nodeNameList
         + "]";
   }
 }

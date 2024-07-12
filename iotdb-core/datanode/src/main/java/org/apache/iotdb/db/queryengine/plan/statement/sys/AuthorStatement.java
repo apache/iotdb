@@ -226,7 +226,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case UPDATE_USER:
@@ -235,7 +235,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case DROP_USER:
@@ -246,7 +246,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
@@ -254,7 +254,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER_PRIVILEGE:
@@ -262,7 +262,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_ROLE_PRIVILEGE:
@@ -271,7 +271,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         if (!AuthorityChecker.checkRole(userName, roleName)) {
           return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
               PrivilegeType.MANAGE_ROLE);
         } else {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -285,7 +285,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         } else {
           return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
               PrivilegeType.MANAGE_ROLE);
         }
 
@@ -301,7 +301,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
             PrivilegeType.MANAGE_ROLE);
 
       case REVOKE_USER:

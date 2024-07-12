@@ -1,0 +1,24 @@
+package org.apache.iotdb.db.queryengine.plan.relational.type;
+
+public enum AuthorRType {
+  CREATE_USER,
+  CREATE_ROLE,
+  DROP_USER,
+  DROP_ROLE,
+  GRANT_USER_ROLE,
+  REVOKE_USER_ROLE,
+  GRANT_USER_DB,
+  GRANT_USER_TB,
+  GRANT_ROLE_DB,
+  GRANT_ROLE_TB,
+  REVOKE_USER_DB,
+  REVOKE_USER_TB,
+  REVOKE_ROLE_DB,
+  REVOKE_ROLE_TB,
+  GRANT_USER_SYS,
+  GRANT_ROLE_SYS,
+  REVOKE_USER_SYS,
+  REVOKE_ROLE_SYS,
+  LIST_USER,
+  LIST_ROLE,
+}

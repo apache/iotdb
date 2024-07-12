@@ -332,7 +332,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
                   status =
                       AuthorityChecker.getTSStatus(
                           AuthorityChecker.checkFullPathListPermission(
-                              userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                              userName, paths, PrivilegeType.WRITE_DATA),
                           paths,
                           PrivilegeType.WRITE_DATA);
                 } catch (IllegalPathException e) {

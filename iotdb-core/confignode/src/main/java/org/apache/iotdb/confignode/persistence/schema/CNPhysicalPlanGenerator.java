@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -29,7 +30,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -189,15 +190,15 @@ public class CNPhysicalPlanGenerator
       String user = versionAndName.left;
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan createUser =
-            new AuthorPlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+        final AuthorTreePlan createUser =
+            new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
         createUser.setUserName(user);
         createUser.setPassword(rawPassword);
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
       } else {
-        final AuthorPlan createRole = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+        final AuthorTreePlan createRole = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);
         createRole.setPermissions(new HashSet<>());
         createRole.setNodeNameList(new ArrayList<>());
@@ -232,7 +233,7 @@ public class CNPhysicalPlanGenerator
         new DataInputStream(new BufferedInputStream((inputStream)))) {
       while (roleInputStream.available() != 0) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
+        final AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
         plan.setRoleName(roleName);
         plan.setNodeNameList(new ArrayList<>());
@@ -248,10 +249,10 @@ public class CNPhysicalPlanGenerator
   }
 
   private void generateGrantSysPlan(String userName, boolean isUser, int sysMask) {
-    for (int i = 0; i < PrivilegeType.getSysPriCount(); i++) {
+    for (int i = 0; i < PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM); i++) {
       if ((sysMask & (1 << i)) != 0) {
-        final AuthorPlan plan =
-            new AuthorPlan(
+        final AuthorTreePlan plan =
+            new AuthorTreePlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
@@ -260,7 +261,7 @@ public class CNPhysicalPlanGenerator
           plan.setRoleName(userName);
           plan.setUserName("");
         }
-        plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i)));
+        plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i).ordinal()));
         if ((sysMask & (1 << (i + 16))) != 0) {
           plan.setGrantOpt(true);
         }
@@ -288,10 +289,10 @@ public class CNPhysicalPlanGenerator
 
   private void generateGrantPathPlan(
       String userName, boolean isUser, PartialPath path, int priMask) {
-    for (int pos = 0; pos < PrivilegeType.getPathPriCount(); pos++) {
+    for (int pos = 0; pos < PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE); pos++) {
       if (((1 << pos) & priMask) != 0) {
-        final AuthorPlan plan =
-            new AuthorPlan(
+        final AuthorTreePlan plan =
+            new AuthorTreePlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
