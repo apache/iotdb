@@ -26,7 +26,7 @@ public class QueryPlanStatistics {
   private long logicalPlanCost;
   private long logicalOptimizationCost;
   private long distributionPlanCost;
-  private long dispatchCost = 0;
+  private long dispatchStartTime = 0;
 
   public void setAnalyzeCost(long analyzeCost) {
     this.analyzeCost = analyzeCost;
@@ -50,10 +50,6 @@ public class QueryPlanStatistics {
 
   public void setLogicalOptimizationCost(long logicalOptimizationCost) {
     this.logicalOptimizationCost = logicalOptimizationCost;
-  }
-
-  public void recordDispatchCost(long dispatchCost) {
-    this.dispatchCost += dispatchCost;
   }
 
   public long getAnalyzeCost() {
@@ -80,7 +76,11 @@ public class QueryPlanStatistics {
     return logicalOptimizationCost;
   }
 
-  public long getDispatchCost() {
-    return dispatchCost;
+  public void setDispatchStartTime(long dispatchStartTime) {
+    this.dispatchStartTime = dispatchStartTime;
+  }
+
+  public long getDispatchStartTime() {
+    return dispatchStartTime;
   }
 }

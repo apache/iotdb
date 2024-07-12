@@ -258,8 +258,12 @@ public class MPPQueryContext {
     return queryPlanStatistics.getLogicalOptimizationCost();
   }
 
-  public long getDispatchCost() {
-    return queryPlanStatistics.getDispatchCost();
+  public void setDispatchStartTime(long time) {
+    this.queryPlanStatistics.setDispatchStartTime(time);
+  }
+
+  public long getDispatchStartTime() {
+    return queryPlanStatistics.getDispatchStartTime();
   }
 
   public void setAnalyzeCost(long analyzeCost) {
@@ -302,13 +306,6 @@ public class MPPQueryContext {
       queryPlanStatistics = new QueryPlanStatistics();
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
-  }
-
-  public void recordDispatchCost(long dispatchCost) {
-    if (queryPlanStatistics == null) {
-      queryPlanStatistics = new QueryPlanStatistics();
-    }
-    queryPlanStatistics.recordDispatchCost(dispatchCost);
   }
 
   // region =========== FE memory related, make sure its not called concurrently ===========
