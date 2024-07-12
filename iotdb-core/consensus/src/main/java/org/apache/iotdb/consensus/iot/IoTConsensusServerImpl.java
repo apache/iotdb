@@ -888,11 +888,24 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupLocalSnapshot() {
+    // cleanup iot snapshot
     try {
       cleanupSnapshot(newSnapshotDirName);
     } catch (ConsensusGroupModifyPeerException e) {
       logger.warn(
           "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
+    }
+    // clean storage engine snapshot
+    File snapshotDir = new File(storageDir, newSnapshotDirName);
+    try {
+      if (snapshotDir.exists()) {
+        FileUtils.deleteDirectory(snapshotDir);
+      }
+    } catch (IOException e) {
+      logger.warn(
+          "Cleanup local storage engine snapshot fail. You may manually delete it {}",
+          snapshotDir.getAbsolutePath(),
+          e);
     }
   }
 
