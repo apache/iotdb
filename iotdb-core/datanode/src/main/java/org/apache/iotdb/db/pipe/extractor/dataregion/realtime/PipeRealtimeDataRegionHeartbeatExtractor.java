@@ -38,7 +38,7 @@ public class PipeRealtimeDataRegionHeartbeatExtractor extends PipeRealtimeDataRe
       }
 
       realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
+          PipeRealtimeDataRegionHeartbeatExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;
@@ -55,6 +55,8 @@ public class PipeRealtimeDataRegionHeartbeatExtractor extends PipeRealtimeDataRe
     // only extract PipeHeartbeatEvent
     if (event.getEvent() instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
+    } else {
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHeartbeatExtractor.class.getName(), false);
     }
   }
 
