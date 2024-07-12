@@ -55,25 +55,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
   private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
-
-  private static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
-
-  public static final String TTL_PROPERTY = "TTL";
-
-  static {
-    TABLE_ALLOWED_PROPERTIES.add(TTL_PROPERTY.toLowerCase(Locale.ENGLISH));
-  }
 
   private final IClientSession clientSession;
 
@@ -115,7 +106,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateTable(CreateTable node, MPPQueryContext context) {
+  protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     String database = clientSession.getDatabaseName();
     if (node.getName().getPrefix().isPresent()) {
@@ -124,12 +115,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
-    TsTable table = new TsTable(node.getName().getSuffix());
-    Map<String, String> map = new HashMap<>();
-    for (Property property : node.getProperties()) {
-      String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+    final TsTable table = new TsTable(node.getName().getSuffix());
+    final Map<String, String> map = new HashMap<>();
+    for (final Property property : node.getProperties()) {
+      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (TABLE_ALLOWED_PROPERTIES.contains(key) && !property.isSetToDefault()) {
-        Expression value = property.getNonDefaultValue();
+        final Expression value = property.getNonDefaultValue();
         if (!(value instanceof LongLiteral)) {
           throw new SemanticException(
               "TTL' value must be a LongLiteral, but now is: " + value.toString());
@@ -139,14 +130,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
     table.setProps(map);
 
-    for (ColumnDefinition columnDefinition : node.getElements()) {
-      TsTableColumnCategory category = columnDefinition.getColumnCategory();
-      String columnName = columnDefinition.getName().getValue();
+    for (final ColumnDefinition columnDefinition : node.getElements()) {
+      final TsTableColumnCategory category = columnDefinition.getColumnCategory();
+      final String columnName = columnDefinition.getName().getValue();
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      TSDataType dataType = getDataType(columnDefinition.getType());
+      final TSDataType dataType = getDataType(columnDefinition.getType());
       TableHeaderSchemaValidator.generateColumnSchema(table, category, columnName, dataType);
     }
     return new CreateTableTask(table, database, node.isIfNotExists());

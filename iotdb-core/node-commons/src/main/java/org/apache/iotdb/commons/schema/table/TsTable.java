@@ -36,11 +36,14 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -50,6 +53,14 @@ public class TsTable {
   private static final String TIME_COLUMN_NAME = "Time";
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.INT64);
+
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
+
+  public static final String TTL_PROPERTY = "TTL";
+
+  static {
+    TABLE_ALLOWED_PROPERTIES.add(TTL_PROPERTY.toLowerCase(Locale.ENGLISH));
+  }
 
   private final String tableName;
 

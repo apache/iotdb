@@ -103,7 +103,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
@@ -1088,7 +1088,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                           new TTableInfo(
                               tsTable.getTableName(),
                               tsTable
-                                  .getPropValue(COLUMN_TTL.toLowerCase(Locale.ENGLISH))
+                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
                                   .orElse(TTL_INFINITE)))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {
