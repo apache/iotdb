@@ -357,7 +357,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       // generate response
       return PipeSubscribePollResp.toTPipeSubscribeResp(
           RpcUtils.SUCCESS_STATUS,
-          events.stream()
+          events.parallelStream()
               .map(
                   (event) -> {
                     final SubscriptionPollResponse response = event.getCurrentResponse();
