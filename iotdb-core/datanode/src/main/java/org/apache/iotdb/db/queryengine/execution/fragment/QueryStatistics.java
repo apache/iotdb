@@ -259,6 +259,10 @@ public class QueryStatistics {
         pageReadersDecodeNonAlignedDiskTime.get(),
         pageReadersDecodeNonAlignedMemCount.get(),
         pageReadersDecodeNonAlignedMemTime.get(),
-        pageReaderMaxUsedMemorySize.get());
+        pageReaderMaxUsedMemorySize.get(),
+        alignedTimeSeriesMetadataModificationCount.get(),
+        alignedTimeSeriesMetadataModificationTime.get(),
+        nonAlignedTimeSeriesMetadataModificationCount.get(),
+        nonAlignedTimeSeriesMetadataModificationTime.get());
   }
 }

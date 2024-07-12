@@ -171,15 +171,6 @@ public class FragmentInstanceExecution {
     statistics.setUnseqClosedNum(context.getClosedUnseqFileNum());
     statistics.setUnseqUnclosedNum(context.getUnclosedUnseqFileNum());
 
-    statistics.setAlignedTimeSeriesMetadataModificationCount(
-        context.getQueryStatistics().getAlignedTimeSeriesMetadataModificationCount().get());
-    statistics.setNonAlignedTimeSeriesMetadataModificationCount(
-        context.getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationCount().get());
-    statistics.setAlignedTimeSeriesMetadataModificationTime(
-        context.getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().get());
-    statistics.setNonAlignedTimeSeriesMetadataModificationTime(
-        context.getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationTime().get());
-
     return true;
   }
 

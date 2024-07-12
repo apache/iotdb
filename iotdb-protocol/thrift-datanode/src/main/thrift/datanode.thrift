@@ -594,6 +594,11 @@ struct TQueryStatistics {
   31: i64 pageReadersDecodeNonAlignedMemCount,
   32: i64 pageReadersDecodeNonAlignedMemTime,
   33: i64 pageReaderMaxUsedMemorySize
+
+  34: i64 alignedTimeSeriesMetadataModificationCount
+  35: i64 alignedTimeSeriesMetadataModificationTime
+  36: i64 nonAlignedTimeSeriesMetadataModificationCount
+  37: i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 
@@ -618,10 +623,6 @@ struct TFetchFragmentInstanceStatisticsResp {
   14: optional i64 blockQueuedTime
   15: optional string ip
   16: optional string state
-  17: optional i64 alignedTimeSeriesMetadataModificationCount
-  18: optional i64 nonAlignedTimeSeriesMetadataModificationCount
-  19: optional i64 alignedTimeSeriesMetadataModificationTime
-  20: optional i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 /**
