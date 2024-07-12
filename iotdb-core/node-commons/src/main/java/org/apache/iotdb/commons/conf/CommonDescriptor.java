@@ -640,6 +640,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionTsFileDeduplicationWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_deduplication_window_seconds",
+                String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {
