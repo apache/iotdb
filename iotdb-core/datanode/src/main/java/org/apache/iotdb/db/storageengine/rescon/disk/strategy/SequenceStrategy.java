@@ -62,7 +62,7 @@ public class SequenceStrategy extends DirectoryStrategy {
     while (!JVMCommonUtils.hasSpace(dir)) {
       File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
 
-      Long lastPrintTime = dirLastPrintTimeMap.putIfAbsent(index, -1L);
+      Long lastPrintTime = dirLastPrintTimeMap.computeIfAbsent(index, i -> -1L);
       if (System.currentTimeMillis() - lastPrintTime > PRINT_INTERVAL_MS) {
         long freeSpace = dirFile.getFreeSpace();
         long totalSpace = dirFile.getTotalSpace();
