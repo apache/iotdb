@@ -136,6 +136,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -1162,15 +1163,21 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus createTable(ByteBuffer tableInfo) throws TException {
+  public TSStatus createTable(final ByteBuffer tableInfo) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTable(tableInfo), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
-  public TSStatus alterTable(TAlterTableReq req) throws TException {
+  public TSStatus alterTable(final TAlterTableReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.alterTable(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowTableResp showTables(final String database) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTables(database), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
