@@ -105,15 +105,18 @@ public class FileLoaderUtils {
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
-          long costTime = System.nanoTime() - t2;
-          context
-              .getQueryStatistics()
-              .getNonAlignedTimeSeriesMetadataModificationCount()
-              .getAndAdd(pathModifications.size());
-          context
-              .getQueryStatistics()
-              .getNonAlignedTimeSeriesMetadataModificationTime()
-              .getAndAdd(costTime);
+          int modificationCount = pathModifications.size();
+          if (modificationCount != 0) {
+            long costTime = System.nanoTime() - t2;
+            context
+                .getQueryStatistics()
+                .getNonAlignedTimeSeriesMetadataModificationCount()
+                .getAndAdd(modificationCount);
+            context
+                .getQueryStatistics()
+                .getNonAlignedTimeSeriesMetadataModificationTime()
+                .getAndAdd(costTime);
+          }
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
