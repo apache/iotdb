@@ -126,8 +126,8 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "NonAligned TimeSeriesMetadata Modification Count: %s",
-              statistics.getNonAlignedTimeSeriesMetadataModificationCount()));
+              "Aligned TimeSeriesMetadata Modification Count: %s",
+              statistics.getAlignedTimeSeriesMetadataModificationCount()));
       addLine(
           singleFragmentInstanceArea,
           1,
@@ -138,15 +138,14 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "Aligned TimeSeriesMetadata Modification Count: %s",
-              statistics.getAlignedTimeSeriesMetadataModificationCount()));
+              "NonAligned TimeSeriesMetadata Modification Count: %s",
+              statistics.getNonAlignedTimeSeriesMetadataModificationCount()));
       addLine(
           singleFragmentInstanceArea,
           1,
           String.format(
               "NonAligned TimeSeriesMetadata Modification Time: %.3f ms",
               statistics.getNonAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR));
-
       addLine(
           singleFragmentInstanceArea,
           1,
