@@ -103,18 +103,19 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
       }
     }
     patternTree.constructTree();
-    schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, false, false, true, false);
+    schemaRegion.fetchSeriesSchema(patternTree, Collections.emptyMap(), false, false, true, false);
     long startTime;
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 10; i++) {
-      schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, false, false, true, false);
+      schemaRegion.fetchSeriesSchema(
+          patternTree, Collections.emptyMap(), false, false, true, false);
     }
     System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
   }
 
   @Test
   public void testFetchSchema() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
     schemaRegion.createTimeseries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
@@ -151,14 +152,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.*"));
     patternTree.constructTree();
-    ;
+
     ClusterSchemaTree schemas =
         schemaRegion.fetchSeriesSchema(
-            patternTree, Collections.EMPTY_MAP, true, false, true, false);
+            patternTree, Collections.emptyMap(), true, false, true, false);
     List<MeasurementPath> measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.*")).left;
-    Assert.assertEquals(measurementPaths.size(), 2);
-    for (MeasurementPath measurementPath : measurementPaths) {
+    Assert.assertEquals(2, measurementPaths.size());
+    for (final MeasurementPath measurementPath : measurementPaths) {
       if (measurementPath.getFullPath().equals("root.sg.wf01.wt01.status")) {
         Assert.assertTrue(StringUtils.isEmpty(measurementPath.getMeasurementAlias()));
         Assert.assertEquals(0, measurementPath.getTagMap().size());
@@ -168,7 +169,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(
             CompressionType.SNAPPY, measurementPath.getMeasurementSchema().getCompressor());
       } else if (measurementPath.getFullPath().equals("root.sg.wf01.wt01.temperature")) {
-        // only when user query with alias, the alias in path will be set
+        // Only when user query with alias, the alias in path will be set
         Assert.assertEquals("", measurementPath.getMeasurementAlias());
         Assert.assertEquals(2, measurementPath.getTagMap().size());
         Assert.assertEquals(TSDataType.FLOAT, measurementPath.getMeasurementSchema().getType());
@@ -185,10 +186,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.constructTree();
     schemas =
         schemaRegion.fetchSeriesSchema(
-            patternTree, Collections.EMPTY_MAP, false, false, true, false);
+            patternTree, Collections.emptyMap(), false, false, true, false);
     measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.temp")).left;
-    Assert.assertEquals(measurementPaths.size(), 1);
+    Assert.assertEquals(1, measurementPaths.size());
     Assert.assertEquals("root.sg.wf01.wt01.temperature", measurementPaths.get(0).getFullPath());
     Assert.assertEquals("temp", measurementPaths.get(0).getMeasurementAlias());
     Assert.assertNull(measurementPaths.get(0).getTagMap());
@@ -197,6 +198,21 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         TSEncoding.RLE, measurementPaths.get(0).getMeasurementSchema().getEncodingType());
     Assert.assertEquals(
         CompressionType.GZIP, measurementPaths.get(0).getMeasurementSchema().getCompressor());
+
+    // Test blacklist
+    patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.**"));
+    patternTree.constructTree();
+
+    Assert.assertEquals(2, schemaRegion.constructSchemaBlackList(patternTree));
+
+    patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.temperature"));
+    patternTree.constructTree();
+    Assert.assertTrue(
+        schemaRegion
+            .fetchSeriesSchema(patternTree, Collections.emptyMap(), false, false, true, false)
+            .isEmpty());
   }
 
   @Test
@@ -371,7 +387,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     List<MeasurementPath> schemas =
         schemaRegion
-            .fetchSeriesSchema(ALL_MATCH_SCOPE, Collections.EMPTY_MAP, false, false, true, false)
+            .fetchSeriesSchema(ALL_MATCH_SCOPE, Collections.emptyMap(), false, false, true, false)
             .searchMeasurementPaths(ALL_MATCH_PATTERN)
             .left;
     Assert.assertEquals(1, schemas.size());
@@ -379,7 +395,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testGetAllTimeseriesCount() throws Exception {
+  public void testGetAllTimeSeriesCount() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
