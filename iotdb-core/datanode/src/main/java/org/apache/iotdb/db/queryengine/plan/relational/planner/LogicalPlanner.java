@@ -129,8 +129,24 @@ public class LogicalPlanner {
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    this.planOptimizers = ImmutableList.of();
     this.tablePlanOptimizers = tablePlanOptimizers;
+    PlannerContext plannerContext = new PlannerContext(metadata, new InternalTypeManager());
+    Set<Rule<?>> pruneRules =
+        ImmutableSet.of(
+            new PruneFilterColumns(),
+            new PruneLimitColumns(),
+            new PruneOffsetColumns(),
+            new PruneOutputSourceColumns(),
+            new PruneProjectColumns(),
+            new PruneSortColumns(),
+            new PruneTableScanColumns(metadata));
+    Set<Rule<?>> inlineProjections =
+        ImmutableSet.of(
+            new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections());
+    this.planOptimizers =
+        ImmutableList.of(
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), pruneRules),
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections));
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
