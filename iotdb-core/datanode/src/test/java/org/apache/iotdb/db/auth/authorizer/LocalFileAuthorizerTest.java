@@ -1,31 +1,10 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -34,7 +13,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -45,18 +23,18 @@ import static org.junit.Assert.assertTrue;
 public class LocalFileAuthorizerTest {
 
   IAuthorizer authorizer;
-  User user;
   PartialPath nodeName;
-  String roleName = "role";
-  String admin = "root";
+  static final String roleName = "role";
+  static final String userName = "user";
+  static final String password = "password";
+  static final String database = "testDB";
+  static final String table = "testTB";
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-
     authorizer = BasicAuthorizer.getInstance();
     authorizer.reset();
-    user = new User("user", "password");
     nodeName = new PartialPath("root.laptop.d1");
   }
 
@@ -73,16 +51,16 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void createAndDeleteUser() throws AuthException {
-    authorizer.createUser(user.getName(), user.getPassword());
+    authorizer.createUser(userName, password);
     try {
-      authorizer.createUser(user.getName(), user.getPassword());
+      authorizer.createUser(userName, password);
     } catch (AuthException e) {
       assertEquals("User user already exists", e.getMessage());
     }
-    Assert.assertTrue(authorizer.login(user.getName(), user.getPassword()));
-    authorizer.deleteUser(user.getName());
+    Assert.assertTrue(authorizer.login(userName, password));
+    authorizer.deleteUser(userName);
     try {
-      authorizer.deleteUser(user.getName());
+      authorizer.deleteUser(userName);
     } catch (AuthException e) {
       assertEquals("User user does not exist", e.getMessage());
     }
@@ -101,157 +79,111 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void createAndDeleteRole() throws AuthException {
-    authorizer.createRole(user.getName());
+    authorizer.createRole(userName);
     try {
-      authorizer.createRole(user.getName());
+      authorizer.createRole(userName);
     } catch (AuthException e) {
       assertEquals("Role user already exists", e.getMessage());
     }
-    authorizer.deleteRole(user.getName());
+    authorizer.createUser("test", "password");
+    authorizer.grantRoleToUser(userName, "test");
+    authorizer.deleteRole(userName);
     try {
-      authorizer.deleteRole(user.getName());
+      authorizer.deleteRole(userName);
     } catch (AuthException e) {
       assertEquals("Role user does not exist", e.getMessage());
     }
+    assertEquals(0, authorizer.getUser("test").getRoleSet().size());
   }
 
   @Test
-  public void testUserPermission() throws AuthException {
-    authorizer.createUser(user.getName(), user.getPassword());
-    String admin = "root";
-    authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+  public void testTreePermission() throws AuthException {
+    authorizer.createUser(userName, password);
+    authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.READ_DATA, false);
     try {
-      authorizer.grantPrivilegeToUser(
-          user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+      authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.READ_DATA, false);
     } catch (AuthException e) {
       assertEquals("User user already has READ_DATA on root.laptop.d1", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser("error", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+      authorizer.grantPrivilegeToUser("error", nodeName, PrivilegeType.READ_DATA, false);
     } catch (AuthException e) {
       assertEquals("No such user error", e.getMessage());
     }
 
     try {
-      authorizer.grantPrivilegeToUser("root", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+      authorizer.grantPrivilegeToUser("root", nodeName, PrivilegeType.READ_DATA, false);
     } catch (AuthException e) {
       Assert.assertEquals(
           "Invalid operation, administrator already has all privileges", e.getMessage());
     }
 
+    authorizer.revokePrivilegeFromUser(userName, nodeName, PrivilegeType.READ_DATA);
     try {
-      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 100, false);
-    } catch (AuthException e) {
-      assertEquals("Invalid privilegeId 100", e.getMessage());
-    }
-
-    authorizer.revokePrivilegeFromUser(user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal());
-    try {
-      authorizer.revokePrivilegeFromUser(
-          user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal());
+      authorizer.revokePrivilegeFromUser(userName, nodeName, PrivilegeType.READ_DATA);
     } catch (AuthException e) {
       assertEquals("User user does not have READ_DATA on root.laptop.d1", e.getMessage());
     }
-
-    try {
-      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 100);
-    } catch (AuthException e) {
-      assertEquals("Invalid privilegeId 100", e.getMessage());
-    }
-
-    try {
-      authorizer.deleteUser(user.getName());
-      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
-    } catch (AuthException e) {
-      assertEquals("No such user user", e.getMessage());
-    }
-
-    try {
-      authorizer.revokePrivilegeFromUser("root", new PartialPath("root"), 1);
-    } catch (AuthException | MetadataException e) {
-      Assert.assertEquals(
-          "Invalid operation, administrator must have all privileges", e.getMessage());
-    }
   }
 
   @Test
-  public void testCreateAndDeleteRole() throws AuthException {
-    authorizer.createRole(roleName);
-    try {
-      authorizer.createRole(roleName);
-    } catch (AuthException e) {
-      assertEquals("Role role already exists", e.getMessage());
-    }
-    authorizer.deleteRole(roleName);
-    try {
-      authorizer.deleteRole(roleName);
-    } catch (AuthException e) {
-      assertEquals("Role role does not exist", e.getMessage());
-    }
-  }
+  public void testRelationalPermission() throws AuthException {
+    authorizer.createUser(userName, password);
+    authorizer.grantPrivilegeToUser(userName, database, PrivilegeType.SELECT, true);
+    authorizer.grantPrivilegeToUser(userName, database, PrivilegeType.ALTER, false);
+    authorizer.grantPrivilegeToUser(userName, database, table, PrivilegeType.INSERT, true);
+    authorizer.grantPrivilegeToUser(userName, database, table, PrivilegeType.DELETE, true);
+    assertEquals(1, authorizer.getUser(userName).getObjectPrivilegeMap().size());
+    assertEquals(
+        1,
+        authorizer
+            .getUser(userName)
+            .getObjectPrivilegeMap()
+            .get(database)
+            .getTablePrivilegeMap()
+            .size());
 
-  @Test
-  public void testRolePermission() throws AuthException {
-    authorizer.createRole(roleName);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
-    try {
-      authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
-    } catch (AuthException e) {
-      assertEquals("Role role already has WRITE_DATA on root.laptop.d1", e.getMessage());
-    }
-    authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
-    try {
-      authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
-    } catch (AuthException e) {
-      assertEquals("Role role does not have WRITE_DATA on root.laptop.d1", e.getMessage());
-    }
-    authorizer.deleteRole(roleName);
-    try {
-      authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
-    } catch (AuthException e) {
-      assertEquals("No such role role", e.getMessage());
-    }
-    try {
-      authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
-    } catch (AuthException e) {
-      assertEquals("No such role role", e.getMessage());
-    }
+    assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.SELECT, database));
+    assertTrue(
+        authorizer.checkUserPrivileges(
+            userName, PrivilegeType.SELECT, database, table)); // db privilege
+    assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.DELETE, database, table));
   }
 
   @Test
   public void testUserRole() throws AuthException {
-    authorizer.createUser(user.getName(), user.getPassword());
+    authorizer.createUser(userName, password);
     authorizer.createRole(roleName);
-    authorizer.grantRoleToUser(roleName, user.getName());
-    authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1, false);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, 3, false);
+    authorizer.grantRoleToUser(roleName, userName);
+    authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.WRITE_DATA, false);
+    authorizer.grantPrivilegeToRole(roleName, nodeName, PrivilegeType.WRITE_SCHEMA, false);
 
     // a user can get all role permissions.
-    Set<Integer> permissions = authorizer.getPrivileges(user.getName(), nodeName);
+    Set<PrivilegeType> permissions = authorizer.getPrivileges(userName, nodeName);
     assertEquals(2, permissions.size());
-    assertTrue(permissions.contains(1));
-    assertTrue(permissions.contains(3));
-    assertFalse(permissions.contains(4));
+    assertTrue(permissions.contains(PrivilegeType.WRITE_DATA));
+    assertTrue(permissions.contains(PrivilegeType.WRITE_SCHEMA));
+    assertFalse(permissions.contains(PrivilegeType.READ_DATA));
 
     try {
-      authorizer.grantRoleToUser(roleName, user.getName());
+      authorizer.grantRoleToUser(roleName, userName);
     } catch (AuthException e) {
       Assert.assertEquals("User user already has role role", e.getMessage());
     }
     // revoke a role from a user, the user will lose all role's permission
-    authorizer.revokeRoleFromUser(roleName, user.getName());
-    Set<Integer> revokeRolePermissions = authorizer.getPrivileges(user.getName(), nodeName);
+    authorizer.revokeRoleFromUser(roleName, userName);
+    Set<PrivilegeType> revokeRolePermissions = authorizer.getPrivileges(userName, nodeName);
     assertEquals(1, revokeRolePermissions.size());
-    assertTrue(revokeRolePermissions.contains(1));
-    assertFalse(revokeRolePermissions.contains(2));
+    assertTrue(revokeRolePermissions.contains(PrivilegeType.WRITE_DATA));
+    assertFalse(revokeRolePermissions.contains(PrivilegeType.READ_SCHEMA));
 
     // check the users' permission again
-    Assert.assertTrue(authorizer.checkUserPrivileges(user.getName(), nodeName, 1));
-    Assert.assertFalse(authorizer.checkUserPrivileges(user.getName(), nodeName, 2));
+    Assert.assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.WRITE_DATA, nodeName));
+    Assert.assertFalse(
+        authorizer.checkUserPrivileges(userName, PrivilegeType.READ_SCHEMA, nodeName));
 
     try {
-      authorizer.grantRoleToUser("role1", user.getName());
+      authorizer.grantRoleToUser("role1", userName);
     } catch (AuthException e) {
       Assert.assertEquals("No such role : role1", e.getMessage());
     }
@@ -259,16 +191,9 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testUpdatePassword() throws AuthException {
-    authorizer.createUser(user.getName(), user.getPassword());
-    authorizer.updateUserPassword(user.getName(), "newPassword");
-    Assert.assertTrue(authorizer.login(user.getName(), "newPassword"));
-  }
-
-  @Test
-  public void testUserWaterMark() throws AuthException {
-    authorizer.setUserUseWaterMark("root", true);
-    assertTrue(authorizer.getAllUserWaterMarkStatus().get("root"));
-    Assert.assertTrue(authorizer.isUserUseWaterMark("root"));
+    authorizer.createUser(userName, password);
+    authorizer.updateUserPassword(userName, "newPassword");
+    Assert.assertTrue(authorizer.login(userName, "newPassword"));
   }
 
   @Test
@@ -342,15 +267,5 @@ public class LocalFileAuthorizerTest {
         assertEquals("newRole" + i, roleList.get(i / 2));
       }
     }
-  }
-
-  @Test
-  public void testReplaceAllRole() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
-    Role role = new Role("role");
-    HashMap<String, Role> roles = new HashMap<>();
-    roles.put("role", role);
-    authorizer.replaceAllRoles(roles);
-    Assert.assertEquals("role", authorizer.listAllRoles().get(0));
   }
 }

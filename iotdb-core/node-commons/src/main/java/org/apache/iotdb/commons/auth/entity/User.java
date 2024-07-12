@@ -19,6 +19,8 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -35,11 +37,9 @@ public class User extends Role {
 
   private String password;
 
-  private List<String> roleList;
+  private Set<String> roleSet;
 
   private boolean isOpenIdUser = false; // default NO openIdUser
-
-  private boolean useWaterMark = false; // default NO watermark
 
   public User() {
     // empty constructor
@@ -54,7 +54,7 @@ public class User extends Role {
   public User(String name, String password) {
     super(name);
     this.password = password;
-    this.roleList = new ArrayList<>();
+    this.roleSet = new HashSet<>();
   }
 
   /** ---------- set func ---------------* */
@@ -62,16 +62,16 @@ public class User extends Role {
     this.password = password;
   }
 
-  public void setUseWaterMark(boolean useWaterMark) {
-    this.useWaterMark = useWaterMark;
-  }
-
   public void setOpenIdUser(boolean openIdUser) {
     isOpenIdUser = openIdUser;
   }
 
-  public void setRoleList(List<String> roles) {
-    roleList = roles;
+  public void setRoleSet(Set<String> roles) {
+    roleSet = roles;
+  }
+
+  public void addRole(String roleName) {
+    roleSet.add(roleName);
   }
 
   /** ------------ get func ----------------* */
@@ -79,20 +79,30 @@ public class User extends Role {
     return password;
   }
 
-  public boolean isUseWaterMark() {
-    return useWaterMark;
-  }
-
   public boolean isOpenIdUser() {
     return isOpenIdUser;
   }
 
   public boolean hasRole(String role) {
-    return roleList.contains(role);
+    return roleSet.contains(role);
   }
 
-  public List<String> getRoleList() {
-    return roleList;
+  public Set<String> getRoleSet() {
+    return roleSet;
+  }
+
+  public TUserResp getUserInfo() {
+    TUserResp resp = new TUserResp();
+    resp.setUsername(super.getName());
+    resp.setPassword(password);
+    resp.setSysPriSet(super.getSysPrivilegeIntSet());
+    resp.setSysPriSetGrantOpt(super.getSysPriGrantOptSet());
+    resp.setPrivilegeList(getPathPrivilegeInfo());
+    for (TDBPrivilege tdbPrivilege : getRelationalPrivilegeInfo()) {
+      resp.putToDbPrivilegeMap(tdbPrivilege.getDatabasename(), tdbPrivilege);
+    }
+    resp.setRoleSet(roleSet);
+    return resp;
   }
 
   /** -------------- misc ----------------* */
@@ -114,7 +124,8 @@ public class User extends Role {
         && Objects.equals(password, user.password)
         && Objects.equals(super.getPathPrivilegeList(), user.getPathPrivilegeList())
         && Objects.equals(super.getSysPrivilege(), user.getSysPrivilege())
-        && Objects.equals(roleList, user.roleList);
+        && Objects.equals(super.getObjectPrivilegeMap(), user.getObjectPrivilegeMap())
+        && Objects.equals(roleSet, user.roleSet);
   }
 
   @Override
@@ -124,7 +135,7 @@ public class User extends Role {
         password,
         super.getPathPrivilegeList(),
         super.getSysPrivilege(),
-        roleList,
+        roleSet,
         isOpenIdUser);
   }
 
@@ -138,22 +149,21 @@ public class User extends Role {
 
     try {
       dataOutputStream.writeInt(super.getSysPrivilege().size());
-      for (Integer item : super.getSysPrivilege()) {
-        dataOutputStream.writeInt(item);
+      for (PrivilegeType item : super.getSysPrivilege()) {
+        dataOutputStream.writeInt(item.ordinal());
       }
       dataOutputStream.writeInt(super.getSysPriGrantOpt().size());
-      for (Integer item : super.getSysPriGrantOpt()) {
-        dataOutputStream.writeInt(item);
+      for (PrivilegeType item : super.getSysPriGrantOpt()) {
+        dataOutputStream.writeInt(item.ordinal());
       }
       dataOutputStream.writeInt(super.getPathPrivilegeList().size());
       for (PathPrivilege pathPrivilege : super.getPathPrivilegeList()) {
         dataOutputStream.write(pathPrivilege.serialize().array());
       }
-      dataOutputStream.writeBoolean(useWaterMark);
     } catch (IOException e) {
       // unreachable
     }
-    SerializeUtils.serializeStringList(roleList, dataOutputStream);
+    SerializeUtils.serializeStringList(new ArrayList<>(roleSet), dataOutputStream);
 
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -163,15 +173,15 @@ public class User extends Role {
     super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
     int systemPriSize = buffer.getInt();
-    Set<Integer> sysPri = new HashSet<>();
+    Set<PrivilegeType> sysPri = new HashSet<>();
     for (int i = 0; i < systemPriSize; i++) {
-      sysPri.add(buffer.getInt());
+      sysPri.add(PrivilegeType.values()[buffer.getInt()]);
     }
     super.setSysPrivilegeSet(sysPri);
     int sysPriGrantOptSize = buffer.getInt();
-    Set<Integer> grantOpt = new HashSet<>();
+    Set<PrivilegeType> grantOpt = new HashSet<>();
     for (int i = 0; i < sysPriGrantOptSize; i++) {
-      grantOpt.add(buffer.getInt());
+      grantOpt.add(PrivilegeType.values()[buffer.getInt()]);
     }
     super.setSysPriGrantOpt(grantOpt);
 
@@ -183,8 +193,7 @@ public class User extends Role {
       privilegeList.add(pathPrivilege);
     }
     super.setPrivilegeList(privilegeList);
-    useWaterMark = buffer.get() == 1;
-    roleList = SerializeUtils.deserializeStringList(buffer);
+    roleSet = new HashSet<>(SerializeUtils.deserializeStringList(buffer));
   }
 
   @Override
@@ -200,12 +209,12 @@ public class User extends Role {
         + super.getPathPrivilegeList()
         + ", sysPrivilegeSet="
         + super.getSysPrivilege()
+        + ", objectPrivilegeMap="
+        + super.getObjectPrivilegeMap()
         + ", roleList="
-        + roleList
+        + roleSet
         + ", isOpenIdUser="
         + isOpenIdUser
-        + ", useWaterMark="
-        + useWaterMark
         + '}';
   }
 }

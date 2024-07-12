@@ -294,7 +294,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
-    configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
 
