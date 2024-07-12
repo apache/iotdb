@@ -1227,8 +1227,8 @@ public class Session implements ISession {
   }
 
   /**
-   * insert data in one row to the table model, if you want to improve your performance, please use insertRecords
-   * method or insertTablet method
+   * insert data in one row to the table model, if you want to improve your performance, please use
+   * insertRecords method or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -1254,7 +1254,6 @@ public class Session implements ISession {
 
     insertRecord(deviceId, request);
   }
-
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {

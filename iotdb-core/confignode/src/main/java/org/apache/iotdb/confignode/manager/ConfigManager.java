@@ -740,7 +740,7 @@ public class ConfigManager implements IManager {
 
     Map<String, List<TSeriesPartitionSlot>> databaseSlotMap = new HashMap<>();
     partitionSlotsMap.forEach((db, slots) -> databaseSlotMap.put(db, new ArrayList<>(slots)));
-    return  getSchemaPartition(databaseSlotMap);
+    return getSchemaPartition(databaseSlotMap);
   }
 
   @Override
@@ -755,7 +755,7 @@ public class ConfigManager implements IManager {
 
     GetSchemaPartitionPlan getSchemaPartitionPlan =
         new GetSchemaPartitionPlan(
-             dbSlotMap.entrySet().stream()
+            dbSlotMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
     SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
@@ -868,7 +868,6 @@ public class ConfigManager implements IManager {
       devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
     }
     devicePathString.append(lineSeparator).append("}");
-
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(

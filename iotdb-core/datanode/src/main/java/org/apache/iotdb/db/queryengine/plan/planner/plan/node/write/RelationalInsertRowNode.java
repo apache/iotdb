@@ -19,25 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.IntToLongFunction;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class RelationalInsertRowNode extends InsertRowNode {
   // deviceId cache for Table-view insertion
@@ -53,15 +47,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
       Object[] values,
       boolean isNeedInferType,
       TsTableColumnCategory[] columnCategories) {
-    super(
-        id,
-        devicePath,
-        isAligned,
-        measurements,
-        dataTypes,
-        time,
-        values,
-        isNeedInferType);
+    super(id, devicePath, isAligned, measurements, dataTypes, time, values, isNeedInferType);
     setColumnCategories(columnCategories);
   }
 

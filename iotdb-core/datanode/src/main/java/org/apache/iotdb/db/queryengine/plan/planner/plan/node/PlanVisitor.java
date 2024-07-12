@@ -516,7 +516,6 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-
   public R visitInsertTablet(InsertTabletNode node, C context) {
     return visitPlan(node, context);
   }

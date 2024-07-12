@@ -84,16 +84,12 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  /**
-   * Each memTable node has a unique int value identifier, init when recovering wal.
-   */
+  /** Each memTable node has a unique int value identifier, init when recovering wal. */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
-  /**
-   * DeviceId -> chunkGroup(MeasurementId -> chunk).
-   */
+  /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
@@ -103,9 +99,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
 
-  /**
-   * Memory size of data points, including TEXT values.
-   */
+  /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
 
   /**
@@ -128,9 +122,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final long createdTime = System.currentTimeMillis();
 
-  /**
-   * this time is updated by the timed flush, same as createdTime when the feature is disabled.
-   */
+  /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
   private long updateTime = createdTime;
 
   /**
@@ -173,7 +165,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /**
    * Create this MemChunk if it's not exist.
    *
-   * @param deviceId   device id
+   * @param deviceId device id
    * @param schemaList measurement schemaList
    * @return this MemChunkGroup
    */
@@ -281,9 +273,10 @@ public abstract class AbstractMemTable implements IMemTable {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // Use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null || values[i] == null
+      if (measurements[i] == null
+          || values[i] == null
           || insertRowNode.getColumnCategories() != null
-          && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT) {
+              && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT) {
         schemaList.add(null);
         continue;
       }
@@ -294,8 +287,8 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize += MemUtils.getAlignedRowRecordSize(dataTypes, values,
-        insertRowNode.getColumnCategories());
+    memSize +=
+        MemUtils.getAlignedRowRecordSize(dataTypes, values, insertRowNode.getColumnCategories());
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
         insertRowNode.getMeasurementColumnCnt() - insertRowNode.getFailedMeasurementNumber();
@@ -384,7 +377,7 @@ public abstract class AbstractMemTable implements IMemTable {
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
           (insertTabletNode.getMeasurementColumnCnt()
-              - insertTabletNode.getFailedMeasurementNumber())
+                  - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
       MetricService.getInstance()
@@ -476,7 +469,7 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null
           || (insertTabletNode.getColumnCategories() != null
-          && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
@@ -835,7 +828,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long[] calculateStartEndTime(long[] timestamps, List<BitMap> bitMaps) {
     if (bitMaps.isEmpty()) {
-      return new long[]{timestamps[0], timestamps[timestamps.length - 1]};
+      return new long[] {timestamps[0], timestamps[timestamps.length - 1]};
     }
     long startTime = -1, endTime = -1;
     for (int i = 0; i < timestamps.length; i++) {
@@ -855,7 +848,7 @@ public abstract class AbstractMemTable implements IMemTable {
         break;
       }
     }
-    return new long[]{startTime, endTime};
+    return new long[] {startTime, endTime};
   }
 
   private IChunkMetadata buildChunkMetaDataForMemoryChunk(
@@ -904,13 +897,12 @@ public abstract class AbstractMemTable implements IMemTable {
   /**
    * Delete data by path and timeStamp.
    *
-   * @param originalPath   the original path pattern or full path to be used to match timeseries,
-   *                       e.g. root.sg.**, root.sg.*.s, root.sg.d.s
-   * @param devicePath     one of the device path patterns generated by original path, e.g. given
-   *                       original path root.sg.** and the device path may be root.sg or
-   *                       root.sg.**
+   * @param originalPath the original path pattern or full path to be used to match timeseries, e.g.
+   *     root.sg.**, root.sg.*.s, root.sg.d.s
+   * @param devicePath one of the device path patterns generated by original path, e.g. given
+   *     original path root.sg.** and the device path may be root.sg or root.sg.**
    * @param startTimestamp the lower-bound of deletion time.
-   * @param endTimestamp   the upper-bound of deletion time
+   * @param endTimestamp the upper-bound of deletion time
    */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
@@ -1019,9 +1011,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return createdTime;
   }
 
-  /**
-   * Check whether updated since last get method
-   */
+  /** Check whether updated since last get method */
   @Override
   public long getUpdateTime() {
     if (lastTotalPointsNum != totalPointsNum) {
@@ -1041,9 +1031,7 @@ public abstract class AbstractMemTable implements IMemTable {
     this.flushStatus = flushStatus;
   }
 
-  /**
-   * Notice: this method is concurrent unsafe.
-   */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public int serializedSize() {
     if (isSignalMemTable()) {
@@ -1058,9 +1046,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return size;
   }
 
-  /**
-   * Notice: this method is concurrent unsafe.
-   */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     // TODO:[WAL]

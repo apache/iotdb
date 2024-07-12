@@ -474,5 +474,4 @@ public class CommonUtils {
     array[i] = array[j];
     array[j] = tmp;
   }
-
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
-import java.util.Collection;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;

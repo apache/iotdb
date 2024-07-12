@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -64,6 +63,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
@@ -313,11 +313,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs));
       if (null == schemaPartition) {
 
-        List<TSeriesPartitionSlot> partitionSlots = deviceIDs.stream()
-            .map(partitionExecutor::getSeriesPartitionSlot).distinct().collect(
-                Collectors.toList());
+        List<TSeriesPartitionSlot> partitionSlots =
+            deviceIDs.stream()
+                .map(partitionExecutor::getSeriesPartitionSlot)
+                .distinct()
+                .collect(Collectors.toList());
         TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTableWithSlots(Collections.singletonMap(database, partitionSlots));
+            client.getOrCreateSchemaPartitionTableWithSlots(
+                Collections.singletonMap(database, partitionSlots));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -358,7 +361,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String database = null;
       if (dataPartitionQueryParam.getDatabaseName() == null) {
         if (deviceToDatabase == null) {
-          deviceToDatabase =  partitionCache.getDeviceToDatabase(deviceIDs, true, isAutoCreate, userName);
+          deviceToDatabase =
+              partitionCache.getDeviceToDatabase(deviceIDs, true, isAutoCreate, userName);
         }
         if (deviceToDatabase.containsKey(deviceID)) {
           database = deviceToDatabase.get(deviceID);
@@ -440,7 +444,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   k,
                   new TTimeSlotList(
                       new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
-      partitionSlotsMap.put(PathUtils.qualifyDatabaseName(entry.getKey()), deviceToTimePartitionMap);
+      partitionSlotsMap.put(
+          PathUtils.qualifyDatabaseName(entry.getKey()), deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
   }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 

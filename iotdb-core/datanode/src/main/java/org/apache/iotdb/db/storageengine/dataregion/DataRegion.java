@@ -215,19 +215,13 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
 
-  /**
-   * Condition to safely delete data region.
-   */
+  /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
 
-  /**
-   * Data region has been deleted or not.
-   */
+  /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
 
-  /**
-   * closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done.
-   */
+  /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
 
   /**
@@ -235,50 +229,32 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
 
-  /**
-   * time partition id in the database -> {@link TsFileProcessor} for this time partition.
-   */
+  /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
 
-  /**
-   * time partition id in the database -> {@link TsFileProcessor} for this time partition.
-   */
+  /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
-  /**
-   * sequence {@link TsFileProcessor}s which are closing.
-   */
+  /** sequence {@link TsFileProcessor}s which are closing. */
   private final Set<TsFileProcessor> closingSequenceTsFileProcessor = ConcurrentHashMap.newKeySet();
 
-  /**
-   * unsequence {@link TsFileProcessor}s which are closing.
-   */
+  /** unsequence {@link TsFileProcessor}s which are closing. */
   private final Set<TsFileProcessor> closingUnSequenceTsFileProcessor =
       ConcurrentHashMap.newKeySet();
 
-  /**
-   * data region id.
-   */
+  /** data region id. */
   private final String dataRegionId;
 
-  /**
-   * database name.
-   */
+  /** database name. */
   private final String databaseName;
 
-  /**
-   * database system directory.
-   */
+  /** database system directory. */
   private File storageGroupSysDir;
 
-  /**
-   * manage seqFileList and unSeqFileList.
-   */
+  /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
 
-  /**
-   * manage tsFileResource degrade.
-   */
+  /** manage tsFileResource degrade. */
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   /**
@@ -289,14 +265,10 @@ public class DataRegion implements IDataRegionForQuery {
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
 
-  /**
-   * file system factory (local or hdfs).
-   */
+  /** file system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  /**
-   * File flush policy.
-   */
+  /** File flush policy. */
   private TsFileFlushPolicy fileFlushPolicy;
 
   /**
@@ -307,24 +279,16 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
 
-  /**
-   * database info for mem control.
-   */
+  /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
 
-  /**
-   * whether it's ready from recovery.
-   */
+  /** whether it's ready from recovery. */
   private boolean isReady = false;
 
-  /**
-   * close file listeners.
-   */
+  /** close file listeners. */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
 
-  /**
-   * flush listeners.
-   */
+  /** flush listeners. */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
   private ILastFlushTimeMap lastFlushTimeMap;
@@ -348,10 +312,10 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Construct a database processor.
    *
-   * @param systemDir       system dir path
-   * @param dataRegionId    data region id e.g. 1
+   * @param systemDir system dir path
+   * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param databaseName    database name e.g. root.sg1
+   * @param databaseName database name e.g. root.sg1
    */
   public DataRegion(
       String systemDir, String dataRegionId, TsFileFlushPolicy fileFlushPolicy, String databaseName)
@@ -434,29 +398,19 @@ public class DataRegion implements IDataRegionForQuery {
     return ret;
   }
 
-  /**
-   * this class is used to store recovering context.
-   */
+  /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
 
-    /**
-     * number of files to be recovered.
-     */
+    /** number of files to be recovered. */
     private final long numOfFilesToRecover;
 
-    /**
-     * number of already recovered files.
-     */
+    /** number of already recovered files. */
     private long recoveredFilesNum;
 
-    /**
-     * last recovery log time.
-     */
+    /** last recovery log time. */
     private long lastLogTime;
 
-    /**
-     * recover performers of unsealed TsFiles.
-     */
+    /** recover performers of unsealed TsFiles. */
     private final List<UnsealedTsFileRecoverPerformer> recoverPerformers = new ArrayList<>();
 
     public DataRegionRecoveryContext(long numOfFilesToRecover) {
@@ -488,9 +442,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * recover from file
-   */
+  /** recover from file */
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   private void recover() throws DataRegionException {
     try {
@@ -760,9 +712,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * check if the tsfile's time is smaller than system current time.
-   */
+  /** check if the tsfile's time is smaller than system current time. */
   private void checkTsFileTime(File tsFile, long currentTime) throws DataRegionException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long fileTime = Long.parseLong(items[0]);
@@ -775,9 +725,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * submit unsealed TsFile to WALRecoverManager.
-   */
+  /** submit unsealed TsFile to WALRecoverManager. */
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
@@ -862,9 +810,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * recover sealed TsFile.
-   */
+  /** recover sealed TsFile. */
   private void recoverSealedTsFiles(
       TsFileResource sealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     try (SealedTsFileRecoverPerformer recoverPerformer =
@@ -955,7 +901,7 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isSequence =
           config.isEnableSeparateData()
               && insertRowNode.getTime()
-              > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
+                  > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
 
       // insert to sequence or unSequence file
       TsFileProcessor tsFileProcessor =
@@ -1010,13 +956,13 @@ public class DataRegion implements IDataRegionForQuery {
         // a new partition, insert the remaining of the previous partition
         noFailure =
             insertTabletToTsFileProcessor(
-                insertTabletNode,
-                before,
-                loc,
-                isSequence,
-                results,
-                beforeTimePartition,
-                noFailure)
+                    insertTabletNode,
+                    before,
+                    loc,
+                    isSequence,
+                    results,
+                    beforeTimePartition,
+                    noFailure)
                 && noFailure;
         before = loc;
         beforeTimePartition = timePartitionId;
@@ -1026,13 +972,13 @@ public class DataRegion implements IDataRegionForQuery {
         // insert previous range into unsequence
         noFailure =
             insertTabletToTsFileProcessor(
-                insertTabletNode,
-                before,
-                loc,
-                isSequence,
-                results,
-                beforeTimePartition,
-                noFailure)
+                    insertTabletNode,
+                    before,
+                    loc,
+                    isSequence,
+                    results,
+                    beforeTimePartition,
+                    noFailure)
                 && noFailure;
         before = loc;
         isSequence = true;
@@ -1045,13 +991,13 @@ public class DataRegion implements IDataRegionForQuery {
     if (before < loc) {
       noFailure =
           insertTabletToTsFileProcessor(
-              insertTabletNode,
-              before,
-              loc,
-              isSequence,
-              results,
-              beforeTimePartition,
-              noFailure)
+                  insertTabletNode,
+                  before,
+                  loc,
+                  isSequence,
+                  results,
+                  beforeTimePartition,
+                  noFailure)
               && noFailure;
     }
 
@@ -1073,7 +1019,8 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       if (deleted) {
         logger.info(
-            "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());        return;
+            "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
+        return;
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
@@ -1168,11 +1115,11 @@ public class DataRegion implements IDataRegionForQuery {
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletNode insert a tablet of a device
-   * @param sequence         whether is sequence
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
-   * @param timePartitionId  time partition id
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(
@@ -1258,8 +1205,10 @@ public class DataRegion implements IDataRegionForQuery {
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeLastTimeValuePair,
-            index -> node.getColumns()[index] != null && (node.getColumnCategories() == null
-                || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
+            index ->
+                node.getColumns()[index] != null
+                    && (node.getColumnCategories() == null
+                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
             true,
             latestFlushedTime);
   }
@@ -1301,8 +1250,10 @@ public class DataRegion implements IDataRegionForQuery {
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeTimeValuePair,
-            index -> node.getValues()[index] != null && (node.getColumnCategories() == null
-                || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
+            index ->
+                node.getValues()[index] != null
+                    && (node.getColumnCategories() == null
+                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
             true,
             latestFlushedTime);
   }
@@ -1507,9 +1458,9 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence               whether is sequence or not
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(
       long timeRangeId, TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap, boolean sequence)
@@ -1593,7 +1544,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * close one tsfile processor
    *
-   * @param sequence        whether this tsfile processor is sequence or not
+   * @param sequence whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -1626,7 +1577,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * close one tsfile processor, thread-safety should be ensured by caller
    *
-   * @param sequence        whether this tsfile processor is sequence or not
+   * @param sequence whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
   public Future<?> asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -1691,9 +1642,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * close all tsfile resource
-   */
+  /** close all tsfile resource */
   public void closeAllResources() {
     for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false)) {
       try {
@@ -1711,9 +1660,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * delete tsfile
-   */
+  /** delete tsfile */
   public void syncDeleteDataFiles() throws TsFileProcessorException {
     logger.info(
         "{} will close all files for deleting data files", databaseName + "-" + dataRegionId);
@@ -1823,9 +1770,7 @@ public class DataRegion implements IDataRegionForQuery {
     WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
   }
 
-  /**
-   * This method will be blocked until all tsfile processors are closed.
-   */
+  /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
@@ -1864,9 +1809,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * close all working tsfile processors
-   */
+  /** close all working tsfile processors */
   List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
@@ -1892,9 +1835,7 @@ public class DataRegion implements IDataRegionForQuery {
     return futures;
   }
 
-  /**
-   * force close all working tsfile processors
-   */
+  /** force close all working tsfile processors */
   public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
     writeLock("forceCloseAllWorkingTsFileProcessors");
     try {
@@ -1915,9 +1856,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * used for queryengine
-   */
+  /** used for queryengine */
   @Override
   public QueryDataSource query(
       List<IFullPath> pathList,
@@ -2081,9 +2020,7 @@ public class DataRegion implements IDataRegionForQuery {
     return fileScanHandles;
   }
 
-  /**
-   * lock the read lock of the insert lock
-   */
+  /** lock the read lock of the insert lock */
   @Override
   public void readLock() {
     // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
@@ -2092,26 +2029,20 @@ public class DataRegion implements IDataRegionForQuery {
     tsFileManager.readLock();
   }
 
-  /**
-   * unlock the read lock of insert lock
-   */
+  /** unlock the read lock of insert lock */
   @Override
   public void readUnlock() {
     tsFileManager.readUnlock();
     insertLock.readLock().unlock();
   }
 
-  /**
-   * lock the write lock of the insert lock
-   */
+  /** lock the write lock of the insert lock */
   public void writeLock(String holder) {
     insertLock.writeLock().lock();
     insertWriteLockHolder = holder;
   }
 
-  /**
-   * unlock the write lock of the insert lock
-   */
+  /** unlock the write lock of the insert lock */
   public void writeUnlock() {
     insertWriteLockHolder = "";
     insertLock.writeLock().unlock();
@@ -2588,9 +2519,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * Put the memtable back to the MemTablePool and make the metadata in writer visible
-   */
+  /** Put the memtable back to the MemTablePool and make the metadata in writer visible */
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
       throws TsFileProcessorException {
@@ -2686,9 +2615,7 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  /**
-   * Schedule settle compaction for ttl check.
-   */
+  /** Schedule settle compaction for ttl check. */
   public int executeTTLCheck() throws InterruptedException {
     while (!isCompactionSelecting.compareAndSet(false, true)) {
       // wait until success
@@ -2817,9 +2744,7 @@ public class DataRegion implements IDataRegionForQuery {
     return getNonSystemDatabaseName(databaseName);
   }
 
-  /**
-   * Merge file under this database processor
-   */
+  /** Merge file under this database processor */
   public int compact() {
     writeLock("merge");
     CompactionScheduler.exclusiveLockCompactionSelection();
@@ -2839,7 +2764,7 @@ public class DataRegion implements IDataRegionForQuery {
    * <p>Then, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource @UsedBy load external tsfile module
-   * @param deleteOriginFile  whether to delete origin tsfile
+   * @param deleteOriginFile whether to delete origin tsfile
    * @param isGeneratedByPipe whether the load tsfile request is generated by pipe
    */
   public void loadNewTsFile(
@@ -3028,8 +2953,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * Update latest time in latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
-   * @UsedBy sync module, load external tsfile module.
+   * Update latest time in latestTimeForEachDevice and
+   * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
   protected void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (IDeviceID device : newTsFileResource.getDevices()) {
@@ -3047,8 +2972,8 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Execute the loading process by the type.
    *
-   * @param tsFileResource   tsfile resource to be loaded
-   * @param filePartitionId  the partition id of the new file
+   * @param tsFileResource tsfile resource to be loaded
+   * @param filePartitionId the partition id of the new file
    * @param deleteOriginFile whether to delete the original file
    * @return load the file successfully @UsedBy sync module, load external tsfile module.
    */
@@ -3298,14 +3223,14 @@ public class DataRegion implements IDataRegionForQuery {
    * "tsFileResource" have the same plan indexes as the local one.
    *
    * @return true if any file contains plans with indexes no less than the max plan index of
-   * "tsFileResource", otherwise false.
+   *     "tsFileResource", otherwise false.
    */
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
     // examine working processor first as they have the largest plan index
     return isFileAlreadyExistInWorking(
-        tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
+            tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
         || isFileAlreadyExistInWorking(
-        tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
+            tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileList())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
@@ -3429,7 +3354,7 @@ public class DataRegion implements IDataRegionForQuery {
         boolean isSequence =
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
-                > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
+                    > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
         TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
         if (tsFileProcessor == null) {
           continue;
@@ -3543,8 +3468,8 @@ public class DataRegion implements IDataRegionForQuery {
         areSequence[i] =
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
-                > lastFlushTimeMap.getFlushedTime(
-                timePartitionIds[i], insertRowNode.getDeviceID());
+                    > lastFlushTimeMap.getFlushedTime(
+                        timePartitionIds[i], insertRowNode.getDeviceID());
       }
       List<InsertRowNode> executedInsertRowNodeList =
           insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
@@ -3620,7 +3545,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * @param folder   the folder's path
+   * @param folder the folder's path
    * @param diskSize the disk space occupied by this folder, unit is MB
    */
   private void countFolderDiskSize(String folder, AtomicLong diskSize) {
@@ -3741,9 +3666,7 @@ public class DataRegion implements IDataRegionForQuery {
             .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId));
   }
 
-  /**
-   * Wait for this data region successfully deleted
-   */
+  /** Wait for this data region successfully deleted */
   public void waitForDeleted() {
     writeLock("waitForDeleted");
     try {
@@ -3759,9 +3682,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * Release all threads waiting for this data region successfully deleted
-   */
+  /** Release all threads waiting for this data region successfully deleted */
   public void markDeleted() {
     writeLock("markDeleted");
     try {

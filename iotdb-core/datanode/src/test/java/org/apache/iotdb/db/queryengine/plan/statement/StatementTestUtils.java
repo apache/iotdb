@@ -44,7 +44,8 @@ import java.util.List;
 
 public class StatementTestUtils {
 
-  public static final String TEST_PARTITION_EXECUTOR = "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  public static final String TEST_PARTITION_EXECUTOR =
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
   public static final int TEST_SERIES_SLOT_NUM = 1000;
 
   private StatementTestUtils() {
@@ -128,8 +129,7 @@ public class StatementTestUtils {
     return timestamps;
   }
 
-  public static InsertRowStatement genInsertRowStatement(
-      boolean writeToTable, int offset) {
+  public static InsertRowStatement genInsertRowStatement(boolean writeToTable, int offset) {
     String[] measurements = genColumnNames();
     TSDataType[] dataTypes = genDataTypes();
     TsTableColumnCategory[] columnCategories = genColumnCategories();
@@ -213,7 +213,6 @@ public class StatementTestUtils {
         false,
         columnCategories);
   }
-
 
   public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable) {
     return genInsertTabletStatement(writeToTable, 3, 0);

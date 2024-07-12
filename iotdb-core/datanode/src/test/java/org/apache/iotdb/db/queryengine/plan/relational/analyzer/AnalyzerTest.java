@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -815,7 +815,8 @@ public class AnalyzerTest {
         assertEquals(1, schemaValidation.getAttributeValueList().size());
         for (int i = 0; i < schemaValidation.getAttributeValueList().size(); i++) {
           assertEquals(
-              ((Object[]) columns[1])[i], ((Object[]) schemaValidation.getAttributeValueList().get(0))[i]);
+              ((Object[]) columns[1])[i],
+              ((Object[]) schemaValidation.getAttributeValueList().get(0))[i]);
         }
       }
 
@@ -839,8 +840,7 @@ public class AnalyzerTest {
           assertEquals(StatementTestUtils.tableName(), tableName);
 
           TSeriesPartitionSlot partitionSlot =
-              seriesPartitionExecutor.getSeriesPartitionSlot(
-                  dataPartitionQueryParam.getDeviceID());
+              seriesPartitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
           for (TTimePartitionSlot tTimePartitionSlot :
               dataPartitionQueryParam.getTimePartitionSlotList()) {
             dataPartitionMap
@@ -849,8 +849,7 @@ public class AnalyzerTest {
                 .computeIfAbsent(tTimePartitionSlot, slot -> new ArrayList<>())
                 .add(
                     new TRegionReplicaSet(
-                        new TConsensusGroupId(
-                            TConsensusGroupType.DataRegion, partitionSlot.slotId),
+                        new TConsensusGroupId(TConsensusGroupType.DataRegion, partitionSlot.slotId),
                         Collections.singletonList(
                             new TDataNodeLocation(
                                 partitionSlot.slotId, null, null, null, null, null))));
@@ -874,8 +873,12 @@ public class AnalyzerTest {
             new SqlParser(),
             sessionInfo);
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> partitionSlotMapMap = actualAnalysis.getDataPartition()
-        .getDataPartitionMap().get(sessionInfo.getDatabaseName().orElse(null));
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        partitionSlotMapMap =
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(3, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -915,16 +918,19 @@ public class AnalyzerTest {
             new SqlParser(),
             sessionInfo);
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> partitionSlotMapMap = actualAnalysis.getDataPartition()
-        .getDataPartitionMap().get(sessionInfo.getDatabaseName().orElse(null));
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        partitionSlotMapMap =
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(1, partitionSlotMapMap.size());
 
     logicalQueryPlan =
         new LogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
 
-    RelationalInsertRowNode insertNode =
-        (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
+    RelationalInsertRowNode insertNode = (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
     Object[] columns = StatementTestUtils.genValues(0);

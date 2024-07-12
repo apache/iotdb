@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
@@ -67,7 +66,7 @@ public class DataPartition extends Partition {
   }
 
   public Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-  getDataPartitionMap() {
+      getDataPartitionMap() {
     return dataPartitionMap;
   }
 
@@ -235,8 +234,8 @@ public class DataPartition extends Partition {
 
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
       IDeviceID deviceID, TTimePartitionSlot timePartitionSlot) {
-    return getDataRegionReplicaSetForWriting(deviceID, timePartitionSlot,
-        getDatabaseNameByDevice(deviceID));
+    return getDataRegionReplicaSetForWriting(
+        deviceID, timePartitionSlot, getDatabaseNameByDevice(deviceID));
   }
 
   private String getDatabaseNameByDevice(IDeviceID deviceID) {
@@ -273,7 +272,7 @@ public class DataPartition extends Partition {
     requireNonNull(this.dataPartitionMap, "dataPartitionMap is null");
 
     for (Map.Entry<
-        String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dbEntry : targetDataPartition.getDataPartitionMap().entrySet()) {
       String database = dbEntry.getKey();
       if (dataPartitionMap.containsKey(database)) {

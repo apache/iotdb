@@ -125,7 +125,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
-      value = valueList[i] == null ? null : ((Binary) valueList[i]).getStringValue(TSFileConfig.STRING_CHARSET);
+      value =
+          valueList[i] == null
+              ? null
+              : ((Binary) valueList[i]).getStringValue(TSFileConfig.STRING_CHARSET);
       if (value != null) {
         attributeMap.put(nameList.get(i), value);
         memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);

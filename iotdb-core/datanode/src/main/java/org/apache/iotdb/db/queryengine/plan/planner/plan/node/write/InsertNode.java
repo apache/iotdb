@@ -25,11 +25,10 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -55,8 +54,8 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
-   * if use id table, this filed is id form of device path <br> if not, this filed is device
-   * path<br>
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
    */
   protected PartialPath devicePath;
 
@@ -72,15 +71,14 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   protected int failedMeasurementNumber = 0;
 
   /**
-   * device id reference, for reuse device id in both id table and memtable <br> used in memtable
+   * device id reference, for reuse device id in both id table and memtable <br>
+   * used in memtable
    */
   protected IDeviceID deviceID;
 
   protected boolean isGeneratedByRemoteConsensusLeader = false;
 
-  /**
-   * Physical address of data region after splitting
-   */
+  /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
@@ -155,8 +153,10 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     if (columnCategories == null) {
       return measurements.length;
     }
-    return (int) Arrays.stream(columnCategories)
-        .filter(col -> col == TsTableColumnCategory.MEASUREMENT).count();
+    return (int)
+        Arrays.stream(columnCategories)
+            .filter(col -> col == TsTableColumnCategory.MEASUREMENT)
+            .count();
   }
 
   public boolean isValidMeasurement(int i) {
@@ -236,9 +236,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   // region Serialization methods for WAL
 
-  /**
-   * Serialized size of measurement schemas, ignoring failed time series
-   */
+  /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
     for (int i = 0; i < measurements.length; i++) {
@@ -251,9 +249,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     return byteLen;
   }
 
-  /**
-   * Serialize measurement schemas, ignoring failed time series
-   */
+  /** Serialize measurement schemas, ignoring failed time series */
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert

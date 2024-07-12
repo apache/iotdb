@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.client;
 
-import java.util.Map;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -164,6 +163,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -545,7 +545,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
       Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getSchemaPartitionTableWithSlots(dbSlotMap), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.getSchemaPartitionTableWithSlots(dbSlotMap),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

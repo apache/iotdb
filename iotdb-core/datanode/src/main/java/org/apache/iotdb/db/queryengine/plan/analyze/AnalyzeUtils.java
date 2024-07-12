@@ -112,7 +112,9 @@ public class AnalyzeUtils {
     } else if (statement instanceof InsertRowStatement) {
       InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
       return computeDataPartitionParams(
-          Collections.singletonMap(insertRowStatement.getTableDeviceID(), Collections.singleton(insertRowStatement.getTimePartitionSlot())),
+          Collections.singletonMap(
+              insertRowStatement.getTableDeviceID(),
+              Collections.singleton(insertRowStatement.getTimePartitionSlot())),
           context.getSession().getDatabaseName().orElse(null));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
@@ -121,8 +123,8 @@ public class AnalyzeUtils {
   public static List<DataPartitionQueryParam> computeTreeDataPartitionParams(
       InsertBaseStatement statement, MPPQueryContext context) {
     if (statement instanceof InsertTabletStatement) {
-      DataPartitionQueryParam dataPartitionQueryParam = getTreeDataPartitionQueryParam(
-          (InsertTabletStatement) statement, context);
+      DataPartitionQueryParam dataPartitionQueryParam =
+          getTreeDataPartitionQueryParam((InsertTabletStatement) statement, context);
       return Collections.singletonList(dataPartitionQueryParam);
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
@@ -155,13 +157,11 @@ public class AnalyzeUtils {
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
 
-  private static DataPartitionQueryParam getTreeDataPartitionQueryParam(InsertTabletStatement statement,
-      MPPQueryContext context) {
+  private static DataPartitionQueryParam getTreeDataPartitionQueryParam(
+      InsertTabletStatement statement, MPPQueryContext context) {
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDeviceID(
-        statement.getDevicePath().getIDeviceIDAsFullDevice());
-    dataPartitionQueryParam.setTimePartitionSlotList(
-        statement.getTimePartitionSlots());
+    dataPartitionQueryParam.setDeviceID(statement.getDevicePath().getIDeviceIDAsFullDevice());
+    dataPartitionQueryParam.setTimePartitionSlotList(statement.getTimePartitionSlots());
     dataPartitionQueryParam.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     return dataPartitionQueryParam;
   }
@@ -227,9 +227,7 @@ public class AnalyzeUtils {
     }
   }
 
-  /**
-   * get analysis according to statement and params
-   */
+  /** get analysis according to statement and params */
   public static void analyzeDataPartition(
       IAnalysis analysis,
       List<DataPartitionQueryParam> dataPartitionQueryParams,

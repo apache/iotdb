@@ -70,7 +70,8 @@ public class SchemaValidator {
       final TableSchema realSchema =
           metadata.validateTableHeaderSchema(databaseName, incomingSchema, context).orElse(null);
       if (realSchema == null) {
-        throw new SemanticException("Schema validation failed, table cannot be created: " + incomingSchema);
+        throw new SemanticException(
+            "Schema validation failed, table cannot be created: " + incomingSchema);
       }
       insertStatement.validate(realSchema);
       metadata.validateDeviceSchema(insertStatement, context);

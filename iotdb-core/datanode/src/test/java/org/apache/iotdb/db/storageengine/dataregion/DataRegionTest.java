@@ -91,7 +91,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
-import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowStatement;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
 
 public class DataRegionTest {
@@ -314,7 +313,7 @@ public class DataRegionTest {
   @Test
   public void testRelationRowWriteAndSyncClose()
       throws QueryProcessException, WriteProcessException {
-    RelationalInsertRowNode insertNode1 = genInsertRowNode( 0);
+    RelationalInsertRowNode insertNode1 = genInsertRowNode(0);
     dataRegion.insert(insertNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
 

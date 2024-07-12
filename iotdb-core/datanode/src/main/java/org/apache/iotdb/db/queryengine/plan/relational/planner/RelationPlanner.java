@@ -88,7 +88,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuery(Query node, Void context) {
     return new QueryPlanner(
-        analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -158,7 +158,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
     return new QueryPlanner(
-        analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -235,11 +235,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   protected RelationPlan visitInsertRow(InsertRow node, Void context) {
     InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
     RelationalInsertRowNode insertNode =
-        new RelationalInsertRowNode(idAllocator.genPlanNodeId(), insertRowStatement.getDevicePath(),
+        new RelationalInsertRowNode(
+            idAllocator.genPlanNodeId(),
+            insertRowStatement.getDevicePath(),
             insertRowStatement.isAligned(),
-            insertRowStatement.getMeasurements(), insertRowStatement.getDataTypes(),
-            insertRowStatement.getTime(), insertRowStatement.getValues(),
-            insertRowStatement.isNeedInferType(), insertRowStatement.getColumnCategories());
+            insertRowStatement.getMeasurements(),
+            insertRowStatement.getDataTypes(),
+            insertRowStatement.getTime(),
+            insertRowStatement.getValues(),
+            insertRowStatement.isNeedInferType(),
+            insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
     return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
   }

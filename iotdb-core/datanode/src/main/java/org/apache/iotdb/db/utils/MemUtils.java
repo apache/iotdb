@@ -47,8 +47,7 @@ public class MemUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemUtils.class);
 
-  private MemUtils() {
-  }
+  private MemUtils() {}
 
   /**
    * Function for obtaining the value size. For text values, there are two conditions: 1. During
@@ -83,12 +82,13 @@ public class MemUtils {
    * Function for obtaining the value size. For text values, their size has already been added to
    * memory before insertion
    */
-  public static long getAlignedRowRecordSize(List<TSDataType> dataTypes, Object[] value,
-      TsTableColumnCategory[] columnCategories) {
+  public static long getAlignedRowRecordSize(
+      List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null || dataTypes.get(i).isBinary()
+      if (value[i] == null
+          || dataTypes.get(i).isBinary()
           || columnCategories != null && columnCategories[i] != TsTableColumnCategory.MEASUREMENT) {
         continue;
       }
@@ -160,9 +160,7 @@ public class MemUtils {
     return memSize;
   }
 
-  /**
-   * Calculate how much memory will be used if the given record is written to sequence file.
-   */
+  /** Calculate how much memory will be used if the given record is written to sequence file. */
   public static long getTsRecordMem(TSRecord tsRecord) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
@@ -174,17 +172,13 @@ public class MemUtils {
     return memUsed;
   }
 
-  /**
-   * Function for getting the memory size of the given string.
-   */
+  /** Function for getting the memory size of the given string. */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
     return str.length() * 2L + 64L;
   }
 
-  /**
-   * Function for getting the memory size of the given data point.
-   */
+  /** Function for getting the memory size of the given data point. */
   public static long getDataPointMem(DataPoint dataPoint) {
     // type reference
     long memUsed = 8;
@@ -216,9 +210,7 @@ public class MemUtils {
     return memUsed;
   }
 
-  /**
-   * Function for converting the byte count result to readable string.
-   */
+  /** Function for converting the byte count result to readable string. */
   public static String bytesCntToStr(long inputCnt) {
     long cnt = inputCnt;
     long gbs = cnt / IoTDBConstant.GB;

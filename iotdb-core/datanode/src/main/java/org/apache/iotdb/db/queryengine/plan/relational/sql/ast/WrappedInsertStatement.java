@@ -19,13 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-
-import java.util.Arrays;
-import java.util.Collections;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -35,16 +29,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public abstract class WrappedInsertStatement extends WrappedStatement
     implements ITableDeviceSchemaValidation {
@@ -92,7 +87,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
     // incoming schema should be consistent with real schema
     for (int i = 0, incomingSchemaColumnsSize = incomingSchemaColumns.size();
-        i < incomingSchemaColumnsSize; i++) {
+        i < incomingSchemaColumnsSize;
+        i++) {
       ColumnSchema incomingSchemaColumn = incomingSchemaColumns.get(i);
       final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
       validate(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
@@ -126,12 +122,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     tableSchema = null;
   }
 
-  public static void validate(ColumnSchema incoming, ColumnSchema real, int i,
-      InsertBaseStatement innerTreeStatement) {
+  public static void validate(
+      ColumnSchema incoming, ColumnSchema real, int i, InsertBaseStatement innerTreeStatement) {
     if (real == null) {
       // the column does not exist and auto-creation is disabled
-      SemanticException semanticException = new SemanticException(
-          "Column " + incoming.getName() + " does not exists or fails to be " + "created");
+      SemanticException semanticException =
+          new SemanticException(
+              "Column " + incoming.getName() + " does not exists or fails to be " + "created");
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
@@ -145,10 +142,11 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       // sql insertion does not provide type
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!incoming.getType().equals(real.getType())) {
-      SemanticException semanticException = new SemanticException(
-          String.format(
-              "Inconsistent data type of column %s: %s/%s",
-              incoming.getName(), incoming.getType(), real.getType()));
+      SemanticException semanticException =
+          new SemanticException(
+              String.format(
+                  "Inconsistent data type of column %s: %s/%s",
+                  incoming.getName(), incoming.getType(), real.getType()));
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
@@ -166,10 +164,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
               "Inconsistent column category of column %s: %s/%s",
               incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
     }
-    TSDataType tsDataType = InternalTypeManager.getTSDataType(
-        real.getType());
-    MeasurementSchema measurementSchema = new MeasurementSchema(real.getName(), tsDataType,
-        getDefaultEncoding(tsDataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+    TSDataType tsDataType = InternalTypeManager.getTSDataType(real.getType());
+    MeasurementSchema measurementSchema =
+        new MeasurementSchema(
+            real.getName(),
+            tsDataType,
+            getDefaultEncoding(tsDataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor());
     innerTreeStatement.setMeasurementSchema(measurementSchema, i);
   }
 }

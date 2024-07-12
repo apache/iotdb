@@ -457,7 +457,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceIdSegments[0] = this.devicePath.getFullPath();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
-        deviceIdSegments[i + 1] =  values[columnIndex].toString();
+        deviceIdSegments[i + 1] = values[columnIndex].toString();
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
