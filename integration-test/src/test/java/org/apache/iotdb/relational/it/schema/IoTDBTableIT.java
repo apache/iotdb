@@ -40,6 +40,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -58,8 +59,9 @@ public class IoTDBTableIT {
 
   @Test
   public void testManageTable() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
       statement.execute("create database test2");
@@ -68,8 +70,19 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals("701: database is not specified", e.getMessage());
+      }
+
+      // Show tables shall succeed in a newly created database
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertFalse(resultSet.next());
       }
 
       // or use full qualified table name
@@ -81,7 +94,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id TEXT ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ID Column should only be STRING, current is TEXT", e.getMessage());
       }
@@ -89,7 +102,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id INT32 ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ID Column should only be STRING, current is INT32", e.getMessage());
       }
@@ -97,7 +110,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model TEXT ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ATTRIBUTE Column should only be STRING, current is TEXT",
             e.getMessage());
@@ -106,7 +119,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model DOUBLE ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ATTRIBUTE Column should only be STRING, current is DOUBLE",
             e.getMessage());
@@ -116,10 +129,10 @@ public class IoTDBTableIT {
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
       String[] tableNames = new String[] {"table2"};
-      long[] ttls = new long[] {6600000L};
+      String[] ttls = new String[] {"6600000"};
 
       // show tables from current database
-      try (ResultSet resultSet = statement.executeQuery("SHOW tables")) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
@@ -129,7 +142,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getLong(2));
+          assertEquals(ttls[cnt], resultSet.getString(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -137,10 +150,10 @@ public class IoTDBTableIT {
 
       // show tables by specifying another database
       tableNames = new String[] {"table1"};
-      ttls = new long[] {3600000L};
+      ttls = new String[] {"3600000"};
 
       // using SHOW tables in
-      try (ResultSet resultSet = statement.executeQuery("SHOW tables in test1")) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables in test1")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
@@ -150,14 +163,14 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getLong(2));
+          assertEquals(ttls[cnt], resultSet.getString(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
       }
 
       // using SHOW tables from
-      try (ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
@@ -167,7 +180,7 @@ public class IoTDBTableIT {
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getLong(2));
+          assertEquals(ttls[cnt], resultSet.getString(2));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -176,14 +189,14 @@ public class IoTDBTableIT {
       // show tables from a non-exist database
       try {
         statement.executeQuery("SHOW tables from test3");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals("500: Unknown database test3", e.getMessage());
       }
 
       // describe
       try {
         statement.executeQuery("describe table1");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals("550: Table test2.table1 not exists.", e.getMessage());
       }
 
@@ -196,7 +209,7 @@ public class IoTDBTableIT {
       String[] categories =
           new String[] {"TIME", "ID", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
 
-      try (ResultSet resultSet = statement.executeQuery("describe test1.table1")) {
+      try (final ResultSet resultSet = statement.executeQuery("describe test1.table1")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(describeTableColumnHeaders.size(), metaData.getColumnCount());
@@ -217,7 +230,7 @@ public class IoTDBTableIT {
       dataTypes = new String[] {"INT64", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
 
-      try (ResultSet resultSet = statement.executeQuery("desc table2")) {
+      try (final ResultSet resultSet = statement.executeQuery("desc table2")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(describeTableColumnHeaders.size(), metaData.getColumnCount());
@@ -236,7 +249,7 @@ public class IoTDBTableIT {
 
       try {
         statement.executeQuery("describe test3.table3");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals("550: Table test3.table3 not exists.", e.getMessage());
       }
 
@@ -244,11 +257,11 @@ public class IoTDBTableIT {
 
       try {
         statement.executeQuery("SHOW tables from test1");
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
 
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

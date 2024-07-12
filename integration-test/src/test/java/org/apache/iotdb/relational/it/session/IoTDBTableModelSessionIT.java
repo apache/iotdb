@@ -55,13 +55,14 @@ public class IoTDBTableModelSessionIT {
 
   @Test
   public void testUseDatabase() {
-    String[] table1Names = new String[] {"table1"};
-    long[] table1ttls = new long[] {3600000L};
+    final String[] table1Names = new String[] {"table1"};
+    final String[] table1ttls = new String[] {"3600000"};
 
-    String[] table2Names = new String[] {"table2"};
-    long[] table2ttls = new long[] {6600000L};
+    final String[] table2Names = new String[] {"table2"};
+    final String[] table2ttls = new String[] {"6600000"};
 
-    try (ISession session = EnvFactory.getEnv().getSessionConnectionWithDB("table", "test2")) {
+    try (final ISession session =
+        EnvFactory.getEnv().getSessionConnectionWithDB("table", "test2")) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");
@@ -73,7 +74,7 @@ public class IoTDBTableModelSessionIT {
       session.executeNonQueryStatement(
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -81,9 +82,9 @@ public class IoTDBTableModelSessionIT {
               showTablesColumnHeaders.get(i).getColumnName(), dataSet.getColumnNames().get(i));
         }
         while (dataSet.hasNext()) {
-          RowRecord rowRecord = dataSet.next();
+          final RowRecord rowRecord = dataSet.next();
           assertEquals(table2Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table2Names.length, cnt);
@@ -91,7 +92,7 @@ public class IoTDBTableModelSessionIT {
 
       session.executeNonQueryStatement("use test1");
 
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -99,15 +100,15 @@ public class IoTDBTableModelSessionIT {
               showTablesColumnHeaders.get(i).getColumnName(), dataSet.getColumnNames().get(i));
         }
         while (dataSet.hasNext()) {
-          RowRecord rowRecord = dataSet.next();
+          final RowRecord rowRecord = dataSet.next();
           assertEquals(table1Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table1Names.length, cnt);
       }
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());
     }
   }
