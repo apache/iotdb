@@ -68,7 +68,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
         .getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
-        .lock();
+        .tryLock();
   }
 
   @Override
