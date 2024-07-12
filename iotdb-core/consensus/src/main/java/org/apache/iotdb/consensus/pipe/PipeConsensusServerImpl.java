@@ -72,6 +72,8 @@ public class PipeConsensusServerImpl {
   private static final long CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS = 2_000L;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+  private static final long RETRY_WAIT_TIME_IN_MS = 500;
+  private static final long MAX_RETRY_TIMES = 20;
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final Lock stateMachineLock = new ReentrantLock();
@@ -143,10 +145,27 @@ public class PipeConsensusServerImpl {
     if (startConsensusPipes) {
       // start all consensus pipes
       final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-      final List<Peer> successfulPipes =
+      List<Peer> failedPipes =
           updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.RUNNING);
-      if (successfulPipes.size() < otherPeers.size()) {
+      // considering procedure can easily time out, keep trying updateConsensusPipesStatus until all
+      // consensus pipes are started gracefully or exceed the maximum number of attempts.
+      // NOTE: start pipe procedure is idempotent guaranteed.
+      try {
+        for (int i = 0; i < MAX_RETRY_TIMES && !failedPipes.isEmpty(); i++) {
+          failedPipes = updateConsensusPipesStatus(failedPipes, PipeStatus.RUNNING);
+          Thread.sleep(RETRY_WAIT_TIME_IN_MS);
+        }
+      } catch (InterruptedException e) {
+        LOGGER.warn(
+            "PipeConsensusImpl-peer{}: pipeConsensusImpl thread get interrupted when start consensus pipe. May because IoTDB process is killed.",
+            thisNode);
+        throw new IOException(String.format("%s cannot start all consensus pipes", thisNode));
+      }
+      // if there still are some consensus pipes failed to start, throw an exception.
+      if (!failedPipes.isEmpty()) {
         // roll back
+        List<Peer> successfulPipes = new ArrayList<>(otherPeers);
+        successfulPipes.removeAll(failedPipes);
         updateConsensusPipesStatus(successfulPipes, PipeStatus.STOPPED);
         throw new IOException(String.format("%s cannot start all consensus pipes", thisNode));
       }
@@ -157,9 +176,9 @@ public class PipeConsensusServerImpl {
   public synchronized void stop() {
     // stop all consensus pipes
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    final List<Peer> successfulPipes =
+    final List<Peer> failedPipes =
         updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.STOPPED);
-    if (successfulPipes.size() < otherPeers.size()) {
+    if (!failedPipes.isEmpty()) {
       // do not roll back, because it will stop anyway
       LOGGER.warn("{} cannot stop all consensus pipes", thisNode);
     }
@@ -170,9 +189,9 @@ public class PipeConsensusServerImpl {
 
   public synchronized void clear() throws IOException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    final List<Peer> successfulPipes =
+    final List<Peer> failedPipes =
         updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.DROPPED);
-    if (successfulPipes.size() < otherPeers.size()) {
+    if (!failedPipes.isEmpty()) {
       // do not roll back, because it will clear anyway
       LOGGER.warn("{} cannot drop all consensus pipes", thisNode);
     }
@@ -205,6 +224,10 @@ public class PipeConsensusServerImpl {
         .collect(Collectors.toList());
   }
 
+  /**
+   * update given consensus pipes' status, returns the peer corresponding to the pipe that failed to
+   * update
+   */
   private List<Peer> updateConsensusPipesStatus(List<Peer> peers, PipeStatus status) {
     return peers.stream()
         .filter(
@@ -214,7 +237,7 @@ public class PipeConsensusServerImpl {
                   consensusPipeManager.updateConsensusPipe(
                       new ConsensusPipeName(thisNode, peer), status);
                 }
-                return true;
+                return false;
               } catch (Exception e) {
                 LOGGER.warn(
                     "{}: cannot update consensus pipe between {} and {} to status {}",
@@ -222,7 +245,7 @@ public class PipeConsensusServerImpl {
                     thisNode,
                     peer,
                     status);
-                return false;
+                return true;
               }
             })
         .collect(Collectors.toList());
