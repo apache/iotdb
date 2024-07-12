@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -76,6 +77,25 @@ public class Assignments {
 
   public Map<Symbol, Expression> getMap() {
     return assignments;
+  }
+
+  public boolean isIdentity(Symbol output) {
+    Expression expression = assignments.get(output);
+
+    return expression instanceof SymbolReference
+        && ((SymbolReference) expression).getName().equals(output.getName());
+  }
+
+  public boolean isIdentity() {
+    for (Map.Entry<Symbol, Expression> entry : assignments.entrySet()) {
+      Expression expression = entry.getValue();
+      Symbol symbol = entry.getKey();
+      if (!(expression instanceof SymbolReference
+          && ((SymbolReference) expression).getName().equals(symbol.getName()))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public Assignments rewrite(Function<Expression, Expression> rewrite) {

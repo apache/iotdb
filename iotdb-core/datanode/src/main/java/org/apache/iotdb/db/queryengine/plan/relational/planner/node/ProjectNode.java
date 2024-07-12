@@ -61,6 +61,10 @@ public class ProjectNode extends SingleChildProcessNode {
     return assignments;
   }
 
+  public boolean isIdentity() {
+    return assignments.isIdentity();
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_PROJECT_NODE.serialize(byteBuffer);

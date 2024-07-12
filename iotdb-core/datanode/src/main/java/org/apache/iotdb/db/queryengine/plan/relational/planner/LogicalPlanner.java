@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
@@ -43,11 +44,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TablePlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
@@ -95,7 +96,11 @@ public class LogicalPlanner {
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    Set<Rule<?>> rules =
+    PlannerContext plannerContext = new PlannerContext(metadata, new InternalTypeManager());
+    this.tablePlanOptimizers =
+        Arrays.asList(new SimplifyExpressions(), new PushPredicateIntoTableScan());
+
+    Set<Rule<?>> pruneRules =
         ImmutableSet.of(
             new PruneFilterColumns(),
             new PruneLimitColumns(),
@@ -104,18 +109,13 @@ public class LogicalPlanner {
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableScanColumns(metadata));
+    Set<Rule<?>> inlineProjections =
+        ImmutableSet.of(
+            new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections());
     this.planOptimizers =
         ImmutableList.of(
-            new IterativeOptimizer(
-                new PlannerContext(metadata, new InternalTypeManager()),
-                new RuleStatsRecorder(),
-                rules));
-    this.tablePlanOptimizers =
-        Arrays.asList(
-            new SimplifyExpressions(),
-            // new PruneUnUsedColumns(),
-            new RemoveRedundantIdentityProjections(),
-            new PushPredicateIntoTableScan());
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), pruneRules),
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections));
   }
 
   @TestOnly
@@ -153,10 +153,6 @@ public class LogicalPlanner {
                   warningCollector,
                   PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
     }
-
-    // TODO remove after introduce InlineProjections and RemoveRedundantIdentityProjections
-    planNode =
-        tablePlanOptimizers.get(1).optimize(planNode, analysis, metadata, sessionInfo, context);
     return new LogicalQueryPlan(context, planNode);
   }
 

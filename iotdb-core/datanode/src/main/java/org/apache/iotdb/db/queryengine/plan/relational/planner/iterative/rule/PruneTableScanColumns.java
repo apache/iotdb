@@ -15,6 +15,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -25,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -79,7 +81,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
     node.getTimePredicate()
         .ifPresent(
             timePredicate -> {
-              Symbol time = Symbol.of("time");
+              Symbol time =
+                  Symbol.of(
+                      TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH));
               newAssignments.put(time, node.getAssignments().get(time));
             });
 
