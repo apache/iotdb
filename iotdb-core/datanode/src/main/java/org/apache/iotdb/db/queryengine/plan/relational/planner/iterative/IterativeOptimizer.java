@@ -31,8 +31,9 @@ import org.apache.iotdb.session.Session;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import io.airlift.log.Logger;
 import io.airlift.units.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -53,7 +54,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
 import static org.apache.iotdb.rpc.TSStatusCode.OPTIMIZER_TIMEOUT;
 
 public class IterativeOptimizer implements AdaptivePlanOptimizer {
-  private static final Logger LOG = Logger.get(IterativeOptimizer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IterativeOptimizer.class);
 
   private final RuleStatsRecorder stats;
   private final List<PlanOptimizer> legacyRules;
