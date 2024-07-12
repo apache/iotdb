@@ -57,14 +57,14 @@ public class IoTDBTableModelSessionPoolIT {
   @Test
   public void testUseDatabase() {
 
-    String[] table1Names = new String[] {"table1"};
-    long[] table1ttls = new long[] {3600000L};
+    final String[] table1Names = new String[] {"table1"};
+    final String[] table1ttls = new String[] {"3600000"};
 
-    String[] table2Names = new String[] {"table2"};
-    long[] table2ttls = new long[] {6600000L};
+    final String[] table2Names = new String[] {"table2"};
+    final String[] table2ttls = new String[] {"6600000"};
 
     ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (final IPooledSession session = sessionPool.getPooledSession()) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");
@@ -78,7 +78,7 @@ public class IoTDBTableModelSessionPoolIT {
       session.executeNonQueryStatement(
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -86,22 +86,21 @@ public class IoTDBTableModelSessionPoolIT {
               showTablesColumnHeaders.get(i).getColumnName(), dataSet.getColumnNames().get(i));
         }
         while (dataSet.hasNext()) {
-          RowRecord rowRecord = dataSet.next();
+          final RowRecord rowRecord = dataSet.next();
           assertEquals(table2Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table2Names.length, cnt);
       }
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());
     }
 
-    try (IPooledSession session = sessionPool.getPooledSession()) {
-
+    try (final IPooledSession session = sessionPool.getPooledSession()) {
       // current session's database is still test2
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -111,13 +110,13 @@ public class IoTDBTableModelSessionPoolIT {
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           assertEquals(table2Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table2Names.length, cnt);
       }
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());
     } finally {
       sessionPool.close();
@@ -126,10 +125,10 @@ public class IoTDBTableModelSessionPoolIT {
     // specify database in constructor
     sessionPool = EnvFactory.getEnv().getSessionPool(1, "table", "test1");
 
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (final IPooledSession session = sessionPool.getPooledSession()) {
 
       // current session's database is test1
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -139,7 +138,7 @@ public class IoTDBTableModelSessionPoolIT {
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           assertEquals(table1Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table1Names.length, cnt);
@@ -148,7 +147,7 @@ public class IoTDBTableModelSessionPoolIT {
       // change database to test2
       session.executeNonQueryStatement("use test2");
 
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -158,20 +157,20 @@ public class IoTDBTableModelSessionPoolIT {
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           assertEquals(table2Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table2Names.length, cnt);
       }
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());
     }
 
     // after putting back, the session's database should be changed back to default test1
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (final IPooledSession session = sessionPool.getPooledSession()) {
 
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
         assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
         for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
@@ -181,13 +180,13 @@ public class IoTDBTableModelSessionPoolIT {
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           assertEquals(table1Names[cnt], rowRecord.getFields().get(0).getStringValue());
-          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getLongV());
+          assertEquals(table1ttls[cnt], rowRecord.getFields().get(1).getStringValue());
           cnt++;
         }
         assertEquals(table1Names.length, cnt);
       }
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());
     } finally {
       sessionPool.close();

@@ -50,19 +50,16 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
     }
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSize =
-        averageUncompressedChunkSize
-            * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+        averageChunkSize * maxConcurrentSeriesNum * taskInfo.getMaxChunkMetadataNumInSeries()
+            + maxConcurrentSeriesNum * tsFileConfig.getPageSizeInByte();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize = Math.min(maxConcurrentSeriesSize, maxTargetChunkWriterSize);
 
     long inMemorySortedDataSize =
-        averageUncompressedChunkSize
+        (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * Math.min(
                 taskInfo.getMaxChunkMetadataNumInDevice(),
                 taskInfo.getMaxChunkMetadataNumInSeries() * maxConcurrentSeriesNum);

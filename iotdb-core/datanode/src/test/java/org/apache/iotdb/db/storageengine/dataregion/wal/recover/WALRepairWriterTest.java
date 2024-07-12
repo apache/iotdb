@@ -51,7 +51,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class WALRecoverWriterTest {
+public class WALRepairWriterTest {
   private final File logFile =
       new File(
           TestConstant.BASE_OUTPUT_PATH.concat(
@@ -68,16 +68,15 @@ public class WALRecoverWriterTest {
     logFile.createNewFile();
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
-    // recover
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
-    walRecoverWriter.recover(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + head magic
     // string + tail magic string
     Assert.assertEquals(
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_BYTES * 2,
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -94,15 +93,14 @@ public class WALRecoverWriterTest {
     }
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
-    // recover
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
-    walRecoverWriter.recover(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + magic string
     Assert.assertEquals(
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_BYTES * 2,
+            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -122,9 +120,8 @@ public class WALRecoverWriterTest {
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
-    // recover
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
-    walRecoverWriter.recover(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());
@@ -146,9 +143,8 @@ public class WALRecoverWriterTest {
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
-    // recover
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
-    walRecoverWriter.recover(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());
@@ -175,9 +171,8 @@ public class WALRecoverWriterTest {
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
       channel.truncate(len - 1);
     }
-    // recover
-    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
-    walRecoverWriter.recover(walMetaData);
+    // repair
+    new WALRepairWriter(logFile).repair(walMetaData);
     // verify file
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertTrue(reader.hasNext());

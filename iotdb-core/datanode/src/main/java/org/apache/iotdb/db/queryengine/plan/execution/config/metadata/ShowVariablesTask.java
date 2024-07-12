@@ -100,14 +100,16 @@ public class ShowVariablesTask implements IConfigTask {
             clusterParameters.getConfigNodeConsensusProtocolClass(), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
+        new Binary(ColumnHeaderConstant.TIME_PARTITION_ORIGIN, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getTimePartitionOrigin()),
+            TSFileConfig.STRING_CHARSET));
+    buildTSBlock(
+        builder,
         new Binary(ColumnHeaderConstant.TIME_PARTITION_INTERVAL, TSFileConfig.STRING_CHARSET),
         new Binary(
             String.valueOf(clusterParameters.getTimePartitionInterval()),
             TSFileConfig.STRING_CHARSET));
-    buildTSBlock(
-        builder,
-        new Binary(ColumnHeaderConstant.DEFAULT_TTL, TSFileConfig.STRING_CHARSET),
-        new Binary(String.valueOf(clusterParameters.getDefaultTTL()), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
         new Binary(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL, TSFileConfig.STRING_CHARSET),

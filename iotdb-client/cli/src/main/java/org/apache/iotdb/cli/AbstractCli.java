@@ -737,25 +737,34 @@ public abstract class AbstractCli {
     TSDataType type = TSDataType.valueOf(resultSet.getColumnTypeByIndex(columnIndex));
     switch (type) {
       case BOOLEAN:
-        return String.valueOf(resultSet.getBoolean(columnIndex));
       case INT32:
-        return String.valueOf(resultSet.getInt(columnIndex));
       case INT64:
-        return String.valueOf(resultSet.getLong(columnIndex));
       case FLOAT:
-        return String.valueOf(resultSet.getFloat(columnIndex));
       case DOUBLE:
-        return String.valueOf(resultSet.getDouble(columnIndex));
       case TEXT:
       case STRING:
         return resultSet.getString(columnIndex);
       case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(resultSet.getBytes(columnIndex));
+        byte[] v = resultSet.getBytes(columnIndex);
+        if (v == null) {
+          return null;
+        } else {
+          return BytesUtils.parseBlobByteArrayToString(v);
+        }
       case DATE:
-        return DateUtils.formatDate(resultSet.getInt(columnIndex));
+        int intValue = resultSet.getInt(columnIndex);
+        if (resultSet.wasNull()) {
+          return null;
+        } else {
+          return DateUtils.formatDate(intValue);
+        }
       case TIMESTAMP:
-        return RpcUtils.formatDatetime(
-            timeFormat, timestampPrecision, resultSet.getLong(columnIndex), zoneId);
+        long longValue = resultSet.getLong(columnIndex);
+        if (resultSet.wasNull()) {
+          return null;
+        } else {
+          return RpcUtils.formatDatetime(timeFormat, timestampPrecision, longValue, zoneId);
+        }
       default:
         return null;
     }

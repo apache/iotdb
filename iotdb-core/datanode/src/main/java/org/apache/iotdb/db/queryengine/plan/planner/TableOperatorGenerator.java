@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.StreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
@@ -53,7 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
@@ -777,23 +775,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             sortItemIndexList.subList(0, node.getStreamCompareKeyEndIndex() + 1),
             sortItemDataTypeList.subList(0, node.getStreamCompareKeyEndIndex() + 1)),
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
-  }
-
-  @Override
-  public Operator visitSchemaQueryMerge(
-      SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children = new ArrayList<>(node.getChildren().size());
-    for (PlanNode child : node.getChildren()) {
-      children.add(child.accept(this, context));
-    }
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaQueryMergeOperator.class.getSimpleName());
-    return new SchemaQueryMergeOperator(operatorContext, children);
   }
 
   @Override

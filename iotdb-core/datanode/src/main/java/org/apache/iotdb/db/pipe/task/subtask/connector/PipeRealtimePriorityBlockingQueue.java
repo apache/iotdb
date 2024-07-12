@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
@@ -51,10 +52,10 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (event instanceof PipeHeartbeatEvent && super.peekLast() instanceof PipeHeartbeatEvent) {
       // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
+      return false;
     } else {
-      super.directOffer(event);
+      return super.directOffer(event);
     }
-    return true;
   }
 
   @Override
@@ -117,6 +118,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   public void forEach(final Consumer<? super Event> action) {
     super.forEach(action);
     tsfileInsertEventDeque.forEach(action);
+  }
+
+  @Override
+  public void removeIf(final Predicate<? super Event> filter) {
+    super.removeIf(filter);
+    pendingQueue.removeIf(filter);
   }
 
   @Override

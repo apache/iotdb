@@ -55,21 +55,25 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 /**
- * After the optimized rule {@link SimplifyExpressions} finished, predicate expression in FilterNode
- * has been transformed to conjunctive normal forms(CNF).
+ * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>1. In this class, we examine each expression in CNFs, determine how to use it, in metadata
- * query, or pushed down into ScanOperators, or it can only be used in FilterNode above with
- * TableScanNode.
- * <li>For metadata query expressions, it will be used in {@code tableIndexScan} method to generate
- *     the deviceEntries and DataPartition used for TableScanNode.
- * <li>For expressions which can be pushed into TableScanNode, we will execute {@code
- *     extractGlobalTimeFilter}, to extract the timePredicate and pushDownValuePredicate.
- * <li>Expression which can not be pushed down into TableScanNode, will be used in the FilterNode
- *     above of TableScanNode.
+ * <p>After the optimized rule {@link SimplifyExpressions} finished, predicate expression in
+ * FilterNode has been transformed to conjunctive normal forms(CNF).
  *
- *     <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule
- *     need to be adapted.
+ * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
+ * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
+ *
+ * <ul>
+ *   <li>For metadata query expressions, it will be used in {@code tableIndexScan} method to
+ *       generate the deviceEntries and DataPartition used for TableScanNode.
+ *   <li>For expressions which can be pushed into TableScanNode, we will execute {@code
+ *       extractGlobalTimeFilter}, to extract the timePredicate and pushDownValuePredicate.
+ *   <li>Expression which can not be pushed down into TableScanNode, will be used in the FilterNode
+ *       above of TableScanNode.
+ * </ul>
+ *
+ * <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule need
+ * to be adapted.
  */
 public class PushPredicateIntoTableScan implements TablePlanOptimizer {
 

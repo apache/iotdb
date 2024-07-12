@@ -46,6 +46,10 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -142,6 +146,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1445,6 +1453,74 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         consumerGroupHandleMetaChangePlan.getConsumerGroupMetaList(),
         consumerGroupHandleMetaChangePlan1.getConsumerGroupMetaList());
+  }
+
+  @Test
+  public void AddTableColumnPlanTest() throws IOException {
+    final AddTableColumnPlan addTableColumnPlan0 =
+        new AddTableColumnPlan(
+            "root.database1",
+            "table1",
+            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
+            false);
+    final AddTableColumnPlan addTableColumnPlan1 =
+        (AddTableColumnPlan)
+            ConfigPhysicalPlan.Factory.create(addTableColumnPlan0.serializeToByteBuffer());
+    Assert.assertEquals(addTableColumnPlan0.getDatabase(), addTableColumnPlan1.getDatabase());
+    Assert.assertEquals(addTableColumnPlan0.getTableName(), addTableColumnPlan1.getTableName());
+    Assert.assertEquals(
+        addTableColumnPlan0.getColumnSchemaList().size(),
+        addTableColumnPlan1.getColumnSchemaList().size());
+    Assert.assertEquals(addTableColumnPlan0.isRollback(), addTableColumnPlan1.isRollback());
+  }
+
+  @Test
+  public void CommitCreateTablePlanTest() throws IOException {
+    final CommitCreateTablePlan commitCreateTablePlan0 =
+        new CommitCreateTablePlan("root.database1", "table1");
+    final CommitCreateTablePlan commitCreateTablePlan1 =
+        (CommitCreateTablePlan)
+            ConfigPhysicalPlan.Factory.create(commitCreateTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(commitCreateTablePlan0.getDatabase(), commitCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        commitCreateTablePlan0.getTableName(), commitCreateTablePlan1.getTableName());
+  }
+
+  @Test
+  public void preCreateTablePlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new MeasurementColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("root.database1", table);
+    final PreCreateTablePlan preCreateTablePlan1 =
+        (PreCreateTablePlan)
+            ConfigPhysicalPlan.Factory.create(preCreateTablePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(preCreateTablePlan0.getDatabase(), preCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        preCreateTablePlan0.getTable().getTableName(),
+        preCreateTablePlan1.getTable().getTableName());
+    Assert.assertEquals(
+        preCreateTablePlan0.getTable().getColumnNum(),
+        preCreateTablePlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        preCreateTablePlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+  }
+
+  @Test
+  public void RollbackCreateTablePlanTest() throws IOException {
+    final RollbackCreateTablePlan rollbackCreateTablePlan0 =
+        new RollbackCreateTablePlan("root.database1", "table1");
+    final RollbackCreateTablePlan rollbackCreateTablePlan1 =
+        (RollbackCreateTablePlan)
+            ConfigPhysicalPlan.Factory.create(rollbackCreateTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        rollbackCreateTablePlan0.getDatabase(), rollbackCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        rollbackCreateTablePlan0.getTableName(), rollbackCreateTablePlan1.getTableName());
   }
 
   @Test

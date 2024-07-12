@@ -25,6 +25,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
@@ -72,6 +75,7 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
         newNode.addChild(exchangeNode);
+        context.hasExchangeNode = true;
       } else {
         newNode.addChild(rewriteNode);
       }
@@ -86,6 +90,26 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
 
   @Override
   public PlanNode visitTableScan(TableScanNode node, DistributedPlanGenerator.PlanContext context) {
+    context.nodeDistributionMap.put(
+        node.getPlanNodeId(),
+        new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
+    return node;
+  }
+
+  @Override
+  public PlanNode visitTableDeviceFetch(
+      TableDeviceFetchNode node, DistributedPlanGenerator.PlanContext context) {
+    return processTableDeviceSourceNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitTableDeviceQuery(
+      TableDeviceQueryNode node, DistributedPlanGenerator.PlanContext context) {
+    return processTableDeviceSourceNode(node, context);
+  }
+
+  private PlanNode processTableDeviceSourceNode(
+      TableDeviceSourceNode node, DistributedPlanGenerator.PlanContext context) {
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));

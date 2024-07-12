@@ -353,4 +353,29 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
     }
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPullConsumer" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    return coreReportMessage;
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    allReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
+    if (autoCommit) {
+      allReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
+    }
+    return allReportMessage;
+  }
 }

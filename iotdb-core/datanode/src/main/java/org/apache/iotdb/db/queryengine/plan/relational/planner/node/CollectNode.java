@@ -33,7 +33,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-/** CollectNode output the content of children. */
+/**
+ * CollectNode output the content of children. Normally it will output the child one by one, but in
+ * some cases, while some children are blocked, it may output the content of other children.
+ */
 public class CollectNode extends MultiChildProcessNode {
 
   public CollectNode(PlanNodeId id) {

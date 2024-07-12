@@ -17,17 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.Pair;
@@ -45,32 +44,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeEventBatch implements AutoCloseable {
+public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventBatch.class);
-
-  private final List<Event> events = new ArrayList<>();
-  private final List<Long> requestCommitIds = new ArrayList<>();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventPlainBatch.class);
 
   private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-  // limit in delayed time
-  private final int maxDelayInMs;
-  private long firstEventProcessingTime = Long.MIN_VALUE;
-
   // limit in buffer size
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private long totalBufferSize = 0;
 
   // Used to rate limit when transferring data
   private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
 
-  public PipeEventBatch(int maxDelayInMs, long requestMaxBatchSizeInBytes) {
-    this.maxDelayInMs = maxDelayInMs;
+  PipeTabletEventPlainBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+    super(maxDelayInMs);
     this.allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(requestMaxBatchSizeInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 0))
             .setShrinkCallback(
@@ -86,68 +77,34 @@ public class PipeEventBatch implements AutoCloseable {
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
+          "PipeTabletEventBatch: the max batch size is adjusted from {} to {} due to the "
               + "memory restriction",
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
   }
 
-  /**
-   * Try offer {@link Event} into batch if the given {@link Event} is not duplicated.
-   *
-   * @param event the given {@link Event}
-   * @return {@code true} if the batch can be transferred
-   */
-  public synchronized boolean onEvent(final TabletInsertionEvent event)
-      throws IOException, WALPipeException {
-    if (!(event instanceof EnrichedEvent)) {
-      return false;
-    }
-
-    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
-
-    // The deduplication logic here is to avoid the accumulation of the same event in a batch when
-    // retrying.
-    if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (((EnrichedEvent) event)
-          .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
-        events.add(event);
-        requestCommitIds.add(requestCommitId);
-
-        final int bufferSize = buildTabletInsertionBuffer(event);
-        totalBufferSize += bufferSize;
-        pipe2BytesAccumulated.compute(
-            new Pair<>(
-                ((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
-            (pipeName, bytesAccumulated) ->
-                bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
-
-        if (firstEventProcessingTime == Long.MIN_VALUE) {
-          firstEventProcessingTime = System.currentTimeMillis();
-        }
-      } else {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
-      }
-    }
-
-    return totalBufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+  @Override
+  protected boolean constructBatch(final TabletInsertionEvent event)
+      throws WALPipeException, IOException {
+    final int bufferSize = buildTabletInsertionBuffer(event);
+    totalBufferSize += bufferSize;
+    pipe2BytesAccumulated.compute(
+        new Pair<>(
+            ((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
+        (pipeName, bytesAccumulated) ->
+            bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
+    return true;
   }
 
+  @Override
   public synchronized void onSuccess() {
+    super.onSuccess();
+
     binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
-    events.clear();
-    requestCommitIds.clear();
-
-    firstEventProcessingTime = Long.MIN_VALUE;
-
-    totalBufferSize = 0;
     pipe2BytesAccumulated.clear();
   }
 
@@ -156,20 +113,9 @@ public class PipeEventBatch implements AutoCloseable {
         binaryBuffers, insertNodeBuffers, tabletBuffers);
   }
 
-  private long getMaxBatchSizeInBytes() {
+  @Override
+  protected long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
-  }
-
-  public boolean isEmpty() {
-    return binaryBuffers.isEmpty() && insertNodeBuffers.isEmpty() && tabletBuffers.isEmpty();
-  }
-
-  public List<Event> deepCopyEvents() {
-    return new ArrayList<>(events);
-  }
-
-  public List<Long> deepCopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
   }
 
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
@@ -213,23 +159,8 @@ public class PipeEventBatch implements AutoCloseable {
 
   @Override
   public synchronized void close() {
-    clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+    super.close();
+
     allocatedMemoryBlock.close();
-  }
-
-  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(holderMessage, shouldReport);
-      }
-    }
-  }
-
-  public void clearEventsReferenceCount(final String holderMessage) {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(holderMessage);
-      }
-    }
   }
 }

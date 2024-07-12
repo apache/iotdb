@@ -60,14 +60,15 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */
   public PipeTaskProcessorStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeProcessorParameters,
-      int regionId,
-      EventSupplier pipeExtractorInputEventSupplier,
-      UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
-      PipeProcessorSubtaskExecutor executor,
-      PipeTaskMeta pipeTaskMeta) {
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeProcessorParameters,
+      final int regionId,
+      final EventSupplier pipeExtractorInputEventSupplier,
+      final UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      final PipeProcessorSubtaskExecutor executor,
+      final PipeTaskMeta pipeTaskMeta,
+      final boolean forceTabletFormat) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
@@ -98,7 +99,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue, creationTime, regionId);
+        new PipeEventCollector(
+            pipeConnectorOutputPendingQueue, creationTime, regionId, forceTabletFormat);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,

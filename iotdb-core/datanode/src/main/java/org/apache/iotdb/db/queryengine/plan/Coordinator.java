@@ -159,7 +159,7 @@ public class Coordinator {
       return result;
     } finally {
       if (queryContext != null) {
-        queryContext.releaseMemoryForFrontEnd();
+        queryContext.releaseAllMemoryReservedForFrontEnd();
       }
       if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
         Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
