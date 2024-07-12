@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,12 +31,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class JVMCommonUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JVMCommonUtils.class);
+
   /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
@@ -70,10 +71,41 @@ public class JVMCommonUtils {
   }
 
   public static double getDiskFreeRatio(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    if (!dirFile.mkdirs() && !dirFile.isDirectory()) {
-      LOGGER.error("Cannot create directory {}", dir);
-    }
+    File dirFile =
+        new File(dir) {
+          public boolean mkdirs() {
+            if (exists()) {
+              LOGGER.warn("File {} already exists", dir);
+              return false;
+            }
+            if (mkdir()) {
+              return true;
+            }
+            File canonFile = null;
+            try {
+              canonFile = getCanonicalFile();
+            } catch (IOException e) {
+              LOGGER.warn("Cannot get canon file of {} ", dir, e);
+              return false;
+            }
+
+            File parent = canonFile.getParentFile();
+            if (parent == null) {
+              LOGGER.warn("Cannot get parent file of {} ", canonFile);
+              return false;
+            }
+            if (!parent.mkdirs() && !parent.exists()) {
+              LOGGER.warn("Cannot create parent file {} ", parent);
+              return false;
+            }
+            if (!canonFile.mkdir()) {
+              LOGGER.warn("Cannot create canon file {}", canonFile);
+              return false;
+            }
+            return true;
+          }
+        };
+    dirFile.mkdirs();
     return 1.0 * dirFile.getFreeSpace() / dirFile.getTotalSpace();
   }
 

@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
 
-import java.io.File;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
-import java.util.List;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SequenceStrategy extends DirectoryStrategy {
 
@@ -66,8 +67,11 @@ public class SequenceStrategy extends DirectoryStrategy {
       if (System.currentTimeMillis() - lastPrintTime > PRINT_INTERVAL_MS) {
         long freeSpace = dirFile.getFreeSpace();
         long totalSpace = dirFile.getTotalSpace();
-        LOGGER.warn("{} is above the warning threshold, free space {}, total space{}", dir,
-            freeSpace, totalSpace);
+        LOGGER.warn(
+            "{} is above the warning threshold, free space {}, total space{}",
+            dir,
+            freeSpace,
+            totalSpace);
         dirLastPrintTimeMap.put(index, System.currentTimeMillis());
       }
       if (index == start) {
