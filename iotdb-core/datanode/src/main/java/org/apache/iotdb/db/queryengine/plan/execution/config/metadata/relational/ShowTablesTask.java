@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -37,10 +37,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.TTL_PROPERTY;
 
 public class ShowTablesTask implements IConfigTask {
 
@@ -51,32 +48,34 @@ public class ShowTablesTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showTables(database);
   }
 
   public static void buildTsBlock(
-      List<TsTable> tableList, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+      final List<TTableInfo> tableInfoList, final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTablesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TsTable table : tableList) {
-      builder.getTimeColumnBuilder().writeLong(0L);
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
-      builder
-          .getColumnBuilder(1)
-          .writeLong(Long.parseLong(table.getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
-      builder.declarePosition();
-    }
+    tableInfoList.forEach(
+        tableInfo -> {
+          builder.getTimeColumnBuilder().writeLong(0L);
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTablesHeader();
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(tableInfo.getTableName(), TSFileConfig.STRING_CHARSET));
+          builder
+              .getColumnBuilder(1)
+              .writeBinary(new Binary(tableInfo.getTTL(), TSFileConfig.STRING_CHARSET));
+          builder.declarePosition();
+        });
+
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTablesHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

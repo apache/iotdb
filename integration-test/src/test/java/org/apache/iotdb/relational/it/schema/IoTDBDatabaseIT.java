@@ -107,7 +107,7 @@ public class IoTDBDatabaseIT {
         statement.execute("use test1");
         fail("use test1 shouldn't succeed because test1 doesn't exist");
       } catch (SQLException e) {
-        assertEquals("500: Database test1 doesn't exists.", e.getMessage());
+        assertEquals("500: Unknown database test1", e.getMessage());
       }
 
       // drop

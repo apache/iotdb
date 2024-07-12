@@ -930,13 +930,27 @@ enum TTestOperation {
   TEST_SUB_PROCEDURE,
 }
 
+// ====================================================
 // Table
-struct TAlterTableReq{
+// ====================================================
+
+struct TAlterTableReq {
     1: required string database
     2: required string tableName
     3: required string queryId
     4: required byte operationType
     5: required binary updateInfo
+}
+
+struct TShowTableResp {
+   1: required common.TSStatus status
+   2: optional list<TTableInfo> tableInfoList
+}
+
+struct TTableInfo {
+   1: required string tableName
+   // TTL is stored as string in table props
+   2: required string TTL
 }
 
 service IConfigNodeRPCService {
@@ -1610,5 +1624,7 @@ service IConfigNodeRPCService {
   common.TSStatus createTable(binary tableInfo)
 
   common.TSStatus alterTable(TAlterTableReq req)
+
+  TShowTableResp showTables(string database)
 }
 

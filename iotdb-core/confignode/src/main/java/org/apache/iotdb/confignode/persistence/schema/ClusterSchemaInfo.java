@@ -65,6 +65,8 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -87,17 +89,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
@@ -1068,13 +1074,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public TShowTableResp showTables(final String database) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new TShowTableResp(StatusUtils.OK)
+          .setTableInfoList(
+              mTree
+                  .getAllUsingTablesUnderSpecificDatabase(
+                      new PartialPath(new String[] {ROOT, database}))
+                  .stream()
+                  .map(
+                      tsTable ->
+                          new TTableInfo(
+                              tsTable.getTableName(),
+                              tsTable
+                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                  .orElse(TTL_INFINITE)))
+                  .collect(Collectors.toList()));
+    } catch (final MetadataException e) {
+      return new TShowTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree.getAllUsingTables();
-    } catch (MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      throw new RuntimeException(e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
