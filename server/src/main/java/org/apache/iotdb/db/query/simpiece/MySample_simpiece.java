@@ -28,7 +28,7 @@ import java.io.PrintWriter;
 import java.util.Comparator;
 import java.util.List;
 
-public class MySample {
+public class MySample_simpiece {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
@@ -36,8 +36,8 @@ public class MySample {
     String[] datasetNameList =
         new String[] {
           "NISTPV-Ground-2015-Qloss_Ah",
-          "NISTPV-Ground-2015-Pyra1_Wm2",
-          "NISTPV-Ground-2015-RTD_C_3"
+          //          "NISTPV-Ground-2015-Pyra1_Wm2",
+          //          "NISTPV-Ground-2015-RTD_C_3"
         };
     int[] noutList = new int[] {100};
     double[] r = new double[] {0.1, 0.5, 1.3};
