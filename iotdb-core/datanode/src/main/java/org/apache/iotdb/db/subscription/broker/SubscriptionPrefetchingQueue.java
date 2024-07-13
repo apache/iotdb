@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
@@ -93,7 +91,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
-      tryPrefetch();
+      tryPrefetch(true);
     }
 
     final long size = prefetchingQueue.size();
@@ -144,50 +142,38 @@ public abstract class SubscriptionPrefetchingQueue {
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
    * SubscriptionPrefetchingQueue#prefetchingQueue}
    */
-  protected void tryPrefetch() {
+  protected void tryPrefetch(final boolean trySealBatchIfEmpty) {
     Event event;
-    while (Objects.nonNull(
-        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
-      if (!(event instanceof EnrichedEvent)) {
-        LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
-            this,
-            event);
-        continue;
-      }
 
-      if (event instanceof PipeTerminateEvent) {
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            event);
-        // commit directly
-        ((PipeTerminateEvent) event)
-            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-        continue;
+    while (!inputPendingQueue.isEmpty()) {
+      if (Objects.nonNull(
+          event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+        if (event instanceof TabletInsertionEvent) {
+          if (onEvent((TabletInsertionEvent) event)) {
+            return;
+          }
+        } else if (event instanceof PipeTsFileInsertionEvent) {
+          if (onEvent((PipeTsFileInsertionEvent) event)) {
+            return;
+          }
+        } else {
+          // TODO:
+          //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+          //  - UserDefinedEnrichedEvent: ignored?
+          //  - Others: events related to meta sync, safe to ignore
+          LOGGER.info(
+              "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+              this,
+              event);
+          if (trySealBatch()) {
+            return;
+          }
+        }
       }
+    }
 
-      if (event instanceof TabletInsertionEvent) {
-        if (onEvent((TabletInsertionEvent) event)) {
-          break;
-        }
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        if (onEvent((PipeTsFileInsertionEvent) event)) {
-          break;
-        }
-      } else {
-        // TODO:
-        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-        //  - UserDefinedEnrichedEvent: ignored?
-        //  - Others: events related to meta sync, safe to ignore
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
-            this,
-            event);
-        if (trySealBatch()) {
-          break;
-        }
-      }
+    if (trySealBatchIfEmpty) {
+      trySealBatch();
     }
   }
 

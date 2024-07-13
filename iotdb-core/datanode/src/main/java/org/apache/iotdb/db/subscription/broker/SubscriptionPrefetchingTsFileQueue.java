@@ -261,7 +261,7 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   public synchronized void executePrefetch() {
-    super.tryPrefetch();
+    super.tryPrefetch(false);
 
     // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
     for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
