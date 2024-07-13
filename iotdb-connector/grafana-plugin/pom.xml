@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-connector</artifactId>
-        <version>1.3.2-SNAPSHOT</version>
+        <version>1.3.2</version>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
     <packaging>pom</packaging>
