@@ -67,46 +67,30 @@ public class JVMCommonUtils {
   public static long getUsableSpace(String dir) {
     File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
     dirFile.mkdirs();
-    return dirFile.getFreeSpace();
+    return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
   }
 
   public static double getDiskFreeRatio(String dir) {
-    File dirFile =
-        new File(dir) {
-          public boolean mkdirs() {
-            if (exists()) {
-              LOGGER.warn("File {} already exists", dir);
-              return false;
-            }
-            if (mkdir()) {
-              return true;
-            }
-            File canonFile = null;
-            try {
-              canonFile = getCanonicalFile();
-            } catch (IOException e) {
-              LOGGER.warn("Cannot get canon file of {} ", dir, e);
-              return false;
-            }
-
-            File parent = canonFile.getParentFile();
-            if (parent == null) {
-              LOGGER.warn("Cannot get parent file of {} ", canonFile);
-              return false;
-            }
-            if (!parent.mkdirs() && !parent.exists()) {
-              LOGGER.warn("Cannot create parent file {} ", parent);
-              return false;
-            }
-            if (!canonFile.mkdir()) {
-              LOGGER.warn("Cannot create canon file {}", canonFile);
-              return false;
-            }
-            return true;
-          }
-        };
-    dirFile.mkdirs();
-    return 1.0 * dirFile.getFreeSpace() / dirFile.getTotalSpace();
+    File dirFile = new File(dir);
+    if (!dirFile.mkdirs()) {
+      // This may solve getFreeSpace() == 0?
+      dirFile = new File(dir);
+    }
+    long freeSpace =
+        IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
+    if (freeSpace == 0) {
+      LOGGER.warn("Cannot get free space for {} after retries, please check the disk status", dir);
+    }
+    long totalSpace = dirFile.getTotalSpace();
+    double ratio = 1.0 * freeSpace / totalSpace;
+    if (ratio <= diskSpaceWarningThreshold) {
+      LOGGER.warn(
+          "{} is above the warning threshold, free space {}, total space {}",
+          dir,
+          freeSpace,
+          totalSpace);
+    }
+    return ratio;
   }
 
   public static boolean hasSpace(String dir) {
