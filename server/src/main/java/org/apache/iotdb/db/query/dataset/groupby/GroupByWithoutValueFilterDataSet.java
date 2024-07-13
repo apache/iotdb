@@ -274,6 +274,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         int cnt = 0;
         for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
           if (times.get(j) != null) {
+            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
             rt += times.get(j);
             rv += (double) values.get(j);
             cnt++;
@@ -290,6 +291,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         double select_v = -1;
         for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
           if (times.get(j) != null) {
+            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
             long t = times.get(j);
             double v = values.get(j);
             double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
@@ -315,6 +317,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       double select_v = -1;
       for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
         if (times.get(j) != null) {
+          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
           long t = times.get(j);
           double v = values.get(j);
           double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
