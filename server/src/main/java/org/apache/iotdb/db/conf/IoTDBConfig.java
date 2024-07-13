@@ -435,6 +435,8 @@ public class IoTDBConfig {
 
   private String enableTri = "ILTS"; // MinMax, MinMaxLTTB, M4, LTTB, ILTS
 
+  private double epsilon = 100; // for SimPiece
+
   private long p1t;
   private double p1v;
   private long pnt;
@@ -1484,6 +1486,14 @@ public class IoTDBConfig {
 
   public String getEnableTri() {
     return enableTri;
+  }
+
+  public double getEpsilon() {
+    return epsilon;
+  }
+
+  public void setEpsilon(double epsilon) {
+    this.epsilon = epsilon;
   }
 
   public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {

@@ -137,7 +137,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (CONFIG.getEnableTri().equals("MinMax")
         || CONFIG.getEnableTri().equals("M4")
         || CONFIG.getEnableTri().equals("LTTB")
-        || CONFIG.getEnableTri().equals("ILTS")) {
+        || CONFIG.getEnableTri().equals("ILTS")
+        || CONFIG.getEnableTri().equals("SimPiece")) {
       return nextWithoutConstraintTri_allInOne();
     } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
       return nextWithoutConstraintTri_MinMaxLTTB();
@@ -430,6 +431,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         throw new QueryProcessException("ILTS use convex hull acceleration, which is not written!");
       }
       return new LocalGroupByExecutorTri_ILTS(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("SimPiece")) {
+      return new LocalGroupByExecutorTri_SimPiece(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else {
       logger.info("No matched enable_tri!");

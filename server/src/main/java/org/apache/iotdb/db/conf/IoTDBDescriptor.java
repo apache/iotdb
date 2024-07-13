@@ -540,6 +540,9 @@ public class IoTDBDescriptor {
               properties.getProperty("enable_CPV", Boolean.toString(conf.isEnableCPV())).trim()));
 
       conf.setEnableTri(properties.getProperty("enable_Tri", conf.getEnableTri()).trim());
+      conf.setEpsilon(
+          Double.parseDouble(
+              properties.getProperty("epsilon", Double.toString(conf.getEpsilon()))));
       conf.setP1t(Long.parseLong(properties.getProperty("p1t", Long.toString(conf.getP1t()))));
       conf.setP1v(
           Double.parseDouble(properties.getProperty("p1v", Double.toString(conf.getP1v()))));
