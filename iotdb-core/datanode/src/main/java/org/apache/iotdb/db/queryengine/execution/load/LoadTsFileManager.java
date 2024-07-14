@@ -296,22 +296,6 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
-
-    for (final Path loadDirPath :
-        Arrays.stream(LOAD_BASE_DIRS.get())
-            .map(File::new)
-            .filter(File::exists)
-            .map(File::toPath)
-            .collect(Collectors.toList())) {
-      try {
-        Files.deleteIfExists(loadDirPath);
-        LOGGER.info("Load dir {} was deleted.", loadDirPath);
-      } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-      } catch (Exception e) {
-        LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
-      }
-    }
   }
 
   public static void updateWritePointCountMetrics(
