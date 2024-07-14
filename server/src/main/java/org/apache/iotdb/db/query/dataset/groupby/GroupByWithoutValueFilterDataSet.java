@@ -134,17 +134,29 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
-    if (CONFIG.getEnableTri().equals("MinMax")
-        || CONFIG.getEnableTri().equals("M4")
-        || CONFIG.getEnableTri().equals("LTTB")
-        || CONFIG.getEnableTri().equals("ILTS")
-        || CONFIG.getEnableTri().equals("SimPiece")) {
-      return nextWithoutConstraintTri_allInOne();
-    } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
+    if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
       return nextWithoutConstraintTri_MinMaxLTTB();
+    } else if (!CONFIG.getEnableTri().equals("")) {
+      return nextWithoutConstraintTri_allInOne();
     } else {
       return nextWithoutConstraint_raw();
     }
+
+    //    if (CONFIG.getEnableTri().equals("MinMax")
+    //        || CONFIG.getEnableTri().equals("M4")
+    //        || CONFIG.getEnableTri().equals("LTTB")
+    //        || CONFIG.getEnableTri().equals("ILTS")
+    //        || CONFIG.getEnableTri().equals("SimPiece")
+    //        || CONFIG.getEnableTri().equals("SC")
+    //        || CONFIG.getEnableTri().equals("FSW")
+    //        || CONFIG.getEnableTri().equals("Uniform")
+    //    ) {
+    //      return nextWithoutConstraintTri_allInOne();
+    //    } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
+    //      return nextWithoutConstraintTri_MinMaxLTTB();
+    //    } else {
+    //      return nextWithoutConstraint_raw();
+    //    }
   }
 
   public RowRecord nextWithoutConstraintTri_allInOne() throws IOException {

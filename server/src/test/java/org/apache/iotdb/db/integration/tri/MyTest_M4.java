@@ -72,6 +72,9 @@ public class MyTest_M4 {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("M4");
+    //    config.setEnableTri("SC");
+    //    config.setEpsilon(0.1);
+
     config.setP1t(0);
     config.setP1v(0);
     config.setPnt(200);
