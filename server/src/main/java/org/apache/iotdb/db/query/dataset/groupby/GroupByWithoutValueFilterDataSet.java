@@ -444,6 +444,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     } else if (CONFIG.getEnableTri().equals("FSW")) {
       return new LocalGroupByExecutorTri_FSW(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("Uniform")) {
+      return new LocalGroupByExecutorTri_Uniform(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else {
       logger.info("No matched enable_tri!");
       return new LocalGroupByExecutor(
