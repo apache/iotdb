@@ -32,20 +32,23 @@ public class MySample_simpiece {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    boolean series = true; // 从1开始编号列而不是时间戳列
     String[] datasetNameList =
         new String[] {
           "NISTPV-Ground-2015-Qloss_Ah",
-          //          "NISTPV-Ground-2015-Pyra1_Wm2",
-          //          "NISTPV-Ground-2015-RTD_C_3"
+          "NISTPV-Ground-2015-Pyra1_Wm2",
+          "NISTPV-Ground-2015-RTD_C_3"
         };
     int[] noutList = new int[] {100};
     double[] r = new double[] {0.1, 0.5, 1.3};
+    double[] epsilonList = new double[] {0.0009999, 316.5642651891633, 9.186667042922977};
     for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
       int start = (int) (10000000 / 2 - 2500000 * r[y]); // 从0开始计数
       int end = (int) (10000000 / 2 + 2500000 * (1 - r[y]));
-      int N = end - start; // -1 for all
+      int N = end - start;
+      //      int start = 0;
+      //      int end = 10000;
+      //      int N = end - start;
 
       for (int nout : noutList) {
         // apply Sim-Piece on the input file, outputting nout points saved in csvFile
@@ -54,14 +57,26 @@ public class MySample_simpiece {
           String delimiter = ",";
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
-                  inputStream, delimiter, false, N, start, hasHeader, series);
-          double epsilon = getSimPieceParam(nout, ts, 1e-6);
-          System.out.println(datasetName + ": n=" + N + ",m=" + nout + ",epsilon=" + epsilon);
+                  inputStream, delimiter, false, N, start, hasHeader, false);
+          //          double epsilon = getSimPieceParam(nout, ts, 1e-6);
+          double epsilon = epsilonList[y];
           SimPiece simPiece = new SimPiece(ts.data, epsilon);
+          System.out.println(
+              datasetName
+                  + ": n="
+                  + N
+                  + ",m="
+                  + nout
+                  + ",epsilon="
+                  + epsilon
+                  + ",actual m="
+                  + simPiece.segments.size() * 2);
           List<SimPieceSegment> segments = simPiece.segments;
           segments.sort(Comparator.comparingLong(SimPieceSegment::getInitTimestamp));
           try (PrintWriter writer =
-              new PrintWriter(new FileWriter(datasetName + "-" + N + "-" + nout + ".csv"))) {
+              new PrintWriter(
+                  new FileWriter(
+                      datasetName + "-" + N + "-" + segments.size() * 2 + "-simpiece.csv"))) {
             for (int i = 0; i < segments.size() - 1; i++) {
               // start point of this segment
               writer.println(segments.get(i).getInitTimestamp() + "," + segments.get(i).getB());
