@@ -54,6 +54,9 @@ public class AlignedSeriesBatchCompactionUtils {
       }
       compactedMeasurements.add(schema.getMeasurementId());
       selectedColumnBatch.add(schema);
+      if (selectedColumnBatch.size() >= batchSize) {
+        return selectedColumnBatch;
+      }
       if (compactedMeasurements.size() == schemaList.size()) {
         return selectedColumnBatch;
       }
@@ -64,7 +67,7 @@ public class AlignedSeriesBatchCompactionUtils {
       }
       selectedColumnBatch.add(schema);
       compactedMeasurements.add(schema.getMeasurementId());
-      if (selectedColumnBatch.size() == batchSize) {
+      if (selectedColumnBatch.size() >= batchSize) {
         break;
       }
       if (compactedMeasurements.size() == schemaList.size()) {

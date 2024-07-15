@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactPagePlan;
@@ -60,7 +61,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class BatchCompactionUtilsTest extends AbstractCompactionTest {
 
@@ -73,6 +76,23 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+  }
+
+  @Test
+  public void testSelectBatchColumn() {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (int i = 0; i < 1000; i++) {
+      if (i % 2 == 0) {
+        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.TEXT));
+      } else {
+        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT32));
+      }
+    }
+    Set<String> selectedColumns = new HashSet<>();
+    List<IMeasurementSchema> iMeasurementSchemas =
+        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
+            measurementSchemas, selectedColumns, 10);
+    Assert.assertEquals(10, iMeasurementSchemas.size());
   }
 
   @Test
