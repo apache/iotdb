@@ -1339,12 +1339,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           constantFill[i] = new BooleanConstantFill(literal.getBoolean());
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           constantFill[i] = new BinaryConstantFill(literal.getBinary());
           break;
         case INT32:
+        case DATE:
           constantFill[i] = new IntConstantFill(literal.getInt());
           break;
         case INT64:
+        case TIMESTAMP:
           constantFill[i] = new LongConstantFill(literal.getLong());
           break;
         case FLOAT:
@@ -1407,12 +1411,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           previousFill[i] = new BooleanPreviousFill(filter);
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           previousFill[i] = new BinaryPreviousFill(filter);
           break;
         case INT32:
+        case DATE:
           previousFill[i] = new IntPreviousFill(filter);
           break;
         case INT64:
+        case TIMESTAMP:
           previousFill[i] = new LongPreviousFill(filter);
           break;
         case FLOAT:
@@ -1433,9 +1441,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case INT32:
+        case DATE:
           linearFill[i] = new IntLinearFill();
           break;
         case INT64:
+        case TIMESTAMP:
           linearFill[i] = new LongLinearFill();
           break;
         case FLOAT:
@@ -1446,6 +1456,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           break;
         case BOOLEAN:
         case TEXT:
+        case STRING:
+        case BLOB:
           linearFill[i] = IDENTITY_LINEAR_FILL;
           break;
         default:
