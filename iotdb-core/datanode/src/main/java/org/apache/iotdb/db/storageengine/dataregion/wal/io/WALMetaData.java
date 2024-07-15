@@ -170,6 +170,10 @@ public class WALMetaData implements SerializedSize {
     } catch (IllegalArgumentException e) {
       throw new IOException(
           String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IOException("Unexpected exception", e);
     }
     return metaData;
   }
