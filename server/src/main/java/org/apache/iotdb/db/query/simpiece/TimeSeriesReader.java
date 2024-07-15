@@ -80,6 +80,46 @@ public class TimeSeriesReader {
     return new TimeSeries(ts, max - min);
   }
 
+  public static List<VisvalPoint> getTimeSeriesFromTsFilesVisval(
+      List<ChunkSuit4Tri> chunkSuit4TriList, long startTime, long endTime) throws IOException {
+    // assume chunkSuit4TriList already sorted in increasing time order
+    ArrayList<VisvalPoint> ts = new ArrayList<>();
+    double max = Double.MIN_VALUE;
+    double min = Double.MAX_VALUE;
+
+    for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
+      ChunkMetadata chunkMetadata = chunkSuit4Tri.chunkMetadata;
+      long chunkMinTime = chunkMetadata.getStartTime();
+      long chunkMaxTime = chunkMetadata.getEndTime();
+      if (chunkMaxTime < startTime) {
+        continue;
+      } else if (chunkMinTime >= endTime) {
+        break;
+      } else {
+        PageReader pageReader =
+            FileLoaderUtils.loadPageReaderList4CPV(
+                chunkSuit4Tri.chunkMetadata,
+                null); // note do not assign to chunkSuit4Tri.pageReader
+        for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          if (timestamp < startTime) {
+            continue;
+          } else if (timestamp >= endTime) {
+            break;
+          } else { // rightStartTime<=t<rightEndTime
+            ByteBuffer valueBuffer = pageReader.valueBuffer;
+            double value = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            ts.add(new VisvalPoint(timestamp, value));
+            max = Math.max(max, value);
+            min = Math.min(min, value);
+          }
+        }
+      }
+    }
+    return ts;
+  }
+
   public static TimeSeries getTimeSeries(InputStream inputStream, String delimiter, boolean gzip) {
     ArrayList<Point> ts = new ArrayList<>();
     double max = Double.MIN_VALUE;
@@ -162,5 +202,59 @@ public class TimeSeriesReader {
     }
 
     return new TimeSeries(ts, max - min);
+  }
+
+  public static List<VisvalPoint> getMyTimeSeriesVisval(
+      InputStream inputStream,
+      String delimiter,
+      boolean gzip,
+      int N,
+      int startRow,
+      boolean hasHeader,
+      boolean seriesTimeColumn) {
+    // N<0 means read all lines
+
+    ArrayList<VisvalPoint> ts = new ArrayList<>();
+    double max = Double.MIN_VALUE;
+    double min = Double.MAX_VALUE;
+
+    try {
+      if (gzip) {
+        inputStream = new GZIPInputStream(inputStream);
+      }
+      Reader decoder = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+      BufferedReader bufferedReader = new BufferedReader(decoder);
+
+      String line;
+      if (hasHeader) {
+        bufferedReader.readLine();
+      }
+      int startCnt = 0;
+      while (startCnt < startRow && (line = bufferedReader.readLine()) != null) {
+        startCnt++;
+      }
+      if (startCnt < startRow) {
+        throw new IOException("not enough rows!");
+      }
+      int cnt = 0;
+      while ((cnt < N || N < 0) && (line = bufferedReader.readLine()) != null) {
+        String[] elements = line.split(delimiter);
+        long timestamp;
+        if (!seriesTimeColumn) {
+          timestamp = (long) Double.parseDouble(elements[0]);
+        } else {
+          timestamp = cnt + 1;
+        }
+        double value = Double.parseDouble(elements[1]);
+        ts.add(new VisvalPoint(timestamp, value));
+
+        max = Math.max(max, value);
+        min = Math.min(min, value);
+        cnt++;
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return ts;
   }
 }
