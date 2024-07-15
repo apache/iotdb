@@ -57,15 +57,19 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
+  protected AtomicReference<SubscriptionInfo> acquireLockInternal(
+      ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return configNodeProcedureEnv
+        .getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionCoordinator()
+        .lock();
+  }
+
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.info("ProcedureId {} try to acquire subscription lock.", getProcId());
-    subscriptionInfo =
-        configNodeProcedureEnv
-            .getConfigManager()
-            .getSubscriptionManager()
-            .getSubscriptionCoordinator()
-            .tryLock();
+    subscriptionInfo = acquireLockInternal(configNodeProcedureEnv);
     if (subscriptionInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
     } else {

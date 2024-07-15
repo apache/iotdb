@@ -80,6 +80,18 @@ public class SubscriptionCoordinator {
     return null;
   }
 
+  /**
+   * Lock the {@link SubscriptionInfo} coordinator.
+   *
+   * @return the {@link SubscriptionInfo} holder, which can be used to get the {@link
+   *     SubscriptionInfo}. Wait until lock is acquired
+   */
+  public AtomicReference<SubscriptionInfo> lock() {
+    coordinatorLock.lock();
+    subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
+    return subscriptionInfoHolder;
+  }
+
   public boolean unlock() {
     if (subscriptionInfoHolder != null) {
       subscriptionInfoHolder.set(null);

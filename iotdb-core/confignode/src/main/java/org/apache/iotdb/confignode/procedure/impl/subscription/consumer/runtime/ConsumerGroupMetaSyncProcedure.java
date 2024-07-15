@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -55,6 +57,16 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
 
   public ConsumerGroupMetaSyncProcedure() {
     super();
+  }
+
+  @Override
+  protected AtomicReference<SubscriptionInfo> acquireLockInternal(
+      ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return configNodeProcedureEnv
+        .getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionCoordinator()
+        .tryLock();
   }
 
   @Override
