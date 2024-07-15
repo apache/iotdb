@@ -146,6 +146,7 @@ public class DataPartition extends Partition {
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String database, IDeviceID deviceId, Filter timeFilter) {
     // TODO perfect this interface, @Potato
+    database = PathUtils.qualifyDatabaseName(database);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
     if (!dataPartitionMap.containsKey(database)
         || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
