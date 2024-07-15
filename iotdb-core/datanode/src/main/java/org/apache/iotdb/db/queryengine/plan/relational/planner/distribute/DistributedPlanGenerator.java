@@ -83,6 +83,7 @@ public class DistributedPlanGenerator
       return res;
     } else if (res.size() > 1) {
       CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
+      collectNode.setOutputSymbols(res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
@@ -327,6 +328,7 @@ public class DistributedPlanGenerator
 
     // children has no sort property, use CollectNode to merge children
     CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
+    collectNode.setOutputSymbols(firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
   }

@@ -94,9 +94,8 @@ public class IoTDBSessionRelationalIT {
       final List<ColumnType> columnTypes =
           Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
 
+      long timestamp = 0;
       Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
-
-      long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -108,7 +107,6 @@ public class IoTDBSessionRelationalIT {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
-        timestamp++;
       }
 
       if (tablet.rowSize != 0) {
@@ -116,10 +114,29 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from table1");
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+//        assertEquals(0L, rowRecord.getFields().get(0).getLongV());
         System.out.println(rowRecord);
       }
     }

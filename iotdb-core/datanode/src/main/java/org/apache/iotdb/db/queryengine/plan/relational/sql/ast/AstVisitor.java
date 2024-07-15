@@ -375,6 +375,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitFlush(Flush node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitInsertRow(InsertRow node, C context) {
     return visitStatement(node, context);
   }

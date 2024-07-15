@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -55,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -124,9 +129,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser.IdentifierContext;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -468,7 +476,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
-    return super.visitFlushStatement(ctx);
+    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<PartialPath> storageGroups = null;
+    if (ctx.booleanValue() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
+    }
+    flushStatement.setOnCluster(ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
+    if (ctx.identifier() != null) {
+      storageGroups = new ArrayList<>();
+      List<Identifier> identifiers = getIdentifiers(ctx.identifier());
+      for (Identifier identifier : identifiers) {
+        try {
+          storageGroups.add(new PartialPath(PathUtils.qualifyDatabaseName(identifier.getValue())));
+        } catch (IllegalPathException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    flushStatement.setStorageGroups(storageGroups);
+    return new Flush(flushStatement, null);
   }
 
   @Override
