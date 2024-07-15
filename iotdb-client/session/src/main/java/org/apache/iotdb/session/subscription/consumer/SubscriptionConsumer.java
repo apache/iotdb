@@ -82,7 +82,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 1_000_000_000L;
+  private static final long SLEEP_NS = 100_000_000L; // 100ms
 
   private final String username;
   private final String password;
