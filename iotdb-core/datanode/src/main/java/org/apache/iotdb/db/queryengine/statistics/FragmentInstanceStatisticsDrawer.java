@@ -69,12 +69,13 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Distribution Plan Cost: %.3f ms",
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+  }
+
+  public void renderDispatchCost(MPPQueryContext context) {
     addLine(
         planHeader,
         0,
-        String.format(
-            "Single Dispatch Cost: %.3f ms",
-            (System.nanoTime() - context.getDispatchStartTime()) * NS_TO_MS_FACTOR));
+        String.format("Dispatch Cost: %.3f ms", context.getDispatchCost() * NS_TO_MS_FACTOR));
   }
 
   public List<StatisticLine> renderFragmentInstances(
