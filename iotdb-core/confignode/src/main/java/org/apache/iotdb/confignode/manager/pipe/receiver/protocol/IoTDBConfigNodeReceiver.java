@@ -120,14 +120,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 handleTransferHandshakeV1(
                     PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
-                .recordHandShakeConfigNodeV1Timer(System.nanoTime() - startTime);
+                .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
             return resp;
           case HANDSHAKE_CONFIGNODE_V2:
             resp =
                 handleTransferHandshakeV2(
                     PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
-                .recordHandShakeConfigNodeV2Timer(System.nanoTime() - startTime);
+                .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_CONFIG_PLAN:
             resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));

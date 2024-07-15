@@ -242,9 +242,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             // Config requests will first be received by the DataNode receiver,
             // then transferred to ConfigNode receiver to execute.
-            return handleTransferConfigPlan(req);
+            resp = handleTransferConfigPlan(req);
+            return resp;
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            resp = receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            return resp;
           default:
             break;
         }
