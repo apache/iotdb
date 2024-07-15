@@ -89,6 +89,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -189,56 +190,67 @@ public class MTreeBelowSGMemoryImpl {
 
   // endregion
 
-  // region Timeseries operation, including create and delete
+  // region time series operation, including creation and deletion
 
   /**
-   * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
-   * database should be set first, throw exception otherwise
+   * Create a time series with a full path from root to leaf node. Before creating a time series,
+   * the database should be set first, throw exception otherwise
    *
-   * @param path timeseries path
+   * @param path time series path
    * @param dataType data type
    * @param encoding encoding
    * @param compressor compressor
    * @param props props
    * @param alias alias of measurement
    */
-  public IMeasurementMNode<IMemMNode> createTimeseries(
-      PartialPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      String alias)
+  public IMeasurementMNode<IMemMNode> createTimeSeries(
+      final PartialPath path,
+      final TSDataType dataType,
+      final TSEncoding encoding,
+      final CompressionType compressor,
+      final Map<String, String> props,
+      final String alias,
+      final boolean withMerge)
       throws MetadataException {
-    String[] nodeNames = path.getNodes();
+    final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    PartialPath devicePath = path.getDevicePath();
-    IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+    final PartialPath devicePath = path.getDevicePath();
+    final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
+    // only write on mTree will be synchronized
     synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+      final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
-      String leafName = path.getMeasurement();
+      final String leafName = path.getMeasurement();
 
       if (alias != null && device.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
+      boolean existAndNeedMerge = false;
+
       if (device.hasChild(leafName)) {
-        IMemMNode node = device.getChild(leafName);
+        final IMemMNode node = device.getChild(leafName);
         if (node.isMeasurement()) {
-          if (node.getAsMeasurementMNode().isPreDeleted()) {
+          final IMeasurementMNode<IMemMNode> measurementNode = node.getAsMeasurementMNode();
+          if (measurementNode.isPreDeleted()) {
             throw new MeasurementInBlackListException(path);
-          } else {
+          } else if (!withMerge
+              || measurementNode.getDataType() != dataType
+              || !Objects.equals(node.getAlias(), alias)
+              || !Objects.equals(measurementNode.getSchema().getEncodingType(), encoding)
+              || !Objects.equals(measurementNode.getSchema().getCompressor(), compressor)) {
+            // Only the props can be merged
             throw new MeasurementAlreadyExistException(
                 path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+          } else {
+            existAndNeedMerge = true;
           }
         } else {
           throw new PathAlreadyExistException(path.getFullPath());
@@ -249,29 +261,37 @@ public class MTreeBelowSGMemoryImpl {
           && device.getAsDeviceMNode().isAlignedNullable() != null
           && device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
+            "time series under this device is aligned, please use createAlignedTimeseries or change device.",
             device.getFullPath());
       }
 
-      IDeviceMNode<IMemMNode> entityMNode;
+      final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(device);
       }
 
-      // create a non-aligned timeseries
+      // create a non-aligned time series
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(false);
       }
 
-      IMeasurementMNode<IMemMNode> measurementMNode =
+      final IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createMeasurementMNode(
               entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
-      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+
+      if (existAndNeedMerge) {
+        store.deleteChild(entityMNode.getAsMNode(), leafName);
+      } else {
+        store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+        // Update statistics and schemaDataTypeNumMap
+        regionStatistics.addMeasurement(1L);
+      }
+
       // link alias to LeafMNode
       if (alias != null) {
         entityMNode.addAlias(alias, measurementMNode);
@@ -290,13 +310,14 @@ public class MTreeBelowSGMemoryImpl {
    * @param encodings encodings list
    * @param compressors compressor
    */
-  public List<IMeasurementMNode<IMemMNode>> createAlignedTimeseries(
+  public List<IMeasurementMNode<IMemMNode>> createAlignedTimeSeries(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      List<String> aliasList)
+      List<String> aliasList,
+      boolean withRewrite)
       throws MetadataException {
     List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -333,7 +354,7 @@ public class MTreeBelowSGMemoryImpl {
           && device.getAsDeviceMNode().isAlignedNullable() != null
           && !device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Timeseries under this device is not aligned, please use createTimeseries or change device.",
+            "Time series under this device is not aligned, please use createTimeSeries or change device.",
             devicePath.getFullPath());
       }
 
@@ -345,7 +366,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(true);
       }
 
-      // create a aligned timeseries
+      // create a aligned time series
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(true);
       }

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
@@ -550,52 +551,50 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces and Implementation for Timeseries operation
   // including create and delete
 
-  public void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
+  public void createTimeseries(final ICreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
   }
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeseries(final ICreateTimeSeriesPlan plan, long offset)
+      throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
-    IMeasurementMNode<IMemMNode> leafMNode;
+    final IMeasurementMNode<IMemMNode> leafMNode;
 
     try {
-      PartialPath path = plan.getPath();
+      final PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
+      final TSDataType type = plan.getDataType();
+      // Create time series in MTree
       leafMNode =
-          mtree.createTimeseries(
+          mtree.createTimeSeries(
               path,
               type,
               plan.getEncoding(),
               plan.getCompressor(),
               plan.getProps(),
-              plan.getAlias());
+              plan.getAlias(),
+              plan.getPlanType() == SchemaRegionPlanType.CREATE_TIME_SERIES_WITH_MERGE);
 
-      // update statistics and schemaDataTypeNumMap
-      regionStatistics.addMeasurement(1L);
-
-      // update tag index
+      // Update tag index
       if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag
-        // info
-        // in tagFile to recover index directly
+        // The time series has already been created and now system is recovering, using the tag
+        // info in tagFile to recover index directly
         tagManager.recoverIndex(offset, leafMNode);
       } else if (plan.getTags() != null) {
-        // tag key, tag value
+        // Tag key, tag value
         tagManager.addIndex(plan.getTags(), leafMNode);
       }
 
-      // write log
+      // Write log
       if (!isRecovering) {
-        // either tags or attributes is not empty
+        // Either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
@@ -640,13 +639,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       // create time series in MTree
       measurementMNodeList =
-          mtree.createAlignedTimeseries(
+          mtree.createAlignedTimeSeries(
               prefixPath,
               measurements,
               plan.getDataTypes(),
               plan.getEncodings(),
               plan.getCompressors(),
-              plan.getAliasList());
+              plan.getAliasList(),
+              plan.getPlanType() == SchemaRegionPlanType.CREATE_ALIGNED_TIME_SERIES_WITH_MERGE);
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(seriesCount);
