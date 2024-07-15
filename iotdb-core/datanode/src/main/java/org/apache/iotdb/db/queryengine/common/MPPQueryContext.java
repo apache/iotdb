@@ -258,12 +258,15 @@ public class MPPQueryContext {
     return queryPlanStatistics.getLogicalOptimizationCost();
   }
 
-  public void setDispatchStartTime(long time) {
-    this.queryPlanStatistics.setDispatchStartTime(time);
+  public void recordDispatchCost(long dispatchCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.recordDispatchCost(dispatchCost);
   }
 
-  public long getDispatchStartTime() {
-    return queryPlanStatistics.getDispatchStartTime();
+  public long getDispatchCost() {
+    return queryPlanStatistics.getDispatchCost();
   }
 
   public void setAnalyzeCost(long analyzeCost) {

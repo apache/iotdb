@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -73,6 +74,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
 
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
+  private final MPPQueryContext mppQueryContext;
 
   public ExplainAnalyzeOperator(
       OperatorContext operatorContext,
@@ -89,7 +91,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
 
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
-    fragmentInstanceStatisticsDrawer.renderPlanStatistics(queryExecution.getContext());
+    mppQueryContext = queryExecution.getContext();
+    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.
@@ -115,6 +118,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       child.nextWithTimer();
       return null;
     }
+
+    fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
 
     // fetch statics from all fragment instances
     TsBlock result = buildResult();
