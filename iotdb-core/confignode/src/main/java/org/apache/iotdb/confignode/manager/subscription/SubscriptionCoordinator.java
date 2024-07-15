@@ -88,7 +88,8 @@ public class SubscriptionCoordinator {
    */
   public AtomicReference<SubscriptionInfo> lock() {
     coordinatorLock.lock();
-    return new AtomicReference<>(subscriptionInfo);
+    subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
+    return subscriptionInfoHolder;
   }
 
   public boolean unlock() {

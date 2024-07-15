@@ -81,7 +81,8 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    return new AtomicReference<>(pipeTaskInfo);
+    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
+    return pipeTaskInfoHolder;
   }
 
   /**
