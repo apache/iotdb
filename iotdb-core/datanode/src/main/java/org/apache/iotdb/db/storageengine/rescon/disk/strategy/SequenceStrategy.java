@@ -78,6 +78,7 @@ public class SequenceStrategy extends DirectoryStrategy {
         throw new DiskSpaceInsufficientException(folders);
       }
       index = (index + 1) % folders.size();
+      dir = folders.get(index);
     }
     return index;
   }
