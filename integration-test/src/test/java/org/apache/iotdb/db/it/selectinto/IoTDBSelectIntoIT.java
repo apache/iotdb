@@ -152,6 +152,9 @@ public class IoTDBSelectIntoIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
+    // if we don't change this configuration, we may get an error like: Cannot reserve XXXX bytes of
+    // direct buffer memory
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SELECT_INTO_SQL_LIST);
   }
