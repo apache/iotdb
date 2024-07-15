@@ -99,6 +99,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -122,6 +124,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
  * </ol>
  */
 public class MTreeBelowSGMemoryImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowSGMemoryImpl.class);
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -1185,6 +1189,7 @@ public class MTreeBelowSGMemoryImpl {
         while (deviceIdIterator.hasNext()) {
           try {
             IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
+
             if (!node.isDevice()) {
               continue;
             }
@@ -1223,6 +1228,7 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode next;
 
     next = cur.getChild(table);
+    LOGGER.info("The node of table {} is {}", table, next);
     if (next == null) {
       throw new PathNotExistException(
           storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
@@ -1502,19 +1508,14 @@ public class MTreeBelowSGMemoryImpl {
       IntConsumer attributeUppdater)
       throws MetadataException {
     // todo implement storage for device of diverse data types
-    IMemMNode cur = storageGroupMNode;
-    IMemMNode child = cur.getChild(tableName);
-    if (child == null) {
-      child = store.addChild(cur, tableName, nodeFactory.createInternalMNode(cur, tableName));
-    }
-    cur = child;
 
-    String nodeName;
+
+    IMemMNode cur = storageGroupMNode;
     for (Object o : devicePath) {
-      nodeName = o == null ? null : (String) o;
-      child = cur.getChild(nodeName);
+      String childName = o.toString();
+      IMemMNode child = cur.getChild(childName);
       if (child == null) {
-        child = store.addChild(cur, nodeName, nodeFactory.createInternalMNode(cur, nodeName));
+        child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
       }
       cur = child;
     }

@@ -94,7 +94,7 @@ public class IoTDBSessionRelationalIT {
       final List<ColumnType> columnTypes =
           Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
 
-      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 10);
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
 
       long timestamp = System.currentTimeMillis();
 
@@ -116,10 +116,11 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from table1");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+        System.out.println(rowRecord);
       }
     }
   }
@@ -164,7 +165,7 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from table1");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(15L, rowRecord.getFields().get(0).getLongV());

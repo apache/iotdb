@@ -415,8 +415,7 @@ public class DistributedPlanGenerator
   @Override
   public List<PlanNode> visitTableDeviceQuery(TableDeviceQueryNode node, PlanContext context) {
     String database =
-        PathUtils.qualifyDatabaseName(
-            ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase());
+        PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
@@ -444,7 +443,7 @@ public class DistributedPlanGenerator
   @Override
   public List<PlanNode> visitTableDeviceFetch(TableDeviceFetchNode node, PlanContext context) {
     String database =
-        ROOT + "." + ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
+        PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
     Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =

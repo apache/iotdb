@@ -181,6 +181,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   private SchemaFilter getExecutableIdFuzzyFilter(Expression idFuzzyExpression) {
+    if (idFuzzyExpression == null) {
+      return null;
+    }
     ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
     return visitor.process(
         idFuzzyExpression, new ConvertSchemaPredicateToFilterVisitor.Context(table));

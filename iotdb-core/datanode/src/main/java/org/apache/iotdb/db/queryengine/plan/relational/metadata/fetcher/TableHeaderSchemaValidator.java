@@ -87,7 +87,6 @@ public class TableHeaderSchemaValidator {
           "Column List in TableSchema should never be null or empty.");
     }
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-    LOGGER.info("Get TsTable from cache: {}", table);
     List<ColumnSchema> missingColumnList = new ArrayList<>();
     List<ColumnSchema> resultColumnList = new ArrayList<>();
 

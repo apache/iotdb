@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import java.util.Arrays;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -1304,6 +1305,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           pointer ->
               deviceAttributeStore.alterAttribute(
                   pointer, attributeNameList, attributeValueList.get(finalI)));
+      logger.info("Created table device [{}-{}]", tableName, Arrays.toString(devicePathList.get(i)));
     }
   }
 

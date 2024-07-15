@@ -247,6 +247,8 @@ public class LogicalPlanner {
     List<ColumnHeader> columnHeaderList =
         getColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
     TableDeviceQueryNode queryNode =
         new TableDeviceQueryNode(
             context.getQueryId().genPlanNodeId(),
