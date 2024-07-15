@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.commons.path;
 
-import java.util.Objects;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
+import java.util.Objects;
 
 public class AlignedFullPath implements IFullPath {
 
@@ -84,8 +84,8 @@ public class AlignedFullPath implements IFullPath {
       return false;
     }
     AlignedFullPath that = (AlignedFullPath) o;
-    return Objects.equals(deviceID, that.deviceID) && Objects.equals(
-        measurementList, that.measurementList);
+    return Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(measurementList, that.measurementList);
   }
 
   @Override

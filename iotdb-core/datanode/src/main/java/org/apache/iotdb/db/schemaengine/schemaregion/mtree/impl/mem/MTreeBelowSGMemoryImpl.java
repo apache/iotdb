@@ -80,6 +80,8 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -99,8 +101,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -1508,7 +1508,6 @@ public class MTreeBelowSGMemoryImpl {
       IntConsumer attributeUppdater)
       throws MetadataException {
     // todo implement storage for device of diverse data types
-
 
     IMemMNode cur = storageGroupMNode;
     for (Object o : devicePath) {

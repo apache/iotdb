@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -134,7 +133,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
-import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser.IdentifierContext;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -481,7 +479,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.booleanValue() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
     }
-    flushStatement.setOnCluster(ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
+    flushStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     if (ctx.identifier() != null) {
       storageGroups = new ArrayList<>();
       List<Identifier> identifiers = getIdentifiers(ctx.identifier());

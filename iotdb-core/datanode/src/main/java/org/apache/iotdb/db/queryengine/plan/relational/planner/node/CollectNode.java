@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import java.util.ArrayList;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -28,12 +27,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * CollectNode output the content of children. Normally it will output the child one by one, but in
@@ -59,8 +59,7 @@ public class CollectNode extends MultiChildProcessNode {
     return collectNode;
   }
 
-  public void setOutputSymbols(
-      List<Symbol> outputSymbols) {
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
     this.outputSymbols = outputSymbols;
   }
 

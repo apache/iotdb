@@ -53,8 +53,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
-
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
+
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.HashMap;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import java.util.stream.Stream;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

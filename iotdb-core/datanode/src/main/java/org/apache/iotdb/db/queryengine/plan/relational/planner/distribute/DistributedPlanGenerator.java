@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -60,7 +59,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator.parseDeviceIdArray;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
@@ -416,8 +414,7 @@ public class DistributedPlanGenerator
   // ------------------- schema related interface ---------------------------------------------
   @Override
   public List<PlanNode> visitTableDeviceQuery(TableDeviceQueryNode node, PlanContext context) {
-    String database =
-        PathUtils.qualifyDatabaseName(node.getDatabase());
+    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
@@ -444,8 +441,7 @@ public class DistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTableDeviceFetch(TableDeviceFetchNode node, PlanContext context) {
-    String database =
-        PathUtils.qualifyDatabaseName(node.getDatabase());
+    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
     Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =
