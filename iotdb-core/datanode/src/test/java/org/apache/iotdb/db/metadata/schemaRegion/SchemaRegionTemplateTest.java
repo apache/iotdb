@@ -256,10 +256,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
         template);
 
     Assert.assertEquals(
-        new Pair<>(0L, false),
+        new Pair<>(0L, true),
         SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s1")));
     Assert.assertEquals(
-        new Pair<>(0L, false),
+        new Pair<>(0L, true),
         SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
 
     PathPatternTree patternTree = new PathPatternTree();
