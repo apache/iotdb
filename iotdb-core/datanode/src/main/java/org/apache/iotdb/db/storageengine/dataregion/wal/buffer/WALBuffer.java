@@ -161,12 +161,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   private int getCompressedByteBufferSize(int size) {
-    int maxBytes = size;
-    for (CompressionType compressionType : CompressionType.values()) {
-      ICompressor compressor = ICompressor.getCompressor(compressionType);
-      maxBytes = Math.max(maxBytes, compressor.getMaxBytesForCompression(size));
-    }
-    return maxBytes;
+    return ICompressor.getCompressor(CompressionType.LZ4).getMaxBytesForCompression(size);
   }
 
   @Override
