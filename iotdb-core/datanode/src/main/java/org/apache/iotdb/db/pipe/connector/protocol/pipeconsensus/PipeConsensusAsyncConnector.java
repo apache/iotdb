@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeConsensusConnectorEnqueueException;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
@@ -56,7 +57,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -233,7 +233,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeConsensusConnectorEnqueueException(ENQUEUE_EXCEPTION_MSG);
     }
     // batch transfer tablets.
     if (isTabletBatchModeEnabled) {
@@ -328,7 +328,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tsFileInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeConsensusConnectorEnqueueException(ENQUEUE_EXCEPTION_MSG);
     }
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
