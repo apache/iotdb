@@ -58,7 +58,6 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -289,7 +288,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.commons.client.request.Utils.testConnectionsImpl;
+import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -1443,51 +1442,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTable(TUpdateTableReq req) throws TException {
+  public TSStatus updateTable(TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
-      case PRE_CREATE:
+      case PRE_CREATE_OR_ADD_COLUMN:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
               TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
-          DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
+          DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         } finally {
           DataNodeSchemaLockManager.getInstance()
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         }
         break;
-      case ROLLBACK_CREATE:
+      case ROLLBACK_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .rollbackCreateTable(
+            .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case COMMIT_CREATE:
+      case COMMIT_CREATE_OR_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .commitCreateTable(
+            .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
-        break;
-      case PRE_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .preAddTableColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
-        break;
-      case COMMIT_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .commitAddTableColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
-        break;
-      case ROLLBACK_ADD_COLUMN:
-        DataNodeTableCache.getInstance()
-            .rollbackAddColumn(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
@@ -1533,8 +1511,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.ConfigNodeInternalService,
         DnToCnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
-            DnToCnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            DnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
@@ -1546,8 +1523,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            DnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
@@ -1559,7 +1535,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeMPPService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(handler));
+            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
@@ -1571,8 +1547,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeExternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeExternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            DataNodeExternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
   @Override

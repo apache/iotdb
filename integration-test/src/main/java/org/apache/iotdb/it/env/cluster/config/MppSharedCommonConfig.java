@@ -232,6 +232,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    cnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    dnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     cnConfig.setTimestampPrecision(timestampPrecision);
     dnConfig.setTimestampPrecision(timestampPrecision);

@@ -165,6 +165,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -336,6 +337,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The dataReplicationFactor should be positive.");
     }
 
+    if (!databaseSchema.isSetTimePartitionOrigin()) {
+      databaseSchema.setTimePartitionOrigin(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
+    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+    }
+
     if (!databaseSchema.isSetTimePartitionInterval()) {
       databaseSchema.setTimePartitionInterval(
           CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
@@ -410,6 +421,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage(
                   "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
     }
+
+    if (databaseSchema.isSetTimePartitionOrigin()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+    }
+
     if (databaseSchema.isSetTimePartitionInterval()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
@@ -832,6 +851,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus submitLoadConfigurationTask() throws TException {
+    return configManager.submitLoadConfigurationTask();
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }
@@ -1144,12 +1168,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createTable(ByteBuffer tableInfo) throws TException {
+  public TSStatus createTable(final ByteBuffer tableInfo) {
     return configManager.createTable(tableInfo);
   }
 
   @Override
-  public TSStatus alterTable(TAlterTableReq req) throws TException {
+  public TSStatus alterTable(final TAlterTableReq req) {
     return configManager.alterTable(req);
+  }
+
+  @Override
+  public TShowTableResp showTables(final String database) {
+    return configManager.showTables(database);
   }
 }

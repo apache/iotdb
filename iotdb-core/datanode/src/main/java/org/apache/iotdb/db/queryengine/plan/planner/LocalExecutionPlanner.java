@@ -258,15 +258,18 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized void reserveMemoryForQueryFrontEnd(
-      final long memoryInBytes, final long reservedBytes, final String queryId) {
+  public synchronized void reserveFromFreeMemoryForOperators(
+      final long memoryInBytes,
+      final long reservedBytes,
+      final String queryId,
+      final String contextHolder) {
     if (memoryInBytes > freeMemoryForOperators) {
       throw new MemoryNotEnoughException(
           String.format(
-              "There is not enough memory for planning-stage of Query %s, "
+              "There is not enough memory for Query %s, the contextHolder is %s,"
                   + "current remaining free memory is %dB, "
-                  + "estimated memory usage is %dB, reserved memory for FE of this query in total is %dB",
-              queryId, freeMemoryForOperators, memoryInBytes, reservedBytes));
+                  + "reserved memory for this context in total is %dB.",
+              queryId, contextHolder, freeMemoryForOperators, reservedBytes));
     } else {
       freeMemoryForOperators -= memoryInBytes;
       if (LOGGER.isDebugEnabled()) {

@@ -108,6 +108,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -268,7 +269,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -1182,7 +1182,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.loadConfiguration();
+        tsStatus = client.submitLoadConfigurationTask();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
@@ -2806,7 +2806,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Database %s doesn't exists.", useDB.getDatabase().getValue()),
+                String.format("Unknown database %s", useDB.getDatabase().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (IOException | ClientManagerException | TException e) {
@@ -2856,15 +2856,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    final TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
+      final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -2886,7 +2886,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2894,9 +2894,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createTable(
-      TsTable table, String database, boolean ifNotExists) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+      final TsTable table, final String database, final boolean ifNotExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
       TSStatus tsStatus;
@@ -2905,7 +2905,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           tsStatus =
               configNodeClient.createTable(
                   ByteBuffer.wrap(TsTableInternalRPCUtil.serializeSingleTsTable(database, table)));
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // Time out mainly caused by slow execution, just wait
@@ -2929,16 +2929,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> describeTable(String database, String tableName) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+  public SettableFuture<ConfigTaskResult> describeTable(
+      final String database, final String tableName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     if (table == null) {
       future.setException(new TableNotExistsException(database, tableName));
     } else {
@@ -2948,32 +2949,43 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showTables(String database) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showTables(final String database) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    Optional<List<TsTable>> tableList = DataNodeTableCache.getInstance().getTables(database);
-    if (tableList.isPresent()) {
-      ShowTablesTask.buildTsBlock(tableList.get(), future);
-    } else {
-      future.setException(
-          new IoTDBException(
-              String.format("Database %s doesn't exists.", database),
-              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowTableResp resp = configNodeClient.showTables(database);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+        LOGGER.warn(
+            "Failed to show tables in database {} in config node, status is {}.",
+            database,
+            resp.getStatus());
+        future.setException(
+            new IoTDBException(
+                resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+                    ? String.format("Unknown database %s", database)
+                    : resp.getStatus().message,
+                resp.getStatus().code));
+        return future;
+      }
+      ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+    } catch (final Exception e) {
+      future.setException(e);
     }
     return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> alterTableAddColumn(
-      String database,
-      String tableName,
-      List<TsTableColumnSchema> columnSchemaList,
-      String queryId) {
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String queryId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
-      TAlterTableReq req = new TAlterTableReq();
+      final TAlterTableReq req = new TAlterTableReq();
       req.setDatabase(database);
       req.setTableName(tableName);
       req.setQueryId(queryId);
@@ -2983,7 +2995,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       do {
         try {
           tsStatus = client.alterTable(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
@@ -3002,7 +3014,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

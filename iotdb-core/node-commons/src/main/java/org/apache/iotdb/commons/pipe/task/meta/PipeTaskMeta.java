@@ -34,8 +34,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -54,8 +55,8 @@ public class PipeTaskMeta {
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.
    */
-  private final Map<PipeRuntimeException, PipeRuntimeException> exceptionMessages =
-      new ConcurrentHashMap<>();
+  private final Set<PipeRuntimeException> exceptionMessages =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public PipeTaskMeta(/* @NotNull */ final ProgressIndex progressIndex, final int leaderNodeId) {
     this.progressIndex.set(progressIndex);
@@ -80,7 +81,7 @@ public class PipeTaskMeta {
   }
 
   public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
-    return new ArrayList<>(exceptionMessages.values());
+    return new ArrayList<>(exceptionMessages);
   }
 
   public synchronized String getExceptionMessagesString() {
@@ -92,12 +93,12 @@ public class PipeTaskMeta {
     // show pipe response
     // Here we still keep the map form to allow compatibility with legacy versions
     exceptionMessages.clear();
-    exceptionMessages.put(exceptionMessage, exceptionMessage);
+    exceptionMessages.add(exceptionMessage);
   }
 
   public synchronized boolean containsExceptionMessage(
       final PipeRuntimeException exceptionMessage) {
-    return exceptionMessages.containsKey(exceptionMessage);
+    return exceptionMessages.contains(exceptionMessage);
   }
 
   public synchronized boolean hasExceptionMessages() {
@@ -114,7 +115,7 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
@@ -130,7 +131,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
-      pipeTaskMeta.exceptionMessages.put(pipeRuntimeException, pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -146,7 +147,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
-      pipeTaskMeta.exceptionMessages.put(pipeRuntimeException, pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }

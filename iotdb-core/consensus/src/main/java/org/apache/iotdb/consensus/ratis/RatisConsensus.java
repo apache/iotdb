@@ -278,7 +278,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(groupId) && Utils.rejectWrite()) {
+    if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
@@ -706,6 +706,16 @@ class RatisConsensus implements IConsensus {
     }
     int nodeId = Utils.fromRaftPeerIdToNodeId(leaderId);
     return new Peer(groupId, nodeId, null);
+  }
+
+  @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.get().getDivision(raftGroupId).getGroup().getPeers().size();
+    } catch (IOException e) {
+      return 0;
+    }
   }
 
   @Override

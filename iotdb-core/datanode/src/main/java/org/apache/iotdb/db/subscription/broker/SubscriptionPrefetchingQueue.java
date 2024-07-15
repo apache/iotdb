@@ -19,12 +19,18 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -34,11 +40,15 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public abstract class SubscriptionPrefetchingQueue {
 
@@ -47,6 +57,7 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final String brokerId; // consumer group id
   protected final String topicName;
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
@@ -62,42 +73,188 @@ public abstract class SubscriptionPrefetchingQueue {
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
 
+    this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(final String consumerId);
-
-  public abstract void executePrefetch();
-
   public void cleanup() {
     // clean up uncommitted events
-    for (final SubscriptionEvent event : uncommittedEvents.values()) {
-      event.clearReferenceCount();
-      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
-    }
+    uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
     uncommittedEvents.clear();
+
+    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
+    // in uncommittedEvents
+    prefetchingQueue.clear();
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
   }
+
+  /////////////////////////////// poll ///////////////////////////////
+
+  public SubscriptionEvent poll(final String consumerId) {
+    if (prefetchingQueue.isEmpty()) {
+      tryPrefetch();
+    }
+
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    try {
+      while (count++ < size // limit control
+          && Objects.nonNull(
+              event =
+                  prefetchingQueue.poll(
+                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                      TimeUnit.MILLISECONDS))) {
+        if (event.isCommitted()) {
+          event.cleanup();
+          continue;
+        }
+        if (!event.pollable()) {
+          // Re-enqueue the uncommitted event at the end of the queue.
+          prefetchingQueue.add(event);
+          continue;
+        }
+        event.recordLastPolledConsumerId(consumerId);
+        event.recordLastPolledTimestamp();
+        // Re-enqueue the uncommitted event at the end of the queue.
+        // This operation should be performed after recordLastPolledTimestamp to prevent multiple
+        // consumers from consuming the same event.
+        prefetchingQueue.add(event);
+        return event;
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingQueue {} interrupted while polling events.",
+          this,
+          e);
+    }
+
+    return null;
+  }
+
+  /////////////////////////////// prefetch ///////////////////////////////
+
+  public abstract void executePrefetch();
+
+  /**
+   * prefetch at most one {@link SubscriptionEvent} from {@link
+   * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
+   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   */
+  protected void tryPrefetch() {
+    Event event;
+    while (Objects.nonNull(
+        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+      if (!(event instanceof EnrichedEvent)) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+            this,
+            event);
+        continue;
+      }
+
+      if (event instanceof PipeTerminateEvent) {
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+            this,
+            event);
+        // commit directly
+        ((PipeTerminateEvent) event)
+            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+        continue;
+      }
+
+      if (event instanceof TabletInsertionEvent) {
+        if (onEvent((TabletInsertionEvent) event)) {
+          break;
+        }
+      } else if (event instanceof PipeTsFileInsertionEvent) {
+        if (onEvent((PipeTsFileInsertionEvent) event)) {
+          break;
+        }
+      } else {
+        // TODO:
+        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+        //  - UserDefinedEnrichedEvent: ignored?
+        //  - Others: events related to meta sync, safe to ignore
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+            this,
+            event);
+        if (trySealBatch()) {
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final TabletInsertionEvent event);
+
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean onEvent(final PipeTsFileInsertionEvent event);
+
+  /**
+   * @return {@code true} if a new event has been prefetched.
+   */
+  protected abstract boolean trySealBatch();
 
   /////////////////////////////// commit ///////////////////////////////
 
   /**
    * @return {@code true} if ack successfully
    */
-  public boolean ack(final SubscriptionCommitContext commitContext) {
+  public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
-          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+          "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
       return false;
     }
-    event.decreaseReferenceCount();
+
+    if (event.isCommitted()) {
+      LOGGER.warn(
+          "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
+          event,
+          commitContext,
+          this);
+      return false;
+    }
+
+    if (!event.isCommittable()) {
+      LOGGER.warn(
+          "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
+          event,
+          commitContext,
+          this);
+      return false;
+    }
+
+    // check if a consumer acks event from another consumer group...
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    if (!Objects.equals(consumerGroupId, brokerId)) {
+      LOGGER.warn(
+          "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+          brokerId,
+          consumerGroupId,
+          consumerId,
+          commitContext,
+          this);
+    }
+
+    event.ack();
+    event.cleanup();
     event.recordCommittedTimestamp();
-    SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     uncommittedEvents.remove(commitContext);
     return true;
   }
@@ -105,7 +262,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if nack successfully
    */
-  public boolean nack(final SubscriptionCommitContext commitContext) {
+  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -114,6 +271,19 @@ public abstract class SubscriptionPrefetchingQueue {
           this);
       return false;
     }
+
+    // check if a consumer nacks event from another consumer group...
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    if (!Objects.equals(consumerGroupId, brokerId)) {
+      LOGGER.warn(
+          "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+          brokerId,
+          consumerGroupId,
+          consumerId,
+          commitContext,
+          this);
+    }
+
     event.nack();
     return true;
   }
@@ -135,14 +305,7 @@ public abstract class SubscriptionPrefetchingQueue {
         PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
-        -1);
-  }
-
-  /////////////////////////////// object ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPrefetchingQueue{brokerId=" + brokerId + ", topicName=" + topicName + "}";
+        INVALID_COMMIT_ID);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -184,7 +347,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
     return new SubscriptionEvent(
-        Collections.emptyList(),
+        new SubscriptionPipeEmptyEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.TERMINATION.getType(),
             new TerminationPayload(),
@@ -194,10 +357,40 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent generateSubscriptionPollErrorResponse(
       final String errorMessage, final boolean critical) {
     return new SubscriptionEvent(
-        Collections.emptyList(),
+        new SubscriptionPipeEmptyEvent(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.ERROR.getType(),
             new ErrorPayload(errorMessage, critical),
             generateInvalidSubscriptionCommitContext()));
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  protected Map<String, String> coreReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("brokerId", brokerId);
+        put("topicName", topicName);
+        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+        put("isCompleted", String.valueOf(isCompleted));
+        put("isClosed", String.valueOf(isClosed));
+      }
+    };
+  }
+
+  protected Map<String, String> allReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("brokerId", brokerId);
+        put("topicName", topicName);
+        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+        put("uncommittedEvents", uncommittedEvents.toString());
+        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+        put("isCompleted", String.valueOf(isCompleted));
+        put("isClosed", String.valueOf(isClosed));
+      }
+    };
   }
 }

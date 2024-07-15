@@ -35,6 +35,12 @@ public class ConfigNodeAsyncRequestContext<Q, R>
     extends AsyncRequestContext<Q, R, CnToCnNodeRequestType, TConfigNodeLocation> {
 
   public ConfigNodeAsyncRequestContext(
+      CnToCnNodeRequestType cnToCnRequestType,
+      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
+    super(cnToCnRequestType, integerTConfigNodeLocationMap);
+  }
+
+  public ConfigNodeAsyncRequestContext(
       CnToCnNodeRequestType configNodeRequestType,
       Q q,
       Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {

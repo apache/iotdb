@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -29,6 +31,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -311,7 +314,53 @@ public class LoadTsFileManager {
     }
   }
 
+  public static void updateWritePointCountMetrics(
+      final DataRegion dataRegion, final String databaseName, final long writePointCount) {
+    MemTableFlushTask.recordFlushPointsMetricInternal(
+        writePointCount, databaseName, dataRegion.getDataRegionId());
+    MetricService.getInstance()
+        .count(
+            writePointCount,
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            databaseName,
+            Tag.REGION.toString(),
+            dataRegion.getDataRegionId(),
+            Tag.TYPE.toString(),
+            Metric.LOAD_POINT_COUNT.toString());
+    // Because we cannot accurately judge who is the leader here,
+    // we directly divide the writePointCount by the replicationNum to ensure the
+    // correctness of this metric, which will be accurate in most cases
+    final int replicationNum =
+        DataRegionConsensusImpl.getInstance()
+            .getReplicationNum(
+                ConsensusGroupId.Factory.create(
+                    TConsensusGroupType.DataRegion.getValue(),
+                    Integer.parseInt(dataRegion.getDataRegionId())));
+    // It may happen that the replicationNum is 0 when load and db deletion occurs
+    // concurrently, so we can just not to count the number of points in this case
+    if (replicationNum != 0) {
+      MetricService.getInstance()
+          .count(
+              writePointCount / replicationNum,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              databaseName,
+              Tag.REGION.toString(),
+              dataRegion.getDataRegionId(),
+              Tag.TYPE.toString(),
+              Metric.LOAD_POINT_COUNT.toString());
+    }
+  }
+
   private static class TsFileWriterManager {
+
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
@@ -416,26 +465,9 @@ public class LoadTsFileManager {
         dataRegion
             .getNonSystemDatabaseName()
             .ifPresent(
-                databaseName -> {
-                  long writePointCount = getTsFileWritePointCount(writer);
-                  // Report load tsFile points to IoTDB flush metrics
-                  MemTableFlushTask.recordFlushPointsMetricInternal(
-                      writePointCount, databaseName, dataRegion.getDataRegionId());
-
-                  MetricService.getInstance()
-                      .count(
-                          writePointCount,
-                          Metric.QUANTITY.toString(),
-                          MetricLevel.CORE,
-                          Tag.NAME.toString(),
-                          Metric.POINTS_IN.toString(),
-                          Tag.DATABASE.toString(),
-                          databaseName,
-                          Tag.REGION.toString(),
-                          dataRegion.getDataRegionId(),
-                          Tag.TYPE.toString(),
-                          Metric.LOAD_POINT_COUNT.toString());
-                });
+                databaseName ->
+                    updateWritePointCountMetrics(
+                        dataRegion, databaseName, getTsFileWritePointCount(writer)));
       }
     }
 

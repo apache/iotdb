@@ -37,6 +37,7 @@ public abstract class PipeConsensusTransferFileSealReq
 
   private transient String fileName;
   private transient long fileLength;
+  private transient long pointCount;
 
   public final String getFileName() {
     return fileName;
@@ -46,6 +47,10 @@ public abstract class PipeConsensusTransferFileSealReq
     return fileLength;
   }
 
+  public final long getPointCount() {
+    return pointCount;
+  }
+
   protected abstract PipeConsensusRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -53,6 +58,7 @@ public abstract class PipeConsensusTransferFileSealReq
   protected PipeConsensusTransferFileSealReq convertToTPipeConsensusTransferReq(
       String fileName,
       long fileLength,
+      long pointCount,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
       ProgressIndex progressIndex,
@@ -61,6 +67,7 @@ public abstract class PipeConsensusTransferFileSealReq
 
     this.fileName = fileName;
     this.fileLength = fileLength;
+    this.pointCount = pointCount;
 
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
@@ -71,6 +78,7 @@ public abstract class PipeConsensusTransferFileSealReq
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
+      ReadWriteIOUtils.write(pointCount, outputStream);
       this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -88,6 +96,7 @@ public abstract class PipeConsensusTransferFileSealReq
 
     fileName = ReadWriteIOUtils.readString(req.body);
     fileLength = ReadWriteIOUtils.readLong(req.body);
+    pointCount = ReadWriteIOUtils.readLong(req.body);
 
     version = req.version;
     type = req.type;
@@ -113,6 +122,7 @@ public abstract class PipeConsensusTransferFileSealReq
     PipeConsensusTransferFileSealReq that = (PipeConsensusTransferFileSealReq) obj;
     return fileName.equals(that.fileName)
         && fileLength == that.fileLength
+        && pointCount == that.pointCount
         && version == that.version
         && type == that.type
         && body.equals(that.body)
@@ -127,6 +137,7 @@ public abstract class PipeConsensusTransferFileSealReq
     return Objects.hash(
         fileName,
         fileLength,
+        pointCount,
         version,
         type,
         body,

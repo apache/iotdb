@@ -152,9 +152,12 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     try {
       if (!actionMap.containsKey(requestContext.getRequestType())) {
         throw new UnsupportedOperationException(
-            "unsupported request type: " + requestContext.getRequestType());
+            "unsupported request type "
+                + requestContext.getRequestType()
+                + ", please set it in AsyncRequestManager::initActionMapBuilder()");
       }
       Client client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
+      adjustClientTimeoutIfNecessary(requestContext.getRequestType(), client);
       Object req = requestContext.getRequest(requestId);
       AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler =
           buildHandler(requestContext, requestId, targetNode);
@@ -168,6 +171,10 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           e.getMessage(),
           retryCount);
     }
+  }
+
+  protected void adjustClientTimeoutIfNecessary(RequestType type, Client client) {
+    // In default, no need to do this
   }
 
   protected abstract TEndPoint nodeLocationToEndPoint(NodeLocation location);

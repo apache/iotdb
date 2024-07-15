@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -160,7 +159,7 @@ public class SchemaFile implements ISchemaFile {
                 .getConfig()
                 .getSchemaRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.RATIS_CONSENSUS),
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        Long.MAX_VALUE,
         false);
   }
 
@@ -500,12 +499,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     Files.copy(snapshot.toPath(), schemaFile.toPath());
-    return new SchemaFile(
-        sgName,
-        schemaRegionId,
-        false,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-        false);
+    return new SchemaFile(sgName, schemaRegionId, false, Long.MAX_VALUE, false);
   }
 
   // endregion

@@ -17,24 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.log;
+package org.apache.iotdb.db.subscription.event.pipe;
 
-import org.slf4j.Logger;
+import java.io.File;
 
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
 
-public class PipeLogManager {
+  @Override
+  public File getTsFile() {
+    return null;
+  }
 
-  private final ConcurrentMap<Class<?>, PipeLogStatus> logClass2LogStatusMap =
-      new ConcurrentHashMap<>();
+  @Override
+  public void ack() {}
 
-  public Optional<Logger> schedule(
-      Class<?> logClass, int maxAverageScale, int maxLogInterval, int scale) {
-    return logClass2LogStatusMap
-        .computeIfAbsent(
-            logClass, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
-        .schedule(scale);
+  @Override
+  public void cleanup() {}
+
+  @Override
+  public String toString() {
+    return "SubscriptionEmptyPipeEvent";
   }
 }

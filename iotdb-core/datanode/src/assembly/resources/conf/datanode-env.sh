@@ -166,12 +166,12 @@ jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR=
 JVM_VERSION=${jvmver%_*}
 JVM_PATCH_VERSION=${jvmver#*_}
 if [ "$JVM_VERSION" \< "1.8" ] ; then
-    echo "IoTDB requires Java 8u40 or later."
+    echo "IoTDB requires Java 8u92 or later."
     exit 1;
 fi
 
-if [ "$JVM_VERSION" \< "1.8" ] && [ "$JVM_PATCH_VERSION" -lt 40 ] ; then
-    echo "IoTDB requires Java 8u40 or later."
+if [ "$JVM_VERSION" \< "1.8" ] && [ "$JVM_PATCH_VERSION" -lt 92 ] ; then
+    echo "IoTDB requires Java 8u92 or later."
     exit 1;
 fi
 

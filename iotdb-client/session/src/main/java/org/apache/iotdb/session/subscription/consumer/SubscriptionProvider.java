@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -124,6 +125,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
     super.open(); // throw IoTDBConnectionException
 
+    // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
@@ -217,7 +219,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  Set<String> subscribe(final Set<String> topicNames) throws SubscriptionException {
+  Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeSubscribeReq req;
     try {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -245,10 +247,10 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
     final PipeSubscribeSubscribeResp subscribeResp =
         PipeSubscribeSubscribeResp.fromTPipeSubscribeResp(resp);
-    return subscribeResp.getTopicNames();
+    return subscribeResp.getTopics();
   }
 
-  Set<String> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  Map<String, TopicConfig> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeUnsubscribeReq req;
     try {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -276,7 +278,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
     final PipeSubscribeUnsubscribeResp unsubscribeResp =
         PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
-    return unsubscribeResp.getTopicNames();
+    return unsubscribeResp.getTopics();
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

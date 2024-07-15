@@ -26,17 +26,13 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableInternalRPCType {
-  PRE_CREATE((byte) 0),
-  ROLLBACK_CREATE((byte) 1),
-  COMMIT_CREATE((byte) 2),
-
-  PRE_ADD_COLUMN((byte) 6),
-  COMMIT_ADD_COLUMN((byte) 7),
-  ROLLBACK_ADD_COLUMN((byte) 8);
+  PRE_CREATE_OR_ADD_COLUMN((byte) 0),
+  ROLLBACK_CREATE_OR_ADD_COLUMN((byte) 1),
+  COMMIT_CREATE_OR_ADD_COLUMN((byte) 2);
 
   private final byte operationType;
 
-  private TsTableInternalRPCType(byte operationType) {
+  private TsTableInternalRPCType(final byte operationType) {
     this.operationType = operationType;
   }
 
@@ -44,29 +40,23 @@ public enum TsTableInternalRPCType {
     return operationType;
   }
 
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(operationType, stream);
   }
 
-  public static TsTableInternalRPCType deserialize(ByteBuffer buffer) {
+  public static TsTableInternalRPCType deserialize(final ByteBuffer buffer) {
     byte type = ReadWriteIOUtils.readByte(buffer);
     return getType(type);
   }
 
-  public static TsTableInternalRPCType getType(byte type) {
+  public static TsTableInternalRPCType getType(final byte type) {
     switch (type) {
       case 0:
-        return PRE_CREATE;
+        return PRE_CREATE_OR_ADD_COLUMN;
       case 1:
-        return ROLLBACK_CREATE;
+        return ROLLBACK_CREATE_OR_ADD_COLUMN;
       case 2:
-        return COMMIT_CREATE;
-      case 6:
-        return PRE_ADD_COLUMN;
-      case 7:
-        return COMMIT_ADD_COLUMN;
-      case 8:
-        return ROLLBACK_ADD_COLUMN;
+        return COMMIT_CREATE_OR_ADD_COLUMN;
       default:
         throw new IllegalArgumentException("Unknown table update operation type" + type);
     }

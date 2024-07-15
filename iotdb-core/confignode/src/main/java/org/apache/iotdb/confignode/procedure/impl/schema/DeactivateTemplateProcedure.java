@@ -448,13 +448,13 @@ public class DeactivateTemplateProcedure
     DeactivateTemplateRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
         boolean executeOnAllReplicaset,
         CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,
-          targetSchemaRegionGroup,
+          targetDataRegionGroup,
           executeOnAllReplicaset,
           dataNodeRequestType,
           dataNodeRequestGenerator);
@@ -491,8 +491,12 @@ public class DeactivateTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      requestMessage,
+                      taskName,
+                      consensusGroupId.type,
+                      consensusGroupId.id,
+                      dataNodeLocationSet))));
       interruptTask();
     }
   }

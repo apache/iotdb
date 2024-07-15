@@ -191,6 +191,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -539,7 +540,7 @@ public class ConfigManager implements IManager {
         CONF.getSchemaRegionConsensusProtocolClass());
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setTimePartitionOrigin(COMMON_CONF.getTimePartitionOrigin());
     clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
@@ -1255,10 +1256,6 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
 
-    if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
-      return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
-    }
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
@@ -1514,6 +1511,7 @@ public class ConfigManager implements IManager {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
       if (CONF.getConfigNodeId() == req.getNodeId()) {
         return tsStatus;
       }
@@ -1541,11 +1539,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus loadConfiguration() {
+  public TSStatus submitLoadConfigurationTask() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
+        ? RpcUtils.squashResponseStatusList(nodeManager.submitLoadConfigurationTask())
         : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    throw new UnsupportedOperationException("not implement yet");
   }
 
   @Override
@@ -2368,10 +2371,11 @@ public class ConfigManager implements IManager {
         : new TThrottleQuotaResp(status);
   }
 
-  public TSStatus createTable(ByteBuffer tableInfo) {
-    TSStatus status = confirmLeader();
+  @Override
+  public TSStatus createTable(final ByteBuffer tableInfo) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Pair<String, TsTable> pair =
+      final Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
     } else {
@@ -2379,8 +2383,9 @@ public class ConfigManager implements IManager {
     }
   }
 
-  public TSStatus alterTable(TAlterTableReq req) {
-    TSStatus status = confirmLeader();
+  @Override
+  public TSStatus alterTable(final TAlterTableReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       switch (AlterTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
@@ -2390,6 +2395,16 @@ public class ConfigManager implements IManager {
       }
     } else {
       return status;
+    }
+  }
+
+  @Override
+  public TShowTableResp showTables(final String database) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.showTables(database);
+    } else {
+      return new TShowTableResp(status);
     }
   }
 }

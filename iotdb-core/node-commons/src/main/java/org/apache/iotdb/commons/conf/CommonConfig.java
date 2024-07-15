@@ -35,12 +35,15 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 public class CommonConfig {
 
   public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
   public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
   public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
   public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
+  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -156,6 +159,9 @@ public class CommonConfig {
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
+  /** Time partition origin in milliseconds. */
+  private long timePartitionOrigin = 0;
+
   /** Time partition interval in milliseconds. */
   private long timePartitionInterval = 604_800_000;
 
@@ -240,6 +246,7 @@ public class CommonConfig {
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
+  private double pipeTsFileScanParsingThreshold = 0.05;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -249,13 +256,15 @@ public class CommonConfig {
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 64;
-  private int subscriptionMaxTabletsSizeInBytesPerPrefetching = 8388608; // 8MB
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
-  private int subscriptionReadFileBufferSize = 8388608; // 8MB
+  private long subscriptionReadFileBufferSize = 8 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -420,10 +429,6 @@ public class CommonConfig {
     this.systemFileStorageFs = systemFileStorageFs;
   }
 
-  public long getDefaultTTLInMs() {
-    return tierTTLInMs[tierTTLInMs.length - 1];
-  }
-
   public long[] getTierTTLInMs() {
     return tierTTLInMs;
   }
@@ -548,6 +553,14 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
+  }
+
+  public long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
+  public void setTimePartitionOrigin(long timePartitionOrigin) {
+    this.timePartitionOrigin = timePartitionOrigin;
   }
 
   public long getTimePartitionInterval() {
@@ -1043,6 +1056,14 @@ public class CommonConfig {
     this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
   }
 
+  public double getPipeTsFileScanParsingThreshold() {
+    return pipeTsFileScanParsingThreshold;
+  }
+
+  public void setPipeTsFileScanParsingThreshold(double pipeTsFileScanParsingThreshold) {
+    this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
+  }
+
   public double getPipeAllSinksRateLimitBytesPerSecond() {
     return pipeAllSinksRateLimitBytesPerSecond;
   }
@@ -1109,22 +1130,42 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public int getSubscriptionMaxTabletsPerPrefetching() {
-    return subscriptionMaxTabletsPerPrefetching;
+  public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
+    return subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
-    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  public void setSubscriptionPrefetchTabletBatchMaxDelayInMs(
+      int subscriptionPrefetchTabletBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTabletBatchMaxDelayInMs = subscriptionPrefetchTabletBatchMaxDelayInMs;
   }
 
-  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
-    return subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public long getSubscriptionPrefetchTabletBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTabletBatchMaxSizeInBytes;
   }
 
-  public void setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
-      int subscriptionMaxTabletsSizeInBytesPerPrefetching) {
-    this.subscriptionMaxTabletsSizeInBytesPerPrefetching =
-        subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  public void setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
+      long subscriptionPrefetchTabletBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTabletBatchMaxSizeInBytes =
+        subscriptionPrefetchTabletBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionPrefetchTsFileBatchMaxDelayInMs() {
+    return subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    this.subscriptionPrefetchTsFileBatchMaxDelayInMs = subscriptionPrefetchTsFileBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionPrefetchTsFileBatchMaxSizeInBytes() {
+    return subscriptionPrefetchTsFileBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      long subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    this.subscriptionPrefetchTsFileBatchMaxSizeInBytes =
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -1162,11 +1203,11 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public int getSubscriptionReadFileBufferSize() {
+  public long getSubscriptionReadFileBufferSize() {
     return subscriptionReadFileBufferSize;
   }
 
-  public void setSubscriptionReadFileBufferSize(int subscriptionReadFileBufferSize) {
+  public void setSubscriptionReadFileBufferSize(long subscriptionReadFileBufferSize) {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 

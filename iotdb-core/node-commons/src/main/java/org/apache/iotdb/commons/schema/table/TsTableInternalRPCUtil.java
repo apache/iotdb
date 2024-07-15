@@ -77,25 +77,25 @@ public class TsTableInternalRPCUtil {
     return result;
   }
 
-  public static byte[] serializeSingleTsTable(String database, TsTable table) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  public static byte[] serializeSingleTsTable(final String database, final TsTable table) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);
       table.serialize(outputStream);
-    } catch (IOException ignored) {
-      // won't happen
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
     }
     return outputStream.toByteArray();
   }
 
-  public static Pair<String, TsTable> deserializeSingleTsTable(byte[] bytes) {
+  public static Pair<String, TsTable> deserializeSingleTsTable(final byte[] bytes) {
     InputStream inputStream = new ByteArrayInputStream(bytes);
     try {
       String database = ReadWriteIOUtils.readString(inputStream);
       TsTable table = TsTable.deserialize(inputStream);
       return new Pair<>(database, table);
     } catch (IOException ignored) {
-      // won't happen
+      // ByteArrayInputStream won't throw IOException
     }
     throw new IllegalStateException();
   }

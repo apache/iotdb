@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.file;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
@@ -94,6 +96,18 @@ public abstract class SystemPropertiesHandler {
     }
   }
 
+  public void remove(String key) throws IOException {
+    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
+      Properties properties = readWithoutLock(formalFile);
+      if (!properties.containsKey(key)) {
+        return;
+      }
+      properties.remove(key);
+      writeWithoutLock(properties, tmpFile);
+      replaceFormalFile();
+    }
+  }
+
   private void writeWithoutLock(Properties properties, File file) throws IOException {
     try (FileOutputStream fileOutputStream = new FileOutputStream(file);
         Writer writer = new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8)) {
@@ -123,30 +137,36 @@ public abstract class SystemPropertiesHandler {
     return !fileExist();
   }
 
-  protected void recover() {
+  protected void init() {
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
-      if (formalFile.exists() && !tmpFile.exists()) {
-        // No need to recover
-        return;
-      }
-      if (!formalFile.exists() && !tmpFile.exists()) {
-        // First start
-        return;
-      }
-      if (formalFile.exists() && tmpFile.exists()) {
-        if (!tmpFile.delete()) {
-          LOGGER.warn(
-              "Delete system.properties tmp file fail, you may manually delete it: {}",
-              tmpFile.getAbsoluteFile());
-        }
-        return;
-      }
-      if (!formalFile.exists() && tmpFile.exists()) {
-        replaceFormalFile();
-        return;
-      }
+      recover();
+      // TODO: this line should be removed in 1.5
+      remove(IoTDBConstant.CLUSTER_NAME);
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private void recover() throws IOException {
+    if (formalFile.exists() && !tmpFile.exists()) {
+      // No need to recover
+      return;
+    }
+    if (!formalFile.exists() && !tmpFile.exists()) {
+      // First start
+      return;
+    }
+    if (formalFile.exists() && tmpFile.exists()) {
+      if (!tmpFile.delete()) {
+        LOGGER.warn(
+            "Delete system.properties tmp file fail, you may manually delete it: {}",
+            tmpFile.getAbsoluteFile());
+      }
+      return;
+    }
+    if (!formalFile.exists() && tmpFile.exists()) {
+      replaceFormalFile();
+      return;
     }
     throw new UnsupportedOperationException("Should never touch here");
   }
