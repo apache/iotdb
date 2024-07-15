@@ -52,10 +52,6 @@ public class QueryPlanStatistics {
     this.logicalOptimizationCost = logicalOptimizationCost;
   }
 
-  public void recordDispatchCost(long dispatchCost) {
-    this.dispatchCost += dispatchCost;
-  }
-
   public long getAnalyzeCost() {
     return analyzeCost;
   }
@@ -78,6 +74,10 @@ public class QueryPlanStatistics {
 
   public long getLogicalOptimizationCost() {
     return logicalOptimizationCost;
+  }
+
+  public void recordDispatchCost(long dispatchCost) {
+    this.dispatchCost += dispatchCost;
   }
 
   public long getDispatchCost() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -46,7 +47,9 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
     this.polledTsFiles =
         Caffeine.newBuilder()
-            .expireAfterWrite(10, TimeUnit.MINUTES) // TODO: config
+            .expireAfterWrite(
+                SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
+                TimeUnit.SECONDS)
             .build();
   }
 

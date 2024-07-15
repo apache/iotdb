@@ -69,6 +69,9 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Distribution Plan Cost: %.3f ms",
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+  }
+
+  public void renderDispatchCost(MPPQueryContext context) {
     addLine(
         planHeader,
         0,
@@ -245,6 +248,26 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "loadTimeSeriesMetadataAlignedMemUnSeqTime",
         queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "alignedTimeSeriesMetadataModificationCount",
+        queryStatistics.getAlignedTimeSeriesMetadataModificationCount());
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "alignedTimeSeriesMetadataModificationTime",
+        queryStatistics.getAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "nonAlignedTimeSeriesMetadataModificationCount",
+        queryStatistics.getNonAlignedTimeSeriesMetadataModificationCount());
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "nonAlignedTimeSeriesMetadataModificationTime",
+        queryStatistics.getNonAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
 
     addLineWithValueCheck(
         singleFragmentInstanceArea,
@@ -333,26 +356,6 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "pageReaderMaxUsedMemorySize",
         queryStatistics.pageReaderMaxUsedMemorySize);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        1,
-        "AlignedTimeSeriesMetadataModificationCount",
-        queryStatistics.getAlignedTimeSeriesMetadataModificationCount());
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        1,
-        "AlignedTimeSeriesMetadataModificationTime",
-        queryStatistics.getAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        1,
-        "NonAlignedTimeSeriesMetadataModificationCount",
-        queryStatistics.getNonAlignedTimeSeriesMetadataModificationCount());
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        1,
-        "NonAlignedTimeSeriesMetadataModificationTime",
-        queryStatistics.getNonAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {
