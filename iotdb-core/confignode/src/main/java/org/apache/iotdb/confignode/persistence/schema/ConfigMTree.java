@@ -806,8 +806,8 @@ public class ConfigMTree {
   public void deserialize(InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
-    String name = null;
-    int childNum = 0;
+    String name;
+    int childNum;
     Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
@@ -817,9 +817,15 @@ public class ConfigMTree {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
       stack.push(new Pair<>(databaseMNode, true));
+    } else if (type == TABLE_MNODE_TYPE) {
+      tableNode = deserializeTableMNode(inputStream);
+      name = tableNode.getName();
+      stack.push(new Pair<>(tableNode, false));
     } else {
+      // Currently internal mNode will not be the leaf node and thus will not be deserialized here
+      // This is just in case
       internalMNode = deserializeInternalMNode(inputStream);
-      childNum = ReadWriteIOUtils.readInt(inputStream);
+      ReadWriteIOUtils.readInt(inputStream);
       name = internalMNode.getName();
       stack.push(new Pair<>(internalMNode, false));
     }
@@ -841,8 +847,7 @@ public class ConfigMTree {
           break;
         case STORAGE_GROUP_MNODE_TYPE:
           databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
-          childNum = 0;
-          while (!stack.isEmpty() && !stack.peek().right) {
+          while (!stack.isEmpty() && Boolean.TRUE.equals(!stack.peek().right)) {
             databaseMNode.addChild(stack.pop().left);
           }
           stack.push(new Pair<>(databaseMNode, true));
@@ -854,7 +859,7 @@ public class ConfigMTree {
           name = tableNode.getName();
           break;
         default:
-          logger.error("Unrecognized node type. Cannot deserialize MTreeAboveSG from given buffer");
+          logger.error("Unrecognized node type {} when recovering the mTree.", type);
           return;
       }
     }
