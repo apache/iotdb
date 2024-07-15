@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
+import com.google.common.collect.ImmutableSet;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -257,31 +259,37 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
   public void executePrefetch() {
     super.tryPrefetch(false);
 
-    for (final Map.Entry<String, SubscriptionEvent> entry :
-        consumerIdToSubscriptionEventMap.entrySet()) {
-      final String consumerId = entry.getKey();
-      final SubscriptionEvent event = entry.getValue();
+    // iterate on the snapshot of the key set
+    final Set<String> consumerIds = ImmutableSet.copyOf(consumerIdToSubscriptionEventMap.keySet());
+    for (final String consumerId : consumerIds) {
+      consumerIdToSubscriptionEventMap.compute(
+          consumerId,
+          (id, ev) -> {
+            if (Objects.isNull(ev)) {
+              return null;
+            }
 
-      // clean up committed event
-      if (event.isCommitted()) {
-        event.cleanup();
-        consumerIdToSubscriptionEventMap.remove(consumerId);
-        continue;
-      }
+            // clean up committed event
+            if (ev.isCommitted()) {
+              ev.cleanup();
+              return null; // remove this entry
+            }
 
-      // nack pollable event
-      if (event.pollable()) {
-        event.nack();
-        consumerIdToSubscriptionEventMap.remove(consumerId);
-        continue;
-      }
+            // nack pollable event
+            if (ev.pollable()) {
+              ev.nack();
+              return null; // remove this entry
+            }
 
-      // prefetch and serialize remaining subscription events
-      try {
-        event.prefetchRemainingResponses();
-        event.trySerializeRemainingResponses();
-      } catch (final IOException ignored) {
-      }
+            // prefetch and serialize remaining subscription events
+            try {
+              ev.prefetchRemainingResponses();
+              ev.trySerializeRemainingResponses();
+            } catch (final IOException ignored) {
+            }
+
+            return ev;
+          });
     }
   }
 
