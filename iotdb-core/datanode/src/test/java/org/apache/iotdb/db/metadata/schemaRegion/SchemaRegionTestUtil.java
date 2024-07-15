@@ -37,6 +37,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -368,13 +369,13 @@ public class SchemaRegionTestUtil {
     return result;
   }
 
-  public static long deleteTimeSeries(ISchemaRegion schemaRegion, PartialPath pathPattern)
-      throws MetadataException {
-    PathPatternTree patternTree = new PathPatternTree();
+  public static Pair<Long, Boolean> deleteTimeSeries(
+      final ISchemaRegion schemaRegion, final PartialPath pathPattern) throws MetadataException {
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pathPattern);
     patternTree.constructTree();
-    long num = schemaRegion.constructSchemaBlackList(patternTree);
+    final Pair<Long, Boolean> numIsViewPair = schemaRegion.constructSchemaBlackList(patternTree);
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
-    return num;
+    return numIsViewPair;
   }
 }

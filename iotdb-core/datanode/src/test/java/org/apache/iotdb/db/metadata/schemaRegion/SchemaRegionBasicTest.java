@@ -376,7 +376,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.*.status"));
     patternTree.appendPathPattern(new PartialPath("root.sg.wf02.wt01.temperature"));
     patternTree.constructTree();
-    Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree) >= 4);
+    Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree).getLeft() >= 4);
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
