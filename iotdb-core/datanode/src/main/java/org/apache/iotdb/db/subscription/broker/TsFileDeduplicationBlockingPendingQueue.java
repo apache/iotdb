@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -44,27 +45,37 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
     this.polledTsFiles =
         Caffeine.newBuilder()
-            .expireAfterWrite(10, TimeUnit.MINUTES) // TODO: config
+            .expireAfterWrite(
+                SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
+                TimeUnit.SECONDS)
             .build();
   }
 
   @Override
-  public synchronized Event waitedPoll() { // make it synchronized
-    final Event event = inputPendingQueue.waitedPoll();
+  public Event waitedPoll() {
+    return filter(inputPendingQueue.waitedPoll());
+  }
+
+  private synchronized Event filter(final Event event) { // make it synchronized
+    if (Objects.isNull(event)) {
+      return null;
+    }
+
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
       if (Objects.nonNull(polledTsFiles.getIfPresent(hashcode))) {
-        // commit directly
         LOGGER.info(
             "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
             pipeTsFileInsertionEvent.coreReportMessage());
+        // commit directly
         pipeTsFileInsertionEvent.decreaseReferenceCount(
             TsFileDeduplicationBlockingPendingQueue.class.getName(), true);
         return null;
       }
       polledTsFiles.put(hashcode, hashcode);
     }
+
     return event;
   }
 }
