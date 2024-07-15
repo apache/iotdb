@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusConnectorEnqueueException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
@@ -233,7 +233,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeConsensusConnectorEnqueueException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          ENQUEUE_EXCEPTION_MSG, Integer.MAX_VALUE);
     }
     // batch transfer tablets.
     if (isTabletBatchModeEnabled) {
@@ -328,7 +329,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tsFileInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeConsensusConnectorEnqueueException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          ENQUEUE_EXCEPTION_MSG, Integer.MAX_VALUE);
     }
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusConnectorEnqueueException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -107,11 +106,6 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
           throwable);
       clearReferenceCountAndReleaseLastExceptionEvent();
       submitSelf();
-      return;
-    }
-
-    if (throwable instanceof PipeConsensusConnectorEnqueueException) {
-      // Do nothing for pipeConsensus enqueue exception
       return;
     }
 
