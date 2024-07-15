@@ -37,8 +37,10 @@ import java.util.Map;
 public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
+  private boolean isReplaceAllExtractorAttributes;
   private boolean isReplaceAllProcessorAttributes;
   private boolean isReplaceAllConnectorAttributes;
 
@@ -48,6 +50,14 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public Map<String, String> getExtractorAttributes() {
+    return extractorAttributes;
+  }
+
+  public boolean isReplaceAllExtractorAttributes() {
+    return isReplaceAllExtractorAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
@@ -70,12 +80,20 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     this.pipeName = pipeName;
   }
 
+  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
+    this.extractorAttributes = extractorAttributes;
+  }
+
   public void setProcessorAttributes(Map<String, String> processorAttributes) {
     this.processorAttributes = processorAttributes;
   }
 
   public void setConnectorAttributes(Map<String, String> connectorAttributes) {
     this.connectorAttributes = connectorAttributes;
+  }
+
+  public void setReplaceAllExtractorAttributes(boolean replaceAllExtractorAttributes) {
+    isReplaceAllExtractorAttributes = replaceAllExtractorAttributes;
   }
 
   public void setReplaceAllProcessorAttributes(boolean replaceAllProcessorAttributes) {

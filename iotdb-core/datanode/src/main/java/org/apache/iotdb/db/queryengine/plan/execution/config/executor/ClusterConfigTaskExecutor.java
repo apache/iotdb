@@ -1789,6 +1789,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate pipe plugin before alteration - only validate replace mode
     final String pipeName = alterPipeStatement.getPipeName();
     try {
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+      }
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllProcessorAttributes()) {
         PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
@@ -1810,8 +1814,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TAlterPipeReq req =
           new TAlterPipeReq(
               pipeName,
+              alterPipeStatement.getExtractorAttributes(),
               alterPipeStatement.getProcessorAttributes(),
               alterPipeStatement.getConnectorAttributes(),
+              alterPipeStatement.isReplaceAllExtractorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);

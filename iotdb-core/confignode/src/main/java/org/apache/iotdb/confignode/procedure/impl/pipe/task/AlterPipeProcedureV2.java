@@ -116,10 +116,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            new HashMap<>(
-                currentPipeStaticMeta
-                    .getExtractorParameters()
-                    .getAttribute()), // reuse pipe source plugin
+            new HashMap<>(alterPipeRequest.getExtractorAttributes()), // reuse pipe source plugin
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
@@ -262,6 +259,11 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.ALTER_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(alterPipeRequest.getPipeName(), stream);
+    ReadWriteIOUtils.write(alterPipeRequest.getExtractorAttributesSize(), stream);
+    for (Map.Entry<String, String> entry : alterPipeRequest.getExtractorAttributes().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
     ReadWriteIOUtils.write(alterPipeRequest.getProcessorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : alterPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
@@ -272,6 +274,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
+    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllExtractorAttributes, stream);
     ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllProcessorAttributes, stream);
     ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllConnectorAttributes, stream);
     if (currentPipeStaticMeta != null) {
@@ -311,6 +314,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       alterPipeRequest
+          .getExtractorAttributes()
+          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      alterPipeRequest
           .getProcessorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
@@ -320,6 +329,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
+    alterPipeRequest.isReplaceAllExtractorAttributes = ReadWriteIOUtils.readBool((byteBuffer));
     alterPipeRequest.isReplaceAllProcessorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     alterPipeRequest.isReplaceAllConnectorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
@@ -347,6 +357,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     AlterPipeProcedureV2 that = (AlterPipeProcedureV2) o;
     return this.alterPipeRequest.getPipeName().equals(that.alterPipeRequest.getPipeName())
         && this.alterPipeRequest
+            .getExtractorAttributes()
+            .toString()
+            .equals(that.alterPipeRequest.getExtractorAttributes().toString())
+        && this.alterPipeRequest
             .getProcessorAttributes()
             .toString()
             .equals(that.alterPipeRequest.getProcessorAttributes().toString())
@@ -360,6 +374,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public int hashCode() {
     return Objects.hash(
         alterPipeRequest.getPipeName(),
+        alterPipeRequest.getExtractorAttributes(),
         alterPipeRequest.getProcessorAttributes(),
         alterPipeRequest.getConnectorAttributes());
   }

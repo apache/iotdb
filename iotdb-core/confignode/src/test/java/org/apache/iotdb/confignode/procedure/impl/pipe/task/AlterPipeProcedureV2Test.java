@@ -48,7 +48,14 @@ public class AlterPipeProcedureV2Test {
 
     AlterPipeProcedureV2 proc =
         new AlterPipeProcedureV2(
-            new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true));
+            new TAlterPipeReq(
+                "testPipe",
+                new HashMap<>(),
+                processorAttributes,
+                connectorAttributes,
+                false,
+                false,
+                true));
 
     try {
       proc.serialize(outputStream);
