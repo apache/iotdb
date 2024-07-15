@@ -199,43 +199,48 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           }
         };
 
-    // Try to handshake by PipeTransferHandshakeV2Req.
-    final HashMap<String, String> params = new HashMap<>();
-    params.put(
-        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
-        IoTDBDescriptor.getInstance().getConfig().getClusterId());
-    params.put(
-        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-
-    client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
-    client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
-    waitHandshakeFinished(isHandshakeFinished);
-
-    // Retry to handshake by PipeTransferHandshakeV1Req.
-    if (resp.get() != null
-        && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-      LOGGER.info(
-          "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
-              + "retry to handshake by PipeTransferHandshakeV1Req.",
-          targetNodeUrl.getIp(),
-          targetNodeUrl.getPort());
-
-      supportModsIfIsDataNodeReceiver = false;
-      isHandshakeFinished.set(false);
-      resp.set(null);
-      exception.set(null);
+    try {
+      client.setShouldReturnSelf(false);
+      // Try to handshake by PipeTransferHandshakeV2Req.
+      final HashMap<String, String> params = new HashMap<>();
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          IoTDBDescriptor.getInstance().getConfig().getClusterId());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
-      client.pipeTransfer(
-          PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
-              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
-          callback);
+      client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
       waitHandshakeFinished(isHandshakeFinished);
-    }
 
-    if (exception.get() != null) {
-      throw new PipeConnectionException("Failed to handshake.", exception.get());
+      // Retry to handshake by PipeTransferHandshakeV1Req.
+      if (resp.get() != null
+          && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+        LOGGER.info(
+            "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
+                + "retry to handshake by PipeTransferHandshakeV1Req.",
+            targetNodeUrl.getIp(),
+            targetNodeUrl.getPort());
+
+        supportModsIfIsDataNodeReceiver = false;
+        isHandshakeFinished.set(false);
+        resp.set(null);
+        exception.set(null);
+
+        client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
+        client.pipeTransfer(
+            PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            callback);
+        waitHandshakeFinished(isHandshakeFinished);
+      }
+      if (exception.get() != null) {
+        throw new PipeConnectionException("Failed to handshake.", exception.get());
+      }
+    } finally {
+      client.setShouldReturnSelf(true);
+      client.returnSelf();
     }
 
     return false;
