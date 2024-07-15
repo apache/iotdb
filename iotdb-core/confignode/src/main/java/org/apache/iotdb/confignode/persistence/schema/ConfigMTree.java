@@ -847,7 +847,7 @@ public class ConfigMTree {
           break;
         case STORAGE_GROUP_MNODE_TYPE:
           databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
-          while (!stack.isEmpty() && Boolean.TRUE.equals(!stack.peek().right)) {
+          while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
             databaseMNode.addChild(stack.pop().left);
           }
           stack.push(new Pair<>(databaseMNode, true));
