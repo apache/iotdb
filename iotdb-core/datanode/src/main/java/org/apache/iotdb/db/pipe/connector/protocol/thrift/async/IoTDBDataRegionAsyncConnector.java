@@ -83,11 +83,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncConnector.class);
 
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver.";
+      "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver %s:%s.";
+      "Exception occurred while sending to receiver %s:%s.";
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 

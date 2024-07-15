@@ -113,17 +113,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final PipePluginCoordinator pipePluginCoordinator =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
-    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.tryLock();
-    if (pipeTaskInfo == null) {
-      String exceptionMessage =
-          String.format(
-              "ProcedureId %d failed to acquire pipe lock due to high competition with other pipe operations. "
-                  + "The PipeTaskInfo is frequently accessed by other operations.",
-              getProcId());
-      LOGGER.warn(exceptionMessage);
-      setFailure(new ProcedureException(exceptionMessage));
-      return Flow.NO_MORE_STATE;
-    }
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
 
     try {
