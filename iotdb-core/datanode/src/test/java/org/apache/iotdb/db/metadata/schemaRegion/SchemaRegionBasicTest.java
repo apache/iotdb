@@ -219,7 +219,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             .isEmpty());
 
     patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.*.wt01.temperature"));
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.*.temperature"));
     patternTree.constructTree();
     Assert.assertTrue(
         schemaRegion
