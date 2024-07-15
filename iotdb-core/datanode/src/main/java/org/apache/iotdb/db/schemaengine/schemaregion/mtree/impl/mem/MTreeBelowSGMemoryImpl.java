@@ -89,7 +89,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -233,24 +232,19 @@ public class MTreeBelowSGMemoryImpl {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
-      boolean existAndNeedMerge = false;
-
       if (device.hasChild(leafName)) {
         final IMemMNode node = device.getChild(leafName);
         if (node.isMeasurement()) {
           final IMeasurementMNode<IMemMNode> measurementNode = node.getAsMeasurementMNode();
           if (measurementNode.isPreDeleted()) {
             throw new MeasurementInBlackListException(path);
-          } else if (!withMerge
-              || measurementNode.getDataType() != dataType
-              || !Objects.equals(node.getAlias(), alias)
-              || !Objects.equals(measurementNode.getSchema().getEncodingType(), encoding)
-              || !Objects.equals(measurementNode.getSchema().getCompressor(), compressor)) {
-            // Only the props can be merged
+          } else if (!withMerge || measurementNode.getDataType() != dataType) {
+            // Report conflict if the types are different
             throw new MeasurementAlreadyExistException(
                 path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
           } else {
-            existAndNeedMerge = true;
+            // Return null iff we should merge the time series with the existing one
+            return null;
           }
         } else {
           throw new PathAlreadyExistException(path.getFullPath());
@@ -277,25 +271,22 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(false);
       }
 
-      final IMeasurementMNode<IMemMNode> measurementMNode =
+      final IMeasurementMNode<IMemMNode> measurementMNode;
+
+      measurementMNode =
           nodeFactory.createMeasurementMNode(
               entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
 
-      if (existAndNeedMerge) {
-        store.deleteChild(entityMNode.getAsMNode(), leafName);
-      } else {
-        store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
-        // Update statistics and schemaDataTypeNumMap
-        regionStatistics.addMeasurement(1L);
-      }
+      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
 
       // link alias to LeafMNode
       if (alias != null) {
         entityMNode.addAlias(alias, measurementMNode);
       }
+
       return measurementMNode;
     }
   }
@@ -311,26 +302,26 @@ public class MTreeBelowSGMemoryImpl {
    * @param compressors compressor
    */
   public List<IMeasurementMNode<IMemMNode>> createAlignedTimeSeries(
-      PartialPath devicePath,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> aliasList,
-      boolean withRewrite)
+      final PartialPath devicePath,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<TSEncoding> encodings,
+      final List<CompressionType> compressors,
+      final List<String> aliasList,
+      final boolean withMerge)
       throws MetadataException {
-    List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
+    final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
-    IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+    final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     // synchronize check and add, we need addChild operation be atomic.
     // only write operations on mtree will be synchronized
     synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+      final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
-          IMemMNode node = device.getChild(measurements.get(i));
+          final IMemMNode node = device.getChild(measurements.get(i));
           if (node.isMeasurement()) {
             if (node.getAsMeasurementMNode().isPreDeleted()) {
               throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));

@@ -102,6 +102,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -582,6 +583,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getAlias(),
               plan.getPlanType() == SchemaRegionPlanType.CREATE_TIME_SERIES_WITH_MERGE);
 
+      // Should merge
+      if (Objects.isNull(leafMNode)) {
+        upsertAliasAndTagsAndAttributes(
+            plan.getAlias(), plan.getTags(), plan.getAttributes(), path);
+        return;
+      }
+
+      // Update statistics and schemaDataTypeNumMap
+      regionStatistics.addMeasurement(1L);
+
       // Update tag index
       if (offset != -1 && isRecovering) {
         // The time series has already been created and now system is recovering, using the tag
@@ -617,21 +628,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   @Override
-  public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    int seriesCount = plan.getMeasurements().size();
+  public void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan)
+      throws MetadataException {
+    final int seriesCount = plan.getMeasurements().size();
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     try {
-      PartialPath prefixPath = plan.getDevicePath();
-      List<String> measurements = plan.getMeasurements();
-      List<TSDataType> dataTypes = plan.getDataTypes();
-      List<TSEncoding> encodings = plan.getEncodings();
-      List<Map<String, String>> tagsList = plan.getTagsList();
-      List<Map<String, String>> attributesList = plan.getAttributesList();
-      List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
+      final PartialPath prefixPath = plan.getDevicePath();
+      final List<String> measurements = plan.getMeasurements();
+      final List<TSDataType> dataTypes = plan.getDataTypes();
+      final List<TSEncoding> encodings = plan.getEncodings();
+      final List<Map<String, String>> tagsList = plan.getTagsList();
+      final List<Map<String, String>> attributesList = plan.getAttributesList();
+      final List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
 
       for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
@@ -695,7 +707,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
         }
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new MetadataException(e);
     }
   }
