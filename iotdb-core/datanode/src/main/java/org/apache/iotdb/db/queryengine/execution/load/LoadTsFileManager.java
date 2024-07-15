@@ -315,7 +315,10 @@ public class LoadTsFileManager {
   }
 
   public static void updateWritePointCountMetrics(
-      final DataRegion dataRegion, final String databaseName, final long writePointCount) {
+      final DataRegion dataRegion,
+      final String databaseName,
+      final long writePointCount,
+      final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionId());
     MetricService.getInstance()
@@ -342,7 +345,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionId())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0) {
+    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,
@@ -467,7 +470,7 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName ->
                     updateWritePointCountMetrics(
-                        dataRegion, databaseName, getTsFileWritePointCount(writer)));
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 
