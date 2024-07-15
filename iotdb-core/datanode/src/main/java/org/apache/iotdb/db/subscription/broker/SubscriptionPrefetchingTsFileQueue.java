@@ -95,16 +95,11 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   public SubscriptionEvent poll(final String consumerId) {
+    // check before polling event from prefetching queue
     if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }
 
-    final SubscriptionEvent pollableEvent = getPollableOnTheFlySubscriptionTsFileEvent(consumerId);
-    if (Objects.nonNull(pollableEvent)) {
-      return pollableEvent;
-    }
-
-    // At this point, the event that might be polled should not have been polled by any consumer.
     final SubscriptionEvent event = super.poll(consumerId);
     if (Objects.nonNull(event)) {
       consumerIdToSubscriptionEventMap.put(consumerId, event);
@@ -113,26 +108,25 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
     return event;
   }
 
-  public synchronized @NonNull SubscriptionEvent pollTsFile(
+  public @NonNull SubscriptionEvent pollTsFile(
       final String consumerId, final String fileName, final long writingOffset) {
     // 1. Extract current event and check it
-    final SubscriptionEvent event = consumerIdToSubscriptionEventMap.get(consumerId);
+    final SubscriptionEvent event =
+        consumerIdToSubscriptionEventMap.compute(
+            consumerId,
+            (id, ev) -> {
+              if (Objects.nonNull(ev) && ev.isCommitted()) {
+                ev.cleanup();
+                return null; // remove this entry
+              }
+              return ev;
+            });
+
     if (Objects.isNull(event)) {
       final String errorMessage =
           String.format(
               "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any TsFile to consumer %s, file name: %s, writing offset: %s",
               this, consumerId, fileName, writingOffset);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionPollErrorResponse(errorMessage);
-    }
-
-    if (event.isCommitted()) {
-      event.cleanup();
-      consumerIdToSubscriptionEventMap.remove(consumerId);
-      final String errorMessage =
-          String.format(
-              "SubscriptionEvent %s related to TsFile is committed, consumer: %s, writing offset: %s, prefetching queue: %s",
-              event, consumerId, writingOffset, this);
       LOGGER.warn(errorMessage);
       return generateSubscriptionPollErrorResponse(errorMessage);
     }
@@ -260,17 +254,33 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
   /////////////////////////////// prefetch ///////////////////////////////
 
   @Override
-  public synchronized void executePrefetch() {
-    if (prefetchingQueue.isEmpty() || consumerIdToSubscriptionEventMap.isEmpty()) {
-      super.tryPrefetch(false);
-    } else {
-      // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
-      for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
-        try {
-          event.prefetchRemainingResponses();
-          event.trySerializeRemainingResponses();
-        } catch (final IOException ignored) {
-        }
+  public void executePrefetch() {
+    super.tryPrefetch(false);
+
+    for (final Map.Entry<String, SubscriptionEvent> entry :
+        consumerIdToSubscriptionEventMap.entrySet()) {
+      final String consumerId = entry.getKey();
+      final SubscriptionEvent event = entry.getValue();
+
+      // clean up committed event
+      if (event.isCommitted()) {
+        event.cleanup();
+        consumerIdToSubscriptionEventMap.remove(consumerId);
+        continue;
+      }
+
+      // nack pollable event
+      if (event.pollable()) {
+        event.nack();
+        consumerIdToSubscriptionEventMap.remove(consumerId);
+        continue;
+      }
+
+      // prefetch and serialize remaining subscription events
+      try {
+        event.prefetchRemainingResponses();
+        event.trySerializeRemainingResponses();
+      } catch (final IOException ignored) {
       }
     }
   }
@@ -358,15 +368,38 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
+   * @return {@code true} if ack successfully
+   */
+  @Override
+  public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
+    if (super.ack(consumerId, commitContext)) {
+      consumerIdToSubscriptionEventMap.compute(
+          consumerId,
+          (id, ev) -> {
+            if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
+              return null; // remove this entry
+            }
+            return ev;
+          });
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * @return {@code true} if nack successfully
    */
   @Override
   public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     if (super.nack(consumerId, commitContext)) {
-      final SubscriptionEvent event = consumerIdToSubscriptionEventMap.get(consumerId);
-      if (Objects.nonNull(event) && Objects.equals(commitContext, event.getCommitContext())) {
-        consumerIdToSubscriptionEventMap.remove(consumerId);
-      }
+      consumerIdToSubscriptionEventMap.compute(
+          consumerId,
+          (id, ev) -> {
+            if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
+              return null; // remove this entry
+            }
+            return ev;
+          });
       return true;
     }
     return false;
@@ -374,20 +407,20 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private synchronized boolean hasUnPollableOnTheFlySubscriptionTsFileEvent(
-      final String consumerId) {
-    final SubscriptionEvent event = consumerIdToSubscriptionEventMap.get(consumerId);
-    if (Objects.isNull(event)) {
-      return false;
-    }
+  private boolean hasUnPollableOnTheFlySubscriptionTsFileEvent(final String consumerId) {
+    final SubscriptionEvent event =
+        consumerIdToSubscriptionEventMap.compute(
+            consumerId,
+            (id, ev) -> {
+              if (Objects.nonNull(ev) && ev.isCommitted()) {
+                ev.cleanup();
+                return null; // remove this entry
+              }
 
-    if (event.isCommitted()) {
-      event.cleanup();
-      consumerIdToSubscriptionEventMap.remove(consumerId);
-      return false;
-    }
+              return ev;
+            });
 
-    if (!event.pollable()) {
+    if (Objects.nonNull(event) && !event.pollable()) {
       LOGGER.info(
           "SubscriptionPrefetchingTsFileQueue {} is currently transferring TsFile (with event {}) to consumer {}",
           this,
@@ -397,36 +430,6 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
     }
 
     return false;
-  }
-
-  private synchronized SubscriptionEvent getPollableOnTheFlySubscriptionTsFileEvent(
-      final String consumerId) {
-    for (final Map.Entry<String, SubscriptionEvent> entry :
-        consumerIdToSubscriptionEventMap.entrySet()) {
-      final SubscriptionEvent event = entry.getValue();
-      if (event.isCommitted()) {
-        event.cleanup();
-        consumerIdToSubscriptionEventMap.remove(entry.getKey());
-        continue;
-      }
-
-      if (!event.pollable()) {
-        continue;
-      }
-
-      // uncommitted and pollable event
-
-      consumerIdToSubscriptionEventMap.remove(entry.getKey());
-
-      event.nack();
-      consumerIdToSubscriptionEventMap.put(consumerId, event);
-
-      event.recordLastPolledConsumerId(consumerId);
-      event.recordLastPolledTimestamp();
-      return event;
-    }
-
-    return null;
   }
 
   private SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {

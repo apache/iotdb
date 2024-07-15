@@ -244,6 +244,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event.isCommitted()) {
+      event.cleanup();
       LOGGER.warn(
           "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
           event,

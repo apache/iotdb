@@ -120,6 +120,7 @@ public class SubscriptionEvent {
     committedTimestamp = System.currentTimeMillis();
   }
 
+  /** NOTE: {@link SubscriptionEvent#cleanup} should be called immediately if event is committed */
   public boolean isCommitted() {
     if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
       // event with invalid commit id is committed
@@ -161,6 +162,9 @@ public class SubscriptionEvent {
     }
     if (lastPolledTimestamp == INVALID_TIMESTAMP) {
       return true;
+    }
+    if (Objects.nonNull(lastPolledConsumerId)) {
+      return false;
     }
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.

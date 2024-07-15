@@ -83,11 +83,8 @@ class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   public void executePrefetch() {
-    if (prefetchingQueue.isEmpty()) {
-      super.tryPrefetch(false);
-    } else {
-      this.serializeEventsInQueue();
-    }
+    super.tryPrefetch(false);
+    this.serializeEventsInQueue();
   }
 
   @Override
