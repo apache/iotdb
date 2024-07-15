@@ -261,14 +261,16 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   public synchronized void executePrefetch() {
-    super.tryPrefetch(false);
-
-    // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
-    for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
-      try {
-        event.prefetchRemainingResponses();
-        event.trySerializeRemainingResponses();
-      } catch (final IOException ignored) {
+    if (prefetchingQueue.isEmpty() || consumerIdToSubscriptionEventMap.isEmpty()) {
+      super.tryPrefetch(false);
+    } else {
+      // prefetch remaining subscription events based on {@link consumerIdToSubscriptionEventMap}
+      for (final SubscriptionEvent event : consumerIdToSubscriptionEventMap.values()) {
+        try {
+          event.prefetchRemainingResponses();
+          event.trySerializeRemainingResponses();
+        } catch (final IOException ignored) {
+        }
       }
     }
   }

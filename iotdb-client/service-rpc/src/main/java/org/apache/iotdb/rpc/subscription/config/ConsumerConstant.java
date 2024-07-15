@@ -65,11 +65,10 @@ public class ConsumerConstant {
   public static final String CONSUME_LISTENER_KEY = "consume-listener";
 
   public static final String AUTO_POLL_INTERVAL_MS_KEY = "auto-poll-interval-ms";
-  public static final long AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE = 500L;
-  public static final long AUTO_POLL_INTERVAL_MS_MIN_VALUE = 100L;
+  public static final long AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE = 100L;
 
   public static final String AUTO_POLL_TIMEOUT_MS_KEY = "auto-poll-timeout-ms";
-  public static final long AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE = 5_000L;
+  public static final long AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE = 10_000L;
   public static final long AUTO_POLL_TIMEOUT_MS_MIN_VALUE = 1_000L;
 
   private ConsumerConstant() {

@@ -140,15 +140,20 @@ public abstract class SubscriptionPrefetchingQueue {
   public abstract void executePrefetch();
 
   /**
-   * prefetch at most one {@link SubscriptionEvent} from {@link
+   * Prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   * SubscriptionPrefetchingQueue#prefetchingQueue}.
+   *
+   * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
+   * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
+   *
+   * @param trySealBatchIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#trySealBatch} is
+   *     called when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
+   *     otherwise
    */
   protected void tryPrefetch(final boolean trySealBatchIfEmpty) {
-    Event event;
-
     while (!inputPendingQueue.isEmpty()) {
-      event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+      final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {
         // The event will be null in two cases:
         // 1. The inputPendingQueue is empty.
@@ -202,6 +207,7 @@ public abstract class SubscriptionPrefetchingQueue {
       }
     }
 
+    // At this moment, the inputPendingQueue is empty.
     if (trySealBatchIfEmpty) {
       trySealBatch();
     }
