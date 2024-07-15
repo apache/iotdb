@@ -217,6 +217,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         schemaRegion
             .fetchSeriesSchema(patternTree, Collections.emptyMap(), false, false, true, false)
             .isEmpty());
+
+    patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.*.wt01.temperature"));
+    patternTree.constructTree();
+    Assert.assertTrue(
+        schemaRegion
+            .fetchSeriesSchema(patternTree, Collections.emptyMap(), false, false, true, false)
+            .isEmpty());
   }
 
   @Test
