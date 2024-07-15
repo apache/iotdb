@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.MmapUtil;
 
+import org.apache.tsfile.compress.ICompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,12 +151,17 @@ public class WALBuffer extends AbstractWALBuffer {
     try {
       workingBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
       idleBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
-      compressedByteBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
+      compressedByteBuffer =
+          ByteBuffer.allocateDirect(getCompressedByteBufferSize(ONE_THIRD_WAL_BUFFER_SIZE));
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
       throw e;
     }
+  }
+
+  private int getCompressedByteBufferSize(int size) {
+    return ICompressor.getCompressor(CompressionType.LZ4).getMaxBytesForCompression(size);
   }
 
   @Override
@@ -175,7 +182,7 @@ public class WALBuffer extends AbstractWALBuffer {
       MmapUtil.clean(compressedByteBuffer);
       workingBuffer = ByteBuffer.allocateDirect(capacity);
       idleBuffer = ByteBuffer.allocateDirect(capacity);
-      compressedByteBuffer = ByteBuffer.allocateDirect(capacity);
+      compressedByteBuffer = ByteBuffer.allocateDirect(getCompressedByteBufferSize(capacity));
       currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
