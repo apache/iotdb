@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -60,19 +58,6 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
   private synchronized Event filter(final Event event) { // make it synchronized
     if (Objects.isNull(event)) {
-      return null;
-    }
-
-    if (!(event instanceof EnrichedEvent)) {
-      LOGGER.info("Subscription: Ignore {}", event);
-      return null;
-    }
-
-    if (event instanceof PipeTerminateEvent) {
-      LOGGER.info("Subscription: Detect PipeTerminateEvent {}, commit it directly", event);
-      // commit directly
-      ((PipeTerminateEvent) event)
-          .decreaseReferenceCount(TsFileDeduplicationBlockingPendingQueue.class.getName(), true);
       return null;
     }
 
