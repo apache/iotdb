@@ -115,7 +115,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testRecoverWithMergeCreation() throws Exception {
+  public void testRecoverAfterCreateAlignedTimeSeriesWithMerge() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
     final Map<String, String> oldTagMap = Collections.singletonMap("tagK", "tagV");
@@ -181,7 +181,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testCreateTimeSeriesWithMerge() throws Exception {
+  public void testRecoverAfterCreateTimeSeriesWithMerge() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
     final Map<String, String> oldTagMap = Collections.singletonMap("tagK", "tagV");

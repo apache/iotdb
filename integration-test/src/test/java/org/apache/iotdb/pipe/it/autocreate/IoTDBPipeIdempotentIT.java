@@ -82,35 +82,35 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testCreateTimeseriesIdempotent() throws Exception {
+  public void testCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+        "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
   @Test
-  public void testCreateAlignedTimeseriesIdempotent() throws Exception {
+  public void testCreateAlignedTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
-        "create timeseries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+        "create timeSeries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("3,"));
   }
 
   @Test
-  public void testCreateTimeseriesWithAliasIdempotent() throws Exception {
+  public void testCreateTimeSeriesWithAliasIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+        "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeSeries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
@@ -119,9 +119,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     testIdempotent(
         Collections.emptyList(),
         "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+        "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
@@ -129,11 +129,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testAlterTimeseriesAddTagIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(
-            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
-        "ALTER timeseries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+            "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+        "ALTER timeSeries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
+        "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
@@ -141,24 +141,24 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testAlterTimeseriesAddAttrIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(
-            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
-        "ALTER timeseries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+            "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+        "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
+        "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
   @Test
-  public void testAlterTimeseriesRenameIdempotent() throws Exception {
+  public void testAlterTimeSeriesRenameIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
-            "ALTER timeseries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
-        "ALTER timeseries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+            "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
+            "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
+        "ALTER timeSeries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
+        "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("2,"));
   }
 
@@ -166,11 +166,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testDeleteTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(
-            "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN"),
-        "delete timeseries root.ln.wf01.wt01.status0",
-        "create timeseries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeseries",
-        "count(timeseries),",
+            "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN"),
+        "delete timeSeries root.ln.wf01.wt01.status0",
+        "create timeSeries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("1,"));
   }
 
@@ -243,10 +243,10 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
             "create database root.sg1",
             "set schema template t1 to root.sg1"),
-        "create timeseries using device template on root.sg1.d1",
-        "create timeseries using device template on root.sg1.d2",
-        "count timeseries",
-        "count(timeseries),",
+        "create timeSeries using device template on root.sg1.d1",
+        "create timeSeries using device template on root.sg1.d2",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("6,"));
   }
 
@@ -257,12 +257,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
             "create database root.sg1",
             "set schema template t1 to root.sg1",
-            "create timeseries using device template on root.sg1.d1",
-            "create timeseries using device template on root.sg1.d2"),
-        "delete timeseries of schema template t1 from root.sg1.*",
-        "create timeseries using device template on root.sg1.d3",
-        "count timeseries",
-        "count(timeseries),",
+            "create timeSeries using device template on root.sg1.d1",
+            "create timeSeries using device template on root.sg1.d2"),
+        "delete timeSeries of schema template t1 from root.sg1.*",
+        "create timeSeries using device template on root.sg1.d3",
+        "count timeSeries",
+        "count(timeSeries),",
         Collections.singleton("3,"));
   }
 
