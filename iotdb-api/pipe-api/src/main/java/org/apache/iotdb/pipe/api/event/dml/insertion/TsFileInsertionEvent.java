@@ -34,7 +34,4 @@ public interface TsFileInsertionEvent extends Event, AutoCloseable {
    * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
-
-  /** The method is used to prevent circular replication in PipeConsensus */
-  boolean isGeneratedByPipeConsensus();
 }

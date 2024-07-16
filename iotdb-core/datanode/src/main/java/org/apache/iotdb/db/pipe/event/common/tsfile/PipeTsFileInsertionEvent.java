@@ -305,11 +305,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
-  }
-
-  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
     // In that case we only judge the resource.getFileStartTime() to avoid losing data
@@ -368,6 +363,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
+  }
+
+  /** The method is used to prevent circular replication in PipeConsensus */
+  public boolean isGeneratedByPipeConsensus() {
+    return isGeneratedByPipeConsensus;
   }
 
   private TsFileInsertionDataContainer initDataContainer() {

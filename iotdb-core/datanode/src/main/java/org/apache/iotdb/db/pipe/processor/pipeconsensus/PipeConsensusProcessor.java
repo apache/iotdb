@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -72,7 +73,7 @@ public class PipeConsensusProcessor implements PipeProcessor {
     // Only user-generated TsFileInsertionEvent can be replicated. Any tsFile synchronized from a
     // replica should not be replicated again
     if (tsFileInsertionEvent instanceof EnrichedEvent
-        && !tsFileInsertionEvent.isGeneratedByPipeConsensus()) {
+        && !((PipeTsFileInsertionEvent) tsFileInsertionEvent).isGeneratedByPipeConsensus()) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tsFileInsertionEvent;
       if (isContainLocalData(enrichedEvent)) {
         eventCollector.collect(tsFileInsertionEvent);
