@@ -88,6 +88,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -686,15 +687,19 @@ public class MTreeBelowSGCachedImpl {
     }
   }
 
-  public List<PartialPath> constructSchemaBlackList(PartialPath pathPattern)
+  public List<PartialPath> constructSchemaBlackList(
+      final PartialPath pathPattern, final AtomicBoolean isAllLogicalView)
       throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    try (MeasurementUpdater<ICachedMNode> updater =
+    final List<PartialPath> result = new ArrayList<>();
+    try (final MeasurementUpdater<ICachedMNode> updater =
         new MeasurementUpdater<ICachedMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
+          protected void updateMeasurement(final IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
+            if (!node.isLogicalView()) {
+              isAllLogicalView.set(false);
+            }
             store.updateMNode(
                 node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));

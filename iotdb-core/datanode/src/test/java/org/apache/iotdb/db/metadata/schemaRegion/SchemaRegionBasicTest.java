@@ -40,6 +40,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -203,7 +204,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.**"));
     patternTree.constructTree();
 
-    Assert.assertEquals(2, schemaRegion.constructSchemaBlackList(patternTree));
+    Assert.assertEquals(new Pair<>(2L, false), schemaRegion.constructSchemaBlackList(patternTree));
 
     Assert.assertTrue(
         schemaRegion
@@ -376,7 +377,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.*.status"));
     patternTree.appendPathPattern(new PartialPath("root.sg.wf02.wt01.temperature"));
     patternTree.constructTree();
-    Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree) >= 4);
+    Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree).getLeft() >= 4);
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
