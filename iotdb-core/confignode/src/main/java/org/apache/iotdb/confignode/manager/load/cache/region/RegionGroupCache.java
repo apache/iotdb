@@ -125,7 +125,7 @@ public class RegionGroupCache {
       // all Regions are in the Running status
       return RegionGroupStatus.Running;
     } else if (readonlyCount == 0) {
-      return unknownCount <= ((regionCacheMap.size() - 1) / 2)
+      return unknownCount <= (regionCacheMap.size() / 2)
           // The RegionGroup is considered as Available when the number of Unknown Regions is less
           // than half
           ? RegionGroupStatus.Available

@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -46,11 +47,11 @@ public class RegionGroupAllocatorSimulation {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final int TEST_LOOP = 1;
   //    private static final double EXAM_LOOP = 100000;
-  private static final int MIN_DATA_NODE_NUM = 1;
-  private static final int MAX_DATA_NODE_NUM = 100;
-  private static final int MIN_DATA_REGION_PER_DATA_NODE = 1;
-  private static final int MAX_DATA_REGION_PER_DATA_NODE = 10;
-  private static final int DATA_REPLICATION_FACTOR = 2;
+  private static final int MIN_DATA_NODE_NUM = 7;
+  private static final int MAX_DATA_NODE_NUM = 7;
+  private static final int MIN_DATA_REGION_PER_DATA_NODE = 3;
+  private static final int MAX_DATA_REGION_PER_DATA_NODE = 3;
+  private static final int DATA_REPLICATION_FACTOR = 3;
 
   private static final Map<Integer, TDataNodeConfiguration> AVAILABLE_DATA_NODE_MAP =
       new TreeMap<>();
@@ -59,7 +60,7 @@ public class RegionGroupAllocatorSimulation {
   public static class DataEntry {
     public final Integer N;
     public final Integer W;
-    public final Integer minScatterWidth;
+    public final Double minScatterRatio;
 
     //        public final List<Double> disabledPercent;
 
@@ -69,10 +70,10 @@ public class RegionGroupAllocatorSimulation {
     //            this.minScatterWidth = minScatterWidth;
     //            this.disabledPercent = disabledPercent;
     //        }
-    private DataEntry(int N, int W, int minScatterWidth) {
+    private DataEntry(int N, int W, double minScatterRatio) {
       this.N = N;
       this.W = W;
-      this.minScatterWidth = minScatterWidth;
+      this.minScatterRatio = minScatterRatio;
     }
   }
 
@@ -81,7 +82,7 @@ public class RegionGroupAllocatorSimulation {
     List<DataEntry> testResult = new ArrayList<>();
     for (int dataNodeNum = MIN_DATA_NODE_NUM; dataNodeNum <= MAX_DATA_NODE_NUM; dataNodeNum++) {
       for (int dataRegionPerDataNode = MIN_DATA_REGION_PER_DATA_NODE;
-          dataRegionPerDataNode <= Math.min(MAX_DATA_REGION_PER_DATA_NODE, dataNodeNum);
+          dataRegionPerDataNode <= MAX_DATA_REGION_PER_DATA_NODE;
           dataRegionPerDataNode++) {
         CONF.setDataRegionPerDataNode(dataRegionPerDataNode);
         testResult.add(singleTest(dataNodeNum, dataRegionPerDataNode));
@@ -89,21 +90,21 @@ public class RegionGroupAllocatorSimulation {
       //            LOGGER.info("{}, finish", dataNodeNum);
     }
 
-    //    FileWriter scatterW =
-    //      new FileWriter(
-    //        "/Users/yongzaodan/Desktop/simulation/psr-simulate/scatter/r="
-    //          + DATA_REPLICATION_FACTOR
-    //          + ".log");
-    //    for (DataEntry entry : testResult) {
-    //      scatterW.write(entry.minScatterWidth + "\n");
-    //      scatterW.flush();
-    //    }
-    //    scatterW.close();
+//    FileWriter scatterW =
+//        new FileWriter(
+//            "/Users/yongzaodan/Desktop/simulation/psr-simulate/scatter/r="
+//                + DATA_REPLICATION_FACTOR
+//                + ".log");
+//    for (DataEntry entry : testResult) {
+//      scatterW.write(entry.minScatterRatio + "\n");
+//      scatterW.flush();
+//    }
+//    scatterW.close();
   }
 
   private DataEntry singleTest(int N, int W) {
     if (N < DATA_REPLICATION_FACTOR) {
-      return new DataEntry(N, W, 0);
+      return new DataEntry(N, W, 1.0);
     }
     // Construct N DataNodes
     Random random = new Random();
@@ -119,9 +120,10 @@ public class RegionGroupAllocatorSimulation {
     final int dataRegionGroupNum = W * N / DATA_REPLICATION_FACTOR;
     List<Integer> regionCountList = new ArrayList<>();
     List<Integer> scatterWidthList = new ArrayList<>();
+    double minScatterRatio = 1.0;
     for (int loop = 1; loop <= TEST_LOOP; loop++) {
       List<TRegionReplicaSet> allocateResult = new ArrayList<>();
-      IRegionGroupAllocator ALLOCATOR = new TieredReplicationAllocator();
+      IRegionGroupAllocator ALLOCATOR = new PGRA();
       for (int index = 0; index < dataRegionGroupNum; index++) {
         allocateResult.add(
             ALLOCATOR.generateOptimalRegionReplicasDistribution(
@@ -166,6 +168,10 @@ public class RegionGroupAllocatorSimulation {
       for (int i = 1; i <= N; i++) {
         int scatterWidth =
             scatterWidthMap.containsKey(i) ? scatterWidthMap.get(i).cardinality() : 0;
+        if (regionCounter.getOrDefault(i, 0) > 0) {
+          int expMaxScatter = Math.min(regionCounter.get(i) * (DATA_REPLICATION_FACTOR - 1), N - 1);
+          minScatterRatio = Math.min(minScatterRatio, (double) scatterWidth / expMaxScatter);
+        }
         int expScatter = Math.min(Math.max(regionCounter.getOrDefault(i, 0) - 1, 0) * u, N - 1);
         if (scatterWidth < expScatter) {
           passScatter = false;
@@ -177,11 +183,12 @@ public class RegionGroupAllocatorSimulation {
         scatterWidthList.add(scatterWidth);
       }
 
-      //            for (TRegionReplicaSet regionReplicaSet : allocateResult) {
-      //              LOGGER.info("{}",
-      //
-      // regionReplicaSet.getDataNodeLocations().stream().mapToInt(TDataNodeLocation::getDataNodeId).toArray());
-      //            }
+                        for (TRegionReplicaSet regionReplicaSet : allocateResult) {
+                          LOGGER.info("{}",
+
+
+       regionReplicaSet.getDataNodeLocations().stream().mapToInt(TDataNodeLocation::getDataNodeId).toArray());
+                        }
     }
 
     int regionRange =
@@ -204,6 +211,6 @@ public class RegionGroupAllocatorSimulation {
     //          regionCountList.stream().mapToInt(Integer::intValue).min().orElse(0),
     //          regionCountList.stream().mapToInt(Integer::intValue).max().orElse(0),
     //          minScatter);
-    return new DataEntry(N, W, minScatter);
+    return new DataEntry(N, W, minScatterRatio);
   }
 }

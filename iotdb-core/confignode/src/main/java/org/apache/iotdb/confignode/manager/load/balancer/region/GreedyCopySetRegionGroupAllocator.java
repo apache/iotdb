@@ -114,6 +114,17 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           databaseAllocatedRegionGroups);
       dfs(-1, 0, new int[replicationFactor], 0, 0, 0);
 
+      if (optimalReplicaSets.isEmpty()) {
+        GreedyRegionGroupAllocator tmpAllocator = new GreedyRegionGroupAllocator();
+        return tmpAllocator.generateOptimalRegionReplicasDistribution(
+            availableDataNodeMap,
+            freeDiskSpaceMap,
+            allocatedRegionGroups,
+            databaseAllocatedRegionGroups,
+            replicationFactor,
+            consensusGroupId);
+      }
+
       // Randomly pick one optimal plan as result
       Collections.shuffle(optimalReplicaSets);
       int[] optimalReplicaSet = optimalReplicaSets.get(0);

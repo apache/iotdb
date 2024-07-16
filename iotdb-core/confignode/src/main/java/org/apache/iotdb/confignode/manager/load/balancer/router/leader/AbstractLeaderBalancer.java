@@ -71,6 +71,39 @@ public abstract class AbstractLeaderBalancer {
       Map<Integer, NodeStatistics> dataNodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap) {
 
+    //    LOGGER.info(
+    //        "[LeaderDebug] databaseRegionGroupMap: {}",
+    //        Arrays.stream(
+    //                databaseRegionGroupMap.values().stream()
+    //                    .flatMap(List::stream)
+    //                    .collect(Collectors.toSet())
+    //                    .stream()
+    //                    .mapToInt(TConsensusGroupId::getId)
+    //                    .toArray())
+    //            .sorted()
+    //            .toArray());
+    //    LOGGER.info(
+    //        "[LeaderDebug] regionLocationMap: {}",
+    //        Arrays.stream(
+    //
+    // regionLocationMap.keySet().stream().mapToInt(TConsensusGroupId::getId).toArray())
+    //            .sorted()
+    //            .toArray());
+    //    LOGGER.info(
+    //        "[LeaderDebug] regionLeaderMap: {}",
+    //        Arrays.stream(
+    //
+    // regionLeaderMap.keySet().stream().mapToInt(TConsensusGroupId::getId).toArray())
+    //            .sorted()
+    //            .toArray());
+    //    LOGGER.info(
+    //        "[LeaderDebug] regionStatisticsMap: {}",
+    //        Arrays.stream(
+    //
+    // regionStatisticsMap.keySet().stream().mapToInt(TConsensusGroupId::getId).toArray())
+    //            .sorted()
+    //            .toArray());
+
     this.databaseRegionGroupMap.putAll(databaseRegionGroupMap);
     this.regionLocationMap.putAll(regionLocationMap);
     this.regionLeaderMap.putAll(regionLeaderMap);
@@ -86,6 +119,18 @@ public abstract class AbstractLeaderBalancer {
     regionGroupUnionSet.addAll(regionLocationMap.keySet());
     regionGroupUnionSet.addAll(regionLeaderMap.keySet());
     regionGroupUnionSet.addAll(regionStatisticsMap.keySet());
+    //    LOGGER.info(
+    //        "[LeaderDebug] regionGroupIntersection: {}",
+    //
+    // Arrays.stream(regionGroupIntersection.stream().mapToInt(TConsensusGroupId::getId).toArray())
+    //            .sorted()
+    //            .toArray());
+    //    LOGGER.info(
+    //        "[LeaderDebug] regionGroupUnionSet: {}",
+    //
+    // Arrays.stream(regionGroupUnionSet.stream().mapToInt(TConsensusGroupId::getId).toArray())
+    //            .sorted()
+    //            .toArray());
     Set<TConsensusGroupId> differenceSet =
         regionGroupUnionSet.stream()
             .filter(e -> !regionGroupIntersection.contains(e))

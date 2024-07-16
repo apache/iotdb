@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -483,6 +484,14 @@ public class PartitionCache {
       if (result) {
         groupIdToReplicaSetMap.clear();
         groupIdToReplicaSetMap.putAll(map);
+        for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> routeEntry : map.entrySet()) {
+          logger.info(
+              "[RouteMap] {}: {}",
+              routeEntry.getKey(),
+              routeEntry.getValue().getDataNodeLocations().stream()
+                  .mapToInt(TDataNodeLocation::getDataNodeId)
+                  .toArray());
+        }
       }
       return result;
     } finally {

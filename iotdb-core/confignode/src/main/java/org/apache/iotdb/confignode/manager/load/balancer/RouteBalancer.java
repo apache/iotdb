@@ -316,6 +316,14 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             CnToDnRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> routeEntry : tmpPriorityMap.entrySet()) {
+      LOGGER.info(
+          "[RouteMap] {}: {}",
+          routeEntry.getKey(),
+          routeEntry.getValue().getDataNodeLocations().stream()
+              .mapToInt(TDataNodeLocation::getDataNodeId)
+              .toArray());
+    }
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
   }
 
@@ -437,7 +445,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   @Override
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
-    balanceRegionLeader();
+    //    balanceRegionLeader();
     balanceRegionPriority();
   }
 }
