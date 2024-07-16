@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
+import com.google.common.collect.ImmutableSet;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -265,8 +266,12 @@ public class AnalyzerTest {
                 Symbol.of("attr1"),
                 Symbol.of("attr2"))
             .allMatch(tableScanNode.getIdAndAttributeIndexMap()::containsKey));
+    assertEquals(Arrays.asList("tag1", "attr1", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+        ImmutableSet.of("tag1", "attr1", "s1", "s2"),
+        tableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
 
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
@@ -319,8 +324,12 @@ public class AnalyzerTest {
     assertTrue(tableScanNode.getTimePredicate().isPresent());
     assertEquals(
         "((\"time\" > 1) AND (\"time\" < 10))", tableScanNode.getTimePredicate().get().toString());
+    assertEquals(Arrays.asList("tag1", "attr1", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+        ImmutableSet.of("time", "tag1", "attr1", "s1", "s2"),
+        tableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
   }
 
   @Test
@@ -346,8 +355,12 @@ public class AnalyzerTest {
     assertEquals(
         "(((\"time\" > 1) OR (\"s1\" > 1)) AND ((\"time\" > 1) OR (\"s2\" > 2)))",
         tableScanNode.getPushDownPredicate().toString());
+    assertEquals(Arrays.asList("tag1", "attr1", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+        ImmutableSet.of("time", "tag1", "attr1", "s1", "s2"),
+        tableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
   }
 
   @Test
@@ -369,8 +382,12 @@ public class AnalyzerTest {
         "((\"time\" > 1) OR (\"s1\" > 1) OR (\"time\" < 10) OR (\"s2\" > 2))",
         tableScanNode.getPushDownPredicate().toString());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
+    assertEquals(Arrays.asList("tag1", "attr1", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+        ImmutableSet.of("time", "tag1", "attr1", "s1", "s2"),
+        tableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
   }
 
   /*
@@ -399,20 +416,27 @@ public class AnalyzerTest {
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertEquals(Arrays.asList("tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
-    assertTrue(outputNode.getChildren().get(0) instanceof FilterNode);
-    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof CollectNode);
-    CollectNode collectNode = (CollectNode) outputNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(outputNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(outputNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof CollectNode);
+    CollectNode collectNode =
+        (CollectNode) outputNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertTrue(
         collectNode.getChildren().get(0) instanceof ExchangeNode
             && collectNode.getChildren().get(2) instanceof ExchangeNode);
@@ -440,13 +464,16 @@ public class AnalyzerTest {
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
-    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("((diff(\"s1\") + 1) > 1)", filterNode.getPredicate().toString());
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals(
-        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertEquals(Arrays.asList("tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
   }
 
   @Ignore
@@ -490,9 +517,12 @@ public class AnalyzerTest {
     assertFalse(tableScanNode.getTimePredicate().isPresent());
     assertEquals("(\"s2\" = 8)", tableScanNode.getPushDownPredicate().toString());
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertEquals(Arrays.asList("tag1", "attr1", "s1"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
-        tableScanNode.getOutputColumnNames());
+        ImmutableSet.of("tag1", "attr1", "s1", "s2"),
+        tableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
 
     // 3. project with filter and function
     sql =
@@ -514,9 +544,7 @@ public class AnalyzerTest {
         (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertFalse(tableScanNode.getTimePredicate().isPresent());
     assertNull(tableScanNode.getPushDownPredicate());
-    assertEquals(
-        Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
-        tableScanNode.getOutputColumnNames());
+    assertEquals(Arrays.asList("tag1", "s1", "s2", "s3"), tableScanNode.getOutputColumnNames());
 
     // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
     sql = "SELECT tag2, attr2, s2 FROM table1";
@@ -529,8 +557,7 @@ public class AnalyzerTest {
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
-    assertEquals(
-        Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
+    assertEquals(Arrays.asList("tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
@@ -691,8 +718,9 @@ public class AnalyzerTest {
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
-    filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         "((DIFF(\"s2\") > 0) AND (\"time\" > 5) AND (\"tag1\" = 'A') AND (\"s1\" = 1))",
         filterNode.getPredicate().toString());

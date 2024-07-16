@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -73,6 +74,11 @@ public class OffsetNode extends SingleChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new OffsetNode(id, Iterables.getOnlyElement(newChildren), count);
   }
 
   public long getCount() {

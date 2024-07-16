@@ -260,8 +260,7 @@ public class QueryPlanner {
     ImmutableList.Builder<Symbol> orderBySymbols = ImmutableList.builder();
     Map<Symbol, SortOrder> orderings = new HashMap<>();
     for (Expression fieldOrExpression : orderByExpressions) {
-      Symbol symbol = new Symbol(fieldOrExpression.toString());
-      // subPlan.translate(fieldOrExpression);
+      Symbol symbol = subPlan.translate(fieldOrExpression);
 
       SortItem sortItem = sortItems.next();
       if (!orderings.containsKey(symbol)) {

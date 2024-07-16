@@ -35,6 +35,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class MergeSortNode extends MultiChildProcessNode {
   private final OrderingScheme orderingScheme;
 
@@ -42,6 +44,16 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   public MergeSortNode(PlanNodeId id, OrderingScheme orderingScheme, List<Symbol> outputSymbols) {
     super(id);
+    this.orderingScheme = orderingScheme;
+    this.outputSymbols = outputSymbols;
+  }
+
+  public MergeSortNode(
+      PlanNodeId id,
+      List<PlanNode> children,
+      OrderingScheme orderingScheme,
+      List<Symbol> outputSymbols) {
+    super(id, children);
     this.orderingScheme = orderingScheme;
     this.outputSymbols = outputSymbols;
   }
@@ -95,6 +107,12 @@ public class MergeSortNode extends MultiChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return outputSymbols;
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    checkArgument(children.size() == newChildren.size(), "wrong number of new children");
+    return new MergeSortNode(id, newChildren, orderingScheme, outputSymbols);
   }
 
   public OrderingScheme getOrderingScheme() {

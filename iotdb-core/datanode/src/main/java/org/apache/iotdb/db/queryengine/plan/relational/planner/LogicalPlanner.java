@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -30,12 +31,24 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TablePlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
@@ -45,16 +58,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
@@ -65,6 +81,8 @@ public class LogicalPlanner {
   private final MPPQueryContext context;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
+  private final List<PlanOptimizer> planOptimizers;
+  // TODO Remove after all rules are modified
   private final List<TablePlanOptimizer> tablePlanOptimizers;
   private final Metadata metadata;
   private final WarningCollector warningCollector;
@@ -78,15 +96,29 @@ public class LogicalPlanner {
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-
+    PlannerContext plannerContext = new PlannerContext(metadata, new InternalTypeManager());
     this.tablePlanOptimizers =
-        Arrays.asList(
-            new SimplifyExpressions(),
-            new PruneUnUsedColumns(),
-            new PushPredicateIntoTableScan(),
-            new RemoveRedundantIdentityProjections());
+        Arrays.asList(new SimplifyExpressions(), new PushPredicateIntoTableScan());
+
+    Set<Rule<?>> pruneRules =
+        ImmutableSet.of(
+            new PruneFilterColumns(),
+            new PruneLimitColumns(),
+            new PruneOffsetColumns(),
+            new PruneOutputSourceColumns(),
+            new PruneProjectColumns(),
+            new PruneSortColumns(),
+            new PruneTableScanColumns(metadata));
+    Set<Rule<?>> inlineProjections =
+        ImmutableSet.of(
+            new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections());
+    this.planOptimizers =
+        ImmutableList.of(
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), pruneRules),
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections));
   }
 
+  @TestOnly
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
@@ -98,14 +130,45 @@ public class LogicalPlanner {
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.tablePlanOptimizers = tablePlanOptimizers;
+    PlannerContext plannerContext = new PlannerContext(metadata, new InternalTypeManager());
+    Set<Rule<?>> pruneRules =
+        ImmutableSet.of(
+            new PruneFilterColumns(),
+            new PruneLimitColumns(),
+            new PruneOffsetColumns(),
+            new PruneOutputSourceColumns(),
+            new PruneProjectColumns(),
+            new PruneSortColumns(),
+            new PruneTableScanColumns(metadata));
+    Set<Rule<?>> inlineProjections =
+        ImmutableSet.of(
+            new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections());
+    this.planOptimizers =
+        ImmutableList.of(
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), pruneRules),
+            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections));
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
-    tablePlanOptimizers.forEach(
-        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
+    // TODO remove after all optimizer rewritten as Trino-like
+    for (TablePlanOptimizer optimizer : tablePlanOptimizers) {
+      planNode = optimizer.optimize(planNode, analysis, metadata, sessionInfo, context);
+    }
 
+    for (PlanOptimizer optimizer : planOptimizers) {
+      planNode =
+          optimizer.optimize(
+              planNode,
+              new PlanOptimizer.Context(
+                  sessionInfo,
+                  context.getTypeProvider(),
+                  symbolAllocator,
+                  context.getQueryId(),
+                  warningCollector,
+                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+    }
     return new LogicalQueryPlan(context, planNode);
   }
 
