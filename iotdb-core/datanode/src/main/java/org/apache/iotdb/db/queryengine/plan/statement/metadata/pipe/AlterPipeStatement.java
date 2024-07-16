@@ -56,16 +56,16 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return extractorAttributes;
   }
 
-  public boolean isReplaceAllExtractorAttributes() {
-    return isReplaceAllExtractorAttributes;
-  }
-
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
   public Map<String, String> getConnectorAttributes() {
     return connectorAttributes;
+  }
+
+  public boolean isReplaceAllExtractorAttributes() {
+    return isReplaceAllExtractorAttributes;
   }
 
   public boolean isReplaceAllProcessorAttributes() {

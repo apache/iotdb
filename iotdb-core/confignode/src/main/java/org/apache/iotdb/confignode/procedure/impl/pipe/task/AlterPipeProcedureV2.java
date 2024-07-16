@@ -309,6 +309,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     alterPipeRequest =
         new TAlterPipeReq()
             .setPipeName(ReadWriteIOUtils.readString(byteBuffer))
+            .setExtractorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
     int size = ReadWriteIOUtils.readInt(byteBuffer);
