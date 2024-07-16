@@ -37,6 +37,7 @@
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
+        <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -107,11 +108,12 @@
                         <goals>
                             <goal>wget</goal>
                         </goals>
-                        <phase>generate-resources</phase>
+                        <phase>generate-test-resources</phase>
                         <configuration>
                             <url>${catch2.url}</url>
                             <unpack>false</unpack>
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                            <skip>${ctest.skip.tests}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -238,9 +240,6 @@
                     <!-- Actually executes the testing compilation -->
                     <execution>
                         <id>cmake-compile-test</id>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
                         <phase>test-compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
@@ -257,6 +256,7 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <buildDirectory>${project.build.directory}/build/test</buildDirectory>
+                            <skipTests>${ctest.skip.tests}</skipTests>
                         </configuration>
                     </execution>
                 </executions>
