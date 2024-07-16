@@ -85,7 +85,21 @@ public class IoTDBSelectIntoIT {
               "flush",
               "CREATE DATABASE root.sg1",
               "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"));
+              "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+              "create timeseries root.db.d1.s1 BOOLEAN encoding=PLAIN",
+              "create timeseries root.db.d1.s2 FLOAT encoding=RLE",
+              "create timeseries root.db.d1.s3 TEXT encoding=PLAIN",
+              "create timeseries root.db.d1.s4 INT32 encoding=PLAIN",
+              "create timeseries root.db.d1.s5 INT64 encoding=PLAIN",
+              "create timeseries root.db.d1.s6 DOUBLE encoding=PLAIN",
+              "create timeseries root.db.d1.s7 timestamp encoding=PLAIN",
+              "create timeseries root.db.d1.s8 string encoding=PLAIN",
+              "create timeseries root.db.d1.s9 blob encoding=PLAIN",
+              "create timeseries root.db.d1.s10 date encoding=PLAIN",
+              "CREATE ALIGNED TIMESERIES root.db.d2(s1 BOOLEAN encoding=PLAIN, s2 FLOAT encoding=RLE,s3 TEXT encoding=PLAIN,s4 INT32 encoding=PLAIN,s5 INT64 encoding=PLAIN,s6 DOUBLE encoding=PLAIN,s7 timestamp,s8 string,s9 blob,s10 date) ",
+              "insert into root.db.d1(time,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1,true,1.1,'hello1',1,1,1.9,1997-01-01T08:00:00.001+08:00,'Hong Kong',X'486f6e67204b6f6e6720426c6f6221','1997-07-01')",
+              "insert into root.db.d1(time,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(3,false,1.3,'hello3',3,3,2.1,1997-01-03T08:00:00.001+08:00,'Hong Kong-3',X'486f6e67204b6f6e6720426c6f6224','1997-07-03')",
+              "insert into root.db.d1(time,s2) values(2,1.2)"));
 
   static {
     SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
@@ -138,6 +152,9 @@ public class IoTDBSelectIntoIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
+    // if we don't change this configuration, we may get an error like: Cannot reserve XXXX bytes of
+    // direct buffer memory
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SELECT_INTO_SQL_LIST);
   }
@@ -730,5 +747,42 @@ public class IoTDBSelectIntoIT {
         "select d_1.s_int64, d_1.s_float, d_1.s_double, d_2.s_double, d_3.s_double from root.sg_type;",
         expectedQueryHeader,
         queryRetArray);
+  }
+
+  @Test
+  public void testNewDataType() {
+    String[] intoRetArray =
+        new String[] {
+          "root.db.d1.s7,root.db.d2.s7,2,",
+          "root.db.d1.s8,root.db.d2.s8,2,",
+          "root.db.d1.s9,root.db.d2.s9,2,",
+          "root.db.d1.s10,root.db.d2.s10,2,",
+        };
+
+    resultSetEqualTest(
+        "select s7 into root.db.d2(s7) from root.db.d1;",
+        selectIntoHeader,
+        new String[] {intoRetArray[0]});
+    resultSetEqualTest(
+        "select s8 into root.db.d2(s8) from root.db.d1;",
+        selectIntoHeader,
+        new String[] {intoRetArray[1]});
+    resultSetEqualTest(
+        "select s9 into root.db.d2(s9) from root.db.d1;",
+        selectIntoHeader,
+        new String[] {intoRetArray[2]});
+    resultSetEqualTest(
+        "select s10 into root.db.d2(s10) from root.db.d1;",
+        selectIntoHeader,
+        new String[] {intoRetArray[3]});
+
+    String[] resultSet =
+        new String[] {
+          "1,852076800001,Hong Kong,0x486f6e67204b6f6e6720426c6f6221,1997-07-01,",
+          "3,852249600001,Hong Kong-3,0x486f6e67204b6f6e6720426c6f6224,1997-07-03,",
+        };
+
+    String expectedQueryHeader = "Time,root.db.d2.s7,root.db.d2.s8,root.db.d2.s9,root.db.d2.s10,";
+    resultSetEqualTest("select s7,s8,s9,s10 from root.db.d2;", expectedQueryHeader, resultSet);
   }
 }
