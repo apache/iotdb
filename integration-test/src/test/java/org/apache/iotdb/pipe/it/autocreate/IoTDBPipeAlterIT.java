@@ -103,7 +103,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Alter pipe (modify)
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('source.pattern'='root.timecho')");
+      statement.execute("alter pipe a2b modify source ('source.path'='root.timecho')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -117,7 +117,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -136,7 +136,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b replace source ('source' = 'iotdb-source','source.pattern'='root.timecho.wf01')");
+          "alter pipe a2b replace source ('source' = 'iotdb-source','source.path'='root.timecho.wf01')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -151,7 +151,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -184,7 +184,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
@@ -227,7 +227,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -264,7 +264,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -301,7 +301,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -338,7 +338,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -375,7 +375,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
           showPipeResult
@@ -488,9 +488,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     expectedResSet.add("2000,3.0,");
     expectedResSet.add("3000,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.at1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    // Alter pipe (modify 'source.pattern' and 'processor.tumbling-time.interval-seconds')
+    // Alter pipe (modify 'source.path' and 'processor.tumbling-time.interval-seconds')
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -508,13 +508,22 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       fail();
     }
 
+    // Insert data on sender
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+            senderEnv,
+            Arrays.asList(
+                    "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
+                    "flush"))) {
+      fail();
+    }
+
     // Check data on receiver
     expectedResSet.clear();
     expectedResSet.add("11000,1.0,");
     expectedResSet.add("13000,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select * from root.db.d2 where time > 10000",
+        "select * from root.db.** where time > 10000",
         "Time,root.db.d2.at1,",
         expectedResSet);
   }
