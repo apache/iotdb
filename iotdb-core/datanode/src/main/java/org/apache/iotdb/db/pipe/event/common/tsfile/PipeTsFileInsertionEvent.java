@@ -62,6 +62,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
+  private final boolean isGeneratedByPipeConsensus;
 
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
@@ -108,6 +109,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -300,6 +302,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean isGeneratedByPipeConsensus() {
+    return isGeneratedByPipeConsensus;
   }
 
   @Override
