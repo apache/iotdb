@@ -158,23 +158,23 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     PartialPath devicePath = node.getDevicePath();
     MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
-    List<TSStatus> alreadyExistingTimeseries = new ArrayList<>();
+    List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
     List<TSStatus> failingStatus = new ArrayList<>();
 
     if (node.isAligned()) {
       executeInternalCreateAlignedTimeSeries(
-          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeSeries, failingStatus);
     } else {
       executeInternalCreateTimeSeries(
-          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeSeries, failingStatus);
     }
 
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeseries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeseries);
+    if (!alreadyExistingTimeSeries.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeSeries);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");

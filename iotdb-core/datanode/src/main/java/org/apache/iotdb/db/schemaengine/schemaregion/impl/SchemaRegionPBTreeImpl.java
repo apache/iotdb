@@ -763,6 +763,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           if (!existingMeasurementIndexes.remove(i)) {
             continue;
           }
+          // WARNING: The input lists can not be immutable when the "withMerge" is set.
           upsertAliasAndTagsAndAttributes(
               Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
               Objects.nonNull(tagsList) ? tagsList.remove(i) : null,

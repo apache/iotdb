@@ -49,6 +49,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -276,13 +277,15 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     ICreateAlignedTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.wf02.wt01"),
-            Collections.singletonList("status"),
-            Collections.singletonList(TSDataType.valueOf("INT32")),
-            Collections.singletonList(TSEncoding.valueOf("PLAIN")),
-            Collections.singletonList(CompressionType.ZSTD),
-            Collections.singletonList("alias2"),
-            Collections.singletonList(newTagMap),
-            Collections.singletonList(newAttrMap));
+            new ArrayList<>(Arrays.asList("status", "height")),
+            new ArrayList<>(
+                Arrays.asList(TSDataType.valueOf("INT32"), TSDataType.valueOf("INT64"))),
+            new ArrayList<>(
+                Arrays.asList(TSEncoding.valueOf("PLAIN"), TSEncoding.valueOf("PLAIN"))),
+            new ArrayList<>(Arrays.asList(CompressionType.ZSTD, CompressionType.GZIP)),
+            new ArrayList<>(Arrays.asList("alias2", null)),
+            new ArrayList<>(Arrays.asList(newTagMap, oldTagMap)),
+            new ArrayList<>(Arrays.asList(newAttrMap, oldAttrMap)));
     ((CreateAlignedTimeSeriesPlanImpl) mergePlan).setWithMerge(true);
     schemaRegion.createAlignedTimeSeries(mergePlan);
 

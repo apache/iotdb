@@ -193,16 +193,14 @@ public class SchemaRegionTestUtil {
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
-      if (timeSeriesReader.hasNext()) {
-        System.out.println("Fuck!");
-        final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
-        Assert.assertEquals(type, info.getSchema().getType());
-        Assert.assertEquals(encoding, info.getSchema().getEncodingType());
-        Assert.assertEquals(compressor, info.getSchema().getCompressor());
-        Assert.assertEquals(alias, info.getAlias());
-        Assert.assertEquals(tags, info.getTags());
-        Assert.assertEquals(attributes, info.getAttributes());
-      }
+      Assert.assertTrue(timeSeriesReader.hasNext());
+      final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
+      Assert.assertEquals(type, info.getSchema().getType());
+      Assert.assertEquals(encoding, info.getSchema().getEncodingType());
+      Assert.assertEquals(compressor, info.getSchema().getCompressor());
+      Assert.assertEquals(alias, info.getAlias());
+      Assert.assertEquals(tags, info.getTags());
+      Assert.assertEquals(attributes, info.getAttributes());
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
