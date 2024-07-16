@@ -594,14 +594,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // including create and delete
 
   public void createTimeSeries(ICreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(plan, -1);
+    createTimeSeries(plan, -1);
   }
 
   public void recoverTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     boolean done = false;
     while (!done) {
       try {
-        createTimeseries(plan, offset);
+        createTimeSeries(plan, offset);
         done = true;
       } catch (AliasAlreadyExistException | PathAlreadyExistException e) {
         // skip
@@ -612,7 +612,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(final ICreateTimeSeriesPlan plan, long offset)
+  public void createTimeSeries(final ICreateTimeSeriesPlan plan, long offset)
       throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();

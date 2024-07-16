@@ -468,7 +468,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         SchemaEngine.getInstance().getSchemaEngineStatistics();
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
-    schemaRegion1.createTimeseries(
+    schemaRegion1.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,

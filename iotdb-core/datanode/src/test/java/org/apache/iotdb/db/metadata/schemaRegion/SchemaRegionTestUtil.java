@@ -64,7 +64,7 @@ public class SchemaRegionTestUtil {
       Map<String, String> attributes,
       String alias)
       throws MetadataException {
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath(fullPath),
             dataType,
@@ -89,7 +89,7 @@ public class SchemaRegionTestUtil {
       List<String> alias)
       throws MetadataException {
     for (int i = 0; i < fullPaths.size(); i++) {
-      schemaRegion.createTimeseries(
+      schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath(fullPaths.get(i)),
               dataTypes.get(i),

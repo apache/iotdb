@@ -210,7 +210,7 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     for (ICreateTimeSeriesPlan plan : planMap.values()) {
-      schemaRegion.createTimeseries(plan, -1);
+      schemaRegion.createTimeSeries(plan, -1);
     }
 
     File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
@@ -398,7 +398,7 @@ public class SchemaRegionSnapshotParserTest {
     }
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     PartialPath databasePath = new PartialPath("root.sg");
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.s1.g1.temp"),
             TSDataType.FLOAT,
@@ -409,7 +409,7 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null),
         0);
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.s1.g3.temp"),
             TSDataType.FLOAT,
@@ -420,7 +420,7 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null),
         0);
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.s2.g1.temp"),
             TSDataType.FLOAT,
@@ -662,7 +662,7 @@ public class SchemaRegionSnapshotParserTest {
             }));
     for (ISchemaRegionPlan plan : planMap.values()) {
       if (plan instanceof ICreateTimeSeriesPlan) {
-        schemaRegion.createTimeseries((ICreateTimeSeriesPlan) plan, -1);
+        schemaRegion.createTimeSeries((ICreateTimeSeriesPlan) plan, -1);
       } else if (plan instanceof ICreateAlignedTimeSeriesPlan) {
         schemaRegion.createAlignedTimeSeries((ICreateAlignedTimeSeriesPlan) plan);
       } else if (plan instanceof IActivateTemplateInClusterPlan) {

@@ -556,12 +556,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // including create and delete
 
   public void createTimeseries(final ICreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(plan, -1);
+    createTimeSeries(plan, -1);
   }
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(final ICreateTimeSeriesPlan plan, long offset)
+  public void createTimeSeries(final ICreateTimeSeriesPlan plan, long offset)
       throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
@@ -1391,7 +1391,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     public RecoverOperationResult visitCreateTimeSeries(
         ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionMemoryImpl context) {
       try {
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        createTimeSeries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);

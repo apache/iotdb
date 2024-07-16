@@ -112,7 +112,7 @@ public interface ISchemaRegion {
    * @param offset
    * @throws MetadataException
    */
-  void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
   /**
    * Create aligned timeseries.

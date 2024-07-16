@@ -85,7 +85,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createTimeseries(node, -1);
+      schemaRegion.createTimeSeries(node, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -120,7 +120,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       // todo implement batch creation of one device in SchemaRegion
       for (int i = 0; i < size; i++) {
         try {
-          schemaRegion.createTimeseries(
+          schemaRegion.createTimeSeries(
               transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
         } catch (MetadataException e) {
           logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -229,7 +229,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // For normal internal creation, the alias/tags/attributes are not set
         // Thus the original ones are not altered
         ((CreateAlignedTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(true);
-        schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+        schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
       } catch (final MeasurementAlreadyExistException e) {
         // There's no need to internal create time series.
         alreadyExistingTimeSeries.add(
