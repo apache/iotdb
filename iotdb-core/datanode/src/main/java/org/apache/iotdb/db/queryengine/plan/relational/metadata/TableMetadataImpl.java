@@ -45,6 +45,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
@@ -393,7 +394,11 @@ public class TableMetadataImpl implements Metadata {
   }
 
   public static boolean isNumericType(Type type) {
-    return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
+    return DOUBLE.equals(type)
+        || FLOAT.equals(type)
+        || INT32.equals(type)
+        || INT64.equals(type)
+        || TimestampType.TIMESTAMP.equals(type);
   }
 
   public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
