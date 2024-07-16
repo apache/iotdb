@@ -68,7 +68,6 @@ public class AlterPipeProcedureV2Test {
 
       assertEquals(proc, proc2);
     } catch (Exception e) {
-      e.printStackTrace();
       fail();
     }
   }
