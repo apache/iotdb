@@ -45,12 +45,15 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class WALFileTest {
 
@@ -152,6 +155,18 @@ public class WALFileTest {
       }
     }
     assertEquals(expectedWALEntries, actualWALEntries);
+  }
+
+  @Test
+  public void testReadMetadataFromBrokenFile() throws IOException {
+    ILogWriter walWriter = new WALWriter(walFile);
+    assertThrows(
+        IOException.class,
+        () -> WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath())));
+    walWriter.close();
+    WALMetaData walMetaData =
+        WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath()));
+    assertTrue(walMetaData.getMemTablesId().isEmpty());
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
