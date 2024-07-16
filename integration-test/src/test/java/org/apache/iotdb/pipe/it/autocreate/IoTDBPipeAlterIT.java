@@ -71,8 +71,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -103,7 +102,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Alter pipe (modify)
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify source ('source.pattern'='root.timecho')");
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -111,20 +110,21 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Show pipe
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeConnector
-                      .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+      Assert.assertTrue(
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
@@ -134,35 +134,31 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Alter pipe (replace)
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute(
-              "alter pipe a2b replace source ('source' = 'iotdb-source','source.pattern'='root.timecho.wf01')");
+          "alter pipe a2b replace source ('source' = 'iotdb-source','source.pattern'='root.timecho.wf01')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
     // Show pipe
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeProcessor
-                      .contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeConnector
-                      .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
@@ -186,10 +182,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
@@ -230,10 +225,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -268,10 +262,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -292,7 +285,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Alter pipe (modify empty)
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify source ()");
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -300,27 +293,26 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeProcessor
-                      .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeConnector
-                      .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
@@ -330,7 +322,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Alter pipe (replace empty)
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b replace source ()");
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -338,27 +330,26 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertFalse(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeProcessor
-                      .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(
-              showPipeResult
-                      .get(0)
-                      .pipeConnector
-                      .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
@@ -382,10 +373,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-              showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertFalse(
-              showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.timecho.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
           showPipeResult
