@@ -152,6 +152,7 @@ public class QueryPlanner {
       outputs.stream().map(builder::translate).forEach(newFields::add);
 
       builder = builder.withScope(analysis.getScope(node.getOrderBy().orElse(null)), newFields);
+      analysis.setSortNode(true);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
@@ -260,8 +261,7 @@ public class QueryPlanner {
     ImmutableList.Builder<Symbol> orderBySymbols = ImmutableList.builder();
     Map<Symbol, SortOrder> orderings = new HashMap<>();
     for (Expression fieldOrExpression : orderByExpressions) {
-      Symbol symbol = new Symbol(fieldOrExpression.toString());
-      // subPlan.translate(fieldOrExpression);
+      Symbol symbol = subPlan.translate(fieldOrExpression);
 
       SortItem sortItem = sortItems.next();
       if (!orderings.containsKey(symbol)) {

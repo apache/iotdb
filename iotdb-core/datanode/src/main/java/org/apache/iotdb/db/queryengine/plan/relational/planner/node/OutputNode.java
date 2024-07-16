@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -132,5 +133,10 @@ public class OutputNode extends SingleChildProcessNode {
   @Override
   public String toString() {
     return "OutputNode-" + this.getPlanNodeId();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new OutputNode(id, Iterables.getOnlyElement(newChildren), columnNames, outputSymbols);
   }
 }

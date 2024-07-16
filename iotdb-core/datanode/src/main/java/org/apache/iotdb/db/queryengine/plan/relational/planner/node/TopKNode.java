@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class TopKNode extends MultiChildProcessNode {
 
   private final OrderingScheme orderingScheme;
@@ -53,6 +55,20 @@ public class TopKNode extends MultiChildProcessNode {
       List<Symbol> outputSymbols,
       boolean childrenDataInOrder) {
     super(id);
+    this.orderingScheme = scheme;
+    this.count = count;
+    this.outputSymbols = outputSymbols;
+    this.childrenDataInOrder = childrenDataInOrder;
+  }
+
+  public TopKNode(
+      PlanNodeId id,
+      List<PlanNode> children,
+      OrderingScheme scheme,
+      int count,
+      List<Symbol> outputSymbols,
+      boolean childrenDataInOrder) {
+    super(id, children);
     this.orderingScheme = scheme;
     this.count = count;
     this.outputSymbols = outputSymbols;
@@ -114,6 +130,12 @@ public class TopKNode extends MultiChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return outputSymbols;
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    checkArgument(children.size() == newChildren.size(), "wrong number of new children");
+    return new TopKNode(id, newChildren, orderingScheme, count, outputSymbols, childrenDataInOrder);
   }
 
   public OrderingScheme getOrderingScheme() {

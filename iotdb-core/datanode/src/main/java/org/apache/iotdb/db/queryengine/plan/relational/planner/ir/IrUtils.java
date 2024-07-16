@@ -15,6 +15,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import com.google.common.collect.ImmutableList;
@@ -199,6 +200,10 @@ public final class IrUtils {
         extractConjuncts(expression).stream().filter(predicate).collect(toList());
 
     return combineConjuncts(conjuncts);
+  }
+
+  public static boolean isEffectivelyLiteral(Expression expression) {
+    return expression instanceof Literal;
   }
 
   //    @SafeVarargs
