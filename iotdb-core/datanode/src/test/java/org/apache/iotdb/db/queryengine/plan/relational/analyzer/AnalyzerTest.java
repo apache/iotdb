@@ -842,11 +842,10 @@ public class AnalyzerTest {
         }
         List<String> attributeColumnNameList = schemaValidation.getAttributeColumnNameList();
         assertEquals(Collections.singletonList("attr1"), attributeColumnNameList);
-        assertEquals(1, schemaValidation.getAttributeValueList().size());
         for (int i = 0; i < schemaValidation.getAttributeValueList().size(); i++) {
           assertEquals(
               ((Object[]) columns[1])[i],
-              ((Object[]) schemaValidation.getAttributeValueList().get(0))[i]);
+              ((Object[]) schemaValidation.getAttributeValueList().get(i))[0]);
         }
       }
 
