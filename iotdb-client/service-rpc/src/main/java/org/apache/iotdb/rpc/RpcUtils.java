@@ -24,11 +24,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Proxy;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -62,6 +64,14 @@ public class RpcUtils {
   public static final int MAX_BUFFER_OVERSIZE_TIME = 5;
 
   public static final long MIN_SHRINK_INTERVAL = 60_000L;
+
+  public static final String TIME_PRECISION = "timestamp_precision";
+
+  public static final String MILLISECOND = "ms";
+
+  public static final String MICROSECOND = "us";
+
+  public static final String NANOSECOND = "ns";
 
   private RpcUtils() {
     // util class
@@ -345,5 +355,38 @@ public class RpcUtils {
 
   public static boolean isUseDatabase(String sql) {
     return sql.length() > 4 && "use ".equalsIgnoreCase(sql.substring(0, 4));
+  }
+
+  public static long getMilliSecond(long time, int timeFactor) {
+    return time / timeFactor * 1_000;
+  }
+
+  public static int getNanoSecond(long time, int timeFactor) {
+    return (int) (time % timeFactor * (1_000_000_000 / timeFactor));
+  }
+
+  public static Timestamp convertToTimestamp(long time, int timeFactor) {
+    Timestamp res = new Timestamp(getMilliSecond(time, timeFactor));
+    res.setNanos(getNanoSecond(time, timeFactor));
+    return res;
+  }
+
+  public static int getTimeFactor(TSOpenSessionResp openResp) {
+    if (openResp.isSetConfiguration()) {
+      String precision = openResp.getConfiguration().get(TIME_PRECISION);
+      if (precision != null) {
+        switch (precision) {
+          case MILLISECOND:
+            return 1_000;
+          case MICROSECOND:
+            return 1_000_000;
+          case NANOSECOND:
+            return 1_000_000_000;
+          default:
+            throw new IllegalArgumentException("Unknown time precision: " + precision);
+        }
+      }
+    }
+    return 1_000;
   }
 }

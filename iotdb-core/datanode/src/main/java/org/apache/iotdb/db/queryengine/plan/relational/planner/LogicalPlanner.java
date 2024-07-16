@@ -73,7 +73,6 @@ import java.util.List;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class LogicalPlanner {
@@ -212,9 +211,7 @@ public class LogicalPlanner {
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
 
-      if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(name)) {
-        columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
-      }
+      columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
 
       columnNumber++;
     }
@@ -223,7 +220,7 @@ public class LogicalPlanner {
         new OutputNode(
             context.getQueryId().genPlanNodeId(), plan.getRoot(), names.build(), outputs.build());
 
-    DatasetHeader respDatasetHeader = new DatasetHeader(columnHeaders, false);
+    DatasetHeader respDatasetHeader = new DatasetHeader(columnHeaders, true);
     analysis.setRespDatasetHeader(respDatasetHeader);
 
     return outputNode;

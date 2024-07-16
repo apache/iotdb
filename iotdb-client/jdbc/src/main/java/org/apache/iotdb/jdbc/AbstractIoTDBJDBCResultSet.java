@@ -454,10 +454,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
         operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
         this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
-      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
-        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
-        nonAlign = true;
       }
     } catch (SQLException throwables) {
       LOGGER.error("Get meta data error: {}", throwables.getMessage());
