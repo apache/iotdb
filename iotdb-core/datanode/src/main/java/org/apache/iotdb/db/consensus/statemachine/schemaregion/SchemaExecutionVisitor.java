@@ -61,6 +61,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTim
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -228,7 +229,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // Only used by pipe to upsert the receiver alias/tags/attributes in historical transfer.
         // For normal internal creation, the alias/tags/attributes are not set
         // Thus the original ones are not altered
-        ((CreateAlignedTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(true);
+        ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(true);
         schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
       } catch (final MeasurementAlreadyExistException e) {
         // There's no need to internal create time series.
