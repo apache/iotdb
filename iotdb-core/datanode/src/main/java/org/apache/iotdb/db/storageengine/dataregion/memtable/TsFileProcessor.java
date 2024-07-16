@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import java.util.Arrays;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -711,10 +710,9 @@ public class TsFileProcessor {
         if (!alignedMemChunk.containsMeasurement(measurements[i])) {
           int currentArrayNum =
               alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE
-                          + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE
-                      > 0
-                  ? 1
-                  : 0);
+                  + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE > 0
+                      ? 1
+                      : 0);
           memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           dataTypesInTVList.add(dataTypes[i]);
         }
@@ -792,11 +790,12 @@ public class TsFileProcessor {
             increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
             int currentArrayNum =
                 (currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE
-                                    + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
-                                    > 0
-                                    ? 1
-                                    : 0);
-            memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+                    + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
+                            > 0
+                        ? 1
+                        : 0);
+            memTableIncrement +=
+                currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           }
         }
         int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
@@ -971,10 +970,7 @@ public class TsFileProcessor {
 
       int numArraysToAdd =
           incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE
-                  > 0
-              ? 1
-              : 0);
+              + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       memIncrements[0] +=
           numArraysToAdd * AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
     } else {
@@ -1008,16 +1004,10 @@ public class TsFileProcessor {
       // calculate how many new arrays will be added after this insertion
       int currentArrayCnt =
           currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE
-                  > 0
-              ? 1
-              : 0);
+              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       int newArrayCnt =
           newPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE
-                  > 0
-              ? 1
-              : 0);
+              + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       long acquireArray = newArrayCnt - currentArrayCnt;
 
       if (acquireArray != 0) {

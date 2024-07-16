@@ -96,11 +96,11 @@ public class MemUtilsTest {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
-        new int[]{1},
-        new long[]{2},
-        new float[]{3},
-        new double[]{4},
-        new Binary[]{new Binary("5", TSFileConfig.STRING_CHARSET)}
+      new int[] {1},
+      new long[] {2},
+      new float[] {3},
+      new double[] {4},
+      new Binary[] {new Binary("5", TSFileConfig.STRING_CHARSET)}
     };
     TSDataType[] dataTypes = new TSDataType[6];
     int sizeSum = 0;
@@ -133,11 +133,11 @@ public class MemUtilsTest {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
-        new int[]{1},
-        new long[]{2},
-        new float[]{3},
-        new double[]{4},
-        new Binary[]{new Binary("5", TSFileConfig.STRING_CHARSET)}
+      new int[] {1},
+      new long[] {2},
+      new float[] {3},
+      new double[] {4},
+      new Binary[] {new Binary("5", TSFileConfig.STRING_CHARSET)}
     };
     TSDataType[] dataTypes = new TSDataType[6];
     int sizeSum = 0;
@@ -165,17 +165,17 @@ public class MemUtilsTest {
             columns,
             1);
     insertNode.setMeasurementSchemas(
-        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT32),
-            new MeasurementSchema("s2", TSDataType.INT64),
-            new MeasurementSchema("s3", TSDataType.FLOAT),
-            new MeasurementSchema("s4", TSDataType.DOUBLE),
-            new MeasurementSchema("s5", TSDataType.TEXT)});
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.FLOAT),
+          new MeasurementSchema("s4", TSDataType.DOUBLE),
+          new MeasurementSchema("s5", TSDataType.TEXT)
+        });
     Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1, null));
   }
 
-  /**
-   * This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem()
-   */
+  /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
   @Test
   public void getMemSizeTest() {
     long totalSize = 0;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.builder;
 
-import java.time.ZoneId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
@@ -57,6 +56,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -91,7 +91,8 @@ public class EvaluationDAGBuilderTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       QueryId queryId = new QueryId("test");
-      SessionInfo sessionInfo = new SessionInfo(0, "root", ZoneId.systemDefault(), "root.db", SqlDialect.TREE);
+      SessionInfo sessionInfo =
+          new SessionInfo(0, "root", ZoneId.systemDefault(), "root.db", SqlDialect.TREE);
       MPPQueryContext context =
           new MPPQueryContext(
               sql,

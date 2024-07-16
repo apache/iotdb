@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -42,6 +40,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -117,8 +116,11 @@ public class StatementTestUtils {
   }
 
   public static Object[] genValues(int offset) {
-    return new Object[] {new Binary(("id:" + offset).getBytes(StandardCharsets.UTF_8)), new Binary(("attr:" + offset).getBytes(
-        StandardCharsets.UTF_8)), offset * 1.0};
+    return new Object[] {
+      new Binary(("id:" + offset).getBytes(StandardCharsets.UTF_8)),
+      new Binary(("attr:" + offset).getBytes(StandardCharsets.UTF_8)),
+      offset * 1.0
+    };
   }
 
   public static long[] genTimestamps() {
@@ -206,16 +208,17 @@ public class StatementTestUtils {
     Object[] values = genValues(offset);
     long timestamp = genTimestamps(1, offset)[0];
 
-    RelationalInsertRowNode relationalInsertRowNode = new RelationalInsertRowNode(
-        new PlanNodeId(offset + "-" + 1),
-        new PartialPath(new String[]{tableName()}),
-        true,
-        measurements,
-        dataTypes,
-        timestamp,
-        values,
-        false,
-        columnCategories);
+    RelationalInsertRowNode relationalInsertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(offset + "-" + 1),
+            new PartialPath(new String[] {tableName()}),
+            true,
+            measurements,
+            dataTypes,
+            timestamp,
+            values,
+            false,
+            columnCategories);
     relationalInsertRowNode.setMeasurementSchemas(genMeasurementSchemas());
     return relationalInsertRowNode;
   }
