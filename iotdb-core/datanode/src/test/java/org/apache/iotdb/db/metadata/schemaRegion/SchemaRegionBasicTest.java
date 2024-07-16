@@ -277,6 +277,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     ICreateAlignedTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.wf02.wt01"),
+            // The lists must be mutable
             new ArrayList<>(Arrays.asList("status", "height")),
             new ArrayList<>(
                 Arrays.asList(TSDataType.valueOf("INT32"), TSDataType.valueOf("INT64"))),
