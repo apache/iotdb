@@ -116,8 +116,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -510,10 +509,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Insert data on sender
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-            senderEnv,
-            Arrays.asList(
-                    "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
-                    "flush"))) {
+        senderEnv,
+        Arrays.asList(
+            "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
+            "flush"))) {
       fail();
     }
 
