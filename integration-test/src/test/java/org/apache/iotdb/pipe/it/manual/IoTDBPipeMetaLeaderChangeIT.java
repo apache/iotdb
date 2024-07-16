@@ -203,7 +203,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         "show timeSeries root.ln.wf01.GPS.status0",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         Collections.singleton(
-            "root.ln.wf01.wt01.status,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+            "root.ln.wf01.GPS.status0,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("20,"));
