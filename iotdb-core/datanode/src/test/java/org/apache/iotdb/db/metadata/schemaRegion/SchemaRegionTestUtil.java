@@ -183,6 +183,7 @@ public class SchemaRegionTestUtil {
   public static void checkSingleTimeSeries(
       final ISchemaRegion schemaRegion,
       final PartialPath pathPattern,
+      final boolean isAligned,
       final TSDataType type,
       final TSEncoding encoding,
       final CompressionType compressor,
@@ -195,6 +196,7 @@ public class SchemaRegionTestUtil {
                 pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
       Assert.assertTrue(timeSeriesReader.hasNext());
       final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
+      Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
       Assert.assertEquals(type, info.getSchema().getType());
       Assert.assertEquals(encoding, info.getSchema().getEncodingType());
       Assert.assertEquals(compressor, info.getSchema().getCompressor());

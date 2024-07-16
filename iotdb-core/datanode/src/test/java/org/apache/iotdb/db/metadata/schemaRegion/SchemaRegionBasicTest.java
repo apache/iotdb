@@ -289,32 +289,33 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     ((CreateAlignedTimeSeriesPlanImpl) mergePlan).setWithMerge(true);
     schemaRegion.createAlignedTimeSeries(mergePlan);
 
-    final PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.*"));
-    patternTree.constructTree();
-    final ClusterSchemaTree schemas =
-        schemaRegion.fetchSeriesSchema(patternTree, Collections.emptyMap(), true, true, true, true);
-    final List<MeasurementPath> measurementPaths =
-        schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.status")).left;
-    Assert.assertEquals(1, measurementPaths.size());
-
-    final MeasurementPath measurementPath = measurementPaths.get(0);
-    Assert.assertEquals("root.sg.wf01.wt01.status", measurementPath.getFullPath());
-    Assert.assertEquals(TSDataType.INT32, measurementPath.getMeasurementSchema().getType());
-
     // The encoding and compressor won't be changed
-    Assert.assertEquals(
-        TSEncoding.RLE, measurementPaths.get(0).getMeasurementSchema().getEncodingType());
-    Assert.assertEquals(
-        CompressionType.SNAPPY, measurementPaths.get(0).getMeasurementSchema().getCompressor());
+    // The alias/tags/attributes are updated
 
     final Map<String, String> resultAttrMap = new HashMap<>(oldAttrMap);
     resultAttrMap.putAll(newAttrMap);
 
-    // The alias/tags/attributes are updated
-    Assert.assertEquals("alias2", measurementPath.getMeasurementAlias());
-    Assert.assertEquals(newTagMap, measurementPath.getTagMap());
-    Assert.assertEquals(resultAttrMap, measurementPath.getTagMap());
+    checkSingleTimeSeries(
+        schemaRegion,
+        new PartialPath("root.sg.wf02.wt01.status"),
+        true,
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        CompressionType.SNAPPY,
+        "alias2",
+        newTagMap,
+        resultAttrMap);
+
+    checkSingleTimeSeries(
+        schemaRegion,
+        new PartialPath("root.sg.wf02.wt01.height"),
+        true,
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null,
+        oldTagMap,
+        oldAttrMap);
 
     // Test illegal plan
     try {
@@ -449,6 +450,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     checkSingleTimeSeries(
         schemaRegion,
         new PartialPath("root.sg.wf01.wt01.v1.s1"),
+        false,
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
