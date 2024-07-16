@@ -553,7 +553,7 @@ public class IoTDBConfig {
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private volatile long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+  private volatile long innerCompactionTaskSelectionModsFileThreshold = 128 * 1024L;
 
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
