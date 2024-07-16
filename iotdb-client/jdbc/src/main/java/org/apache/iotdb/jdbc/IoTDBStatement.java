@@ -459,7 +459,7 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    if (execResp.queryResult == null) {
+    if (!execResp.isSetQueryResult()) {
       throw new SQLException("execResp.queryResult should never be null.");
     } else {
       this.resultSet =
@@ -473,7 +473,7 @@ public class IoTDBStatement implements Statement {
               sql,
               queryId,
               sessionId,
-              execResp.queryResult,
+              execResp.getQueryResult(),
               execResp.tracingInfo,
               execReq.timeout,
               execResp.moreData,

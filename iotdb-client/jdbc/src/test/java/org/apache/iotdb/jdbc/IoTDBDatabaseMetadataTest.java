@@ -128,14 +128,21 @@ public class IoTDBDatabaseMetadataTest {
     dataTypeList.add("TEXT");
     List<String> columnsList = new ArrayList<String>();
     columnsList.add("database");
-    Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
+    Map<String, Integer> columnNameIndexMap = new HashMap<>();
     columnNameIndexMap.put("database", 0);
     when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
         .thenReturn(execStatementResp);
+    when(client.closeOperation(any())).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     when(execStatementResp.getStatus()).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     when(execStatementResp.getQueryId()).thenReturn(queryId);
     when(execStatementResp.getDataTypeList()).thenReturn(dataTypeList);
     when(execStatementResp.getColumns()).thenReturn(columnsList);
+    when(execStatementResp.isSetQueryResult()).thenReturn(true);
+    when(execStatementResp.getQueryResult()).thenReturn(Collections.emptyList());
+    when(execStatementResp.isSetTableModel()).thenReturn(false);
+
+    execStatementResp.moreData = false;
+    execStatementResp.ignoreTimeStamp = true;
     execStatementResp.columnNameIndexMap = columnNameIndexMap;
     ResultSet rs = databaseMetaData.getCatalogs();
     assertEquals(2, rs.findColumn("TYPE_CAT"));

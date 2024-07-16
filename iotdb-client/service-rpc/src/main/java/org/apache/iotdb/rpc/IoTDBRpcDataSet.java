@@ -296,7 +296,7 @@ public class IoTDBRpcDataSet {
 
   private boolean isNull(int index, int rowNum) {
     // -1 for time column which will never be null
-    return index < 0 || curTsBlock.getColumn(index).isNull(rowNum);
+    return index >= 0 && curTsBlock.getColumn(index).isNull(rowNum);
   }
 
   public boolean getBoolean(int columnIndex) throws StatementExecutionException {
