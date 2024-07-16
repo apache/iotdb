@@ -1344,23 +1344,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
           groupByKeys.add("TAGS");
           queryStatement.setGroupByTagComponent(parseGroupByTagClause(groupByAttribute));
-        } else if (groupByAttribute.VARIATION() != null) {
-          if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
-          }
-
-          groupByKeys.add("COMMON");
-          queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.VARIATION_WINDOW));
-        } else if (groupByAttribute.CONDITION() != null) {
-          if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
-          }
-
-          groupByKeys.add("COMMON");
-          queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.CONDITION_WINDOW));
-        } else if (groupByAttribute.SESSION() != null) {
+        } else if (groupByAttribute.CONDITION() != null ||
+                groupByAttribute.SESSION() != null ||
+                groupByAttribute.COUNT() != null ||
+                groupByAttribute.VARIATION() != null
+        ) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
           }
@@ -1368,15 +1356,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
               parseGroupByClause(groupByAttribute, WindowType.SESSION_WINDOW));
-        } else if (groupByAttribute.COUNT() != null) {
-          if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
-          }
-
-          groupByKeys.add("COMMON");
-          queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.COUNT_WINDOW));
-
         } else {
           throw new SemanticException("Unknown GROUP BY type.");
         }
@@ -1704,9 +1683,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String sortKey = sortItem.getSortKey();
       if (sortKeySet.contains(sortKey)) {
         continue;
-      } else {
-        sortKeySet.add(sortKey);
       }
+      sortKeySet.add(sortKey);
 
       if (sortItem.isExpression()) {
         orderByComponent.addExpressionSortItem(sortItem);
@@ -2400,18 +2378,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (priv.equalsIgnoreCase("READ")) {
         privSet.add("READ_SCHEMA");
         privSet.add("READ_DATA");
-        continue;
       } else if (priv.equalsIgnoreCase("WRITE")) {
         privSet.add("WRITE_DATA");
         privSet.add("WRITE_SCHEMA");
-        continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
           privSet.add(type.toString());
         }
-        continue;
+      }else{
+        privSet.add(priv);
       }
-      privSet.add(priv);
     }
     return privSet.toArray(new String[0]);
   }
