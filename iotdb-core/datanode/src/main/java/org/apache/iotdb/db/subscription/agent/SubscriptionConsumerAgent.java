@@ -73,11 +73,14 @@ public class SubscriptionConsumerAgent {
       return null;
     } catch (final Exception e) {
       final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
+      LOGGER.warn(
+          "Exception occurred when handling single consumer group meta changes for consumer group {}",
+          consumerGroupId,
+          e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
               consumerGroupId, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -138,11 +141,14 @@ public class SubscriptionConsumerAgent {
           return null;
         } catch (final Exception e) {
           final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
+          LOGGER.warn(
+              "Exception occurred when handling single consumer group meta changes for consumer group {}",
+              consumerGroupId,
+              e);
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
                   consumerGroupId, e);
-          LOGGER.warn(exceptionMessage);
           return new TPushConsumerGroupMetaRespExceptionMessage(
               consumerGroupId, exceptionMessage, System.currentTimeMillis());
         }
@@ -160,10 +166,10 @@ public class SubscriptionConsumerAgent {
       handleDropConsumerGroupInternal(consumerGroupId);
       return null;
     } catch (final Exception e) {
+      LOGGER.warn("Exception occurred when dropping consumer group {}", consumerGroupId, e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     } finally {
