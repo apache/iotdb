@@ -292,8 +292,8 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   /**
-   * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * database should be set first, throw exception otherwise
+   * Create aligned time series with full paths from root to one leaf node. Before creating time
+   * series, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -308,14 +308,15 @@ public class MTreeBelowSGMemoryImpl {
       final List<TSEncoding> encodings,
       final List<CompressionType> compressors,
       final List<String> aliasList,
-      final boolean withMerge)
+      final boolean withMerge,
+      final Set<Integer> existingMeasurementIndexes)
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     // synchronize check and add, we need addChild operation be atomic.
-    // only write operations on mtree will be synchronized
+    // only write operations on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
@@ -323,12 +324,16 @@ public class MTreeBelowSGMemoryImpl {
         if (device.hasChild(measurements.get(i))) {
           final IMemMNode node = device.getChild(measurements.get(i));
           if (node.isMeasurement()) {
+            final IMeasurementMNode<IMemMNode> measurementNode = node.getAsMeasurementMNode();
             if (node.getAsMeasurementMNode().isPreDeleted()) {
               throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
-            } else {
+            } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
               throw new MeasurementAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i),
                   node.getAsMeasurementMNode().getMeasurementPath());
+            } else {
+              existingMeasurementIndexes.add(i);
+              continue;
             }
           } else {
             throw new PathAlreadyExistException(
@@ -349,7 +354,7 @@ public class MTreeBelowSGMemoryImpl {
             devicePath.getFullPath());
       }
 
-      IDeviceMNode<IMemMNode> entityMNode;
+      final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
@@ -357,13 +362,16 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(true);
       }
 
-      // create a aligned time series
+      // create an aligned time series
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(true);
       }
 
       for (int i = 0; i < measurements.size(); i++) {
-        IMeasurementMNode<IMemMNode> measurementMNode =
+        if (existingMeasurementIndexes.contains(i)) {
+          continue;
+        }
+        final IMeasurementMNode<IMemMNode> measurementMNode =
             nodeFactory.createMeasurementMNode(
                 entityMNode,
                 measurements.get(i),
