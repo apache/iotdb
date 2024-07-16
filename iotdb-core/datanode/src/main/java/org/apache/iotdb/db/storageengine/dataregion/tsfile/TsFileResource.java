@@ -229,6 +229,7 @@ public class TsFileResource {
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+
   }
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {

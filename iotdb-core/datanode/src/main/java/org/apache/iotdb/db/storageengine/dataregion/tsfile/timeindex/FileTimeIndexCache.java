@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.concurrent.ArrayBlockingQueue;
@@ -37,12 +39,12 @@ public class FileTimeIndexCache {
     resourceQueue.add(resource);
   }
 
-  public void recordTsFileResource() {
-    recordFileIndexThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.FILE_TIMEINDEX_RECORD.getName());
-    //    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-    //        recordFileIndexThread, this::deleteOutdatedFiles, initDelayMs, periodMs,
-    // TimeUnit.MILLISECONDS);
-  }
+//  public void recordTsFileResource() {
+//    recordFileIndexThread =
+//        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+//            ThreadName.FILE_TIMEINDEX_RECORD.getName());
+//        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+//            recordFileIndexThread, this::deleteOutdatedFiles, initDelayMs, periodMs,
+//     TimeUnit.MILLISECONDS);
+//  }
 }
