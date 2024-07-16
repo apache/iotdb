@@ -92,7 +92,7 @@ public class MySample_shrinkingcone_full {
       int end = 1000_0000;
       int N = end - start;
       boolean hasHeader = false;
-      try (FileInputStream inputStream = new FileInputStream(fileDir + datasetName + ".csv")) {
+      try (FileInputStream inputStream = new  FileInputStream(fileDir + datasetName + ".csv")) {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
