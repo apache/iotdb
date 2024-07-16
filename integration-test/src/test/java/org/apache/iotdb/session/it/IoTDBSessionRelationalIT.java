@@ -215,10 +215,83 @@ public class IoTDBSessionRelationalIT {
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(timestamp, rowRecord.getFields().get(0).getLongV());
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        assertEquals(timestamp, rowRecord.getTimestamp());
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
+        timestamp++;
+        //        System.out.println(rowRecord);
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void autoCreateColumnTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      try {
+        session.executeNonQueryStatement("DROP DATABASE db1");
+      } catch (Exception ignored) {
+
+      }
+      session.executeNonQueryStatement("CREATE DATABASE db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement("CREATE TABLE table1 (id1 string id)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      timestamp = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(timestamp, rowRecord.getTimestamp());
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
         timestamp++;
         //        System.out.println(rowRecord);
       }
