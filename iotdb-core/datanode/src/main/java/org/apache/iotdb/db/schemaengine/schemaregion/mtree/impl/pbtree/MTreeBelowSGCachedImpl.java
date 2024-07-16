@@ -270,10 +270,10 @@ public class MTreeBelowSGCachedImpl {
   }
 
   /**
-   * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
+   * Create a time series with a full path from root to leaf node. Before creating a time series, the
    * database should be set first, throw exception otherwise
    *
-   * @param path timeseries path
+   * @param path time series path
    * @param dataType data type
    * @param encoding encoding
    * @param compressor compressor
@@ -299,7 +299,7 @@ public class MTreeBelowSGCachedImpl {
 
     try {
       // synchronize check and add, we need addChild and add Alias become atomic operation
-      // only write on mtree will be synchronized
+      // only write on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
@@ -347,7 +347,7 @@ public class MTreeBelowSGCachedImpl {
             device = entityMNode.getAsMNode();
           }
 
-          // create a non-aligned timecseries
+          // create a non-aligned time series
           if (entityMNode.isAlignedNullable() == null) {
             entityMNode.setAligned(false);
           }
