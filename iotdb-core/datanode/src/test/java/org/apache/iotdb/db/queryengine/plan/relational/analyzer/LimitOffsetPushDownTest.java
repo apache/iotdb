@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
@@ -108,7 +109,7 @@ public class LimitOffsetPushDownTest {
   }
 
   // order by all tags, limit can be pushed into TableScan, pushLimitToEachDevice==false
-  // Output - Limit - Offset - Project - MergeSort - Sort - Project - TableScan
+  // Output - Limit - Offset - Project - MergeSort -  Project - TableScan
   @Test
   public void orderByAllTagsTest() {
     sql =
@@ -128,9 +129,9 @@ public class LimitOffsetPushDownTest {
         (MergeSortNode)
             getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 5);
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof ProjectNode);
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    tableScanNode = (TableScanNode) getChildrenNode(mergeSortNode.getChildren().get(1), 2);
+    tableScanNode = (TableScanNode) getChildrenNode(mergeSortNode.getChildren().get(1), 1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(DESC, tableScanNode.getScanOrder());
     assertTrue(tableScanNode.getPushDownLimit() == 15 && tableScanNode.getPushDownOffset() == 0);
@@ -138,7 +139,7 @@ public class LimitOffsetPushDownTest {
 
     tableScanNode =
         (TableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 3);
+            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 2);
     assertEquals(2, tableScanNode.getDeviceEntries().size());
     assertEquals(DESC, tableScanNode.getScanOrder());
     assertTrue(tableScanNode.getPushDownLimit() == 15 && tableScanNode.getPushDownOffset() == 0);
