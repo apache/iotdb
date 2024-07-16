@@ -68,8 +68,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
