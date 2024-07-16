@@ -103,6 +103,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -803,27 +804,29 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public Pair<Long, Boolean> constructSchemaBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
     long preDeletedNum = 0;
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      // Given pathPatterns may match one timeseries multi times, which may results in the
-      // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
-      // purpose is to check whether there's timeseries to be deleted.
-      List<PartialPath> paths = mtree.constructSchemaBlackList(pathPattern);
+    final AtomicBoolean isAllLogicalView = new AtomicBoolean(true);
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      // Given pathPatterns may match one time series multi times, which may results in the
+      // preDeletedNum larger than the actual num of time series. It doesn't matter since the main
+      // purpose is to check whether there's time series to be deleted.
+      final List<PartialPath> paths = mtree.constructSchemaBlackList(pathPattern, isAllLogicalView);
       preDeletedNum += paths.size();
-      for (PartialPath path : paths) {
+      for (final PartialPath path : paths) {
         try {
           writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(path));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
     }
-    return preDeletedNum;
+    return new Pair<>(preDeletedNum, isAllLogicalView.get());
   }
 
-  private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
-    mtree.constructSchemaBlackList(path);
+  private void recoverPreDeleteTimeseries(final PartialPath path) throws MetadataException {
+    mtree.constructSchemaBlackList(path, new AtomicBoolean(true));
   }
 
   @Override
