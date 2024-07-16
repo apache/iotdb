@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import java.nio.charset.StandardCharsets;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -48,6 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.tsfile.utils.Binary;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
@@ -391,7 +393,9 @@ public class SchemaRegionTestUtil {
         table,
         Collections.singletonList(fullId),
         new ArrayList<>(attributes.keySet()),
-        Collections.singletonList(attributes.values().toArray()));
+        Collections.singletonList(
+            attributes.values().stream().map(s -> s != null ? new Binary(s.getBytes(
+                StandardCharsets.UTF_8)) : null).toArray()));
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(

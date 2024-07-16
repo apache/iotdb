@@ -1511,7 +1511,7 @@ public class MTreeBelowSGMemoryImpl {
 
     IMemMNode cur = storageGroupMNode;
     for (Object o : devicePath) {
-      String childName = o.toString();
+      String childName = o == null ? null : o.toString();
       IMemMNode child = cur.getChild(childName);
       if (child == null) {
         child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));

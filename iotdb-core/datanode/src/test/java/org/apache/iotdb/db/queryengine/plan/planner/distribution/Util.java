@@ -175,6 +175,7 @@ public class Util {
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
 
       dataPartitionMap.put("root.sg", sgPartitionMap);
+      analysis.setDatabaseName("root.sg");
 
       dataPartition.setDataPartitionMap(dataPartitionMap);
 

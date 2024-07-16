@@ -314,6 +314,7 @@ public class WritePlanNodeSplitTest {
     DataPartition dataPartition = getDataPartition(dataPartitionQueryParams);
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
+    analysis.setDatabaseName("root.sg2");
 
     List<WritePlanNode> insertRowsNodeList = insertRowsNode.splitByPartition(analysis);
 

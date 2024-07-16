@@ -233,13 +233,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // Data region for insert row node
+      // each row may belong to different database, pass null for auto-detection
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getIDeviceIDAsFullDevice(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
-                  analysis.getDatabaseName());
+                  null);
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);

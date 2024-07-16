@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -46,6 +47,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -1177,7 +1179,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (deviceID != null) {
       return deviceID;
     }
-    deviceID = devicePath.getIDeviceID();
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
     return deviceID;
   }
 
@@ -1197,7 +1199,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
    * @return each the number in the pair is the end offset of a device
    */
   public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
-    return Collections.singletonList(new Pair<>(deviceID, end));
+    return Collections.singletonList(new Pair<>(getDeviceID(), end));
   }
 
   /**

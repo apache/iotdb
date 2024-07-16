@@ -149,7 +149,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     String value;
     for (int i = 0; i < nameList.size(); i++) {
       String key = nameList.get(i);
-      value = valueList[i] == null ? null : (String) valueList[i];
+      value = valueList[i] == null ? null : valueList[i].toString();
       if (value != null) {
         originMemUsage =
             attributeMap.containsKey(key)

@@ -220,7 +220,11 @@ public class DataPartition extends Partition {
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    databaseName = PathUtils.qualifyDatabaseName(databaseName);
+    if (databaseName != null) {
+      databaseName = PathUtils.qualifyDatabaseName(databaseName);
+    } else {
+      databaseName = getDatabaseNameByDevice(deviceID);
+    }
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {

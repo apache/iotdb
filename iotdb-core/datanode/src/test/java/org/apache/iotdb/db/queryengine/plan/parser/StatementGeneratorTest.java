@@ -86,6 +86,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -335,7 +336,7 @@ public class StatementGeneratorTest {
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[0]);
     assertArrayEquals(
         ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[0]), 0.0001);
-    assertArrayEquals(((String[]) columns[0]), ((String[]) insertTabletStatement.getColumns()[2]));
+    assertArrayEquals(((Binary[]) columns[0]), ((Binary[]) insertTabletStatement.getColumns()[2]));
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(2));
     assertTrue(insertTabletStatement.getBitMaps()[2].isMarked(0));
 
@@ -348,7 +349,7 @@ public class StatementGeneratorTest {
     assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
     assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
-    assertArrayEquals(((String[]) columns[1]), ((String[]) insertTabletStatement.getColumns()[0]));
+    assertArrayEquals(((Binary[]) columns[1]), ((Binary[]) insertTabletStatement.getColumns()[0]));
     assertArrayEquals(
         ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
@@ -363,7 +364,7 @@ public class StatementGeneratorTest {
     assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
     assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
-    assertArrayEquals(((String[]) columns[1]), ((String[]) insertTabletStatement.getColumns()[0]));
+    assertArrayEquals(((Binary[]) columns[1]), ((Binary[]) insertTabletStatement.getColumns()[0]));
     assertArrayEquals(
         ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));

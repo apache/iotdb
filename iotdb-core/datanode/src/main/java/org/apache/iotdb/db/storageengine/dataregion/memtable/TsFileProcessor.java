@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import java.util.Arrays;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -710,10 +711,10 @@ public class TsFileProcessor {
         if (!alignedMemChunk.containsMeasurement(measurements[i])) {
           int currentArrayNum =
               alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE
-                          + alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE
+                          + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE
                       > 0
                   ? 1
-                  : 0;
+                  : 0);
           memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           dataTypesInTVList.add(dataTypes[i]);
         }
@@ -766,10 +767,6 @@ public class TsFileProcessor {
               .computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 1))
               .left
               .put(measurements[i], dataTypes[i]);
-          // TEXT data mem size
-          if (dataTypes[i].isBinary() && values[i] != null) {
-            textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
-          }
         }
 
       } else {
@@ -778,7 +775,7 @@ public class TsFileProcessor {
             (AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId);
         AlignedWritableMemChunk alignedMemChunk =
             memChunkGroup == null ? null : memChunkGroup.getAlignedMemChunk();
-        long currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
+        int currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
         List<TSDataType> dataTypesInTVList = new ArrayList<>();
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
@@ -792,14 +789,14 @@ public class TsFileProcessor {
           // Extending the column of aligned mem chunk
           if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
               && !increasingMemTableInfo.get(deviceId).left.containsKey(measurements[i])) {
-            memTableIncrement +=
-                ((currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                    * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
             increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
-          }
-          // TEXT data mem size
-          if (dataTypes[i].isBinary() && values[i] != null) {
-            textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+            int currentArrayNum =
+                (currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE
+                                    + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
+                                    > 0
+                                    ? 1
+                                    : 0);
+            memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           }
         }
         int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
@@ -813,6 +810,17 @@ public class TsFileProcessor {
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
         increasingMemTableInfo.get(deviceId).setRight(addingPointNum + 1);
+      }
+
+      for (int i = 0; i < dataTypes.length; i++) {
+        // Skip failed Measurements
+        if (dataTypes[i] == null || measurements[i] == null) {
+          continue;
+        }
+        // TEXT data mem size
+        if (dataTypes[i].isBinary() && values[i] != null) {
+          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        }
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
@@ -963,10 +971,10 @@ public class TsFileProcessor {
 
       int numArraysToAdd =
           incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE
+                      + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE
                   > 0
               ? 1
-              : 0;
+              : 0);
       memIncrements[0] +=
           numArraysToAdd * AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
     } else {
@@ -1000,16 +1008,16 @@ public class TsFileProcessor {
       // calculate how many new arrays will be added after this insertion
       int currentArrayCnt =
           currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + currentPointNum % PrimitiveArrayManager.ARRAY_SIZE
+                      + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE
                   > 0
               ? 1
-              : 0;
+              : 0);
       int newArrayCnt =
           newPointNum / PrimitiveArrayManager.ARRAY_SIZE
-                      + newPointNum % PrimitiveArrayManager.ARRAY_SIZE
+                      + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE
                   > 0
               ? 1
-              : 0;
+              : 0);
       long acquireArray = newArrayCnt - currentArrayCnt;
 
       if (acquireArray != 0) {

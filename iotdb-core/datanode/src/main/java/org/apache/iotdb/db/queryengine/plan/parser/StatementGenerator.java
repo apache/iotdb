@@ -349,8 +349,8 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnType(
-                ColumnType.values()[insertTabletReq.getColumnCategories().get(i)]);
+            TsTableColumnCategory.deserialize(
+                insertTabletReq.getColumnCategories().get(i));
       }
       insertStatement.setColumnCategories(columnCategories);
     }

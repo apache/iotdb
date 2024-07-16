@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import java.time.ZoneId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -247,7 +250,8 @@ public class DistributionPlannerBasicTest {
     Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+        new MPPQueryContext("", queryId, new SessionInfo(
+            0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE), new TEndPoint(), new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
@@ -295,7 +299,8 @@ public class DistributionPlannerBasicTest {
     Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+        new MPPQueryContext("", queryId, new SessionInfo(
+            0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE), new TEndPoint(), new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));
