@@ -1814,12 +1814,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TAlterPipeReq req =
           new TAlterPipeReq(
               pipeName,
-              alterPipeStatement.getExtractorAttributes(),
               alterPipeStatement.getProcessorAttributes(),
               alterPipeStatement.getConnectorAttributes(),
-              alterPipeStatement.isReplaceAllExtractorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);

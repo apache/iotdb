@@ -713,12 +713,12 @@ struct TCreatePipeReq {
 
 struct TAlterPipeReq {
     1: required string pipeName
-    2: required map<string, string> extractorAttributes
-    3: required map<string, string> processorAttributes
-    4: required map<string, string> connectorAttributes
-    5: required bool isReplaceAllExtractorAttributes
-    6: required bool isReplaceAllProcessorAttributes
-    7: required bool isReplaceAllConnectorAttributes
+    2: required map<string, string> processorAttributes
+    3: required map<string, string> connectorAttributes
+    4: required bool isReplaceAllProcessorAttributes
+    5: required bool isReplaceAllConnectorAttributes
+    6: optional map<string, string> extractorAttributes
+    7: optional bool isReplaceAllExtractorAttributes
 }
 
 // Deprecated, restored for compatibility

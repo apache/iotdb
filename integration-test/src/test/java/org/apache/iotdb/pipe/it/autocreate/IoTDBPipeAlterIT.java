@@ -464,7 +464,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source' = 'iotdb-source','source.pattern' = 'root.db.d1') with processor ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with source ('source' = 'iotdb-source','source.path' = 'root.db.d1.**') with processor ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -494,7 +494,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b modify source('source' = 'iotdb-source','source.pattern'='root.db.d2') modify processor ('processor.tumbling-time.interval-seconds'='2')");
+          "alter pipe a2b modify source('source' = 'iotdb-source','source.path'='root.db.d2.**') modify processor ('processor.tumbling-time.interval-seconds'='2')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }

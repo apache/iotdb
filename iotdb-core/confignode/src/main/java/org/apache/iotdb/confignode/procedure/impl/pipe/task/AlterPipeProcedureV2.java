@@ -62,13 +62,24 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private PipeRuntimeMeta currentPipeRuntimeMeta;
   private PipeRuntimeMeta updatedPipeRuntimeMeta;
 
-  public AlterPipeProcedureV2() {
+  private ProcedureType procedureType;
+
+  public AlterPipeProcedureV2(ProcedureType procedureType) {
     super();
+    this.procedureType = procedureType;
   }
 
   public AlterPipeProcedureV2(TAlterPipeReq alterPipeRequest) throws PipeException {
     super();
     this.alterPipeRequest = alterPipeRequest;
+    procedureType = ProcedureType.ALTER_PIPE_PROCEDURE_V3;
+  }
+
+  public AlterPipeProcedureV2(TAlterPipeReq alterPipeRequest, ProcedureType procedureType)
+      throws PipeException {
+    super();
+    this.alterPipeRequest = alterPipeRequest;
+    this.procedureType = procedureType;
   }
 
   @Override
@@ -256,14 +267,9 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ALTER_PIPE_PROCEDURE_V2.getTypeCode());
+    stream.writeShort(procedureType.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(alterPipeRequest.getPipeName(), stream);
-    ReadWriteIOUtils.write(alterPipeRequest.getExtractorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : alterPipeRequest.getExtractorAttributes().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
-    }
     ReadWriteIOUtils.write(alterPipeRequest.getProcessorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : alterPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
@@ -274,7 +280,6 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllExtractorAttributes, stream);
     ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllProcessorAttributes, stream);
     ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllConnectorAttributes, stream);
     if (currentPipeStaticMeta != null) {
@@ -301,6 +306,15 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+
+    if (procedureType.getTypeCode() == ProcedureType.ALTER_PIPE_PROCEDURE_V3.getTypeCode()) {
+      ReadWriteIOUtils.write(alterPipeRequest.getExtractorAttributesSize(), stream);
+      for (Map.Entry<String, String> entry : alterPipeRequest.getExtractorAttributes().entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
+      ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllExtractorAttributes, stream);
+    }
   }
 
   @Override
@@ -312,13 +326,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .setExtractorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
+
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; ++i) {
-      alterPipeRequest
-          .getExtractorAttributes()
-          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
-    }
-    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       alterPipeRequest
           .getProcessorAttributes()
@@ -330,7 +339,6 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    alterPipeRequest.isReplaceAllExtractorAttributes = ReadWriteIOUtils.readBool((byteBuffer));
     alterPipeRequest.isReplaceAllProcessorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     alterPipeRequest.isReplaceAllConnectorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
@@ -344,6 +352,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       updatedPipeRuntimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    }
+    if (procedureType.getTypeCode() == ProcedureType.ALTER_PIPE_PROCEDURE_V3.getTypeCode()) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        alterPipeRequest
+            .getExtractorAttributes()
+            .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      }
+      alterPipeRequest.isReplaceAllExtractorAttributes = ReadWriteIOUtils.readBool((byteBuffer));
+    } else {
+      alterPipeRequest.setExtractorAttributes(new HashMap<>());
+      alterPipeRequest.isReplaceAllExtractorAttributes = false;
     }
   }
 
