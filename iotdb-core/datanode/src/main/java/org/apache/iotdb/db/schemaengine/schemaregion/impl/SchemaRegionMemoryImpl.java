@@ -47,7 +47,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
@@ -80,6 +79,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeleteTimeSer
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
@@ -582,7 +583,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias(),
-              plan.getPlanType() == SchemaRegionPlanType.CREATE_TIME_SERIES_WITH_MERGE);
+              (plan instanceof CreateTimeSeriesPlanImpl
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -664,13 +666,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               encodings,
               compressors,
               alias,
-              plan.getPlanType() == SchemaRegionPlanType.CREATE_ALIGNED_TIME_SERIES_WITH_MERGE,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
               existingMeasurementIndexes);
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
 
       List<Long> tagOffsets = plan.getTagOffsets();
+
       // Merge the existing ones
       // The existing measurements are written into the "upsert" but not written
       // to the "createSeries" in mLog
@@ -694,6 +698,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         dataTypes.remove(i);
         encodings.remove(i);
         compressors.remove(i);
+      }
+
+      if (measurementMNodeList.isEmpty()) {
+        return;
       }
 
       for (int i = 0; i < measurements.size(); i++) {

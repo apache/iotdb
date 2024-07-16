@@ -228,7 +228,7 @@ public class MTreeBelowSGMemoryImpl {
 
       final String leafName = path.getMeasurement();
 
-      if (alias != null && device.hasChild(alias)) {
+      if (!withMerge && alias != null && device.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 

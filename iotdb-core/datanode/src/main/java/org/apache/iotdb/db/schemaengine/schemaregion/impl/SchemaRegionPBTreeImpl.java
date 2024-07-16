@@ -82,6 +82,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeleteTimeSer
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -102,6 +103,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -586,14 +588,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   // endregion
 
-  // region Interfaces and Implementation for Timeseries operation
+  // region Interfaces and Implementation for Time series operation
   // including create and delete
 
-  public void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
+  public void createTimeSeries(ICreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
   }
 
-  public void recoverTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void recoverTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     boolean done = false;
     while (!done) {
       try {
@@ -608,40 +610,51 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeseries(final ICreateTimeSeriesPlan plan, long offset)
+      throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
-    PartialPath path = plan.getPath();
-    IMeasurementMNode<ICachedMNode> leafMNode;
+    final PartialPath path = plan.getPath();
+    final IMeasurementMNode<ICachedMNode> leafMNode;
     try {
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
+      final TSDataType type = plan.getDataType();
+      // Create time series in MTree
       leafMNode =
-          mtree.createTimeseriesWithPinnedReturn(
+          mtree.createTimeSeriesWithPinnedReturn(
               path,
               type,
               plan.getEncoding(),
               plan.getCompressor(),
               plan.getProps(),
-              plan.getAlias());
+              plan.getAlias(),
+              (plan instanceof CreateTimeSeriesPlanImpl
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
 
       try {
-        // update statistics and schemaDataTypeNumMap
+        // Should merge
+        if (Objects.isNull(leafMNode)) {
+          // Write an upsert plan directly
+          // note that
+          upsertAliasAndTagsAndAttributes(
+              plan.getAlias(), plan.getTags(), plan.getAttributes(), path);
+          return;
+        }
+
+        // Update statistics and schemaDataTypeNumMap
         regionStatistics.addMeasurement(1L);
 
-        // update tag index
+        // Update tag index
         if (offset != -1 && isRecovering) {
-          // the timeseries has already been created and now system is recovering, using the tag
-          // info
-          // in tagFile to recover index directly
+          // The time series has already been created and now system is recovering, using the tag
+          // info in tagFile to recover index directly
           tagManager.recoverIndex(offset, leafMNode);
           mtree.pinMNode(leafMNode.getAsMNode());
         } else if (plan.getTags() != null) {
-          // tag key, tag value
+          // Tag key, tag value
           tagManager.addIndex(plan.getTags(), leafMNode);
           mtree.pinMNode(leafMNode.getAsMNode());
         }
@@ -1441,7 +1454,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     public RecoverOperationResult visitCreateTimeSeries(
         ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
-        recoverTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        recoverTimeSeries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);

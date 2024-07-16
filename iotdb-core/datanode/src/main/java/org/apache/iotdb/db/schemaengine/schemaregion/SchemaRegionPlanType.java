@@ -51,10 +51,6 @@ public enum SchemaRegionPlanType {
   DELETE_LOGICAL_VIEW((byte) 69),
   ALTER_LOGICAL_VIEW((byte) 70),
 
-  // Create time series with rewrite, used by meta pipe
-  CREATE_TIME_SERIES_WITH_MERGE((byte) 71),
-  CREATE_ALIGNED_TIME_SERIES_WITH_MERGE((byte) 72),
-
   // query plan doesn't need any ser/deSer, thus use one type to represent all
   READ_SCHEMA(Byte.MAX_VALUE);
 

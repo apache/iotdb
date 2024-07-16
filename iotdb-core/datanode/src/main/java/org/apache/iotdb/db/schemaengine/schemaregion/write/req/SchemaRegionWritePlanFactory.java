@@ -28,9 +28,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.AutoCreateDe
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.ChangeAliasPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.ChangeTagOffsetPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
-import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesWithMergePlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
-import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesWithMergePlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.DeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.DeleteTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.PreDeactivateTemplatePlanImpl;
@@ -63,8 +61,6 @@ public class SchemaRegionWritePlanFactory {
     switch (planType) {
       case CREATE_TIMESERIES:
         return new CreateTimeSeriesPlanImpl();
-      case CREATE_TIME_SERIES_WITH_MERGE:
-        return new CreateTimeSeriesWithMergePlanImpl();
       case DELETE_TIMESERIES:
         return new DeleteTimeSeriesPlanImpl();
       case CHANGE_TAG_OFFSET:
@@ -75,8 +71,6 @@ public class SchemaRegionWritePlanFactory {
         return new AutoCreateDeviceMNodePlanImpl();
       case CREATE_ALIGNED_TIMESERIES:
         return new CreateAlignedTimeSeriesPlanImpl();
-      case CREATE_ALIGNED_TIME_SERIES_WITH_MERGE:
-        return new CreateAlignedTimeSeriesWithMergePlanImpl();
       case ACTIVATE_TEMPLATE_IN_CLUSTER:
         return new ActivateTemplateInClusterPlanImpl();
       case PRE_DELETE_TIMESERIES_IN_CLUSTER:
