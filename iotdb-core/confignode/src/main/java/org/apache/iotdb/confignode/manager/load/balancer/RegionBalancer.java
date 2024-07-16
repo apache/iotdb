@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphReplicationRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -56,6 +57,9 @@ public class RegionBalancer {
     switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
       case GREEDY:
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
+        break;
+      case PGR:
+        this.regionGroupAllocator = new PartiteGraphReplicationRegionGroupAllocator();
         break;
       case GCR:
       default:
@@ -155,6 +159,7 @@ public class RegionBalancer {
 
   public enum RegionGroupAllocatePolicy {
     GREEDY,
-    GCR
+    GCR,
+    PGR
   }
 }
