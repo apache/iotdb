@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -44,6 +45,11 @@ public class LimitNode extends SingleChildProcessNode {
     super(id, child);
     this.count = count;
     this.tiesResolvingScheme = tiesResolvingScheme;
+  }
+
+  public boolean requiresPreSortedInputs() {
+    // TODO
+    return false;
   }
 
   @Override
@@ -82,6 +88,11 @@ public class LimitNode extends SingleChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new LimitNode(id, Iterables.getOnlyElement(newChildren), count, tiesResolvingScheme);
   }
 
   public long getCount() {

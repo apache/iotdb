@@ -35,6 +35,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 /**
  * CollectNode output the content of children. Normally it will output the child one by one, but in
  * some cases, while some children are blocked, it may output the content of other children.
@@ -45,6 +47,10 @@ public class CollectNode extends MultiChildProcessNode {
 
   public CollectNode(PlanNodeId id) {
     super(id);
+  }
+
+  public CollectNode(PlanNodeId id, List<PlanNode> children) {
+    super(id, children);
   }
 
   @Override
@@ -71,6 +77,12 @@ public class CollectNode extends MultiChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    checkArgument(children.size() == newChildren.size(), "wrong number of new children");
+    return new CollectNode(id, newChildren);
   }
 
   @Override
