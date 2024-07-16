@@ -372,6 +372,7 @@ public class MTreeBelowSGMemoryImpl {
         if (existingMeasurementIndexes.contains(i)) {
           continue;
         }
+
         final IMeasurementMNode<IMemMNode> measurementMNode =
             nodeFactory.createMeasurementMNode(
                 entityMNode,

@@ -386,30 +386,50 @@ public class MTreeBelowSGCachedImpl {
    * @param encodings encodings list
    * @param compressors compressor
    */
-  public List<IMeasurementMNode<ICachedMNode>> createAlignedTimeseries(
-      PartialPath devicePath,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> aliasList)
+  public List<IMeasurementMNode<ICachedMNode>> createAlignedTimeSeries(
+      final PartialPath devicePath,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<TSEncoding> encodings,
+      final List<CompressionType> compressors,
+      final List<String> aliasList,
+      final boolean withMerge,
+      final Set<Integer> existingMeasurementIndexes)
       throws MetadataException {
-    List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
+    final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
-    ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+    final ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     try {
       // synchronize check and add, we need addChild operation be atomic.
-      // only write operations on mtree will be synchronized
+      // only write operations on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
         try {
           for (int i = 0; i < measurements.size(); i++) {
             if (store.hasChild(device, measurements.get(i))) {
-              throw new PathAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurements.get(i));
+              final ICachedMNode node = device.getChild(measurements.get(i));
+              if (node.isMeasurement()) {
+                final IMeasurementMNode<ICachedMNode> measurementNode =
+                    node.getAsMeasurementMNode();
+                if (node.getAsMeasurementMNode().isPreDeleted()) {
+                  throw new MeasurementInBlackListException(
+                      devicePath.concatNode(measurements.get(i)));
+                } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
+                  throw new MeasurementAlreadyExistException(
+                      devicePath.getFullPath() + "." + measurements.get(i),
+                      node.getAsMeasurementMNode().getMeasurementPath());
+                } else {
+                  existingMeasurementIndexes.add(i);
+                  continue;
+                }
+              } else {
+                throw new PathAlreadyExistException(
+                    devicePath.getFullPath() + "." + measurements.get(i));
+              }
             }
+
             if (aliasList != null
                 && aliasList.get(i) != null
                 && store.hasChild(device, aliasList.get(i))) {
@@ -422,11 +442,11 @@ public class MTreeBelowSGCachedImpl {
               && device.getAsDeviceMNode().isAlignedNullable() != null
               && !device.getAsDeviceMNode().isAligned()) {
             throw new AlignedTimeseriesException(
-                "Timeseries under this device is not aligned, please use createTimeseries or change device.",
+                "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",
                 devicePath.getFullPath());
           }
 
-          IDeviceMNode<ICachedMNode> entityMNode;
+          final IDeviceMNode<ICachedMNode> entityMNode;
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
@@ -435,13 +455,17 @@ public class MTreeBelowSGCachedImpl {
             device = entityMNode.getAsMNode();
           }
 
-          // create a aligned timeseries
+          // create an aligned time series
           if (entityMNode.isAlignedNullable() == null) {
             entityMNode.setAligned(true);
           }
 
           for (int i = 0; i < measurements.size(); i++) {
-            IMeasurementMNode<ICachedMNode> measurementMNode =
+            if (existingMeasurementIndexes.contains(i)) {
+              continue;
+            }
+
+            final IMeasurementMNode<ICachedMNode> measurementMNode =
                 nodeFactory.createMeasurementMNode(
                     entityMNode,
                     measurements.get(i),

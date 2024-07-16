@@ -646,7 +646,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<TSDataType> dataTypes = plan.getDataTypes();
       final List<TSEncoding> encodings = plan.getEncodings();
       final List<CompressionType> compressors = plan.getCompressors();
-      final List<String> alias = plan.getAliasList();
+      final List<String> aliasList = plan.getAliasList();
       final List<Map<String, String>> tagsList = plan.getTagsList();
       final List<Map<String, String>> attributesList = plan.getAttributesList();
       final List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
@@ -666,7 +666,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               dataTypes,
               encodings,
               compressors,
-              alias,
+              aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
               existingMeasurementIndexes);
@@ -687,7 +687,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           continue;
         }
         upsertAliasAndTagsAndAttributes(
-            Objects.nonNull(alias) ? alias.remove(i) : null,
+            Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
             Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
             Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
             prefixPath.concatNode(measurements.get(i)));
