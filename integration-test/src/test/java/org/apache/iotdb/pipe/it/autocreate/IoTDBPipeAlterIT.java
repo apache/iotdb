@@ -518,12 +518,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // Check data on receiver
     expectedResSet.clear();
-    expectedResSet.add("11000,1.0,");
-    expectedResSet.add("13000,5.0,");
+    expectedResSet.add("11000,null,1.0,");
+    expectedResSet.add("13000,null,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select * from root.db.** where time > 10000",
-        "Time,root.db.d2.at1,",
+        "Time,root.db.d1.at1,root.db.d2.at1,",
         expectedResSet);
   }
 }
