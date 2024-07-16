@@ -318,7 +318,9 @@ public class TSDIFFBOSVTest {
 
     private static int BOSEncodeBits(int[] ts_block_delta,
                                      int final_k_start_value,
+                                     int final_x_l_plus,
                                      int final_k_end_value,
+                                     int final_x_u_minus,
                                      int max_delta_value,
                                      int[] min_delta,
                                      int encode_pos,
@@ -372,7 +374,7 @@ public class TSDIFFBOSVTest {
                 k2++;
 
             } else {
-                final_normal.add(cur_value - final_k_start_value-1);
+                final_normal.add(cur_value - final_x_l_plus);
                 index_bitmap_outlier <<= 1;
                 cur_index_bitmap_outlier_bits += 1;
             }
@@ -404,9 +406,11 @@ public class TSDIFFBOSVTest {
         encode_pos += 4;
         int2Bytes(min_delta[1],encode_pos,cur_byte);
         encode_pos += 4;
-        int2Bytes(final_k_start_value,encode_pos,cur_byte);
+        int2Bytes(final_x_l_plus,encode_pos,cur_byte);
         encode_pos += 4;
-        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
+        int2Bytes(final_k_end_value,encode_pos,cur_byte);
+        encode_pos += 4;
+        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max
@@ -565,9 +569,8 @@ public class TSDIFFBOSVTest {
             }
         }
 
-
-        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
-                min_delta, encode_pos , cur_byte);
+        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+                max_delta_value, min_delta, encode_pos , cur_byte);
 
         return encode_pos;
     }
@@ -631,6 +634,9 @@ public class TSDIFFBOSVTest {
         decode_pos += 4;
 
         int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+        int final_k_end_value = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
         int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
@@ -726,7 +732,7 @@ public class TSDIFFBOSVTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v = value0;
-        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
+//        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
 
 
         for (int i = 0; i < block_size; i++) {
@@ -808,7 +814,7 @@ public class TSDIFFBOSVTest {
     public void BOSOptimalTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/bos";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -934,7 +940,7 @@ public class TSDIFFBOSVTest {
 
                 String[] record = {
                         f.toString(),
-                        "TS_2DIFF+BOS-O",
+                        "TS_2DIFF+BOS-V",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
