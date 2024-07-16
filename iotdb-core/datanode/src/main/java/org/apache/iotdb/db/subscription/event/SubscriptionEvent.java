@@ -303,11 +303,15 @@ public class SubscriptionEvent {
 
   public void resetResponseByteBuffer(final boolean resetAll) {
     if (resetAll) {
-      SubscriptionEventBinaryCache.getInstance().invalidateAll(Arrays.asList(responses));
+      SubscriptionEventBinaryCache.getInstance()
+          .invalidateAll(
+              Arrays.stream(responses).filter(Objects::nonNull).collect(Collectors.toList()));
       // maybe friendly for gc
       Arrays.fill(byteBuffers, null);
     } else {
-      SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
+      if (Objects.nonNull(responses[currentResponseIndex])) {
+        SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
+      }
       // maybe friendly for gc
       byteBuffers[currentResponseIndex] = null;
     }
