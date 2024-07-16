@@ -261,6 +261,9 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
     // iterate on the snapshot of the key set
     final Set<String> consumerIds = ImmutableSet.copyOf(consumerIdToSubscriptionEventMap.keySet());
+    // NOTE:
+    // 1. Ignore entries added during iteration.
+    // 2. For entries deleted by other threads during iteration, just check if the value is null.
     for (final String consumerId : consumerIds) {
       consumerIdToSubscriptionEventMap.compute(
           consumerId,
@@ -282,6 +285,8 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
             }
 
             // prefetch and serialize remaining subscription events
+            // NOTE: Since the compute call for the same key is atomic and will be executed
+            // serially, the current prefetch and serialize operations are safe.
             try {
               ev.prefetchRemainingResponses();
               ev.trySerializeRemainingResponses();

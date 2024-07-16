@@ -106,7 +106,7 @@ public class SubscriptionEvent {
     return getResponse(currentResponseIndex);
   }
 
-  public SubscriptionPollResponse getResponse(final int index) {
+  private SubscriptionPollResponse getResponse(final int index) {
     return responses[index];
   }
 
@@ -269,7 +269,7 @@ public class SubscriptionEvent {
    * @param index the index of response to be serialized
    * @return {@code true} if a serialization operation was actually performed
    */
-  public boolean trySerializeResponse(final int index) {
+  private boolean trySerializeResponse(final int index) {
     if (index >= responses.length) {
       return false;
     }
@@ -315,7 +315,7 @@ public class SubscriptionEvent {
 
   /////////////////////////////// tsfile ///////////////////////////////
 
-  public @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
+  private @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
       final long writingOffset) throws IOException {
     final File tsFile = pipeEvents.getTsFile();
 
