@@ -678,7 +678,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         }
 
       } finally {
-        mtree.unPinMNode(leafMNode.getAsMNode());
+        if (Objects.nonNull(leafMNode)) {
+          mtree.unPinMNode(leafMNode.getAsMNode());
+        }
       }
 
     } catch (IOException e) {
