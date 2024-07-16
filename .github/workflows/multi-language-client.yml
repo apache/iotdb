@@ -69,7 +69,7 @@ jobs:
       - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean install verify -P with-cpp -pl iotdb-client/client-cpp -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
