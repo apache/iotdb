@@ -80,8 +80,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
-  public void testFetchSchemaPerfomance() throws Exception {
+  @Ignore("This is just a performance test and shall not be run in auto test environment")
+  public void testFetchSchemaPerformance() throws Exception {
     System.out.println(testParams.getTestModeName());
     final int deviceNum = 1000;
     final int measurementNum = 40;
@@ -114,7 +114,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
       schemaRegion.fetchSeriesSchema(
           patternTree, Collections.emptyMap(), false, false, true, false);
     }
-    System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
+    System.out.println("Cost time: " + (System.currentTimeMillis() - startTime));
   }
 
   @Test
