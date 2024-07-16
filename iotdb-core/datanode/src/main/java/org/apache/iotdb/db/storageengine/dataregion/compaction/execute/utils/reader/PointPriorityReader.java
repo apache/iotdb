@@ -66,7 +66,7 @@ public class PointPriorityReader {
               boolean o2IsSeq =
                   o2.pageElement.getChunkMetadataElement().fileElement.resource.isSeq();
               if (o1IsSeq != o2IsSeq) {
-                return o1IsSeq ? -1 : 1;
+                return o1IsSeq ? 1 : -1;
               }
               return Long.compare(o2.priority, o1.priority);
             });
