@@ -101,7 +101,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
@@ -1036,8 +1035,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.preCreateTable(
-          new PartialPath(new String[] {ROOT, preCreateTablePlan.getDatabase()}),
-          preCreateTablePlan.getTable());
+          new PartialPath(preCreateTablePlan.getDatabase()), preCreateTablePlan.getTable());
       return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -1050,7 +1048,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.rollbackCreateTable(
-          new PartialPath(new String[] {ROOT, rollbackCreateTablePlan.getDatabase()}),
+          new PartialPath(rollbackCreateTablePlan.getDatabase()),
           rollbackCreateTablePlan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {
@@ -1064,7 +1062,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.commitCreateTable(
-          new PartialPath(new String[] {ROOT, commitCreateTablePlan.getDatabase()}),
+          new PartialPath(commitCreateTablePlan.getDatabase()),
           commitCreateTablePlan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {
@@ -1079,10 +1077,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       return new TShowTableResp(StatusUtils.OK)
           .setTableInfoList(
-              mTree
-                  .getAllUsingTablesUnderSpecificDatabase(
-                      new PartialPath(new String[] {ROOT, database}))
-                  .stream()
+              mTree.getAllUsingTablesUnderSpecificDatabase(new PartialPath(database)).stream()
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1122,7 +1117,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TsTable getTsTable(String database, String tableName) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getTable(new PartialPath(new String[] {ROOT, database}), tableName);
+      return mTree.getTable(new PartialPath(database), tableName);
     } catch (MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
@@ -1136,14 +1131,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       if (plan.isRollback()) {
         mTree.rollbackAddTableColumn(
-            new PartialPath(new String[] {ROOT, plan.getDatabase()}),
-            plan.getTableName(),
-            plan.getColumnSchemaList());
+            new PartialPath(plan.getDatabase()), plan.getTableName(), plan.getColumnSchemaList());
       } else {
         mTree.addTableColumn(
-            new PartialPath(new String[] {ROOT, plan.getDatabase()}),
-            plan.getTableName(),
-            plan.getColumnSchemaList());
+            new PartialPath(plan.getDatabase()), plan.getTableName(), plan.getColumnSchemaList());
       }
       return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {

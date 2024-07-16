@@ -101,6 +101,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -348,7 +349,8 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.deserialize(insertTabletReq.getColumnCategories().get(i));
+            TsTableColumnCategory.fromTsFileColumnType(
+                ColumnType.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
     }
