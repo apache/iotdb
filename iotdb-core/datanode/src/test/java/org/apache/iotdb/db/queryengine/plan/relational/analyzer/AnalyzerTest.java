@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -70,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -836,7 +838,7 @@ public class AnalyzerTest {
         for (int i = 0; i < schemaValidation.getDeviceIdList().size(); i++) {
           Object[] objects = schemaValidation.getDeviceIdList().get(i);
           assertEquals(objects[0].toString(), StatementTestUtils.tableName());
-          assertEquals(objects[1].toString(), ((String[]) columns[0])[i]);
+          assertEquals(objects[1].toString(), ((Binary[]) columns[0])[i].toString());
         }
         List<String> attributeColumnNameList = schemaValidation.getAttributeColumnNameList();
         assertEquals(Collections.singletonList("attr1"), attributeColumnNameList);
@@ -863,6 +865,7 @@ public class AnalyzerTest {
         for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
           String databaseName = dataPartitionQueryParam.getDatabaseName();
           assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
+          databaseName = PathUtils.qualifyDatabaseName(databaseName);
 
           String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
           assertEquals(StatementTestUtils.tableName(), tableName);
@@ -906,7 +909,7 @@ public class AnalyzerTest {
             actualAnalysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(sessionInfo.getDatabaseName().orElse(null));
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(3, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -922,7 +925,7 @@ public class AnalyzerTest {
     for (int i = 0; i < insertTabletNode.getRowCount(); i++) {
       assertEquals(
           Factory.DEFAULT_FACTORY.create(
-              new String[] {StatementTestUtils.tableName(), ((String[]) columns[0])[i]}),
+              new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
           insertTabletNode.getDeviceID(i));
     }
     assertArrayEquals(columns, insertTabletNode.getColumns());
@@ -951,7 +954,7 @@ public class AnalyzerTest {
             actualAnalysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(sessionInfo.getDatabaseName().orElse(null));
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(1, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -964,7 +967,7 @@ public class AnalyzerTest {
     Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
-            new String[] {StatementTestUtils.tableName(), ((String) columns[0])}),
+            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
         insertNode.getDeviceID());
 
     assertArrayEquals(columns, insertNode.getValues());

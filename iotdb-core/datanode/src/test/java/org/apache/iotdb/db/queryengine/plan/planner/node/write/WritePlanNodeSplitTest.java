@@ -239,9 +239,9 @@ public class WritePlanNodeSplitTest {
 
     insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
-    Assert.assertEquals(5, insertTabletNodeList.size());
+    Assert.assertEquals(1, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
-      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 2);
+      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 10);
     }
   }
 

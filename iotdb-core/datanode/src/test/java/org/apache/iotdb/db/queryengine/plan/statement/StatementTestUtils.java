@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -37,6 +39,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -101,12 +104,12 @@ public class StatementTestUtils {
   }
 
   public static Object[] genColumns(int cnt, int offset) {
-    final String[] ids = new String[cnt];
-    final String[] attrs = new String[cnt];
+    final Binary[] ids = new Binary[cnt];
+    final Binary[] attrs = new Binary[cnt];
     final double[] values = new double[cnt];
     for (int i = 0; i < cnt; i++) {
-      ids[i] = "id:" + (i + offset);
-      attrs[i] = "attr:" + (i + offset);
+      ids[i] = new Binary(("id:" + (i + offset)).getBytes(StandardCharsets.UTF_8));
+      attrs[i] = new Binary(("attr:" + (i + offset)).getBytes(StandardCharsets.UTF_8));
       values[i] = (i + offset) * 1.0;
     }
 
@@ -114,7 +117,8 @@ public class StatementTestUtils {
   }
 
   public static Object[] genValues(int offset) {
-    return new Object[] {"id:" + offset, "attr:" + offset, offset * 1.0};
+    return new Object[] {new Binary(("id:" + offset).getBytes(StandardCharsets.UTF_8)), new Binary(("attr:" + offset).getBytes(
+        StandardCharsets.UTF_8)), offset * 1.0};
   }
 
   public static long[] genTimestamps() {
@@ -202,9 +206,9 @@ public class StatementTestUtils {
     Object[] values = genValues(offset);
     long timestamp = genTimestamps(1, offset)[0];
 
-    return new RelationalInsertRowNode(
+    RelationalInsertRowNode relationalInsertRowNode = new RelationalInsertRowNode(
         new PlanNodeId(offset + "-" + 1),
-        new PartialPath(new String[] {tableName()}),
+        new PartialPath(new String[]{tableName()}),
         true,
         measurements,
         dataTypes,
@@ -212,6 +216,8 @@ public class StatementTestUtils {
         values,
         false,
         columnCategories);
+    relationalInsertRowNode.setMeasurementSchemas(genMeasurementSchemas());
+    return relationalInsertRowNode;
   }
 
   public static InsertTabletStatement genInsertTabletStatement(boolean writeToTable) {
