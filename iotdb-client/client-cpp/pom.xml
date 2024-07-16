@@ -240,6 +240,9 @@
                     <!-- Actually executes the testing compilation -->
                     <execution>
                         <id>cmake-compile-test</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
                         <phase>test-compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
@@ -401,6 +404,29 @@
                 <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
             </properties>
+        </profile>
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cmake-compile-test</id>
+                                <phase>none</phase>
+                                <!-- This effectively skips the execution -->
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

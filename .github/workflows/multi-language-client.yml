@@ -68,7 +68,7 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean test-compile install verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
