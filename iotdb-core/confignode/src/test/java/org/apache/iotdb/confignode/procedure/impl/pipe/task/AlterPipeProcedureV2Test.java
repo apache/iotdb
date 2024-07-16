@@ -38,9 +38,11 @@ public class AlterPipeProcedureV2Test {
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
     Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
+
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("source.pattern", "root.timecho.wf01");
     processorAttributes.put("processor", "do-nothing-processor");

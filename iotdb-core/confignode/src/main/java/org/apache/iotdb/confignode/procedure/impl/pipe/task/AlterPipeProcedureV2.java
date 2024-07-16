@@ -90,7 +90,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkPipePluginExistence(
-            new HashMap<>(), // no need to check pipe source plugin
+            alterPipeRequest.getExtractorAttributes(),
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
 
@@ -116,7 +116,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            new HashMap<>(alterPipeRequest.getExtractorAttributes()), // reuse pipe source plugin
+            new HashMap<>(alterPipeRequest.getExtractorAttributes()),
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
