@@ -240,11 +240,16 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
     try {
       event.fetchNextResponse();
     } catch (final Exception e) {
+      LOGGER.warn(
+          "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring TsFile (with event {}) to consumer {}",
+          this,
+          event,
+          consumerId,
+          e);
       final String errorMessage =
           String.format(
               "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
               this, event, consumerId, e);
-      LOGGER.warn(errorMessage);
       return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
