@@ -240,6 +240,7 @@ public class TsFileResource {
 
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
 
     if (modFile != null && modFile.exists()) {
       String modFileName = new File(modFile.getFilePath()).getName();
@@ -273,6 +274,7 @@ public class TsFileResource {
       timeIndex = ITimeIndex.createTimeIndex(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
@@ -735,9 +737,7 @@ public class TsFileResource {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
-  /**
-   * @return true if the device is contained in the TsFile
-   */
+  /** @return true if the device is contained in the TsFile */
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
@@ -773,9 +773,7 @@ public class TsFileResource {
     return true;
   }
 
-  /**
-   * @return whether the given time falls in ttl
-   */
+  /** @return whether the given time falls in ttl */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
@@ -840,9 +838,7 @@ public class TsFileResource {
     }
   }
 
-  /**
-   * @return resource map size
-   */
+  /** @return resource map size */
   public long calculateRamSize() {
     if (ramSize == 0) {
       ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
@@ -1096,9 +1092,7 @@ public class TsFileResource {
     }
   }
 
-  /**
-   * @return is this tsfile resource in a TsFileResourceList
-   */
+  /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
   }
