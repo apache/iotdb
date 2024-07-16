@@ -271,8 +271,8 @@ public class MTreeBelowSGCachedImpl {
   }
 
   /**
-   * Create a time series with a full path from root to leaf node. Before creating a time series, the
-   * database should be set first, throw exception otherwise
+   * Create a time series with a full path from root to leaf node. Before creating a time series,
+   * the database should be set first, throw exception otherwise
    *
    * @param path time series path
    * @param dataType data type
