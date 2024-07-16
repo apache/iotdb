@@ -383,11 +383,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitConstructSchemaBlackList(
-      ConstructSchemaBlackListNode node, ISchemaRegion schemaRegion) {
+      final ConstructSchemaBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
-      long preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
-    } catch (MetadataException e) {
+      final Pair<Long, Boolean> preDeletedNumAndIsAllLogicalView =
+          schemaRegion.constructSchemaBlackList(node.getPatternTree());
+      return RpcUtils.getStatus(
+          Boolean.TRUE.equals(preDeletedNumAndIsAllLogicalView.getRight())
+              ? TSStatusCode.ONLY_LOGICAL_VIEW
+              : TSStatusCode.SUCCESS_STATUS,
+          String.valueOf(preDeletedNumAndIsAllLogicalView.getLeft()));
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }

@@ -549,17 +549,17 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           SchemaRegionTestUtil.showTimeseries(
               schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
       Assert.assertEquals(1, result.size());
-      // delete timeseries
-      PathPatternTree patternTree = new PathPatternTree();
+      // Delete timeseries
+      final PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendFullPath(new PartialPath("root.sg.wf01.wt01.v1.temp"));
       patternTree.constructTree();
-      Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree) >= 1);
+      Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree).getLeft() >= 1);
       schemaRegion.deleteTimeseriesInBlackList(patternTree);
       result =
           SchemaRegionTestUtil.showTimeseries(
               schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
       Assert.assertEquals(0, result.size());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());
     }
