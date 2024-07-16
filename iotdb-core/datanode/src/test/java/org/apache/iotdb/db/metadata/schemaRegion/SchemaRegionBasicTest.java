@@ -34,7 +34,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowNodesResult;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
@@ -229,7 +231,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testCreateAlignedTimeseries() throws Exception {
+  public void testCreateAlignedTimeSeries() throws Exception {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createAlignedTimeSeries(
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
@@ -247,6 +249,84 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(2, checkRes.size());
     Assert.assertTrue(checkRes.get(0) instanceof MeasurementAlreadyExistException);
     Assert.assertTrue(checkRes.get(1) instanceof MeasurementAlreadyExistException);
+  }
+
+  @Test
+  public void testCreateAlignedTimeSeriesWithMerge() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+    final Map<String, String> oldAttrMap = Collections.singletonMap("attrK1", "attrV1");
+    schemaRegion.createAlignedTimeSeries(
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+            new PartialPath("root.sg.wf02.wt01"),
+            Arrays.asList("temperature", "status"),
+            Arrays.asList(TSDataType.valueOf("FLOAT"), TSDataType.valueOf("INT32")),
+            Arrays.asList(TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
+            null,
+            Arrays.asList(Collections.emptyMap(), Collections.singletonMap("tagK", "tagV")),
+            Arrays.asList(Collections.emptyMap(), oldAttrMap)));
+
+    final Map<String, String> newTagMap = Collections.singletonMap("tagK", "newTagV");
+    final Map<String, String> newAttrMap = Collections.singletonMap("attrK2", "attrV2");
+    ICreateAlignedTimeSeriesPlan mergePlan =
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+            new PartialPath("root.sg.wf02.wt01"),
+            Collections.singletonList("status"),
+            Collections.singletonList(TSDataType.valueOf("INT32")),
+            Collections.singletonList(TSEncoding.valueOf("PLAIN")),
+            Collections.singletonList(CompressionType.ZSTD),
+            Collections.singletonList("alias2"),
+            Collections.singletonList(newTagMap),
+            Collections.singletonList(newAttrMap));
+    ((CreateAlignedTimeSeriesPlanImpl) mergePlan).setWithMerge(true);
+    schemaRegion.createAlignedTimeSeries(mergePlan);
+
+    final PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.*"));
+    patternTree.constructTree();
+    final ClusterSchemaTree schemas =
+        schemaRegion.fetchSeriesSchema(patternTree, Collections.emptyMap(), true, true, true, true);
+    final List<MeasurementPath> measurementPaths =
+        schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.status")).left;
+    Assert.assertEquals(1, measurementPaths.size());
+
+    final MeasurementPath measurementPath = measurementPaths.get(0);
+    Assert.assertEquals("root.sg.wf01.wt01.status", measurementPath.getFullPath());
+    Assert.assertEquals(TSDataType.INT32, measurementPath.getMeasurementSchema().getType());
+
+    // The encoding and compressor won't be changed
+    Assert.assertEquals(
+        TSEncoding.RLE, measurementPaths.get(0).getMeasurementSchema().getEncodingType());
+    Assert.assertEquals(
+        CompressionType.SNAPPY, measurementPaths.get(0).getMeasurementSchema().getCompressor());
+
+    final Map<String, String> resultAttrMap = new HashMap<>(oldAttrMap);
+    resultAttrMap.putAll(newAttrMap);
+
+    // The alias/tags/attributes are updated
+    Assert.assertEquals("alias2", measurementPath.getMeasurementAlias());
+    Assert.assertEquals(newTagMap, measurementPath.getTagMap());
+    Assert.assertEquals(resultAttrMap, measurementPath.getTagMap());
+
+    // Test illegal plan
+    try {
+      mergePlan =
+          SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+              new PartialPath("root.sg.wf02.wt01"),
+              Collections.singletonList("temperature"),
+              Collections.singletonList(TSDataType.valueOf("BOOLEAN")),
+              Collections.singletonList(TSEncoding.valueOf("PLAIN")),
+              Collections.singletonList(CompressionType.ZSTD),
+              Collections.singletonList("alias2"),
+              Collections.singletonList(newTagMap),
+              Collections.singletonList(newAttrMap));
+      ((CreateAlignedTimeSeriesPlanImpl) mergePlan).setWithMerge(true);
+      schemaRegion.createAlignedTimeSeries(mergePlan);
+      Assert.fail("Create aligned series with merge shall fail if the types are different");
+    } catch (final MeasurementAlreadyExistException e) {
+      // Success
+    }
   }
 
   @Test
@@ -1050,7 +1130,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final Set<IDeviceSchemaInfo> actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
 
-    // case2: show timeseries root.**.*e*.*e*
+    // case2: show time series root.**.*e*.*e*
     List<ITimeSeriesSchemaInfo> result =
         SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.**.*e*.*e*"));
     final Set<String> expectedPathList =
@@ -1068,7 +1148,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     }
     Assert.assertEquals(expectedPathList, actualPathList);
 
-    // case3: show timeseries root.**.*e*
+    // case3: show time series root.**.*e*
     result = SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.**.*e*"));
     Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();
