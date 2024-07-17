@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn.ColumnType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -88,6 +89,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -212,11 +214,14 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<TsTableColumnCategory> columnCategories =
+    List<Tablet.ColumnType> tsfileColumnCategories =
         Arrays.asList(
-            TsTableColumnCategory.ID,
-            TsTableColumnCategory.ATTRIBUTE,
-            TsTableColumnCategory.MEASUREMENT);
+            Tablet.ColumnType.ID,
+            Tablet.ColumnType.ATTRIBUTE,
+            Tablet.ColumnType.MEASUREMENT);
+    List<TsTableColumnCategory> columnCategories = tsfileColumnCategories.stream().map(
+        TsTableColumnCategory::fromTsFileColumnType).collect(
+        Collectors.toList());
     TSInsertTabletReq req =
         new TSInsertTabletReq(
             101L,
@@ -227,7 +232,7 @@ public class StatementGeneratorTest {
             dataTypes.stream().map(d -> (int) d.serialize()).collect(Collectors.toList()),
             1);
     req.setColumnCategories(
-        columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
+        tsfileColumnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
     req.setWriteToTable(true);
 
     final InsertTabletStatement statement = StatementGenerator.createStatement(req);
