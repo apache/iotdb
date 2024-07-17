@@ -2165,9 +2165,16 @@ public class DataRegion implements IDataRegionForQuery {
     return walFlushListeners;
   }
 
+  /**
+   * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
+   * request</a> for details
+   */
   public Optional<WALFlushListener> walBatchOfSameSearchIndexDone() {
     AtomicReference<WALFlushListener> listener = new AtomicReference<>();
-    getWALNode().ifPresent(walNode -> listener.set(walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, new BatchDoneNode())));
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                listener.set(walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, new BatchDoneNode())));
     return Optional.ofNullable(listener.get());
   }
 
