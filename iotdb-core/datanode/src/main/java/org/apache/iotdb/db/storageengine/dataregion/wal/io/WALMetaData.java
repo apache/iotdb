@@ -131,38 +131,49 @@ public class WALMetaData implements SerializedSize {
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
     if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
-      throw new IOException(String.format("Broken wal file %s", logFile));
+      throw new IOException(
+          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
     }
 
     // load metadata size
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+    WALMetaData metaData = null;
     long position;
-    WALFileVersion version = WALFileVersion.getVersion(channel);
-    position =
-        channel.size()
-            - Integer.BYTES
-            - (version == WALFileVersion.V2
-                ? WALWriter.MAGIC_STRING_V2_BYTES
-                : WALWriter.MAGIC_STRING_V1_BYTES);
-    channel.read(metadataSizeBuf, position);
-    metadataSizeBuf.flip();
-    // load metadata
-    int metadataSize = metadataSizeBuf.getInt();
-    ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-    channel.read(metadataBuf, position - metadataSize);
-    metadataBuf.flip();
-    WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
-    // versions before V1.3, should recover memTable ids from entries
-    if (metaData.memTablesId.isEmpty()) {
-      int offset = Byte.BYTES;
-      for (int size : metaData.buffersSize) {
-        channel.position(offset);
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        channel.read(buffer);
-        buffer.clear();
-        metaData.memTablesId.add(buffer.getLong());
-        offset += size;
+    try {
+      ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+      WALFileVersion version = WALFileVersion.getVersion(channel);
+      position =
+          channel.size()
+              - Integer.BYTES
+              - (version == WALFileVersion.V2
+                  ? WALWriter.MAGIC_STRING_V2_BYTES
+                  : WALWriter.MAGIC_STRING_V1_BYTES);
+      channel.read(metadataSizeBuf, position);
+      metadataSizeBuf.flip();
+      // load metadata
+      int metadataSize = metadataSizeBuf.getInt();
+      ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
+      channel.read(metadataBuf, position - metadataSize);
+      metadataBuf.flip();
+      metaData = WALMetaData.deserialize(metadataBuf);
+      // versions before V1.3, should recover memTable ids from entries
+      if (metaData.memTablesId.isEmpty()) {
+        int offset = Byte.BYTES;
+        for (int size : metaData.buffersSize) {
+          channel.position(offset);
+          ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+          channel.read(buffer);
+          buffer.clear();
+          metaData.memTablesId.add(buffer.getLong());
+          offset += size;
+        }
       }
+    } catch (IllegalArgumentException e) {
+      throw new IOException(
+          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IOException("Unexpected exception", e);
     }
     return metaData;
   }

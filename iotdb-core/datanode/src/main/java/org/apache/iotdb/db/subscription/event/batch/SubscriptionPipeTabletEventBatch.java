@@ -103,7 +103,7 @@ public class SubscriptionPipeTabletEventBatch {
     return shouldEmit();
   }
 
-  public void ack() {
+  public synchronized void ack() {
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
     }

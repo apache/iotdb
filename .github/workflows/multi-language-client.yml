@@ -60,16 +60,15 @@ jobs:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server and client
+      - name: Build IoTDB server
+        shell: bash
+        run: ./mvnw clean install -pl distribution -am -DskipTests
+      - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
-      - name: Test with Maven
-        shell: bash
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -107,12 +106,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: ['3.x']
-        os: [ubuntu-latest]
-        include:
-          - python: '3.6'
-            os: ubuntu-20.04
-    runs-on: ${{ matrix.os }}
+        python: [ '3.6', '3.x' ]
+    runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
