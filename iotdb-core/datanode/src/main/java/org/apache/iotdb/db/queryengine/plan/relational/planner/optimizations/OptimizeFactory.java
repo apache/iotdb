@@ -39,8 +39,8 @@ public class OptimizeFactory {
 
   public OptimizeFactory(PlannerContext plannerContext) {
 
-    PlanOptimizer simplifyExpression = new SimplifyExpressions();
-    PlanOptimizer pushPredicateIntoTableScan = new PushPredicateIntoTableScan();
+    PlanOptimizer simplifyExpressionOptimizer = new SimplifyExpressions();
+    PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
 
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
@@ -51,19 +51,25 @@ public class OptimizeFactory {
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()));
+    IterativeOptimizer columnPruningOptimizer =
+        new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules);
 
-    Set<Rule<?>> inlineProjections =
-        ImmutableSet.of(
-            new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections());
+    IterativeOptimizer inlineProjectionsOptimizer =
+        new IterativeOptimizer(
+            plannerContext,
+            new RuleStatsRecorder(),
+            ImmutableSet.of(
+                new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()));
 
     this.planOptimizers =
         ImmutableList.of(
-            simplifyExpression,
-            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules),
-            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections),
-            pushPredicateIntoTableScan,
-            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules),
-            new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), inlineProjections));
+            simplifyExpressionOptimizer,
+            columnPruningOptimizer,
+            inlineProjectionsOptimizer,
+            pushPredicateIntoTableScanOptimizer,
+            // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
+            columnPruningOptimizer,
+            inlineProjectionsOptimizer);
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {
