@@ -72,7 +72,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.**"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -104,7 +104,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Alter pipe (modify)
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('source.path'='root.timecho')");
+      statement.execute("alter pipe a2b modify source ('source.path'='root.test1.**')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -118,8 +118,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.**"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -138,7 +138,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b replace source ('source' = 'iotdb-source','source.path'='root.timecho.wf01')");
+          "alter pipe a2b replace source ('source' = 'iotdb-source','source.path'='root.test1.wf01')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -153,7 +153,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -186,7 +187,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
@@ -229,7 +230,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -266,7 +267,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -303,7 +304,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -340,7 +341,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -377,7 +378,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho.wf01"));
+          showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
           showPipeResult
