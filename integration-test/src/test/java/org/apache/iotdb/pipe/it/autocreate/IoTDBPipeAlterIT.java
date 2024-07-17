@@ -53,7 +53,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source' = 'iotdb-source' ) with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe a2b with source ('source' = 'iotdb-source', 'source.pattern' = 'root.**' ) with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -72,6 +72,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -116,7 +117,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.timecho"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -457,7 +460,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testPipeSourceAndProcessor() {
+  public void testAlterPipeSourceAndProcessor() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // Create pipe
