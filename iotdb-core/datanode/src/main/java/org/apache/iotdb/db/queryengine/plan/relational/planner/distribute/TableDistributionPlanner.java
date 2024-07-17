@@ -33,15 +33,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class TableDistributionPlanner {
   private final Analysis analysis;
@@ -88,30 +87,12 @@ public class TableDistributionPlanner {
     PlanNode outputNodeWithExchange =
         new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
     if (analysis.getStatement() instanceof Query) {
-      // select s1, time, s2 from table;
-      // List<String> columnNameList {s1, time, s2}
-      // Map<String, Integer> columnName2TsBlockColumnIndexMap {s1:0, time: -1, s2: 1}
-      // resultSet.getString(2);
-      //     => String columnName = columnNameList.get(2 - 1); fetch columnName
-      //     => int indexForTsBlockColumn = columnName2TsBlockColumnIndexMap.get(columnName);
-      //     => Column c = indexForTsBlockColumn >= 0 ?
-      // tsBlock.getValueColumn(indexForTsBlockColumn) : tsBlock.getTimeColumn()
-      //     => c.getString(currentRowIndex);
-      List<String> outputColumnNames =
-          new ArrayList<>(outputNodeWithExchange.getOutputSymbols().size());
-      boolean hasTimeColumn = false;
-      for (Symbol column : outputNodeWithExchange.getOutputSymbols()) {
-        String columnName = column.getName();
-        if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(columnName)) {
-          outputColumnNames.add(columnName);
-        } else {
-          hasTimeColumn = true;
-        }
-      }
-      analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(outputColumnNames);
-      if (hasTimeColumn) {
-        analysis.getRespDatasetHeader().addTimeColumn();
-      }
+      analysis
+          .getRespDatasetHeader()
+          .setColumnToTsBlockIndexMap(
+              outputNodeWithExchange.getOutputSymbols().stream()
+                  .map(Symbol::getName)
+                  .collect(Collectors.toList()));
     }
     adjustUpStream(outputNodeWithExchange, planContext);
 

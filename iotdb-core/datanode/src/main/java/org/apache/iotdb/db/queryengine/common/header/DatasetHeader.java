@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
-
 /** The header of query result dataset. */
 public class DatasetHeader {
 
@@ -159,9 +157,5 @@ public class DatasetHeader {
   @Override
   public int hashCode() {
     return Objects.hash(columnHeaders, isIgnoreTimestamp);
-  }
-
-  public void addTimeColumn() {
-    columnToTsBlockIndexMap.put(TIMESTAMP_EXPRESSION_STRING, -1);
   }
 }
