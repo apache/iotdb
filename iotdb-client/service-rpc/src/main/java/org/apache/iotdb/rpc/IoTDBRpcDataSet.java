@@ -160,9 +160,10 @@ public class IoTDBRpcDataSet {
         this.columnNameList.add(name);
         String columnType = columnTypeList.get(i);
         this.columnTypeList.add(columnType);
-        columnOrdinalMap.computeIfAbsent(
-            name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
-        columnName2TsBlockColumnIndexMap.put(name, i);
+        Integer ordinal =
+            columnOrdinalMap.computeIfAbsent(
+                name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
+        columnName2TsBlockColumnIndexMap.put(name, ordinal - startIndex);
       }
     }
 
