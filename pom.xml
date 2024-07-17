@@ -939,9 +939,9 @@
                     <version>3.6.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.thrift.tools</groupId>
-                    <artifactId>maven-thrift-plugin</artifactId>
-                    <version>0.1.11</version>
+                    <groupId>org.apache.thrift</groupId>
+                    <artifactId>thrift-maven-plugin</artifactId>
+                    <version>0.10.0</version>
                 </plugin>
                 <plugin>
                     <groupId>com.bazaarvoice.maven.plugins</groupId>
@@ -1608,8 +1608,8 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.apache.thrift.tools</groupId>
-                        <artifactId>maven-thrift-plugin</artifactId>
+                        <groupId>org.apache.thrift</groupId>
+                        <artifactId>thrift-maven-plugin</artifactId>
                         <configuration>
                             <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                             <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
@@ -1644,7 +1644,7 @@
                                 </goals>
                                 <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>go</generator>
+                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
