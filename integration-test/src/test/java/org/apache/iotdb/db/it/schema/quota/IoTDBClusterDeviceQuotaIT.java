@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it.schema.quota;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -24,7 +25,7 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 import org.junit.runners.Parameterized;
 
 public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterQuotaIT {
-  public IoTDBClusterDeviceQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
+  public IoTDBClusterDeviceQuotaIT(final AbstractSchemaIT.SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 

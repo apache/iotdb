@@ -23,18 +23,17 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBActiveRegionScanIT2 extends IoTDBActiveRegionScanIT {
-  public IoTDBActiveRegionScanIT2(SchemaTestMode schemaTestMode) {
+  public IoTDBActiveRegionScanIT2(final SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -42,12 +41,14 @@ public class IoTDBActiveRegionScanIT2 extends IoTDBActiveRegionScanIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(1);
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    tearDownEnvironment();
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
