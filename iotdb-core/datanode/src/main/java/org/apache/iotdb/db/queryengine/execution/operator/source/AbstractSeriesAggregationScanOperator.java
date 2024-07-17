@@ -230,13 +230,10 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    int index = -1;
     for (Aggregator aggregator : aggregators) {
-      index++;
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      System.out.println("statistics index: " + index);
       aggregator.processStatistics(timeStatistics, valueStatistics);
     }
   }

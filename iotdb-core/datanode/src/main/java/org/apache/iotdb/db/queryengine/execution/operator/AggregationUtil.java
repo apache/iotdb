@@ -137,14 +137,11 @@ public class AggregationUtil {
     }
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-    int index = -1;
     for (Aggregator aggregator : aggregators) {
-      index++;
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      System.out.println("raw data index: " + index);
       aggregator.processTsBlock(inputRegion, null);
     }
     int lastReadRowIndex = lastIndexToProcess + 1;
