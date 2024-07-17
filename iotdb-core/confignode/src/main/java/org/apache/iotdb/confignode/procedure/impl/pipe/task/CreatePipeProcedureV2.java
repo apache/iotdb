@@ -173,7 +173,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
                 if (databaseName != null
-                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
                   // Pipe only collect user's data, filter out metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
