@@ -20,9 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -332,12 +330,6 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
-        long recordSize =
-            MemUtils.getRecordSize(
-                tsDataType,
-                tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
-                true);
-        CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }
 

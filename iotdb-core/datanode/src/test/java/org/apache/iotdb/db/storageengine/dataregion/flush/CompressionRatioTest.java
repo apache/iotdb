@@ -104,4 +104,40 @@ public class CompressionRatioTest {
     // largest diskSize to the memory
     assertEquals(2, compressionRatio.getRatio(), 0.1);
   }
+
+  @Test
+  public void testRestoreIllegal1() throws IOException {
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 10, 50))
+            .toPath());
+
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
+            .toPath());
+
+    compressionRatio.restore();
+
+    // if multiple files exist in the system due to some exceptions, restore the file with the
+    // largest diskSize to the memory
+    assertEquals(0.2, compressionRatio.getRatio(), 0.1);
+  }
+
+  @Test
+  public void testRestoreIllegal2() throws IOException {
+
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
+            .toPath());
+
+    compressionRatio.restore();
+
+    // if compression ratio from file is negative, assume the compression ratio is 0 / 0 = NaN
+    assertEquals(Double.NaN, compressionRatio.getRatio(), 0.1);
+  }
 }
