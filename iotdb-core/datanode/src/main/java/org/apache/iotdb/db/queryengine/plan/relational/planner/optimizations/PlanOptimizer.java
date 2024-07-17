@@ -13,12 +13,15 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 
 import static java.util.Objects.requireNonNull;
@@ -28,6 +31,9 @@ public interface PlanOptimizer {
 
   class Context {
     private final SessionInfo sessionInfo;
+    private final Analysis analysis;
+    private final Metadata metadata;
+    private final MPPQueryContext queryContext;
     private final TypeProvider types;
     private final SymbolAllocator symbolAllocator;
     private final QueryId idAllocator;
@@ -36,12 +42,18 @@ public interface PlanOptimizer {
 
     public Context(
         SessionInfo session,
+        Analysis analysis,
+        Metadata metadata,
+        MPPQueryContext queryContext,
         TypeProvider types,
         SymbolAllocator symbolAllocator,
         QueryId idAllocator,
         WarningCollector warningCollector,
         PlanOptimizersStatsCollector planOptimizersStatsCollector) {
       this.sessionInfo = requireNonNull(session, "session is null");
+      this.analysis = analysis;
+      this.metadata = metadata;
+      this.queryContext = queryContext;
       this.types = requireNonNull(types, "types is null");
       this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
       this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
@@ -52,6 +64,18 @@ public interface PlanOptimizer {
 
     public SessionInfo sessionInfo() {
       return sessionInfo;
+    }
+
+    public Analysis getAnalysis() {
+      return analysis;
+    }
+
+    public Metadata getMetadata() {
+      return metadata;
+    }
+
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
     }
 
     public TypeProvider types() {
