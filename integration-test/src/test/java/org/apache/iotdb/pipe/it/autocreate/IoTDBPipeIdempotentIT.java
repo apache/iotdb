@@ -52,9 +52,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
-  }
 
-  private void innerSetUp(final String schemaEngineMode) {
     // TODO: delete ratis configurations
     // All the schema operations must be under the same database to
     // be in the same region, therefore a non-idempotent operation can block the next one
@@ -73,10 +71,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        // Currently sender only supports memory impl to transfer snapshot
-        // However, we still support PBTree impl at receiver
-        .setSchemaEngineMode(schemaEngineMode);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
