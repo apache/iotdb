@@ -328,25 +328,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryResult == null) {
-        BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
-        this.resultSet =
-            new IoTDBNonAlignJDBCResultSet(
-                this,
-                execResp.getColumns(),
-                execResp.getDataTypeList(),
-                execResp.columnNameIndexMap,
-                execResp.ignoreTimeStamp,
-                client,
-                sql,
-                queryId,
-                sessionId,
-                execResp.nonAlignQueryDataSet,
-                execResp.tracingInfo,
-                execReq.timeout,
-                execResp.operationType,
-                execResp.getSgColumns(),
-                aliasColumn,
-                zoneId);
+        throw new SQLException("execResp.queryResult should never be null.");
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -364,7 +346,8 @@ public class IoTDBStatement implements Statement {
                 execReq.timeout,
                 execResp.moreData,
                 zoneId,
-                charset);
+                charset,
+                execResp.isSetTableModel() && execResp.isTableModel());
       }
       return true;
     }
@@ -476,29 +459,8 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    BitSet aliasColumn = null;
-    if (execResp.getAliasColumns() != null && !execResp.getAliasColumns().isEmpty()) {
-      aliasColumn = listToBitSet(execResp.getAliasColumns());
-    }
-    if (execResp.queryResult == null) {
-      this.resultSet =
-          new IoTDBNonAlignJDBCResultSet(
-              this,
-              execResp.getColumns(),
-              execResp.getDataTypeList(),
-              execResp.columnNameIndexMap,
-              execResp.ignoreTimeStamp,
-              client,
-              sql,
-              queryId,
-              sessionId,
-              execResp.nonAlignQueryDataSet,
-              execResp.tracingInfo,
-              execReq.timeout,
-              execResp.operationType,
-              execResp.sgColumns,
-              aliasColumn,
-              zoneId);
+    if (!execResp.isSetQueryResult()) {
+      throw new SQLException("execResp.queryResult should never be null.");
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -511,16 +473,13 @@ public class IoTDBStatement implements Statement {
               sql,
               queryId,
               sessionId,
-              execResp.queryResult,
+              execResp.getQueryResult(),
               execResp.tracingInfo,
               execReq.timeout,
-              execResp.operationType,
-              execResp.columns,
-              execResp.sgColumns,
-              aliasColumn,
               execResp.moreData,
               zoneId,
-              charset);
+              charset,
+              execResp.isSetTableModel() && execResp.isTableModel());
     }
     return resultSet;
   }
@@ -781,5 +740,17 @@ public class IoTDBStatement implements Statement {
 
   public long getStmtId() {
     return stmtId;
+  }
+
+  public long getMilliSecond(long time) {
+    return RpcUtils.getMilliSecond(time, connection.getTimeFactor());
+  }
+
+  public int getNanoSecond(long time) {
+    return RpcUtils.getNanoSecond(time, connection.getTimeFactor());
+  }
+
+  public int getTimeFactor() {
+    return connection.getTimeFactor();
   }
 }

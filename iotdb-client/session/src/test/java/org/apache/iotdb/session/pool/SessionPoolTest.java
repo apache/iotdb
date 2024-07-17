@@ -1262,7 +1262,9 @@ public class SessionPoolTest {
             10,
             true,
             10,
-            ZoneId.systemDefault());
+            ZoneId.systemDefault(),
+            1000,
+            false);
     Mockito.when(session.executeQueryStatement(any(String.class), eq(50)))
         .thenReturn(sessionDataSet);
     sessionDataSetWrapper = sessionPool.executeQueryStatement(sql, 50);
@@ -1497,7 +1499,9 @@ public class SessionPoolTest {
             10,
             true,
             10,
-            ZoneId.systemDefault());
+            ZoneId.systemDefault(),
+            1000,
+            false);
 
     Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(sessionDataSet);
 

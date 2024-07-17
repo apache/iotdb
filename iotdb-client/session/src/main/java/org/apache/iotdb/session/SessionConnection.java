@@ -109,6 +109,9 @@ public class SessionConnection {
 
   private final String database;
 
+  // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
+  private int timeFactor = 1_000;
+
   // TestOnly
   public SessionConnection() {
     availableNodes = Collections::emptyList;
@@ -213,7 +216,7 @@ public class SessionConnection {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       RpcUtils.verifySuccess(openResp.getStatus());
-
+      this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
             "Protocol differ, Client version is {}}, but Server version is {}",
@@ -457,7 +460,9 @@ public class SessionConnection {
         timeout,
         execResp.moreData,
         session.fetchSize,
-        zoneId);
+        zoneId,
+        timeFactor,
+        execResp.isSetTableModel() && execResp.isTableModel());
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -557,7 +562,9 @@ public class SessionConnection {
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
         execResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        execResp.isSetTableModel() && execResp.isTableModel());
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -604,7 +611,9 @@ public class SessionConnection {
             tsExecuteStatementResp.queryResult,
             tsExecuteStatementResp.isIgnoreTimeStamp(),
             tsExecuteStatementResp.moreData,
-            zoneId),
+            zoneId,
+            timeFactor,
+            tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel()),
         redirectedEndPoint);
   }
 
@@ -646,7 +655,9 @@ public class SessionConnection {
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
         tsExecuteStatementResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel());
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -728,7 +739,9 @@ public class SessionConnection {
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
         tsExecuteStatementResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel());
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(

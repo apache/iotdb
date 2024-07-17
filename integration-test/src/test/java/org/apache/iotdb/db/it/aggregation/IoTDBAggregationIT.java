@@ -348,8 +348,8 @@ public class IoTDBAggregationIT {
   public void firstTest() {
     String[] retArray =
         new String[] {
-          "0,2000,2000,2000.0,2000,2000,0x2000,2000-01-01,2000",
-          "0,500,500,500.0,500,500,0x0500,1500-01-01,500"
+          "0,2000,2000,2000.0,2000,2000,0x2000,2000-01-01,1970-01-01T00:00:02.000Z",
+          "0,500,500,500.0,500,500,0x0500,1500-01-01,1970-01-01T00:00:00.500Z"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -453,9 +453,9 @@ public class IoTDBAggregationIT {
   public void lastTest() {
     String[] retArray =
         new String[] {
-          "0,8499,8499.0,8499,0x8499,8499-01-01,8499",
-          "0,1499,1499.0,1499,0x1499,1499-01-01,1499",
-          "0,2200,2200.0,2200,0x2200,2200-01-01,2200"
+          "0,8499,8499.0,8499,0x8499,8499-01-01,1970-01-01T00:00:08.499Z",
+          "0,1499,1499.0,1499,0x1499,1499-01-01,1970-01-01T00:00:01.499Z",
+          "0,2200,2200.0,2200,0x2200,2200-01-01,1970-01-01T00:00:02.200Z"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -727,7 +727,10 @@ public class IoTDBAggregationIT {
   @Test
   public void maxminValueTest() {
     String[] retArray =
-        new String[] {"0,8499,500.0,999,1000,8499-01-01,1000-01-01,8499,500", "0,2499,500.0"};
+        new String[] {
+          "0,8499,500.0,999,1000,8499-01-01,1000-01-01,1970-01-01T00:00:08.499Z,1970-01-01T00:00:00.500Z",
+          "0,2499,500.0"
+        };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

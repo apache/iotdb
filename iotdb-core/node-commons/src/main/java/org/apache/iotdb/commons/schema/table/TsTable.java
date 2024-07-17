@@ -52,7 +52,7 @@ public class TsTable {
 
   private static final String TIME_COLUMN_NAME = "Time";
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
-      new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.INT64);
+      new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = new HashSet<>();
 
