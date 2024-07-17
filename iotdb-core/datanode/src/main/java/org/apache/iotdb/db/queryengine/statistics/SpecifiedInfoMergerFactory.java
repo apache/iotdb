@@ -45,6 +45,8 @@ public class SpecifiedInfoMergerFactory {
     switch (operatorType) {
       case "TreeSortOperator":
       case "TreeMergeSortOperator":
+      case "TableSortOperator":
+      case "TableMergeSortOperator":
       case "FilterAndProjectOperator":
         return LONG_MERGER;
       default:
