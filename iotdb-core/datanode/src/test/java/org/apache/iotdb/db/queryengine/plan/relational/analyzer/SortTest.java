@@ -42,16 +42,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.AddStreamSort;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TablePlanOptimizer;
 
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
@@ -86,9 +81,6 @@ public class SortTest {
   TableDistributionPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
-  List<TablePlanOptimizer> planOptimizerList =
-      Arrays.asList(
-          new SimplifyExpressions(), new PushPredicateIntoTableScan(), new AddStreamSort());
 
   /*
    * order by time, others, some_ids
@@ -126,7 +118,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -267,7 +259,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -411,7 +403,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -550,7 +542,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -704,7 +696,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -779,7 +771,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -852,7 +844,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -928,14 +920,14 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -1011,7 +1003,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -1157,7 +1149,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -1314,7 +1306,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -1454,7 +1446,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, planOptimizerList, WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 

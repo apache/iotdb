@@ -15,13 +15,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -42,20 +39,15 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
  *     can be eliminated.
  * <li>When order by all IDColumns and time, the SortNode can be eliminated.
  */
-public class SortElimination implements TablePlanOptimizer {
+public class SortElimination implements PlanOptimizer {
 
   @Override
-  public PlanNode optimize(
-      PlanNode planNode,
-      Analysis analysis,
-      Metadata metadata,
-      SessionInfo sessionInfo,
-      MPPQueryContext context) {
-    if (!analysis.hasSortNode()) {
-      return planNode;
+  public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
+    if (!context.getAnalysis().hasSortNode()) {
+      return plan;
     }
 
-    return planNode.accept(new Rewriter(analysis), new Context());
+    return plan.accept(new Rewriter(context.getAnalysis()), new Context());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
