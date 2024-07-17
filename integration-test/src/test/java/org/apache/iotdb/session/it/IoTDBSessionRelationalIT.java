@@ -135,7 +135,8 @@ public class IoTDBSessionRelationalIT {
       }
 
       timestamp = 0;
-      SessionDataSet dataSet = session.executeQueryStatement("select time, id1, attr1, m1 from table1 order by time");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select time, id1, attr1, m1 from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(timestamp, rowRecord.getTimestamp());
