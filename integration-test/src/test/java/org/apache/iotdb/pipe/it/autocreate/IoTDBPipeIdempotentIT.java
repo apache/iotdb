@@ -88,7 +88,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
