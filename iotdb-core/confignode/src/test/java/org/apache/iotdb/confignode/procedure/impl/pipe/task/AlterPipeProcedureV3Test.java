@@ -45,7 +45,7 @@ public class AlterPipeProcedureV3Test {
     Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("source", "iotdb-source");
-    extractorAttributes.put("source.pattern", "root.timecho.wf01");
+    extractorAttributes.put("source.pattern", "root.test1.wf01");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
