@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -34,7 +33,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class AlterPipeProcedureV2Test {
+public class AlterPipeProcedureV3Test {
+
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -44,6 +44,8 @@ public class AlterPipeProcedureV2Test {
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
+    extractorAttributes.put("source", "iotdb-source");
+    extractorAttributes.put("source.pattern", "root.test1.wf01");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
@@ -53,17 +55,16 @@ public class AlterPipeProcedureV2Test {
         new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true);
     req.setExtractorAttributes(extractorAttributes);
     req.setIsReplaceAllExtractorAttributes(false);
-    AlterPipeProcedureV2 proc =
-        new AlterPipeProcedureV2(req, ProcedureType.ALTER_PIPE_PROCEDURE_V2);
+    AlterPipeProcedureV2 proc = new AlterPipeProcedureV2(req);
 
     try {
       proc.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      AlterPipeProcedureV2 proc2 =
+      AlterPipeProcedureV2 proc3 =
           (AlterPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
 
-      assertEquals(proc, proc2);
+      assertEquals(proc, proc3);
     } catch (Exception e) {
       fail();
     }
