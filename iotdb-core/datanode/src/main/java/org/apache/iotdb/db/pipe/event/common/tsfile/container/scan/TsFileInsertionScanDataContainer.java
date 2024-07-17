@@ -40,7 +40,9 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
+import org.apache.tsfile.read.reader.chunk.AlignedChunkReaderWithoutStatistics;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.tsfile.read.reader.chunk.ChunkReaderWithoutStatistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -284,7 +286,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             chunkReader =
                 isMultiPage
                     ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-                    : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+                    : new AlignedChunkReaderWithoutStatistics(timeChunk, valueChunkList);
             currentIsAligned = true;
             lastMarker = marker;
             return;
@@ -321,7 +323,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                           chunkHeader,
                           tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())),
                       filter)
-                  : new SinglePageWholeChunkReader(
+                  : new ChunkReaderWithoutStatistics(
                       new Chunk(
                           chunkHeader,
                           tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
@@ -355,7 +357,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             chunkReader =
                 isMultiPage
                     ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-                    : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+                    : new AlignedChunkReaderWithoutStatistics(timeChunk, valueChunkList);
             currentIsAligned = true;
             lastMarker = marker;
             return;
@@ -379,7 +381,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       chunkReader =
           isMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+              : new AlignedChunkReaderWithoutStatistics(timeChunk, valueChunkList);
       currentIsAligned = true;
     } else {
       chunkReader = null;
