@@ -82,6 +82,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeleteTimeSer
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -102,6 +104,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -587,18 +590,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   // endregion
 
-  // region Interfaces and Implementation for Timeseries operation
+  // region Interfaces and Implementation for Time series operation
   // including create and delete
 
-  public void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(plan, -1);
+  public void createTimeSeries(ICreateTimeSeriesPlan plan) throws MetadataException {
+    createTimeSeries(plan, -1);
   }
 
-  public void recoverTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void recoverTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     boolean done = false;
     while (!done) {
       try {
-        createTimeseries(plan, offset);
+        createTimeSeries(plan, offset);
         done = true;
       } catch (AliasAlreadyExistException | PathAlreadyExistException e) {
         // skip
@@ -609,40 +612,51 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeSeries(final ICreateTimeSeriesPlan plan, long offset)
+      throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
-    PartialPath path = plan.getPath();
-    IMeasurementMNode<ICachedMNode> leafMNode;
+    final PartialPath path = plan.getPath();
+    final IMeasurementMNode<ICachedMNode> leafMNode;
     try {
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
+      final TSDataType type = plan.getDataType();
+      // Create time series in MTree
       leafMNode =
-          mtree.createTimeseriesWithPinnedReturn(
+          mtree.createTimeSeriesWithPinnedReturn(
               path,
               type,
               plan.getEncoding(),
               plan.getCompressor(),
               plan.getProps(),
-              plan.getAlias());
+              plan.getAlias(),
+              (plan instanceof CreateTimeSeriesPlanImpl
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
 
       try {
-        // update statistics and schemaDataTypeNumMap
+        // Should merge
+        if (Objects.isNull(leafMNode)) {
+          // Write an upsert plan directly
+          // Note that the "pin" and "unpin" is reentrant
+          upsertAliasAndTagsAndAttributes(
+              plan.getAlias(), plan.getTags(), plan.getAttributes(), path);
+          return;
+        }
+
+        // Update statistics and schemaDataTypeNumMap
         regionStatistics.addMeasurement(1L);
 
-        // update tag index
+        // Update tag index
         if (offset != -1 && isRecovering) {
-          // the timeseries has already been created and now system is recovering, using the tag
-          // info
-          // in tagFile to recover index directly
+          // The time series has already been created and now system is recovering, using the tag
+          // info in tagFile to recover index directly
           tagManager.recoverIndex(offset, leafMNode);
           mtree.pinMNode(leafMNode.getAsMNode());
         } else if (plan.getTags() != null) {
-          // tag key, tag value
+          // Tag key, tag value
           tagManager.addIndex(plan.getTags(), leafMNode);
           mtree.pinMNode(leafMNode.getAsMNode());
         }
@@ -664,7 +678,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         }
 
       } finally {
-        mtree.unPinMNode(leafMNode.getAsMNode());
+        if (Objects.nonNull(leafMNode)) {
+          mtree.unPinMNode(leafMNode.getAsMNode());
+        }
       }
 
     } catch (IOException e) {
@@ -694,41 +710,79 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   @Override
-  public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    int seriesCount = plan.getMeasurements().size();
+  public void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan)
+      throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
     try {
-      PartialPath prefixPath = plan.getDevicePath();
-      List<String> measurements = plan.getMeasurements();
-      List<TSDataType> dataTypes = plan.getDataTypes();
-      List<TSEncoding> encodings = plan.getEncodings();
-      List<Map<String, String>> tagsList = plan.getTagsList();
-      List<Map<String, String>> attributesList = plan.getAttributesList();
-      List<IMeasurementMNode<ICachedMNode>> measurementMNodeList;
+      final PartialPath prefixPath = plan.getDevicePath();
+      final List<String> measurements = plan.getMeasurements();
+      final List<TSDataType> dataTypes = plan.getDataTypes();
+      final List<TSEncoding> encodings = plan.getEncodings();
+      final List<CompressionType> compressors = plan.getCompressors();
+      final List<String> aliasList = plan.getAliasList();
+      final List<Map<String, String>> tagsList = plan.getTagsList();
+      final List<Map<String, String>> attributesList = plan.getAttributesList();
+      final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList;
 
       for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
 
+      // Used iff with merge
+      final Set<Integer> existingMeasurementIndexes = new HashSet<>();
+
       // Create time series in MTree
       measurementMNodeList =
-          mtree.createAlignedTimeseries(
+          mtree.createAlignedTimeSeries(
               prefixPath,
               measurements,
-              plan.getDataTypes(),
-              plan.getEncodings(),
-              plan.getCompressors(),
-              plan.getAliasList());
+              dataTypes,
+              encodings,
+              compressors,
+              aliasList,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
+              existingMeasurementIndexes);
 
       try {
-
         // Update statistics and schemaDataTypeNumMap
-        regionStatistics.addMeasurement(seriesCount);
+        regionStatistics.addMeasurement(measurementMNodeList.size());
 
         List<Long> tagOffsets = plan.getTagOffsets();
+
+        // Merge the existing ones
+        // The existing measurements are written into the "upsert" but not written
+        // to the "createSeries" in mLog
+        for (int i = measurements.size() - 1; i >= 0; --i) {
+          if (existingMeasurementIndexes.isEmpty()) {
+            break;
+          }
+          if (!existingMeasurementIndexes.remove(i)) {
+            continue;
+          }
+          // WARNING: The input lists can not be immutable when the "withMerge" is set.
+          upsertAliasAndTagsAndAttributes(
+              Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
+              Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
+              Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
+              prefixPath.concatNode(measurements.get(i)));
+          if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
+            tagOffsets.remove(i);
+          }
+          // Nonnull
+          measurements.remove(i);
+          dataTypes.remove(i);
+          encodings.remove(i);
+          compressors.remove(i);
+        }
+
+        if (measurementMNodeList.isEmpty()) {
+          return;
+        }
+
         for (int i = 0; i < measurements.size(); i++) {
           if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
             if (tagOffsets.get(i) != -1) {
@@ -778,11 +832,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           }
         }
       } finally {
-        for (IMeasurementMNode<ICachedMNode> measurementMNode : measurementMNodeList) {
+        for (final IMeasurementMNode<ICachedMNode> measurementMNode : measurementMNodeList) {
           mtree.unPinMNode(measurementMNode.getAsMNode());
         }
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new MetadataException(e);
     }
   }
@@ -1444,7 +1498,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     public RecoverOperationResult visitCreateTimeSeries(
         ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
-        recoverTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        recoverTimeSeries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);
