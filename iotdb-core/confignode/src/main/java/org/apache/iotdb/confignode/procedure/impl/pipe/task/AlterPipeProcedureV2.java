@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -75,6 +76,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     procedureType = ProcedureType.ALTER_PIPE_PROCEDURE_V3;
   }
 
+  @TestOnly
   public AlterPipeProcedureV2(TAlterPipeReq alterPipeRequest, ProcedureType procedureType)
       throws PipeException {
     super();
