@@ -147,7 +147,9 @@ public class SessionDataSet implements ISessionDataSet {
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
-    for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
+    for (int i = ioTDBRpcDataSet.getValueColumnStartIndex();
+        i < ioTDBRpcDataSet.getColumnSize();
+        i++) {
       Field field;
 
       String columnName = ioTDBRpcDataSet.columnNameList.get(i);

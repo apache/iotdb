@@ -70,6 +70,7 @@ public class IoTDBDatabaseMetadataTest {
 
     when(connection.createStatement())
         .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
+    when(connection.getTimeFactor()).thenReturn(1_000);
     databaseMetaData = new IoTDBDatabaseMetadata(connection, client, sessionId, zoneID);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.getProperties()).thenReturn(properties);

@@ -65,9 +65,6 @@ public class IoTDBRpcDataSet {
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
 
-  // column size
-  public int columnSize;
-
   public long sessionId;
   public long queryId;
   public long statementId;
@@ -122,7 +119,6 @@ public class IoTDBRpcDataSet {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.moreData = moreData;
-    columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
     this.columnTypeList = new ArrayList<>();
@@ -583,5 +579,13 @@ public class IoTDBRpcDataSet {
         || curTsBlock == null) {
       throw new StatementExecutionException("No record remains");
     }
+  }
+
+  public int getValueColumnStartIndex() {
+    return ignoreTimeStamp ? 0 : 1;
+  }
+
+  public int getColumnSize() {
+    return columnNameList.size();
   }
 }
