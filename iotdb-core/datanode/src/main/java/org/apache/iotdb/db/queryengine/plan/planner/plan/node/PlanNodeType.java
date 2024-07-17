@@ -223,7 +223,7 @@ public enum PlanNodeType {
   REGION_MERGE((short) 95),
   DEVICE_SCHEMA_FETCH_SCAN((short) 96),
 
-  BATCH_DONE((short) 97),
+  CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
   ;
 
   public static final int BYTES = Short.BYTES;

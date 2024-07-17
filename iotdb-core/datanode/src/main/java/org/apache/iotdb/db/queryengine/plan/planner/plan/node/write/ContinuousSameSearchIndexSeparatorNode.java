@@ -31,7 +31,7 @@ public class ContinuousSameSearchIndexSeparatorNode implements WALEntryValue {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.BATCH_DONE.getNodeType());
+    buffer.putShort(PlanNodeType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR.getNodeType());
     // search index is always -1
     buffer.putLong(-1);
   }
