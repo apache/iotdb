@@ -147,7 +147,7 @@ public class IoTDBRpcDataSet {
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
           if (index >= 0) {
-            if (columnTypeDeduplicatedList.get(index) != null) {
+            if (columnTypeDeduplicatedList.get(index) == null) {
               columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
             }
           } else {
