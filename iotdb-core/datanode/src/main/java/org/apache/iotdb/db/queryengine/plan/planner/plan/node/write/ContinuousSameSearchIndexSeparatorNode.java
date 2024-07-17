@@ -27,7 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
  * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
  * request</a> for details.
  */
-public class BatchDoneNode implements WALEntryValue {
+public class ContinuousSameSearchIndexSeparatorNode implements WALEntryValue {
+
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(PlanNodeType.BATCH_DONE.getNodeType());

@@ -76,7 +76,7 @@ public class WALInfoEntry extends WALEntry {
       case INSERT_ROWS_NODE:
       case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
-      case BATCH_DONE_NODE:
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:

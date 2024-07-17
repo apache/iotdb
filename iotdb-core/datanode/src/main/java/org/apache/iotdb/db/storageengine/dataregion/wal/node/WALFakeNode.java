@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.BatchDoneNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -69,7 +69,8 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(long memTableId, BatchDoneNode batchDoneNode) {
+  public WALFlushListener log(
+      long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
     return getResult();
   }
 
