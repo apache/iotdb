@@ -222,6 +222,8 @@ public enum PlanNodeType {
   TIMESERIES_REGION_SCAN((short) 94),
   REGION_MERGE((short) 95),
   DEVICE_SCHEMA_FETCH_SCAN((short) 96),
+
+  BATCH_DONE((short) 97),
   ;
 
   public static final int BYTES = Short.BYTES;
