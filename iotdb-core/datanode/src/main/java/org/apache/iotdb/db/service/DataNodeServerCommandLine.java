@@ -126,7 +126,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       return -1;
     }
 
-    // REMARK: Don't need null or empty-checks for args[ß] or args[1], as if they were
+    // REMARK: Don't need null or empty-checks for args[0] or args[1], as if they were
     // empty, the JVM would have not received them.
 
     LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
@@ -172,7 +172,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     }
 
     // Below supports multiple datanode deletion, split by ',', and is reserved for extension
-    List<NodeCoordinate> endPoints = parseCoordinates(args);
+    List<NodeCoordinate> nodeCoordinates = parseCoordinates(args);
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       dataNodeLocations =
@@ -180,7 +180,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
               .map(TDataNodeConfiguration::getLocation)
               .filter(
                   location ->
-                      endPoints.stream()
+                      nodeCoordinates.stream()
                           .anyMatch(nodeCoordinate -> nodeCoordinate.matches(location)))
               .collect(Collectors.toList());
     } catch (TException | ClientManagerException e) {
