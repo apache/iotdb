@@ -24,10 +24,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -39,7 +38,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
 
-  public IoTDBActiveRegionScanWithTTLIT(SchemaTestMode schemaTestMode) {
+  public IoTDBActiveRegionScanWithTTLIT(final SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
@@ -65,64 +64,66 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
       };
 
   public static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
-      for (String sql : sqls) {
+      for (final String sql : sqls) {
         statement.addBatch(sql);
       }
       statement.executeBatch();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }
 
   private static void setTTL() {
-    String[] ttl_sqls = {"set ttl to root.sg.d1 3600000", "set ttl to root.sg.d2 3600000"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (String sql : ttl_sqls) {
+    final String[] ttl_sqls = {"set ttl to root.sg.d1 3600000", "set ttl to root.sg.d2 3600000"};
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      for (final String sql : ttl_sqls) {
         statement.addBatch(sql);
       }
       statement.executeBatch();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }
 
   private static void unsetTTL() {
-    String[] ttl_sqls = {"unset ttl to root.sg.d1", "unset ttl to root.sg.d2"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (String sql : ttl_sqls) {
+    final String[] ttl_sqls = {"unset ttl to root.sg.d1", "unset ttl to root.sg.d2"};
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      for (final String sql : ttl_sqls) {
         statement.addBatch(sql);
       }
       statement.executeBatch();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false);
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    tearDownEnvironment();
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
   public void showActiveDataWithMods() {
-    String sql = "show devices where time > 0";
+    final String sql = "show devices where time > 0";
     String[] retArray = new String[] {"root.sg.d1", "root.sg.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
