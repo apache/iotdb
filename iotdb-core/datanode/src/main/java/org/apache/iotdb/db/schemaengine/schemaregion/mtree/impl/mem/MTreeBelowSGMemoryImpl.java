@@ -272,9 +272,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(false);
       }
 
-      final IMeasurementMNode<IMemMNode> measurementMNode;
-
-      measurementMNode =
+      final IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createMeasurementMNode(
               entityMNode,
               leafName,
