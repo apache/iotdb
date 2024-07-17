@@ -72,6 +72,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -95,6 +96,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -131,6 +133,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRows(InsertRowsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -164,6 +167,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertMultiTablets(InsertMultiTabletsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablets(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
       LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
@@ -195,6 +199,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       InsertRowsOfOneDeviceNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -253,6 +258,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
               path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
         }
       }
+      dataRegion.insertSeparatorToWAL();
       PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {

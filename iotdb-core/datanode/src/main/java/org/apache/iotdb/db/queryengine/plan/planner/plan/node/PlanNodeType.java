@@ -228,6 +228,8 @@ public enum PlanNodeType {
   REGION_MERGE((short) 95),
   DEVICE_SCHEMA_FETCH_SCAN((short) 96),
 
+  CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
+
   CREATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY((short) 903),
   TABLE_DEVICE_FETCH((short) 904),

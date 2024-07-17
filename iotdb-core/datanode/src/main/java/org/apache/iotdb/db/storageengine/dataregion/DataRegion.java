@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -2229,6 +2230,19 @@ public class DataRegion implements IDataRegionForQuery {
                       walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode)));
     }
     return walFlushListeners;
+  }
+
+  /**
+   * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
+   * request</a> for details.
+   */
+  public void insertSeparatorToWAL() {
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                walNode.log(
+                    TsFileProcessor.MEMTABLE_NOT_EXIST,
+                    new ContinuousSameSearchIndexSeparatorNode()));
   }
 
   private boolean canSkipDelete(
