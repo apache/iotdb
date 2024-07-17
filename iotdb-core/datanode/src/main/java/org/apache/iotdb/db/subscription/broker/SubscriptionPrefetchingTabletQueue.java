@@ -83,7 +83,7 @@ class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   public void executePrefetch() {
-    super.tryPrefetch();
+    super.tryPrefetch(false);
     this.serializeEventsInQueue();
   }
 
@@ -114,13 +114,18 @@ class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   protected boolean trySealBatch() {
+    final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          sealBatch(batch);
-          return new SubscriptionPipeTabletEventBatch(
-              BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+          if (batch.shouldEmit()) {
+            sealBatch(batch);
+            result.set(true);
+            return new SubscriptionPipeTabletEventBatch(
+                BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+          }
+          return batch;
         });
-    return true;
+    return result.get();
   }
 
   private void sealBatch(final SubscriptionPipeTabletEventBatch batch) {

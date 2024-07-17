@@ -46,7 +46,7 @@ public class SubscriptionPipeTsFileEventBatch {
     return batch.onEvent(event);
   }
 
-  public void ack() {
+  public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
