@@ -949,10 +949,12 @@ public class DataRegion implements IDataRegionForQuery {
     while (loc < insertTabletNode.getRowCount()) {
       long time = insertTabletNode.getTimes()[loc];
       final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
-      long lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
-      // always in some time partition
+
+      long lastFlushTime;
       // judge if we should insert sequence
       if (timePartitionId != beforeTimePartition) {
+        initFlushTimeMap(timePartitionId);
+        lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
         // a new partition, insert the remaining of the previous partition
         noFailure =
             insertTabletToTsFileProcessor(
@@ -967,21 +969,24 @@ public class DataRegion implements IDataRegionForQuery {
         before = loc;
         beforeTimePartition = timePartitionId;
         isSequence = time > lastFlushTime;
-      } else if (!isSequence && time > lastFlushTime) {
-        // the same partition and switch to sequence data
-        // insert previous range into unsequence
-        noFailure =
-            insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    before,
-                    loc,
-                    isSequence,
-                    results,
-                    beforeTimePartition,
-                    noFailure)
-                && noFailure;
-        before = loc;
-        isSequence = true;
+      } else if (!isSequence) {
+        lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
+        if (time > lastFlushTime) {
+          // the same partition and switch to sequence data
+          // insert previous range into unsequence
+          noFailure =
+              insertTabletToTsFileProcessor(
+                      insertTabletNode,
+                      before,
+                      loc,
+                      isSequence,
+                      results,
+                      beforeTimePartition,
+                      noFailure)
+                  && noFailure;
+          before = loc;
+          isSequence = true;
+        }
       }
       // else: the same partition and isSequence not changed, just move the cursor forward
       loc++;

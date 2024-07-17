@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
@@ -88,7 +89,6 @@ public class TableHeaderSchemaValidator {
     }
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     List<ColumnSchema> missingColumnList = new ArrayList<>();
-    List<ColumnSchema> resultColumnList = new ArrayList<>();
 
     // first round validate, check existing schema
     if (table == null) {
@@ -128,10 +128,13 @@ public class TableHeaderSchemaValidator {
       }
     }
 
-    if (!missingColumnList.isEmpty()) {
+    List<ColumnSchema> resultColumnList = new ArrayList<>();
+    if (!missingColumnList.isEmpty()
+        && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
       // TODO table metadata: authority check for table alter
       // check id or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
+      resultColumnList.addAll(missingColumnList);
     }
 
     table
@@ -227,7 +230,10 @@ public class TableHeaderSchemaValidator {
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             new IoTDBException(
-                "Auto add table column failed.", result.getStatusCode().getStatusCode()));
+                String.format(
+                    "Auto add table column failed: %s.%s, %s",
+                    database, tableName, inputColumnList),
+                result.getStatusCode().getStatusCode()));
       }
     } catch (ExecutionException | InterruptedException e) {
       LOGGER.warn("Auto add table column failed.", e);
