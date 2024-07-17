@@ -242,12 +242,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
-    int[] newColumnsIndexArray;
+    int[] newColumnsIndexArray = new int[outputColumnCount - 1];
     if (hasTimeColumn) {
-      newColumnsIndexArray = new int[outputColumnCount - 1];
       System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
-    } else {
-      newColumnsIndexArray = columnsIndexArray;
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder =
