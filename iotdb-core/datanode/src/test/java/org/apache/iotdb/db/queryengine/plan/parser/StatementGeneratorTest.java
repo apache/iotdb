@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn.ColumnType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -216,12 +215,11 @@ public class StatementGeneratorTest {
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
     List<Tablet.ColumnType> tsfileColumnCategories =
         Arrays.asList(
-            Tablet.ColumnType.ID,
-            Tablet.ColumnType.ATTRIBUTE,
-            Tablet.ColumnType.MEASUREMENT);
-    List<TsTableColumnCategory> columnCategories = tsfileColumnCategories.stream().map(
-        TsTableColumnCategory::fromTsFileColumnType).collect(
-        Collectors.toList());
+            Tablet.ColumnType.ID, Tablet.ColumnType.ATTRIBUTE, Tablet.ColumnType.MEASUREMENT);
+    List<TsTableColumnCategory> columnCategories =
+        tsfileColumnCategories.stream()
+            .map(TsTableColumnCategory::fromTsFileColumnType)
+            .collect(Collectors.toList());
     TSInsertTabletReq req =
         new TSInsertTabletReq(
             101L,
