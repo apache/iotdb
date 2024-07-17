@@ -285,7 +285,7 @@ public class RpcUtils {
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
     long integerOfDate;
     StringBuilder digits;
-    if ("ms".equals(timestampPrecision)) {
+    if (MILLISECOND.equals(timestampPrecision)) {
       if (timestamp > 0 || timestamp % 1000 == 0) {
         integerOfDate = timestamp / 1000;
         digits = new StringBuilder(Long.toString(timestamp % 1000));
@@ -303,7 +303,7 @@ public class RpcUtils {
         }
       }
       return formatDatetimeStr(datetime, digits);
-    } else if ("us".equals(timestampPrecision)) {
+    } else if (MICROSECOND.equals(timestampPrecision)) {
       if (timestamp > 0 || timestamp % 1000_000 == 0) {
         integerOfDate = timestamp / 1000_000;
         digits = new StringBuilder(Long.toString(timestamp % 1000_000));
@@ -388,5 +388,18 @@ public class RpcUtils {
       }
     }
     return 1_000;
+  }
+
+  public static String getTimePrecision(int timeFactor) {
+    switch (timeFactor) {
+      case 1_000:
+        return MILLISECOND;
+      case 1_000_000:
+        return MICROSECOND;
+      case 1_000_000_000:
+        return NANOSECOND;
+      default:
+        throw new IllegalArgumentException("Unknown time factor: " + timeFactor);
+    }
   }
 }

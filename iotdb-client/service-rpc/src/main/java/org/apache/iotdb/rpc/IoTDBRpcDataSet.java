@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
+import static org.apache.iotdb.rpc.RpcUtils.getTimePrecision;
 
 public class IoTDBRpcDataSet {
 
@@ -86,6 +87,8 @@ public class IoTDBRpcDataSet {
   private final String timeFormat;
 
   private final int timeFactor;
+
+  private final String timePrecision;
 
   // 2 for tree model and 1 for table model
   private final int startIndex;
@@ -181,6 +184,7 @@ public class IoTDBRpcDataSet {
     this.zoneId = zoneId;
     this.timeFormat = timeFormat;
     this.timeFactor = timeFactor;
+    this.timePrecision = getTimePrecision(timeFactor);
   }
 
   public Integer addColumnTypeListReturnIndex(AtomicInteger index, TSDataType dataType) {
@@ -379,7 +383,7 @@ public class IoTDBRpcDataSet {
     // take care of time column
     if (index < 0) {
       lastReadWasNull = false;
-      return curTsBlock.getTimeByIndex(index);
+      return curTsBlock.getTimeByIndex(tsBlockIndex);
     } else {
       if (!isNull(index, tsBlockIndex)) {
         lastReadWasNull = false;
@@ -487,7 +491,7 @@ public class IoTDBRpcDataSet {
             (index == -1
                 ? curTsBlock.getTimeByIndex(tsBlockIndex)
                 : curTsBlock.getColumn(index).getLong(tsBlockIndex));
-        return String.valueOf(convertToTimestamp(timestamp, timeFactor));
+        return RpcUtils.formatDatetime(timeFormat, timePrecision, timestamp, zoneId);
       case FLOAT:
         return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
       case DOUBLE:
