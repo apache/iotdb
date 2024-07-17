@@ -52,7 +52,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   }
 
   @Override
-  public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
+  public void putColumn(Column timeColumn, Column valueColumn) throws IOException {
     super.putColumn(timeColumn, valueColumn);
 
     // Update two memory control statistics
@@ -176,10 +176,10 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     TVListForwardIterator iterator =
         new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
     // Get and put split columns after eviction upper bound
-    TimeColumn timeColumn = iterator.currentTimes();
+    Column timeColumn = iterator.currentTimes();
     Column valueColumn = iterator.currentValues();
     if (tvOffsetInColumns != 0) {
-      timeColumn = (TimeColumn) timeColumn.subColumnCopy(tvOffsetInColumns);
+      timeColumn = timeColumn.subColumnCopy(tvOffsetInColumns);
       valueColumn = valueColumn.subColumnCopy(tvOffsetInColumns);
     }
     newESTVList.putColumn(timeColumn, valueColumn);
@@ -199,7 +199,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
   private void copyColumnByIterator(ElasticSerializableTVList target, TVListForwardIterator source)
       throws IOException {
-    TimeColumn timeColumn = source.currentTimes();
+    Column timeColumn = source.currentTimes();
     Column valueColumn = source.currentValues();
     target.putColumn(timeColumn, valueColumn);
   }

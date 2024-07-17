@@ -58,7 +58,7 @@ import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class StreamSortOperatorTest {
+public class TableStreamSortOperatorTest {
 
   private static final String sortTmpPrefixPath =
       "target" + File.separator + "sort" + File.separator + "tmp";
@@ -151,7 +151,7 @@ public class StreamSortOperatorTest {
   @Test
   public void allInMemoryTest() {
 
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
+    try (TableStreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
       ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
       listenableFuture.get();
@@ -192,12 +192,12 @@ public class StreamSortOperatorTest {
   public void allInMemoryTes2() {
     int maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(2)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
@@ -220,7 +220,7 @@ public class StreamSortOperatorTest {
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -240,12 +240,12 @@ public class StreamSortOperatorTest {
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
             assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
@@ -267,7 +267,7 @@ public class StreamSortOperatorTest {
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -289,13 +289,13 @@ public class StreamSortOperatorTest {
     IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(2)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
 
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
@@ -318,7 +318,7 @@ public class StreamSortOperatorTest {
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -332,7 +332,7 @@ public class StreamSortOperatorTest {
     }
   }
 
-  private StreamSortOperator genStreamSortOperator(int maxLinesToOutput) {
+  private TableStreamSortOperator genStreamSortOperator(int maxLinesToOutput) {
     // child output
     // Time, city,       deviceId,   s1
     // 1     null           d1       9
@@ -395,7 +395,7 @@ public class StreamSortOperatorTest {
     PlanNodeId planNodeId1 = new PlanNodeId("1");
     driverContext.addOperatorContext(1, planNodeId1, TableScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
-    driverContext.addOperatorContext(2, planNodeId2, StreamSortOperator.class.getSimpleName());
+    driverContext.addOperatorContext(2, planNodeId2, TableStreamSortOperator.class.getSimpleName());
     Operator childOperator =
         new Operator() {
 
@@ -579,7 +579,7 @@ public class StreamSortOperatorTest {
             sortItemIndexList.subList(0, 2),
             sortItemDataTypeList.subList(0, 2));
 
-    return new StreamSortOperator(
+    return new TableStreamSortOperator(
         operatorContext,
         childOperator,
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32),

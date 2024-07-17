@@ -194,7 +194,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     for (int i = curRow; i < cachedData.size(); i++) {
       SortKey sortKey = cachedData.get(i);
       TsBlock tsBlock = sortKey.tsBlock;
-      timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(sortKey.rowIndex));
+      appendTime(timeColumnBuilder, tsBlock.getTimeByIndex(sortKey.rowIndex));
       for (int j = 0; j < valueColumnBuilders.length; j++) {
         if (tsBlock.getColumn(j).isNull(sortKey.rowIndex)) {
           valueColumnBuilders[j].appendNull();
@@ -225,7 +225,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
 
       MergeSortKey mergeSortKey = mergeSortHeap.poll();
       TsBlock targetBlock = mergeSortKey.tsBlock;
-      timeBuilder.writeLong(targetBlock.getTimeByIndex(mergeSortKey.rowIndex));
+      appendTime(timeBuilder, targetBlock.getTimeByIndex(mergeSortKey.rowIndex));
       for (int i = 0; i < valueColumnBuilders.length; i++) {
         if (targetBlock.getColumn(i).isNull(mergeSortKey.rowIndex)) {
           valueColumnBuilders[i].appendNull();
@@ -251,6 +251,8 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     }
     sortCost += System.nanoTime() - startTime;
   }
+
+  protected abstract void appendTime(TimeColumnBuilder timeBuilder, long time);
 
   private void initMergeSortHeap() throws IoTDBException {
     if (mergeSortHeap == null) {

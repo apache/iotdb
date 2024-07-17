@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
@@ -71,9 +71,9 @@ import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class SortOperatorTest {
+public class TreeSortOperatorTest {
 
-  private static final String SORT_OPERATOR_TEST_SG = "root.SortOperatorTest";
+  private static final String SORT_OPERATOR_TEST_SG = "root.TreeSortOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -108,7 +108,7 @@ public class SortOperatorTest {
   // ------------------------------------------------------------------------------------------------
   //                                   sortOperatorTest
   // ------------------------------------------------------------------------------------------------
-  //                                      SortOperator
+  //                                      TreeSortOperator
   //                                           |
   //                                    TimeJoinOperator
   //                      _____________________|______________________________
@@ -119,7 +119,7 @@ public class SortOperatorTest {
   // ------------------------------------------------------------------------------------------------
   public Operator genSortOperator(Ordering timeOrdering, boolean getSortOperator) {
     ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "sortOperator-test-instance-notification");
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "treeSortOperator-test-instance-notification");
     // Construct operator tree
     QueryId queryId = new QueryId("stub_query");
 
@@ -136,7 +136,8 @@ public class SortOperatorTest {
     driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
     driverContext.addOperatorContext(
         3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
-    driverContext.addOperatorContext(4, new PlanNodeId("4"), SortOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        4, new PlanNodeId("4"), TreeSortOperator.class.getSimpleName());
 
     NonAlignedFullPath measurementPath1 =
         new NonAlignedFullPath(
@@ -212,10 +213,11 @@ public class SortOperatorTest {
             + File.separator
             + operatorContext.getDriverContext().getPipelineId()
             + File.separator;
-    SortOperator sortOperator =
-        new SortOperator(operatorContext, timeJoinOperator1, tsDataTypes, filePrefix, comparator);
-    sortOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-    return sortOperator;
+    TreeSortOperator treeSortOperator =
+        new TreeSortOperator(
+            operatorContext, timeJoinOperator1, tsDataTypes, filePrefix, comparator);
+    treeSortOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+    return treeSortOperator;
   }
 
   long getValue(long expectedTime) {
@@ -235,7 +237,7 @@ public class SortOperatorTest {
   public void sortOperatorSpillingTest() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
     long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
-    try (SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true)) {
+    try (TreeSortOperator root = (TreeSortOperator) genSortOperator(Ordering.ASC, true)) {
       int lastValue = -1;
       int count = 0;
       while (root.isBlocked().isDone() && root.hasNext()) {

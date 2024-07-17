@@ -45,7 +45,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -181,11 +180,7 @@ public class TransformOperator implements ProcessOperator {
         }
 
         Column[] columns = transformers[index].current();
-
-        int count = columns[0].getPositionCount();
-        Column[] valueColumns = {columns[0]};
-        TsBlock.wrapBlocksWithoutCopy(count, (TimeColumn) columns[1], valueColumns);
-        TsBlock block = new TsBlock((TimeColumn) columns[1], columns[0]);
+        TsBlock block = new TsBlock(columns[1], columns[0]);
         outputColumns[index] = block;
         currentIndexes[index] = 0;
       }
@@ -202,7 +197,7 @@ public class TransformOperator implements ProcessOperator {
       }
 
       if (outputColumns[index] != null) {
-        TimeColumn outputTimeColumn = outputColumns[index].getTimeColumn();
+        Column outputTimeColumn = outputColumns[index].getTimeColumn();
         long time = outputTimeColumn.getLong(currentIndexes[index]);
         timeHeap.add(time);
         return YieldableState.YIELDABLE;
@@ -317,7 +312,7 @@ public class TransformOperator implements ProcessOperator {
       return state;
     }
 
-    TimeColumn timeColumn = outputColumns[index].getTimeColumn();
+    Column timeColumn = outputColumns[index].getTimeColumn();
     Column valueColumn = outputColumns[index].getColumn(0);
     int currentIndex = currentIndexes[index];
     if (timeColumn.getLong(currentIndex) != currentTime) {
