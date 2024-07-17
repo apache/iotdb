@@ -53,7 +53,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source' = 'iotdb-source', 'source.pattern' = 'root.**' ) with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.path'='root.test2.**') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -73,6 +73,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test2.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -118,8 +119,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test2.**"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -138,7 +140,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b replace source ('source' = 'iotdb-source','source.path'='root.test1.wf01')");
+          "alter pipe a2b replace source ('source'='iotdb-source', 'source.path'='root.test1.wf01')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -155,6 +157,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertTrue(
           showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.wf01"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
