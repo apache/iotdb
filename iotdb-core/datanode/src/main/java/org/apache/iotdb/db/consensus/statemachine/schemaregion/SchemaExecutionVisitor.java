@@ -287,7 +287,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             null,
             null,
             null);
-    // Only used by pipe to upsert the receiver alias/tags/attributes in historical transfer.
+    // With merge is only true for pipe to upsert the receiver alias/tags/attributes in historical
+    // transfer.
     // For normal internal creation, the alias/tags/attributes are not set
     // Thus the original ones are not altered
     ((CreateAlignedTimeSeriesPlanImpl) createAlignedTimeSeriesPlan).setWithMerge(withMerge);
