@@ -223,6 +223,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
+import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
@@ -293,6 +294,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long queryId = Long.MIN_VALUE;
     String statement = req.getStatement();
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+
     // quota
     OperationQuota quota = null;
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
@@ -1227,7 +1229,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       clientSession.setDatabaseName(database.get());
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    return resp.setSessionId(openSessionResp.getSessionId());
+    Map<String, String> configuration = new HashMap<>();
+    configuration.put(
+        TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
@@ -2880,6 +2885,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setAliasColumns(header.getRespAliasColumns());
     resp.setIgnoreTimeStamp(header.isIgnoreTimestamp());
     resp.setQueryId(queryId);
+    resp.setTableModel(
+        SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
+            == IClientSession.SqlDialect.TABLE);
     return resp;
   }
 

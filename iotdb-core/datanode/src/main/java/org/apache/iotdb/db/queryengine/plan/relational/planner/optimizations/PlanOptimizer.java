@@ -13,12 +13,15 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 
 import static java.util.Objects.requireNonNull;
@@ -28,23 +31,32 @@ public interface PlanOptimizer {
 
   class Context {
     private final SessionInfo sessionInfo;
-    private final TypeProvider types;
+    private final Analysis analysis;
+    private final Metadata metadata;
+    private final MPPQueryContext queryContext;
+    private final TypeProvider typeProvider;
     private final SymbolAllocator symbolAllocator;
-    private final QueryId idAllocator;
+    private final QueryId queryIdAllocator;
     private final WarningCollector warningCollector;
     private final PlanOptimizersStatsCollector planOptimizersStatsCollector;
 
     public Context(
-        SessionInfo session,
-        TypeProvider types,
+        SessionInfo sessionInfo,
+        Analysis analysis,
+        Metadata metadata,
+        MPPQueryContext queryContext,
+        TypeProvider typeProvider,
         SymbolAllocator symbolAllocator,
-        QueryId idAllocator,
+        QueryId queryIdAllocator,
         WarningCollector warningCollector,
         PlanOptimizersStatsCollector planOptimizersStatsCollector) {
-      this.sessionInfo = requireNonNull(session, "session is null");
-      this.types = requireNonNull(types, "types is null");
+      this.sessionInfo = sessionInfo;
+      this.analysis = analysis;
+      this.metadata = metadata;
+      this.queryContext = queryContext;
+      this.typeProvider = requireNonNull(typeProvider, "types is null");
       this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-      this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
+      this.queryIdAllocator = requireNonNull(queryIdAllocator, "idAllocator is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
       this.planOptimizersStatsCollector =
           requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
@@ -54,8 +66,20 @@ public interface PlanOptimizer {
       return sessionInfo;
     }
 
+    public Analysis getAnalysis() {
+      return analysis;
+    }
+
+    public Metadata getMetadata() {
+      return metadata;
+    }
+
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
+    }
+
     public TypeProvider types() {
-      return types;
+      return typeProvider;
     }
 
     public SymbolAllocator symbolAllocator() {
@@ -63,7 +87,7 @@ public interface PlanOptimizer {
     }
 
     public QueryId idAllocator() {
-      return idAllocator;
+      return queryIdAllocator;
     }
 
     public WarningCollector warningCollector() {
