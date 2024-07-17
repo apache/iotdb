@@ -99,7 +99,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
         "create timeSeries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("3,"));
   }
 
@@ -110,42 +110,42 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
   @Test
-  public void testInternalCreateTimeseriesIdempotent() throws Exception {
+  public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
         "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
   @Test
-  public void testAlterTimeseriesAddTagIdempotent() throws Exception {
+  public void testAlterTimeSeriesAddTagIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
   @Test
-  public void testAlterTimeseriesAddAttrIdempotent() throws Exception {
+  public void testAlterTimeSeriesAddAttrIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
@@ -158,7 +158,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "ALTER timeSeries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("2,"));
   }
 
@@ -170,7 +170,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "delete timeSeries root.ln.wf01.wt01.status0",
         "create timeSeries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("1,"));
   }
 
@@ -246,7 +246,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "create timeSeries using device template on root.sg1.d1",
         "create timeSeries using device template on root.sg1.d2",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("6,"));
   }
 
@@ -262,7 +262,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "delete timeSeries of schema template t1 from root.sg1.*",
         "create timeSeries using device template on root.sg1.d3",
         "count timeSeries",
-        "count(timeSeries),",
+        "count(timeseries),",
         Collections.singleton("3,"));
   }
 
