@@ -14,12 +14,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -28,17 +24,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.Extract
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.NormalizeOrExpressionRewriter.normalizeOrExpression;
 
 /** <b>Optimization phase:</b> Logical plan planning. */
-public class SimplifyExpressions implements TablePlanOptimizer {
+public class SimplifyExpressions implements PlanOptimizer {
 
   @Override
-  public PlanNode optimize(
-      PlanNode planNode,
-      Analysis analysis,
-      Metadata metadata,
-      SessionInfo sessionInfo,
-      MPPQueryContext context) {
-    // TODO add query statement pruning
-    return planNode.accept(new Rewriter(), new RewriterContext());
+  public PlanNode optimize(PlanNode plan, Context context) {
+    return plan.accept(new Rewriter(), new RewriterContext());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {

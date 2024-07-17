@@ -15,13 +15,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
@@ -52,20 +49,15 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
  * <li>Order by all IDs, limit can be pushed down, set pushDownToEachDevice==false
  * <li>Order by some IDs or order by time, limit can be pushed down, set pushDownToEachDevice==true
  */
-public class LimitOffsetPushDown implements TablePlanOptimizer {
+public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
   @Override
-  public PlanNode optimize(
-      PlanNode planNode,
-      Analysis analysis,
-      Metadata metadata,
-      SessionInfo sessionInfo,
-      MPPQueryContext context) {
-    if (!(analysis.getStatement() instanceof Query)) {
-      return planNode;
+  public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
+    if (!(context.getAnalysis().getStatement() instanceof Query)) {
+      return plan;
     }
 
-    return planNode.accept(new Rewriter(), new Context(analysis));
+    return plan.accept(new Rewriter(), new Context(context.getAnalysis()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {

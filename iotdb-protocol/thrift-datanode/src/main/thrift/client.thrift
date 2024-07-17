@@ -72,6 +72,7 @@ struct TSExecuteStatementResp {
   14: optional bool moreData
   // only be set while executing use XXX successfully
   15: optional string database
+  16: optional bool tableModel
 }
 
 enum TSProtocolVersion {

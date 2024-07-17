@@ -37,4 +37,8 @@ public class PlannerContext {
     this.metadata = metadata;
     this.typeManager = typeManager;
   }
+
+  public Metadata getMetadata() {
+    return metadata;
+  }
 }

@@ -101,6 +101,9 @@ public class IoTDBConnection implements Connection {
 
   private String userName;
 
+  // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
+  private int timeFactor = 1_000;
+
   public IoTDBConnection() {
     // allowed to create an instance without parameter input.
   }
@@ -508,6 +511,7 @@ public class IoTDBConnection implements Connection {
       // validate connection
       RpcUtils.verifySuccess(openResp.getStatus());
 
+      this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
             "Protocol differ, Client version is {}}, but Server version is {}",
@@ -597,5 +601,9 @@ public class IoTDBConnection implements Connection {
 
   protected void changeDefaultDatabase(String database) {
     params.setDb(database);
+  }
+
+  public int getTimeFactor() {
+    return timeFactor;
   }
 }

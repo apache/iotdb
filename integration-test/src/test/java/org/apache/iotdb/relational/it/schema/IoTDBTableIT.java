@@ -205,7 +205,7 @@ public class IoTDBTableIT {
             "Time", "region_id", "plant_id", "device_id", "model", "temperature", "humidity"
           };
       String[] dataTypes =
-          new String[] {"INT64", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
+          new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       String[] categories =
           new String[] {"TIME", "ID", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
 
@@ -227,7 +227,7 @@ public class IoTDBTableIT {
       }
 
       columnNames = new String[] {"Time", "region_id", "plant_id", "color", "temperature", "speed"};
-      dataTypes = new String[] {"INT64", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
 
       try (final ResultSet resultSet = statement.executeQuery("desc table2")) {
