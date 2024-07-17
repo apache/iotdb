@@ -36,7 +36,7 @@ public interface PlanOptimizer {
     private final MPPQueryContext queryContext;
     private final TypeProvider typeProvider;
     private final SymbolAllocator symbolAllocator;
-    private final QueryId idAllocator;
+    private final QueryId queryIdAllocator;
     private final WarningCollector warningCollector;
     private final PlanOptimizersStatsCollector planOptimizersStatsCollector;
 
@@ -47,7 +47,7 @@ public interface PlanOptimizer {
         MPPQueryContext queryContext,
         TypeProvider typeProvider,
         SymbolAllocator symbolAllocator,
-        QueryId idAllocator,
+        QueryId queryIdAllocator,
         WarningCollector warningCollector,
         PlanOptimizersStatsCollector planOptimizersStatsCollector) {
       this.sessionInfo = sessionInfo;
@@ -56,10 +56,10 @@ public interface PlanOptimizer {
       this.queryContext = queryContext;
       this.typeProvider = requireNonNull(typeProvider, "types is null");
       this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-      this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
+      this.queryIdAllocator = requireNonNull(queryIdAllocator, "idAllocator is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-      this.planOptimizersStatsCollector = planOptimizersStatsCollector;
-      requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
+      this.planOptimizersStatsCollector =
+          requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
     }
 
     public SessionInfo sessionInfo() {
@@ -87,7 +87,7 @@ public interface PlanOptimizer {
     }
 
     public QueryId idAllocator() {
-      return idAllocator;
+      return queryIdAllocator;
     }
 
     public WarningCollector warningCollector() {
