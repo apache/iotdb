@@ -198,7 +198,7 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for timeseries, measurement and schema info Query
+  // region Interfaces for timeSeries, measurement and schema info Query
 
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 
