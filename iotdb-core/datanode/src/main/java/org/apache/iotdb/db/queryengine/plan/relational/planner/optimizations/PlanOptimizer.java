@@ -34,32 +34,32 @@ public interface PlanOptimizer {
     private final Analysis analysis;
     private final Metadata metadata;
     private final MPPQueryContext queryContext;
-    private final TypeProvider types;
+    private final TypeProvider typeProvider;
     private final SymbolAllocator symbolAllocator;
     private final QueryId idAllocator;
     private final WarningCollector warningCollector;
     private final PlanOptimizersStatsCollector planOptimizersStatsCollector;
 
     public Context(
-        SessionInfo session,
+        SessionInfo sessionInfo,
         Analysis analysis,
         Metadata metadata,
         MPPQueryContext queryContext,
-        TypeProvider types,
+        TypeProvider typeProvider,
         SymbolAllocator symbolAllocator,
         QueryId idAllocator,
         WarningCollector warningCollector,
         PlanOptimizersStatsCollector planOptimizersStatsCollector) {
-      this.sessionInfo = requireNonNull(session, "session is null");
+      this.sessionInfo = sessionInfo;
       this.analysis = analysis;
       this.metadata = metadata;
       this.queryContext = queryContext;
-      this.types = requireNonNull(types, "types is null");
+      this.typeProvider = requireNonNull(typeProvider, "types is null");
       this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
       this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-      this.planOptimizersStatsCollector =
-          requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
+      this.planOptimizersStatsCollector = planOptimizersStatsCollector;
+      requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
     }
 
     public SessionInfo sessionInfo() {
@@ -79,7 +79,7 @@ public interface PlanOptimizer {
     }
 
     public TypeProvider types() {
-      return types;
+      return typeProvider;
     }
 
     public SymbolAllocator symbolAllocator() {
