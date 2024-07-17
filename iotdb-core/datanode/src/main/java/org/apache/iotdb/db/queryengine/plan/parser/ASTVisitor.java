@@ -3731,6 +3731,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
+
+    if (ctx.alterExtractorAttributesClause() != null) {
+      alterPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(
+              ctx.alterExtractorAttributesClause().extractorAttributeClause()));
+      alterPipeStatement.setReplaceAllExtractorAttributes(
+          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
+    } else {
+      alterPipeStatement.setExtractorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllExtractorAttributes(false);
+    }
+
     if (ctx.alterProcessorAttributesClause() != null) {
       alterPipeStatement.setProcessorAttributes(
           parseProcessorAttributesClause(
@@ -3741,6 +3753,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setProcessorAttributes(new HashMap<>());
       alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
+
     if (ctx.alterConnectorAttributesClause() != null) {
       alterPipeStatement.setConnectorAttributes(
           parseConnectorAttributesClause(

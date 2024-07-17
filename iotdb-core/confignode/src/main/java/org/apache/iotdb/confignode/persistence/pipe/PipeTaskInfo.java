@@ -213,6 +213,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     //   1.1. if they are empty, the original attributes are filled directly.
     //   1.2. Otherwise, corresponding updates on original attributes are performed.
     // 2. In replace mode, do nothing here.
+    if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
+      if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
+      } else {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator
+                .getExtractorParameters()
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeRequest.getExtractorAttributes()))
+                .getAttribute());
+      }
+    }
+
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
         alterPipeRequest.setProcessorAttributes(
@@ -226,6 +240,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
