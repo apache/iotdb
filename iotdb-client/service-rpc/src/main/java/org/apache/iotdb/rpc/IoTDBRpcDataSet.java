@@ -128,7 +128,7 @@ public class IoTDBRpcDataSet {
     this.columnOrdinalMap = new HashMap<>();
     this.columnName2TsBlockColumnIndexMap = new HashMap<>();
     if (!ignoreTimeStamp) {
-      this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, 1);
+      this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, -1);
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     }
 
