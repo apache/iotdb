@@ -109,14 +109,14 @@ public class CompressionRatioTest {
   public void testRestoreIllegal1() throws IOException {
     Files.createFile(
         new File(
-            directory,
-            String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 10, 50))
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 10, 50))
             .toPath());
 
     Files.createFile(
         new File(
-            directory,
-            String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
             .toPath());
 
     compressionRatio.restore();
@@ -131,8 +131,8 @@ public class CompressionRatioTest {
 
     Files.createFile(
         new File(
-            directory,
-            String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, -1000, 100))
             .toPath());
 
     compressionRatio.restore();
@@ -140,5 +140,4 @@ public class CompressionRatioTest {
     // if compression ratio from file is negative, assume the compression ratio is 0 / 0 = NaN
     assertEquals(Double.NaN, compressionRatio.getRatio(), 0.1);
   }
-
 }

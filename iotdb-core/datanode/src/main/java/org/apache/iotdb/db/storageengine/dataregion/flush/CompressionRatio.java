@@ -215,10 +215,6 @@ public class CompressionRatio {
     totalDiskSize = 0L;
   }
 
-  public static void decreaseDuplicatedMemorySize(long size) {
-    totalMemorySize.addAndGet(-size);
-  }
-
   public static CompressionRatio getInstance() {
     return CompressionRatioHolder.INSTANCE;
   }
