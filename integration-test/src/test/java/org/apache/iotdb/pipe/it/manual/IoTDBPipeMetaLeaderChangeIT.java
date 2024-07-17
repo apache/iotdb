@@ -163,7 +163,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
-              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
+              "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
         return;
       }
@@ -178,18 +178,34 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       return;
     }
 
+    // Include "alter" in historical transfer for new leader as possible
+    // in order to test the "withMerge" creation in receiver side
+    if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+        senderEnv,
+        senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
+        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)")) {
+      return;
+    }
+
     for (int i = 10; i < 20; ++i) {
       if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
           String.format(
-              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
+              "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
         return;
       }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("20,"));
+        receiverEnv,
+        "show timeSeries root.ln.wf01.GPS.status0",
+        "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+        Collections.singleton(
+            "root.ln.wf01.GPS.status0,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("20,"));
   }
 }

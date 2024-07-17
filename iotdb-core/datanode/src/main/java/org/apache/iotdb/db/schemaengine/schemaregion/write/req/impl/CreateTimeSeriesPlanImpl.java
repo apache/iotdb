@@ -40,6 +40,7 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
+  private transient boolean withMerge;
 
   public CreateTimeSeriesPlanImpl() {}
 
@@ -160,5 +161,13 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   @Override
   public void setTagOffset(long tagOffset) {
     this.tagOffset = tagOffset;
+  }
+
+  public boolean isWithMerge() {
+    return withMerge;
+  }
+
+  public void setWithMerge(final boolean withMerge) {
+    this.withMerge = withMerge;
   }
 }

@@ -71,7 +71,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
-      schemaRegion.createTimeseries(
+      schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath("root.sg.d1.s1"),
               TSDataType.INT32,
@@ -204,7 +204,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       long time = System.currentTimeMillis();
       for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 1000; j++) {
-          schemaRegion.createTimeseries(
+          schemaRegion.createTimeSeries(
               SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                   new PartialPath("root.sg.d" + i + ".s" + j),
                   TSDataType.INT32,

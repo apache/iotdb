@@ -60,9 +60,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.n.s0", "root.sg1.n.v.d1.s1", "root.sg1.n.v.d2.s2"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.d0.s0"));
     final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
@@ -105,9 +105,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.v.d0", "root.sg1.d1.v.s1", "root.sg1.d1.s2.v.t1"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion2, Arrays.asList("root.sg2.d1.v.s3", "root.sg2.d2.v.s1", "root.sg2.d2.v.s2"));
     final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
@@ -215,9 +215,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
     final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
@@ -350,9 +350,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
     final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
@@ -375,11 +375,11 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion2, Collections.singletonList("root.sg2.s1"));
     // Check device number
     Assert.assertEquals(3, schemaRegion1.getSchemaRegionStatistics().getDevicesNumber());
@@ -408,9 +408,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
           SchemaEngine.getInstance()
               .getSchemaEngineStatistics()
               .getAsCachedSchemaEngineStatistics();
-      SchemaRegionTestUtil.createSimpleTimeseriesByList(
+      SchemaRegionTestUtil.createSimpleTimeSeriesByList(
           schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
-      SchemaRegionTestUtil.createSimpleTimeseriesByList(
+      SchemaRegionTestUtil.createSimpleTimeSeriesByList(
           schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
       final PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendPathPattern(new PartialPath("root.**.s1"));
@@ -468,7 +468,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         SchemaEngine.getInstance().getSchemaEngineStatistics();
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
-    schemaRegion1.createTimeseries(
+    schemaRegion1.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,

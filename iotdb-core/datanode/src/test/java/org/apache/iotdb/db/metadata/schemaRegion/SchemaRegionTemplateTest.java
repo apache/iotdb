@@ -193,7 +193,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   @Test
   public void testFetchSchemaWithTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion, Arrays.asList("root.sg.wf01.wt01.status", "root.sg.wf01.wt01.temperature"));
     int templateId = 1;
     Template template =
