@@ -20,7 +20,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
@@ -45,6 +44,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -52,6 +52,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 /**
@@ -75,18 +76,15 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
  * <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule need
  * to be adapted.
  */
-public class PushPredicateIntoTableScan implements TablePlanOptimizer {
+public class PushPredicateIntoTableScan implements PlanOptimizer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   @Override
-  public PlanNode optimize(
-      PlanNode planNode,
-      Analysis analysis,
-      Metadata metadata,
-      SessionInfo sessionInfo,
-      MPPQueryContext queryContext) {
-    return planNode.accept(new Rewriter(queryContext, analysis, metadata), null);
+  public PlanNode optimize(PlanNode plan, Context context) {
+    return plan.accept(
+        new Rewriter(context.getQueryContext(), context.getAnalysis(), context.getMetadata()),
+        null);
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Void> {
@@ -204,7 +202,7 @@ public class PushPredicateIntoTableScan implements TablePlanOptimizer {
               .filter(e -> MEASUREMENT.equals(e.getValue().getColumnCategory()))
               .map(e -> e.getKey().getName())
               .collect(Collectors.toSet());
-      measurementColumnNames.add("time");
+      measurementColumnNames.add(TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH));
 
       List<Expression> metadataExpressions = new ArrayList<>();
       List<Expression> expressionsCanPushDown = new ArrayList<>();
