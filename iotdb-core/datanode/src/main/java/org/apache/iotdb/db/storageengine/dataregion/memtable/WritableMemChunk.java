@@ -331,6 +331,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+
+    chunkWriterImpl.getPageWriter().getPageBuffer().reserve(80896);
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
