@@ -102,6 +102,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         databaseSchema.setMaxSchemaRegionGroupNum(1);
         databaseSchema.setMinSchemaRegionGroupNum(1);
         databaseSchema.setMaxDataRegionGroupNum(1);
+        databaseSchema.setMinDataRegionGroupNum(1);
         TSStatus tsStatus = client.setDatabase(databaseSchema);
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
           LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
