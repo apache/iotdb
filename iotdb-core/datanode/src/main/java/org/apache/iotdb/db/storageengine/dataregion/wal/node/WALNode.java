@@ -304,7 +304,7 @@ public class WALNode implements IWALNode {
       long firstVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstVersionId == Long.MIN_VALUE) {
         // roll wal log writer to delete current wal file
-        if (buffer.getCurrentWALFileSize() > 0) {
+        if (buffer.getCurrentWALOriginalFileSize() > 0) {
           rollWALFile();
         }
       }
