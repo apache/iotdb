@@ -968,11 +968,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
 
     DropPipePluginStatement dropPipePluginStatement = new DropPipePluginStatement();
-    dropPipePluginStatement.setPluginName(parseIdentifier(ctx.pluginName.getText()));
 
+    dropPipePluginStatement.setPluginName(parseIdentifier(ctx.pluginName.getText()));
     dropPipePluginStatement.setIfExists(ctx.ifExists() != null);
 
-    return new DropPipePluginStatement();
+    return dropPipePluginStatement;
   }
 
   // Show PipePlugins =====================================================================
