@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 
 import com.google.common.collect.ImmutableList;
@@ -61,6 +63,11 @@ public class OptimizeFactory {
             ImmutableSet.of(
                 new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()));
 
+    Set<Rule<?>> limitPushdownRules =
+        ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
+    IterativeOptimizer limitPushdownOptimizer =
+        new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), limitPushdownRules);
+
     this.planOptimizers =
         ImmutableList.of(
             simplifyExpressionOptimizer,
@@ -69,7 +76,8 @@ public class OptimizeFactory {
             pushPredicateIntoTableScanOptimizer,
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
             columnPruningOptimizer,
-            inlineProjectionsOptimizer);
+            inlineProjectionsOptimizer,
+            limitPushdownOptimizer);
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {

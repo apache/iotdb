@@ -99,6 +99,10 @@ public class LimitNode extends SingleChildProcessNode {
     return count;
   }
 
+  public Optional<OrderingScheme> getTiesResolvingScheme() {
+    return tiesResolvingScheme;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
