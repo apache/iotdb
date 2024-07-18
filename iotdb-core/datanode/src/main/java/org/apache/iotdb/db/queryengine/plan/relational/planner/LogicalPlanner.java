@@ -142,7 +142,7 @@ public class LogicalPlanner {
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
 
-      columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
+      columnHeaders.add(new ColumnHeader(name, getTSDataType(field.getType())));
 
       columnNumber++;
     }

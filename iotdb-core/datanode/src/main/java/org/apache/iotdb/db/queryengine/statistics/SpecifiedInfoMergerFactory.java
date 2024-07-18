@@ -43,8 +43,10 @@ public class SpecifiedInfoMergerFactory {
 
   public static SpecifiedInfoMerger getMerger(String operatorType) {
     switch (operatorType) {
-      case "SortOperator":
-      case "MergeSortOperator":
+      case "TreeSortOperator":
+      case "TreeMergeSortOperator":
+      case "TableSortOperator":
+      case "TableMergeSortOperator":
       case "FilterAndProjectOperator":
         return LONG_MERGER;
       default:

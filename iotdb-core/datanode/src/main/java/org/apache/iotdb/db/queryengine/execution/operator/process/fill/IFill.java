@@ -20,9 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public interface IFill {
 
-  Column fill(TimeColumn timeColumn, Column valueColumn);
+  Column fill(Column timeColumn, Column valueColumn);
 }

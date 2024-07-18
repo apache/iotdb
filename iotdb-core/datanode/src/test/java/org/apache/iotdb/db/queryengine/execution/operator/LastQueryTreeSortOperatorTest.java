@@ -67,9 +67,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class LastQuerySortOperatorTest {
+public class LastQueryTreeSortOperatorTest {
 
-  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQuerySortOperatorTest";
+  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQueryTreeSortOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 

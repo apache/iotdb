@@ -35,11 +35,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.StreamSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesSc
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
-import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -104,7 +103,6 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -150,7 +148,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
-    // List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     Operator child = node.getChildren().get(0).accept(this, context);
     List<Operator> children = new ArrayList<>(1);
     children.add(child);
@@ -211,7 +208,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     int measurementColumnCount = 0;
     int idx = 0;
-    boolean hasTimeColumn = false;
     for (Symbol columnName : outputColumnNames) {
       ColumnSchema schema =
           requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
@@ -233,18 +229,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           columnSchemas.add(schema);
           break;
         case TIME:
-          hasTimeColumn = true;
-          // columnsIndexArray[i] = -1;
+          columnsIndexArray[idx++] = -1;
+          columnSchemas.add(schema);
           break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
       }
-    }
-
-    int[] newColumnsIndexArray = new int[outputColumnCount - 1];
-    if (hasTimeColumn) {
-      System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder =
@@ -283,7 +274,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             operatorContext,
             node.getPlanNodeId(),
             columnSchemas,
-            newColumnsIndexArray,
+            columnsIndexArray,
             measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
@@ -313,16 +304,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
       int valueColumnIndex = 0;
       for (Symbol columnName : childNode.getOutputSymbols()) {
-        if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(columnName.getName())) {
-          outputMappings
-              .computeIfAbsent(columnName, key -> new ArrayList<>())
-              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
-          valueColumnIndex++;
-        } else {
-          outputMappings
-              .computeIfAbsent(columnName, key -> new ArrayList<>())
-              .add(new InputLocation(tsBlockIndex, -1));
-        }
+        outputMappings
+            .computeIfAbsent(columnName, key -> new ArrayList<>())
+            .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+        valueColumnIndex++;
       }
       tsBlockIndex++;
     }
@@ -341,10 +326,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return scanOptionsBuilder;
   }
 
-  private boolean canPushIntoScan(Expression pushDownPredicate) {
-    return pushDownPredicate == null || PredicateUtils.predicateCanPushIntoScan(pushDownPredicate);
-  }
-
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
     TypeProvider typeProvider = context.getTypeProvider();
@@ -356,10 +337,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getOutputSymbols().stream()
-            .filter(symbol -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName()))
-            .map(Symbol::toSymbolReference)
-            .toArray(Expression[]::new),
+        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),
@@ -479,11 +457,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getAssignments().getMap().entrySet().stream()
-            .filter(
-                entry -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(entry.getKey().getName()))
-            .map(Map.Entry::getValue)
-            .toArray(Expression[]::new),
+        node.getAssignments().getMap().values().toArray(new Expression[0]),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),
@@ -495,7 +469,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return node.getChildren().stream()
         .map(PlanNode::getOutputSymbols)
         .flatMap(List::stream)
-        .filter(s -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(s.getName()))
         .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
   }
@@ -551,10 +524,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getOutputSymbols().stream()
-            .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e.getName()))
-            .map(Symbol::toSymbolReference)
-            .toArray(Expression[]::new),
+        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),
@@ -585,7 +555,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                MergeSortOperator.class.getSimpleName());
+                TableMergeSortOperator.class.getSimpleName());
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
@@ -602,7 +572,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         sortItemDataTypeList,
         context.getTypeProvider());
 
-    return new MergeSortOperator(
+    return new TableMergeSortOperator(
         operatorContext,
         children,
         dataTypes,
@@ -618,7 +588,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SortOperator.class.getSimpleName());
+                TableSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
 
@@ -644,7 +614,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Operator child = node.getChild().accept(this, context);
 
-    return new SortOperator(
+    return new TableSortOperator(
         operatorContext,
         child,
         dataTypes,
@@ -661,7 +631,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TopKOperator.class.getSimpleName());
+                TableTopKOperator.class.getSimpleName());
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
@@ -677,7 +647,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         sortItemIndexList,
         sortItemDataTypeList,
         context.getTypeProvider());
-    return new TopKOperator(
+    return new TableTopKOperator(
         operatorContext,
         children,
         dataTypes,
@@ -689,7 +659,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
     return node.getOutputSymbols().stream()
-        .filter(s -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(s.getName()))
         .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
   }
@@ -703,27 +672,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> columnIndex = new HashMap<>();
     int index = 0;
     for (Symbol symbol : outputSymbols) {
-      if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName())) {
-        continue;
-      }
       columnIndex.put(symbol, index++);
     }
     orderingScheme
         .getOrderBy()
         .forEach(
             sortItem -> {
-              if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getName())) {
-                sortItemIndexList.add(-1);
-                sortItemDataTypeList.add(TSDataType.INT64);
-              } else {
-                Integer i = columnIndex.get(sortItem);
-                if (i == null) {
-                  throw new IllegalStateException(
-                      "Sort Item %s is not included in children's output columns");
-                }
-                sortItemIndexList.add(i);
-                sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
+              Integer i = columnIndex.get(sortItem);
+              if (i == null) {
+                throw new IllegalStateException(
+                    "Sort Item %s is not included in children's output columns");
               }
+              sortItemIndexList.add(i);
+              sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
             });
   }
 
@@ -761,7 +722,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Operator child = node.getChild().accept(this, context);
 
-    return new StreamSortOperator(
+    return new TableStreamSortOperator(
         operatorContext,
         child,
         dataTypes,
