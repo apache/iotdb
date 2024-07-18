@@ -147,6 +147,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
               if (databaseName != null
                   && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                  && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                   && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                 // Pipe only collect user's data, filter metric database here.
                 updatedConsensusGroupIdToTaskMetaMap.put(
@@ -161,15 +162,16 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       // config region
       updatedConsensusGroupIdToTaskMetaMap.put(
           // 0 is the consensus group id of the config region, but data region id and schema region
-          // id
-          // also start from 0, so we use Integer.MIN_VALUE to represent the config region
+          // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
           Integer.MIN_VALUE,
           new PipeTaskMeta(
               configRegionTaskMeta.getProgressIndex(),
               // The leader of the config region is the config node itself
               ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     }
+
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
+
     // If the pipe's previous status was user stopped, then after the alter operation, the pipe's
     // status remains user stopped; otherwise, it becomes running.
     if (!pipeTaskInfo.get().isPipeStoppedByUser(alterPipeRequest.getPipeName())) {
