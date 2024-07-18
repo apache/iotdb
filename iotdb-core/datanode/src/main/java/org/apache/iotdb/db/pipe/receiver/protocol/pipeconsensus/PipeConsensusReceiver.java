@@ -682,6 +682,7 @@ public class PipeConsensusReceiver {
 
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.setProgressIndex(progressIndex);
+    tsFileResource.setGeneratedByPipeConsensus(true);
     tsFileResource.serialize();
     return tsFileResource;
   }
