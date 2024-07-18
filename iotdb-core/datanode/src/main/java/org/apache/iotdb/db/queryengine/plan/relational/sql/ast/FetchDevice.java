@@ -60,7 +60,7 @@ public class FetchDevice extends Statement {
       for (Object[] rawId : deviceIdList) {
         String[] partitionKey = new String[rawId.length];
         for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i] = Objects.toString(rawId[i].toString());
+          partitionKey[i] = Objects.toString(rawId[i]);
         }
         partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
       }
