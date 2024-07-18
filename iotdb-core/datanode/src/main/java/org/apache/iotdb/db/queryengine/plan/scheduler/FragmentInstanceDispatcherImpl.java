@@ -403,7 +403,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
+  private void dispatchLocally(final FragmentInstance instance)
+      throws FragmentInstanceDispatchException {
     // deserialize ConsensusGroupId
     ConsensusGroupId groupId = null;
     if (instance.getExecutorType().isStorageExecutor()) {
@@ -411,7 +412,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         groupId =
             ConsensusGroupId.Factory.createFromTConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
-      } catch (Throwable t) {
+      } catch (final Throwable t) {
         LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
@@ -422,8 +423,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     switch (instance.getType()) {
       case READ:
-        RegionReadExecutor readExecutor = new RegionReadExecutor();
-        RegionExecutionResult readResult =
+        final RegionReadExecutor readExecutor = new RegionReadExecutor();
+        final RegionExecutionResult readResult =
             groupId == null
                 ? readExecutor.execute(instance)
                 : readExecutor.execute(groupId, instance);
@@ -434,26 +435,27 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         break;
       case WRITE:
-        PlanNode planNode = instance.getFragment().getPlanNodeTree();
-        RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
-        RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
+        final PlanNode planNode = instance.getFragment().getPlanNodeTree();
+        final RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
+        final RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
-          // DO NOT LOG READ_ONLY ERROR
-          if (writeResult.getStatus().getCode() != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
-            LOGGER.warn(
-                "write locally failed. TSStatus: {}, message: {}",
-                writeResult.getStatus(),
-                writeResult.getMessage());
-          }
           if (writeResult.getStatus() == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {
+            // DO NOT LOG READ_ONLY ERROR
+            if (writeResult.getStatus().getCode()
+                != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+              LOGGER.warn(
+                  "write locally failed. TSStatus: {}, message: {}",
+                  writeResult.getStatus(),
+                  writeResult.getMessage());
+            }
             throw new FragmentInstanceDispatchException(writeResult.getStatus());
           }
         } else {
-          // some expected and accepted status except SUCCESS_STATUS need to be returned
-          TSStatus status = writeResult.getStatus();
+          // Some expected and accepted status except SUCCESS_STATUS need to be returned
+          final TSStatus status = writeResult.getStatus();
           if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new FragmentInstanceDispatchException(status);
           }
