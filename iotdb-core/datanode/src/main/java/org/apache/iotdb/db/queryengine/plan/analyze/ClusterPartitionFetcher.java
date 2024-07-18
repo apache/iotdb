@@ -319,8 +319,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 .distinct()
                 .collect(Collectors.toList());
         TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTableWithSlots(
-                Collections.singletonMap(database, partitionSlots));
+            isAutoCreate
+                ? client.getOrCreateSchemaPartitionTableWithSlots(
+                    Collections.singletonMap(database, partitionSlots))
+                : client.getSchemaPartitionTableWithSlots(
+                    Collections.singletonMap(database, partitionSlots));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
