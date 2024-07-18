@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -764,11 +765,11 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    assertTrue(rootNode.getChildren().get(0) instanceof LimitNode);
-    LimitNode limitNode = (LimitNode) rootNode.getChildren().get(0);
-    assertEquals(5, limitNode.getCount());
-    OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+    assertTrue(rootNode.getChildren().get(0) instanceof OffsetNode);
+    OffsetNode offsetNode = (OffsetNode) rootNode.getChildren().get(0);
     assertEquals(3, offsetNode.getCount());
+    LimitNode limitNode = (LimitNode) offsetNode.getChild();
+    assertEquals(8, limitNode.getCount());
 
     sql =
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
@@ -780,11 +781,11 @@ public class AnalyzerTest {
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof LimitNode);
-    limitNode = (LimitNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals(5, limitNode.getCount());
-    offsetNode = (OffsetNode) limitNode.getChild();
+    assertTrue(getChildrenNode(rootNode, 2) instanceof OffsetNode);
+    offsetNode = (OffsetNode) getChildrenNode(rootNode, 2);
     assertEquals(3, offsetNode.getCount());
+    limitNode = (LimitNode) offsetNode.getChild();
+    assertEquals(8, limitNode.getCount());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
