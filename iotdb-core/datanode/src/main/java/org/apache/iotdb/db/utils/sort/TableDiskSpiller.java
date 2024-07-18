@@ -17,47 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process;
+package org.apache.iotdb.db.utils.sort;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
-import org.apache.iotdb.db.utils.sort.TableDiskSpiller;
-
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
-import java.util.Comparator;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
-public class TableSortOperator extends SortOperator {
-  public TableSortOperator(
-      OperatorContext operatorContext,
-      Operator inputOperator,
-      List<TSDataType> dataTypes,
-      String folderPath,
-      Comparator<SortKey> comparator) {
-    super(
-        operatorContext,
-        inputOperator,
-        dataTypes,
-        new TableDiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes),
-        comparator);
+public class TableDiskSpiller extends DiskSpiller {
+  public TableDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
+    super(folderPath, filePrefix, dataTypeList);
   }
 
   @Override
-  protected void appendTime(TimeColumnBuilder timeBuilder, long time) {
-    // do nothing for table related operator
-  }
-
-  @Override
-  protected TsBlock buildFinalResult(TsBlockBuilder resultBuilder) {
+  protected TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder) {
     return resultBuilder.build(
         new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+  }
+
+  @Override
+  protected void appendTime(ColumnBuilder timeColumnBuilder, long time) {
+    // do nothing for table related
   }
 }

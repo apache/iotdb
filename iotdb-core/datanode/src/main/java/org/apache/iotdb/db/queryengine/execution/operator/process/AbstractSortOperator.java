@@ -83,7 +83,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
-      String folderPath,
+      DiskSpiller diskSpiller,
       Comparator<SortKey> comparator) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
@@ -91,8 +91,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     this.cachedData = new ArrayList<>();
     this.comparator = comparator;
     this.cachedBytes = 0;
-    this.diskSpiller =
-        new DiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes);
+    this.diskSpiller = diskSpiller;
     this.sortBufferManager =
         new SortBufferManager(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),

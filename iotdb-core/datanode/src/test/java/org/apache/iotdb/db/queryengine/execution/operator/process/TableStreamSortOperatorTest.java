@@ -40,6 +40,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -54,8 +55,10 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class TableStreamSortOperatorTest {
@@ -159,22 +162,23 @@ public class TableStreamSortOperatorTest {
         TsBlock tsBlock = streamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
@@ -201,22 +205,23 @@ public class TableStreamSortOperatorTest {
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
@@ -238,7 +243,7 @@ public class TableStreamSortOperatorTest {
     long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
+    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(510);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
@@ -248,22 +253,23 @@ public class TableStreamSortOperatorTest {
         TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
@@ -299,22 +305,23 @@ public class TableStreamSortOperatorTest {
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
@@ -487,32 +494,34 @@ public class TableStreamSortOperatorTest {
             TsBlockBuilder builder =
                 new TsBlockBuilder(
                     timeArray[index].length,
-                    Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32));
+                    Arrays.asList(
+                        TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32));
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
-              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              builder.getColumnBuilder(0).writeLong(timeArray[index][i]);
               if (cityArray[index][i] == null) {
-                builder.getColumnBuilder(0).appendNull();
-              } else {
-                builder
-                    .getColumnBuilder(0)
-                    .writeBinary(new Binary(cityArray[index][i], TSFileConfig.STRING_CHARSET));
-              }
-              if (deviceIdArray[index][i] == null) {
                 builder.getColumnBuilder(1).appendNull();
               } else {
                 builder
                     .getColumnBuilder(1)
+                    .writeBinary(new Binary(cityArray[index][i], TSFileConfig.STRING_CHARSET));
+              }
+              if (deviceIdArray[index][i] == null) {
+                builder.getColumnBuilder(2).appendNull();
+              } else {
+                builder
+                    .getColumnBuilder(2)
                     .writeBinary(new Binary(deviceIdArray[index][i], TSFileConfig.STRING_CHARSET));
               }
               if (valueIsNull[index][i]) {
-                builder.getColumnBuilder(2).appendNull();
+                builder.getColumnBuilder(3).appendNull();
               } else {
-                builder.getColumnBuilder(2).writeInt(valueArray[index][i]);
+                builder.getColumnBuilder(3).writeInt(valueArray[index][i]);
               }
             }
             builder.declarePositions(timeArray[index].length);
             index++;
-            return builder.build();
+            return builder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
           }
 
           @Override
@@ -565,13 +574,12 @@ public class TableStreamSortOperatorTest {
     List<SortOrder> sortOrderList =
         Arrays.asList(
             SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST);
-    List<Integer> sortItemIndexList = Arrays.asList(0, 1, 2);
+    List<Integer> sortItemIndexList = Arrays.asList(1, 2, 3);
     List<TSDataType> sortItemDataTypeList =
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32);
 
     Comparator<SortKey> comparator =
         getComparatorForTable(sortOrderList, sortItemIndexList, sortItemDataTypeList);
-    ;
 
     Comparator<SortKey> streamKeyComparator =
         getComparatorForTable(
@@ -582,7 +590,7 @@ public class TableStreamSortOperatorTest {
     return new TableStreamSortOperator(
         operatorContext,
         childOperator,
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32),
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32),
         filePrefix,
         comparator,
         streamKeyComparator,

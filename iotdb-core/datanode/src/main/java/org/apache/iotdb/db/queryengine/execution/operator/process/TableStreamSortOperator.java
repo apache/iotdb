@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.utils.sort.TableDiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -67,7 +68,12 @@ public class TableStreamSortOperator extends AbstractSortOperator {
       Comparator<SortKey> comparator,
       Comparator<SortKey> streamSortComparator,
       int minLinesToOutput) {
-    super(operatorContext, inputOperator, dataTypes, folderPath, comparator);
+    super(
+        operatorContext,
+        inputOperator,
+        dataTypes,
+        new TableDiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes),
+        comparator);
     this.streamSortComparator = streamSortComparator;
     this.minLinesToOutput = minLinesToOutput;
   }

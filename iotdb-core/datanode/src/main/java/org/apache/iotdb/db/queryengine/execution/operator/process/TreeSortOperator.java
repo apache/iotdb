@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.utils.sort.TreeDiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -39,7 +40,12 @@ public class TreeSortOperator extends SortOperator {
       List<TSDataType> dataTypes,
       String folderPath,
       Comparator<SortKey> comparator) {
-    super(operatorContext, inputOperator, dataTypes, folderPath, comparator);
+    super(
+        operatorContext,
+        inputOperator,
+        dataTypes,
+        new TreeDiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes),
+        comparator);
   }
 
   @Override

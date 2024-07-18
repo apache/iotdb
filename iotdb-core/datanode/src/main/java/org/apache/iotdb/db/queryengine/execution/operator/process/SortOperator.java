@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.utils.sort.DiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -42,9 +43,9 @@ public abstract class SortOperator extends AbstractSortOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
-      String folderPath,
+      DiskSpiller diskSpiller,
       Comparator<SortKey> comparator) {
-    super(operatorContext, inputOperator, dataTypes, folderPath, comparator);
+    super(operatorContext, inputOperator, dataTypes, diskSpiller, comparator);
   }
 
   @Override
