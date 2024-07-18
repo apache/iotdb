@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
@@ -37,7 +36,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
@@ -89,10 +87,7 @@ public class TableDistributionPlanner {
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(
-              outputNodeWithExchange.getOutputSymbols().stream()
-                  .map(Symbol::getName)
-                  .collect(Collectors.toList()));
+          .setColumnToTsBlockIndexMap(outputNodeWithExchange.getOutputColumnNames());
     }
     adjustUpStream(outputNodeWithExchange, planContext);
 
