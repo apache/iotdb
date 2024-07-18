@@ -369,21 +369,21 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
-    {
-      // reserve pageWriter capacity
-      List<Integer> list =
-          dataTypes.parallelStream()
-              .map(TSDataType::getDataTypeSize)
-              .map(size -> (size * MAX_NUMBER_OF_POINTS_IN_PAGE + 1023) / 1024 * 1024)
-              .collect(Collectors.toList());
-      for (int i = 0; i < list.size(); ++i) {
-        alignedChunkWriter
-            .getValueChunkWriterByIndex(i)
-            .getPageWriter()
-            .getPageBuffer()
-            .reserve(list.get(i));
-      }
-    }
+    // {
+    //   // reserve pageWriter capacity
+    //   List<Integer> list =
+    //       dataTypes.parallelStream()
+    //           .map(TSDataType::getDataTypeSize)
+    //           .map(size -> (size * MAX_NUMBER_OF_POINTS_IN_PAGE))
+    //           .collect(Collectors.toList());
+    //   for (int i = 0; i < list.size(); ++i) {
+    //     alignedChunkWriter
+    //         .getValueChunkWriterByIndex(i)
+    //         .getPageWriter()
+    //         .getPageBuffer()
+    //         .reserve(list.get(i));
+    //   }
+    // }
 
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
