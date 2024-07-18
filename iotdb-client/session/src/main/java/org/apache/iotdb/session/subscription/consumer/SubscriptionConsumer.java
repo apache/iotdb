@@ -92,7 +92,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
   private static final long SLEEP_MS = 100L;
-  private static final long TIMER_DELTA_MS = 200L;
+  private static final long SLEEP_DELTA_MS = 50L;
+  private static final long TIMER_DELTA_MS = 250L;
 
   private static final int PARALLELISM = 4; // TODO: config
 
@@ -455,21 +456,24 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
+
+    // dividing topics
+    final List<Set<String>> partitionedTopicNames = partition(topicNames, PARALLELISM);
+    final List<PollTask> tasks = new ArrayList<>();
+    for (final Set<String> partition : partitionedTopicNames) {
+      tasks.add(new PollTask(partition, timeoutMs));
+    }
+
     try {
       for (final Future<List<SubscriptionMessage>> future :
-          SubscriptionExecutorServiceManager.submitMultiplePollTasks(
-              Collections.nCopies(PARALLELISM, new PollTask(topicNames, timeoutMs)), timeoutMs)) {
+          SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
         try {
           if (future.isCancelled()) {
             continue;
           }
           messages.addAll(future.get());
-        } catch (final CancellationException e) {
-          LOGGER.warn(
-              "CancellationException occurred when SubscriptionConsumer {} polling topics {}",
-              this,
-              topicNames,
-              e);
+        } catch (final CancellationException ignored) {
+
         } catch (final ExecutionException e) {
           final Throwable cause = e.getCause();
           if (cause instanceof SubscriptionRuntimeCriticalException) {
@@ -510,6 +514,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     return messages;
+  }
+
+  private class PollTask implements Callable<List<SubscriptionMessage>> {
+
+    private final Set<String> topicNames;
+    private final long timeoutMs;
+
+    public PollTask(final Set<String> topicNames, final long timeoutMs) {
+      this.topicNames = topicNames;
+      this.timeoutMs = timeoutMs;
+    }
+
+    @Override
+    public List<SubscriptionMessage> call() {
+      return singlePoll(topicNames, timeoutMs);
+    }
   }
 
   private List<SubscriptionMessage> singlePoll(
@@ -590,7 +610,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         timer.update();
 
         // TODO: associated with timeoutMs instead of hardcoding
-        Thread.sleep(SLEEP_MS); // wait some time
+        Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
       } while (timer.notExpired(TIMER_DELTA_MS));
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt(); // restore interrupted state
@@ -615,22 +635,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     return messages;
-  }
-
-  private class PollTask implements Callable<List<SubscriptionMessage>> {
-
-    private final Set<String> topicNames;
-    private final long timeoutMs;
-
-    public PollTask(final Set<String> topicNames, final long timeoutMs) {
-      this.topicNames = topicNames;
-      this.timeoutMs = timeoutMs;
-    }
-
-    @Override
-    public List<SubscriptionMessage> call() {
-      return singlePoll(topicNames, timeoutMs);
-    }
   }
 
   private Optional<SubscriptionMessage> pollFile(
@@ -1236,5 +1240,54 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         put("subscribedTopics", subscribedTopics.toString());
       }
     };
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  /**
+   * Partitions the given set into the specified number of subsets.
+   *
+   * <p>Ensures that each partition contains at least one element, even if the number of elements in
+   * the set is less than the number of partitions. When the number of elements is greater than or
+   * equal to the number of partitions, elements are evenly distributed across the partitions.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>1 topic, 4 partitions: [topic1 | topic1 | topic1 | topic1]
+   *   <li>3 topics, 4 partitions: [topic1 | topic2 | topic3 | topic1]
+   *   <li>2 topics, 4 partitions: [topic1 | topic2 | topic1 | topic2]
+   *   <li>5 topics, 4 partitions: [topic1, topic4 | topic2 | topic5 | topic3]
+   *   <li>7 topics, 3 partitions: [topic1, topic6, topic7 | topic2, topic3 | topic5, topic4]
+   * </ul>
+   *
+   * @param set the given set
+   * @param partitions the number of partitions
+   * @param <T> the type of the elements in the set
+   * @return a list containing the specified number of subsets
+   */
+  public static <T> List<Set<T>> partition(final Set<T> set, final int partitions) {
+    final List<Set<T>> result = new ArrayList<>(partitions);
+    for (int i = 0; i < partitions; i++) {
+      result.add(new HashSet<>());
+    }
+
+    final List<T> elements = new ArrayList<>(set);
+    int index = 0;
+
+    // When the number of elements is less than the number of partitions, distribute elements
+    // repeatedly
+    for (int i = 0; i < partitions; i++) {
+      result.get(i).add(elements.get(index));
+      index = (index + 1) % elements.size();
+    }
+
+    // When the number of elements is greater than or equal to the number of partitions, distribute
+    // elements normally
+    for (int i = partitions; i < elements.size(); i++) {
+      result.get(i % partitions).add(elements.get(i));
+    }
+
+    return result;
   }
 }
