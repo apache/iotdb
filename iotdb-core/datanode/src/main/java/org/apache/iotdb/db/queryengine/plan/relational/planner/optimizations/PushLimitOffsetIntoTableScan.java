@@ -188,15 +188,17 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitTableScan(TableScanNode node, Context context) {
       context.setTableScanNode(node);
-      if (context.getLimit() > 0) {
-        node.setPushDownLimit(context.getLimit());
-      }
-      // TODO only one data region, pushDownOffset can be set
-      //      if (context.getOffset() > 0) {
-      //        node.setPushDownOffset(context.getOffset());
-      //      }
-      if (context.canPushLimitToEachDevice()) {
-        node.setPushLimitToEachDevice(true);
+      if (context.isEnablePushDown()) {
+        if (context.getLimit() > 0) {
+          node.setPushDownLimit(context.getLimit());
+        }
+        // TODO only one data region, pushDownOffset can be set
+        //      if (context.getOffset() > 0) {
+        //        node.setPushDownOffset(context.getOffset());
+        //      }
+        if (context.canPushLimitToEachDevice()) {
+          node.setPushLimitToEachDevice(true);
+        }
       }
       return node;
     }

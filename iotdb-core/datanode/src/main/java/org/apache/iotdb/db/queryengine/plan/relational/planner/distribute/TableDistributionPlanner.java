@@ -27,10 +27,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+
+import com.google.common.collect.ImmutableSet;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,7 +59,16 @@ public class TableDistributionPlanner {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = mppQueryContext;
-    this.optimizers = Arrays.asList(new SortElimination());
+    this.optimizers =
+        Arrays.asList(
+            new SortElimination(),
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
+                ImmutableSet.of(
+                    new MergeLimitWithMergeSort()
+                    // new MergeLimitOverProjectWithMergeSort()
+                    )));
   }
 
   public DistributedQueryPlan plan() {

@@ -149,6 +149,10 @@ public final class Patterns {
     return typeOf(SortNode.class);
   }
 
+  public static Pattern<MergeSortNode> mergeSort() {
+    return typeOf(MergeSortNode.class);
+  }
+
   /*
       public static Pattern<TableFinishNode> tableFinish()
       {
