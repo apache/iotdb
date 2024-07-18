@@ -90,7 +90,6 @@ public class WALWriter extends LogWriter {
   }
 
   private void writeMetadata(ByteBuffer buffer) throws IOException {
-    size += buffer.position();
     buffer.flip();
     logChannel.write(buffer);
   }
