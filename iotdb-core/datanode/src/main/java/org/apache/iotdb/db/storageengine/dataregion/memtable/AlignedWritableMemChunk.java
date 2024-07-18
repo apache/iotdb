@@ -59,7 +59,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<TSDataType> dataTypeList = new ArrayList<>(schemaList.size());
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
@@ -271,8 +271,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
-    List<Integer> columnIndexList = new ArrayList<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<Integer> columnIndexList = new ArrayList<>(schemaList.size());
+    List<TSDataType> dataTypeList = new ArrayList<>(schemaList.size());
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
