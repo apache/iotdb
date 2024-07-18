@@ -91,11 +91,20 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
 
       if (streamSortIndex > 0) {
+        boolean orderByAllIdsAndTime = true;
+        for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
+          if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
+              && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
+            orderByAllIdsAndTime = false;
+          }
+        }
+
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
             child,
             node.getOrderingScheme(),
             node.isPartial(),
+            orderByAllIdsAndTime,
             streamSortIndex);
       }
 

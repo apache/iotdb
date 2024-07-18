@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
@@ -43,7 +44,7 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
  *
- * <p>The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the following
+ * <p>The LIMIT OFFSET condition can be pushed down to the TableScanNode, when the following
  * conditions are met:
  * <li>Time series query (not aggregation query).
  * <li>The query expressions are all scalar expression.
@@ -87,9 +88,10 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitOffset(OffsetNode node, Context context) {
       context.setOffset(node.getCount());
-      if (context.getLimit() > 0) {
-        context.setLimit(context.getLimit() + context.getOffset());
-      }
+      // already use rule {@link PushLimitThroughOffset}
+      //      if (context.getLimit() > 0) {
+      //        context.setLimit(context.getLimit() + context.getOffset());
+      //      }
       node.setChild(node.getChild().accept(this, context));
       return node;
     }
@@ -161,6 +163,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       tableScanNode.setPushLimitToEachDevice(pushLimitToEachDevice);
       node.setChild(child);
       return node;
+    }
+
+    @Override
+    public PlanNode visitTopK(TopKNode node, Context context) {
+      throw new IllegalStateException(
+          "TopKNode must be appeared after PushLimitOffsetIntoTableScan");
     }
 
     @Override

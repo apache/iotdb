@@ -42,7 +42,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   private final OrderingScheme orderingScheme;
 
-  private final int count;
+  private final long count;
 
   private final List<Symbol> outputSymbols;
 
@@ -51,7 +51,7 @@ public class TopKNode extends MultiChildProcessNode {
   public TopKNode(
       PlanNodeId id,
       OrderingScheme scheme,
-      int count,
+      long count,
       List<Symbol> outputSymbols,
       boolean childrenDataInOrder) {
     super(id);
@@ -65,7 +65,7 @@ public class TopKNode extends MultiChildProcessNode {
       PlanNodeId id,
       List<PlanNode> children,
       OrderingScheme scheme,
-      int count,
+      long count,
       List<Symbol> outputSymbols,
       boolean childrenDataInOrder) {
     super(id, children);
@@ -142,7 +142,7 @@ public class TopKNode extends MultiChildProcessNode {
     return orderingScheme;
   }
 
-  public int getCount() {
+  public long getCount() {
     return count;
   }
 

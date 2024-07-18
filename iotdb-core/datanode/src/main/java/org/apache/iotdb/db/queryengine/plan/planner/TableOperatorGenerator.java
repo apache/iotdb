@@ -653,7 +653,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         dataTypes,
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
-        node.getCount(),
+        (int) node.getCount(),
         node.isChildrenDataInOrder());
   }
 

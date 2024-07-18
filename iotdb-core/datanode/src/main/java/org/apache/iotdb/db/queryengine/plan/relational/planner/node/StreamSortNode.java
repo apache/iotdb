@@ -43,8 +43,9 @@ public class StreamSortNode extends SortNode {
       PlanNode child,
       OrderingScheme scheme,
       boolean partial,
+      boolean orderByAllIdsAndTime,
       int streamCompareKeyEndIndex) {
-    super(id, child, scheme, partial);
+    super(id, child, scheme, partial, orderByAllIdsAndTime);
     this.streamCompareKeyEndIndex = streamCompareKeyEndIndex;
   }
 
@@ -59,6 +60,7 @@ public class StreamSortNode extends SortNode {
         Iterables.getOnlyElement(newChildren),
         orderingScheme,
         partial,
+        orderByAllIdsAndTime,
         streamCompareKeyEndIndex);
   }
 
@@ -69,7 +71,8 @@ public class StreamSortNode extends SortNode {
 
   @Override
   public PlanNode clone() {
-    return new StreamSortNode(id, null, orderingScheme, partial, streamCompareKeyEndIndex);
+    return new StreamSortNode(
+        id, null, orderingScheme, partial, orderByAllIdsAndTime, streamCompareKeyEndIndex);
   }
 
   @Override
@@ -93,7 +96,8 @@ public class StreamSortNode extends SortNode {
     boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
     int streamCompareKeyEndIndex = ReadWriteIOUtils.read(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new StreamSortNode(planNodeId, null, orderingScheme, partial, streamCompareKeyEndIndex);
+    return new StreamSortNode(
+        planNodeId, null, orderingScheme, partial, false, streamCompareKeyEndIndex);
   }
 
   @Override
