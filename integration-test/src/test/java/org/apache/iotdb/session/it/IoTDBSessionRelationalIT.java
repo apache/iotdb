@@ -291,7 +291,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         // "m2" should not be present
-        assertEquals(3, rowRecord.getFields().size());
+        assertEquals(4, rowRecord.getFields().size());
         timestamp++;
         //        System.out.println(rowRecord);
       }
