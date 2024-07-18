@@ -230,6 +230,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           break;
         case TIME:
           columnsIndexArray[idx++] = -1;
+          columnSchemas.add(schema);
           break;
         default:
           throw new IllegalArgumentException(
