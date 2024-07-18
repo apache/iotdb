@@ -40,6 +40,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -59,6 +60,9 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
+
+  public static final LongColumn TIME_COLUMN_TEMPLATE =
+      new LongColumn(1, Optional.empty(), new long[] {0});
 
   private final List<ColumnSchema> columnSchemas;
 
@@ -220,6 +224,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
           valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
           break;
         case TIME:
+          valueColumns[i] = measurementDataBlock.getTimeColumn();
           break;
         default:
           throw new IllegalArgumentException(
@@ -227,7 +232,10 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       }
     }
     this.resultTsBlock =
-        new TsBlock(positionCount, measurementDataBlock.getTimeColumn(), valueColumns);
+        new TsBlock(
+            positionCount,
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
+            valueColumns);
   }
 
   private RunLengthEncodedColumn getIdOrAttributeValueColumn(String value, int positionCount) {

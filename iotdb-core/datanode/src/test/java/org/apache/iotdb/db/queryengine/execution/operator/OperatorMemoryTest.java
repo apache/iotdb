@@ -45,7 +45,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOper
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
@@ -512,8 +512,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    SortOperator sortOperator =
-        new SortOperator(
+    TreeSortOperator treeSortOperator =
+        new TreeSortOperator(
             Mockito.mock(OperatorContext.class),
             child,
             Collections.singletonList(TSDataType.INT32),
@@ -522,13 +522,13 @@ public class OperatorMemoryTest {
 
     assertEquals(
         2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
-        sortOperator.calculateMaxPeekMemory());
+        treeSortOperator.calculateMaxPeekMemory());
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-        sortOperator.calculateMaxReturnSize());
+        treeSortOperator.calculateMaxReturnSize());
     assertEquals(
         512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
-        sortOperator.calculateRetainedSizeAfterCallingNext());
+        treeSortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

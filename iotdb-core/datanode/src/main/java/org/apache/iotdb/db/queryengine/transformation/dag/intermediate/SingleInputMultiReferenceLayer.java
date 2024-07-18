@@ -77,7 +77,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
     return new LayerReader() {
       private final SafetyPile safetyPile = safetyLine.addSafetyPile();
 
-      private TimeColumn cachedTimes = null;
+      private Column cachedTimes = null;
       private Column cachedValues = null;
       private int cacheConsumed = 0;
 
@@ -242,10 +242,10 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       private long currentEndTime = Long.MAX_VALUE;
 
       private final TVListForwardIterator beginIterator = tvList.constructIterator();
-      private TimeColumn cachedBeginTimeColumn;
+      private Column cachedBeginTimeColumn;
       private int cachedBeginConsumed;
 
-      private TimeColumn cachedEndTimeColumn;
+      private Column cachedEndTimeColumn;
       private int cachedEndConsumed;
 
       @Override
@@ -269,11 +269,12 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
           if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
-            nextWindowTimeBegin = cachedEndTimeColumn.getStartTime();
+            nextWindowTimeBegin = cachedEndTimeColumn.getLong(0);
           }
           hasAtLeastOneRow = tvList.size() != 0;
           if (hasAtLeastOneRow) {
-            currentEndTime = cachedEndTimeColumn.getEndTime();
+            currentEndTime =
+                cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1);
           }
           isFirstIteration = false;
         }
@@ -347,7 +348,8 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         }
 
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < cachedEndTimeColumn.getEndTime()) {
+            && nextWindowTimeEnd
+                < cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1)) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }

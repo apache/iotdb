@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.Serializable
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -336,7 +335,7 @@ public class SerializableRowList implements SerializableList {
     bufferSize += ReadWriteIOUtils.write(blocks.size(), outputStream);
 
     for (Column[] block : blocks) {
-      TimeColumn timeColumn = (TimeColumn) block[block.length - 1];
+      Column timeColumn = block[block.length - 1];
       Column[] valueColumns = new Column[block.length - 1];
       // Only references are copied
       System.arraycopy(block, 0, valueColumns, 0, block.length - 1);

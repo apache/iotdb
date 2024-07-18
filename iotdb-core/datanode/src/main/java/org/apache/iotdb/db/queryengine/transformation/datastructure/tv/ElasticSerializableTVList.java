@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVL
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
@@ -163,7 +162,7 @@ public class ElasticSerializableTVList {
   // endregion
 
   // region batch data points methods
-  public TimeColumn getTimeColumn(int externalIndex, int internalIndex) throws IOException {
+  public Column getTimeColumn(int externalIndex, int internalIndex) throws IOException {
     return cache.get(externalIndex).getTimeColumn(internalIndex);
   }
 
@@ -171,14 +170,14 @@ public class ElasticSerializableTVList {
     return cache.get(externalIndex).getValueColumn(internalIndex);
   }
 
-  public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
+  public void putColumn(Column timeColumn, Column valueColumn) throws IOException {
     checkExpansion();
 
     int begin = 0, end = 0;
     int total = timeColumn.getPositionCount();
     while (total > 0) {
       int consumed;
-      TimeColumn insertedTimeColumn;
+      Column insertedTimeColumn;
       Column insertedValueColumn;
       if (total + pointCount % internalTVListCapacity < internalTVListCapacity) {
         consumed = total;
@@ -187,13 +186,13 @@ public class ElasticSerializableTVList {
           insertedTimeColumn = timeColumn;
           insertedValueColumn = valueColumn;
         } else {
-          insertedTimeColumn = (TimeColumn) timeColumn.getRegionCopy(begin, consumed);
+          insertedTimeColumn = timeColumn.getRegionCopy(begin, consumed);
           insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
         }
       } else {
         consumed = internalTVListCapacity - pointCount % internalTVListCapacity;
         // Construct sub-regions
-        insertedTimeColumn = (TimeColumn) timeColumn.getRegionCopy(begin, consumed);
+        insertedTimeColumn = timeColumn.getRegionCopy(begin, consumed);
         insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
       }
 

@@ -26,7 +26,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -50,7 +49,7 @@ public class SerializableTVList implements SerializableList {
 
   private List<Column> valueColumns;
 
-  private List<TimeColumn> timeColumns;
+  private List<Column> timeColumns;
 
   private final List<Integer> columnSizes;
 
@@ -129,7 +128,7 @@ public class SerializableTVList implements SerializableList {
 
     long ret = 0;
     int total = 0;
-    for (TimeColumn column : timeColumns) {
+    for (Column column : timeColumns) {
       int length = column.getPositionCount();
       if (index < total + length) {
         int offset = index - total;
@@ -271,7 +270,7 @@ public class SerializableTVList implements SerializableList {
   // endregion
 
   // region batch data method
-  public TimeColumn getTimeColumn(int index) {
+  public Column getTimeColumn(int index) {
     checkState(index < timeColumns.size());
     return timeColumns.get(index);
   }
@@ -281,7 +280,7 @@ public class SerializableTVList implements SerializableList {
     return valueColumns.get(index);
   }
 
-  public void putColumns(TimeColumn timeColumn, Column valueColumn) {
+  public void putColumns(Column timeColumn, Column valueColumn) {
     timeColumns.add(timeColumn);
     valueColumns.add(valueColumn);
 
@@ -360,7 +359,7 @@ public class SerializableTVList implements SerializableList {
 
     for (int i = 0; i < timeColumns.size(); i++) {
       // Construct TsBlock
-      TimeColumn timeColumn = timeColumns.get(i);
+      Column timeColumn = timeColumns.get(i);
       Column valueColumn = valueColumns.get(i);
       TsBlock tsBlock = new TsBlock(timeColumn, valueColumn);
 
@@ -386,7 +385,7 @@ public class SerializableTVList implements SerializableList {
       TsBlock tsBlock = serde.deserialize(byteBuffer);
 
       // Unpack columns
-      TimeColumn timeColumn = tsBlock.getTimeColumn();
+      Column timeColumn = tsBlock.getTimeColumn();
       Column valueColumn = tsBlock.getColumn(0);
 
       timeColumns.add(timeColumn);
@@ -395,7 +394,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   @TestOnly
-  public List<TimeColumn> getTimeColumns() {
+  public List<Column> getTimeColumns() {
     return timeColumns;
   }
 
