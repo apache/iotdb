@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
@@ -40,6 +39,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -59,6 +59,9 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
+
+  public static final LongColumn TIME_COLUMN_TEMPLATE =
+      new LongColumn(1, Optional.empty(), new long[] {0});
 
   private final List<ColumnSchema> columnSchemas;
 
@@ -220,6 +223,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
           valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
           break;
         case TIME:
+          valueColumns[i] = measurementDataBlock.getTimeColumn();
           break;
         default:
           throw new IllegalArgumentException(
@@ -227,7 +231,10 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       }
     }
     this.resultTsBlock =
-        new TsBlock(positionCount, measurementDataBlock.getTimeColumn(), valueColumns);
+        new TsBlock(
+            positionCount,
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
+            valueColumns);
   }
 
   private RunLengthEncodedColumn getIdOrAttributeValueColumn(String value, int positionCount) {
@@ -263,11 +270,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   public List<TSDataType> getResultDataTypes() {
     List<TSDataType> resultDataTypes = new ArrayList<>(columnSchemas.size());
     for (ColumnSchema columnSchema : columnSchemas) {
-      if (columnSchema.getColumnCategory() != TsTableColumnCategory.TIME) {
-        resultDataTypes.add(getTSDataType(columnSchema.getType()));
-      } else {
-        throw new IllegalArgumentException("Should not have TimeColumnSchema");
-      }
+      resultDataTypes.add(getTSDataType(columnSchema.getType()));
     }
     return resultDataTypes;
   }

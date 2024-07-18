@@ -283,14 +283,13 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      timestamp = 0;
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(timestamp, rowRecord.getTimestamp());
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         // "m2" should not be present
         assertEquals(3, rowRecord.getFields().size());
         timestamp++;
@@ -364,14 +363,13 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      timestamp = 0;
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(timestamp, rowRecord.getTimestamp());
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         timestamp++;
         //        System.out.println(rowRecord);
       }
@@ -437,14 +435,13 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
-      timestamp = 0;
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(timestamp, rowRecord.getTimestamp());
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         timestamp++;
         //        System.out.println(rowRecord);
       }

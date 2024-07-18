@@ -39,7 +39,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DiskSpiller {
+public abstract class DiskSpiller {
 
   private static final String FILE_SUFFIX = ".sortTemp";
   private final List<TSDataType> dataTypeList;
@@ -50,7 +50,7 @@ public class DiskSpiller {
   private boolean folderCreated = false;
   private final TsBlockSerde serde = new TsBlockSerde();
 
-  public DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
+  DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
     this.folderPath = folderPath;
     this.filePrefix = filePrefix + "-";
     this.fileIndex = 0;
@@ -84,14 +84,14 @@ public class DiskSpiller {
       writeSortKey(sortKey, columnBuilders, timeColumnBuilder);
       tsBlockBuilder.declarePosition();
       if (tsBlockBuilder.isFull()) {
-        tsBlocks.add(tsBlockBuilder.build());
+        tsBlocks.add(buildSortedTsBlock(tsBlockBuilder));
         tsBlockBuilder.reset();
         timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
       }
     }
 
     if (!tsBlockBuilder.isEmpty()) {
-      tsBlocks.add(tsBlockBuilder.build());
+      tsBlocks.add(buildSortedTsBlock(tsBlockBuilder));
     }
 
     try {
@@ -103,6 +103,8 @@ public class DiskSpiller {
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
+
+  protected abstract TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder);
 
   private void writeData(List<TsBlock> sortedData, String fileName) throws IoTDBException {
     Path filePath = Paths.get(fileName);
@@ -132,7 +134,7 @@ public class DiskSpiller {
 
   private void writeSortKey(
       SortKey sortKey, ColumnBuilder[] columnBuilders, ColumnBuilder timeColumnBuilder) {
-    timeColumnBuilder.writeLong(sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
+    appendTime(timeColumnBuilder, sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
     for (int i = 0; i < columnBuilders.length; i++) {
       if (sortKey.tsBlock.getColumn(i).isNull(sortKey.rowIndex)) {
         columnBuilders[i].appendNull();
@@ -141,6 +143,8 @@ public class DiskSpiller {
       }
     }
   }
+
+  protected abstract void appendTime(ColumnBuilder timeColumnBuilder, long time);
 
   public boolean hasSpilledData() {
     return fileIndex != 0;

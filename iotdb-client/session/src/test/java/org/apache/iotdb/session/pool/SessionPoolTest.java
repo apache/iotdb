@@ -1483,6 +1483,7 @@ public class SessionPoolTest {
     Mockito.when(execResp.getOperationType()).thenReturn("QUERY");
     Mockito.when(execResp.isSetQueryId()).thenReturn(true);
     Mockito.when(execResp.getQueryId()).thenReturn(queryId);
+    Mockito.when(execResp.isIgnoreTimeStamp()).thenReturn(false);
 
     SessionDataSet sessionDataSet =
         new SessionDataSet(

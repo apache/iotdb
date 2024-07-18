@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 /** only has one input column. */
@@ -93,7 +92,7 @@ public class SingleColumnMerger implements ColumnMerger {
       columnBuilder.appendNull(rowCount);
     } else {
       // read from input column and write it into columnBuilder
-      TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
+      Column timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
       Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
       for (int i = 0; i < rowCount; i++) {
         // current index reaches the size of input column or current time of input column is already

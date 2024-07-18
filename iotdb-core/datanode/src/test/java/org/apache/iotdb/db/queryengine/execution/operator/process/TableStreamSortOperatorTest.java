@@ -40,6 +40,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -54,11 +55,13 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
-public class StreamSortOperatorTest {
+public class TableStreamSortOperatorTest {
 
   private static final String sortTmpPrefixPath =
       "target" + File.separator + "sort" + File.separator + "tmp";
@@ -151,7 +154,7 @@ public class StreamSortOperatorTest {
   @Test
   public void allInMemoryTest() {
 
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
+    try (TableStreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
       ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
       listenableFuture.get();
@@ -159,22 +162,23 @@ public class StreamSortOperatorTest {
         TsBlock tsBlock = streamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
@@ -192,35 +196,36 @@ public class StreamSortOperatorTest {
   public void allInMemoryTes2() {
     int maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(2)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -238,36 +243,37 @@ public class StreamSortOperatorTest {
     long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
+    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(510);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(1000)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -289,36 +295,37 @@ public class StreamSortOperatorTest {
     IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
-    try (StreamSortOperator streamSortOperator = genStreamSortOperator(2)) {
+    try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
 
       int count = 0;
-      ListenableFuture<?> listenableFuture = streamSortOperator.isBlocked();
+      ListenableFuture<?> listenableFuture = tableStreamSortOperator.isBlocked();
       listenableFuture.get();
-      while (!streamSortOperator.isFinished() && streamSortOperator.hasNext()) {
-        TsBlock tsBlock = streamSortOperator.next();
+      while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
+        TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
-            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
-            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(1).isNull(i));
             if (!column1IsNull[count]) {
               assertEquals(
                   column1Array[count],
-                  tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            assertEquals(column2IsNull[count], tsBlock.getColumn(2).isNull(i));
             if (!column2IsNull[count]) {
               assertEquals(
                   column2Array[count],
-                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+                  tsBlock.getColumn(2).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             }
-            assertEquals(column3IsNull[count], tsBlock.getColumn(2).isNull(i));
+            assertEquals(column3IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column3IsNull[count]) {
-              assertEquals(column3Array[count], tsBlock.getColumn(2).getInt(i));
+              assertEquals(column3Array[count], tsBlock.getColumn(3).getInt(i));
             }
           }
         }
-        listenableFuture = streamSortOperator.isBlocked();
+        listenableFuture = tableStreamSortOperator.isBlocked();
         listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
@@ -332,7 +339,7 @@ public class StreamSortOperatorTest {
     }
   }
 
-  private StreamSortOperator genStreamSortOperator(int maxLinesToOutput) {
+  private TableStreamSortOperator genStreamSortOperator(int maxLinesToOutput) {
     // child output
     // Time, city,       deviceId,   s1
     // 1     null           d1       9
@@ -395,7 +402,7 @@ public class StreamSortOperatorTest {
     PlanNodeId planNodeId1 = new PlanNodeId("1");
     driverContext.addOperatorContext(1, planNodeId1, TableScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
-    driverContext.addOperatorContext(2, planNodeId2, StreamSortOperator.class.getSimpleName());
+    driverContext.addOperatorContext(2, planNodeId2, TableStreamSortOperator.class.getSimpleName());
     Operator childOperator =
         new Operator() {
 
@@ -487,32 +494,34 @@ public class StreamSortOperatorTest {
             TsBlockBuilder builder =
                 new TsBlockBuilder(
                     timeArray[index].length,
-                    Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32));
+                    Arrays.asList(
+                        TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32));
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
-              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              builder.getColumnBuilder(0).writeLong(timeArray[index][i]);
               if (cityArray[index][i] == null) {
-                builder.getColumnBuilder(0).appendNull();
-              } else {
-                builder
-                    .getColumnBuilder(0)
-                    .writeBinary(new Binary(cityArray[index][i], TSFileConfig.STRING_CHARSET));
-              }
-              if (deviceIdArray[index][i] == null) {
                 builder.getColumnBuilder(1).appendNull();
               } else {
                 builder
                     .getColumnBuilder(1)
+                    .writeBinary(new Binary(cityArray[index][i], TSFileConfig.STRING_CHARSET));
+              }
+              if (deviceIdArray[index][i] == null) {
+                builder.getColumnBuilder(2).appendNull();
+              } else {
+                builder
+                    .getColumnBuilder(2)
                     .writeBinary(new Binary(deviceIdArray[index][i], TSFileConfig.STRING_CHARSET));
               }
               if (valueIsNull[index][i]) {
-                builder.getColumnBuilder(2).appendNull();
+                builder.getColumnBuilder(3).appendNull();
               } else {
-                builder.getColumnBuilder(2).writeInt(valueArray[index][i]);
+                builder.getColumnBuilder(3).writeInt(valueArray[index][i]);
               }
             }
             builder.declarePositions(timeArray[index].length);
             index++;
-            return builder.build();
+            return builder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
           }
 
           @Override
@@ -565,13 +574,12 @@ public class StreamSortOperatorTest {
     List<SortOrder> sortOrderList =
         Arrays.asList(
             SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST);
-    List<Integer> sortItemIndexList = Arrays.asList(0, 1, 2);
+    List<Integer> sortItemIndexList = Arrays.asList(1, 2, 3);
     List<TSDataType> sortItemDataTypeList =
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32);
 
     Comparator<SortKey> comparator =
         getComparatorForTable(sortOrderList, sortItemIndexList, sortItemDataTypeList);
-    ;
 
     Comparator<SortKey> streamKeyComparator =
         getComparatorForTable(
@@ -579,10 +587,10 @@ public class StreamSortOperatorTest {
             sortItemIndexList.subList(0, 2),
             sortItemDataTypeList.subList(0, 2));
 
-    return new StreamSortOperator(
+    return new TableStreamSortOperator(
         operatorContext,
         childOperator,
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32),
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32),
         filePrefix,
         comparator,
         streamKeyComparator,
