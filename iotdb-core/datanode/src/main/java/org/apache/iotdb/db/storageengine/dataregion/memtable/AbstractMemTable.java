@@ -199,12 +199,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowNode insertRowNode) {
-
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
-
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
+    int length = measurements.length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(length);
+    List<TSDataType> dataTypes = new ArrayList<>(length);
     int nullPointsNumber = 0;
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // Use measurements[i] to ignore failed partial insert

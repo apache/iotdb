@@ -34,6 +34,7 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -319,7 +320,12 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    return new AlignedChunkWriterImpl(schemaList);
+    int[] capacities = new int [serializedSize()];
+    int i = 0;
+    for (IMeasurementSchema schema : schemaList) {
+      capacities[i++] = list.rowCount() * schema.getType().getDataTypeSize();
+    }
+    return new AlignedChunkWriterImpl(schemaList, capacities);
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})

@@ -291,7 +291,8 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    return new ChunkWriterImpl(schema);
+    int capacity = serializedSize();
+    return new ChunkWriterImpl(schema, capacity);
   }
 
   @Override
@@ -330,7 +331,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
-
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
