@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -172,6 +173,33 @@ public class PipeTaskCoordinator {
             TSStatusCode.PIPE_NOT_EXIST_ERROR,
             String.format(
                 "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
+  public TSStatus extendDropPipe(TDropPipeReq req) {
+    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(req.getPipeName());
+    final TSStatus status = configManager.getProcedureManager().dropPipe(req.getPipeName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", req.getPipeName(), status);
+    }
+
+    // Check if the pipe existed before attempting to drop it.
+    if (!isPipeExistedBeforeDrop) {
+      // If the IF EXISTS condition is set in the request, return the current status.
+      if (req.isIfExistsCondition()) {
+        return status;
+      }
+
+      // If the IF EXISTS condition is not set and the pipe existed before drop,
+      // return an error status indicating that the pipe does not exist.
+      RpcUtils.getStatus(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR,
+          String.format(
+              "Failed to drop pipe %s. Failures: %s does not exist.",
+              req.getPipeName(), req.getPipeName()));
+    }
+
+    return status;
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {

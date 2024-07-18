@@ -722,6 +722,11 @@ struct TAlterPipeReq {
     7: optional bool isReplaceAllExtractorAttributes
 }
 
+struct TDropPipeReq {
+    1: required string pipeName
+    2: optional bool ifExistsCondition
+}
+
 // Deprecated, restored for compatibility
 struct TPipeSinkInfo {
   1: required string pipeSinkName
@@ -1484,6 +1489,9 @@ service IConfigNodeRPCService {
 
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
+
+    /** Drop Pipe */
+  common.TSStatus extendDropPipe(TDropPipeReq req)
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)

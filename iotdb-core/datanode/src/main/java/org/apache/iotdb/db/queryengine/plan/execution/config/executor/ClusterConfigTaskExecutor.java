@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -1882,9 +1883,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    final TDropPipeReq dropPipeReq =
+        new TDropPipeReq()
+            .setPipeName(dropPipeStatement.getPipeName())
+            .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition());
+
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.dropPipe(dropPipeStatement.getPipeName());
+      final TSStatus tsStatus = configNodeClient.extendDropPipe(dropPipeReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to drop pipe {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);

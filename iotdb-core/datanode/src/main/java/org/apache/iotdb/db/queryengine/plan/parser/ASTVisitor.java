@@ -3815,6 +3815,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
     }
+    if (ctx.ifExists() != null) {
+      dropPipeStatement.setIfExists(true);
+    } else {
+      dropPipeStatement.setIfExists(false);
+    }
 
     return dropPipeStatement;
   }
