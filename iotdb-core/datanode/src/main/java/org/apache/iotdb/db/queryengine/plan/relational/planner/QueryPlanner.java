@@ -152,6 +152,7 @@ public class QueryPlanner {
       outputs.stream().map(builder::translate).forEach(newFields::add);
 
       builder = builder.withScope(analysis.getScope(node.getOrderBy().orElse(null)), newFields);
+      analysis.setSortNode(true);
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);

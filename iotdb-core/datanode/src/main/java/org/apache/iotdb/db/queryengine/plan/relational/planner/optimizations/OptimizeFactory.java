@@ -41,6 +41,7 @@ public class OptimizeFactory {
 
     PlanOptimizer simplifyExpressionOptimizer = new SimplifyExpressions();
     PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
+    PlanOptimizer transformSortToStreamSortOptimizer = new TransformSortToStreamSort();
 
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
@@ -69,7 +70,8 @@ public class OptimizeFactory {
             pushPredicateIntoTableScanOptimizer,
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
             columnPruningOptimizer,
-            inlineProjectionsOptimizer);
+            inlineProjectionsOptimizer,
+            transformSortToStreamSortOptimizer);
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {

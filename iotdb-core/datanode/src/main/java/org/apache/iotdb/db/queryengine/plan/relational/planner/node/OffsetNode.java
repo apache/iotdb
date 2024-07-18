@@ -40,7 +40,7 @@ public class OffsetNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new OffsetNode(id, child, count);
+    return new OffsetNode(id, null, count);
   }
 
   @Override
