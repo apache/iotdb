@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
