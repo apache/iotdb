@@ -32,7 +32,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -254,7 +253,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     int rowSize = leftTsBlock.getPositionCount();
     // append time column
     TimeColumnBuilder timeColumnBuilder = resultBuilder.getTimeColumnBuilder();
-    TimeColumn leftTimeColumn = leftTsBlock.getTimeColumn();
+    Column leftTimeColumn = leftTsBlock.getTimeColumn();
     for (int i = leftIndex; i < rowSize; i++) {
       timeColumnBuilder.writeLong(leftTimeColumn.getLong(i));
     }

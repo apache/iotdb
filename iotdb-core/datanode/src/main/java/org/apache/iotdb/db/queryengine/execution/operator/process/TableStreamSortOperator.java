@@ -24,18 +24,23 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.utils.sort.TableDiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Comparator;
 import java.util.List;
 
-public class StreamSortOperator extends AbstractSortOperator {
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+
+public class TableStreamSortOperator extends AbstractSortOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(StreamSortOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableStreamSortOperator.class);
 
   private final Comparator<SortKey> streamSortComparator;
 
@@ -55,7 +60,7 @@ public class StreamSortOperator extends AbstractSortOperator {
 
   private SortKey lastRow = null;
 
-  public StreamSortOperator(
+  public TableStreamSortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
@@ -63,7 +68,12 @@ public class StreamSortOperator extends AbstractSortOperator {
       Comparator<SortKey> comparator,
       Comparator<SortKey> streamSortComparator,
       int minLinesToOutput) {
-    super(operatorContext, inputOperator, dataTypes, folderPath, comparator);
+    super(
+        operatorContext,
+        inputOperator,
+        dataTypes,
+        new TableDiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes),
+        comparator);
     this.streamSortComparator = streamSortComparator;
     this.minLinesToOutput = minLinesToOutput;
   }
@@ -82,8 +92,10 @@ public class StreamSortOperator extends AbstractSortOperator {
       }
 
       if (tsBlockBuilder.isFull() || consumedUp()) {
-        TsBlock res = tsBlockBuilder.build();
-        remainingCount -= res.getPositionCount();
+        int rowCount = tsBlockBuilder.getPositionCount();
+        TsBlock res =
+            tsBlockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, rowCount));
+        remainingCount -= rowCount;
         tsBlockBuilder.reset();
         return res;
       }
@@ -178,6 +190,11 @@ public class StreamSortOperator extends AbstractSortOperator {
   protected void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
     super.cacheTsBlock(tsBlock);
     lastRow = new SortKey(tsBlock, tsBlock.getPositionCount() - 1);
+  }
+
+  @Override
+  protected void appendTime(TimeColumnBuilder timeBuilder, long time) {
+    // do nothing for Table related Operator
   }
 
   @Override

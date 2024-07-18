@@ -39,7 +39,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -132,7 +132,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
    * subexpressions after filtering.
    */
   private TsBlock getFilterTsBlock(TsBlock input) {
-    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
@@ -146,9 +146,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // reuse this builder
     filterTsBlockBuilder.reset();
 
-    final TimeColumnBuilder timeBuilder = filterTsBlockBuilder.getTimeColumnBuilder();
-    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
-
     List<Column> resultColumns = new ArrayList<>();
     for (int i = 0, n = input.getValueColumnCount(); i < n; i++) {
       resultColumns.add(input.getColumn(i));
@@ -161,24 +158,35 @@ public class FilterAndProjectOperator implements ProcessOperator {
       }
     }
 
-    int rowCount =
-        constructFilteredTsBlock(
-            resultColumns,
-            timeBuilder,
-            filterColumn,
-            originTimeColumn,
-            columnBuilders,
-            positionCount);
+    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
+    if (originTimeColumn instanceof RunLengthEncodedColumn) {
+      int rowCount =
+          constructFilteredTsBlock(resultColumns, filterColumn, columnBuilders, positionCount);
+      filterTsBlockBuilder.declarePositions(rowCount);
 
-    filterTsBlockBuilder.declarePositions(rowCount);
-    return filterTsBlockBuilder.build();
+      return filterTsBlockBuilder.build(originTimeColumn.getRegion(0, rowCount));
+
+    } else {
+      final TimeColumnBuilder timeBuilder = filterTsBlockBuilder.getTimeColumnBuilder();
+      int rowCount =
+          constructFilteredTsBlock(
+              resultColumns,
+              timeBuilder,
+              filterColumn,
+              originTimeColumn,
+              columnBuilders,
+              positionCount);
+
+      filterTsBlockBuilder.declarePositions(rowCount);
+      return filterTsBlockBuilder.build();
+    }
   }
 
   private int constructFilteredTsBlock(
       List<Column> resultColumns,
       TimeColumnBuilder timeBuilder,
       Column filterColumn,
-      TimeColumn originTimeColumn,
+      Column originTimeColumn,
       ColumnBuilder[] columnBuilders,
       int positionCount) {
     // construct result TsBlock of filter
@@ -202,12 +210,37 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return rowCount;
   }
 
+  private int constructFilteredTsBlock(
+      List<Column> resultColumns,
+      Column filterColumn,
+      ColumnBuilder[] columnBuilders,
+      int positionCount) {
+    // construct result TsBlock of filter
+    int rowCount = 0;
+    for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      Column curColumn = resultColumns.get(i);
+      for (int j = 0; j < positionCount; j++) {
+        if (satisfy(filterColumn, j)) {
+          if (i == 0) {
+            rowCount++;
+          }
+          if (curColumn.isNull(j)) {
+            columnBuilders[i].appendNull();
+          } else {
+            columnBuilders[i].write(curColumn, j);
+          }
+        }
+      }
+    }
+    return rowCount;
+  }
+
   private boolean satisfy(Column filterColumn, int rowIndex) {
     return !filterColumn.isNull(rowIndex) && filterColumn.getBoolean(rowIndex);
   }
 
   private TsBlock getTransformedTsBlock(TsBlock input) {
-    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -24,33 +24,35 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.utils.sort.DiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Comparator;
 import java.util.List;
 
-public class SortOperator extends AbstractSortOperator {
+public abstract class SortOperator extends AbstractSortOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
 
-  public SortOperator(
+  SortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
-      String folderPath,
+      DiskSpiller diskSpiller,
       Comparator<SortKey> comparator) {
-    super(operatorContext, inputOperator, dataTypes, folderPath, comparator);
+    super(operatorContext, inputOperator, dataTypes, diskSpiller, comparator);
   }
 
   @Override
   public TsBlock next() throws Exception {
     if (!inputOperator.hasNextWithTimer()) {
       buildResult();
-      TsBlock res = tsBlockBuilder.build();
+      TsBlock res = buildFinalResult(tsBlockBuilder);
       tsBlockBuilder.reset();
       return res;
     }
@@ -71,6 +73,8 @@ public class SortOperator extends AbstractSortOperator {
 
     return null;
   }
+
+  protected abstract TsBlock buildFinalResult(TsBlockBuilder resultBuilder);
 
   @Override
   public long ramBytesUsed() {

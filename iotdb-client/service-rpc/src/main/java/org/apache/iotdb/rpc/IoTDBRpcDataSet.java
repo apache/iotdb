@@ -56,10 +56,8 @@ public class IoTDBRpcDataSet {
   public List<String> columnTypeList; // no deduplication
   private final Map<String, Integer>
       columnOrdinalMap; // used because the server returns deduplicated columns
-  // record original time column index, like select s1, time, s2 from table, timeOriginColumnIndex
-  // will be 2
-  private int timeOriginColumnIndex = 1;
-  private List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
+  private final Map<String, Integer> columnName2TsBlockColumnIndexMap;
+  private final List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
   public final long timeout;
   public boolean hasCachedRecord = false;
@@ -128,7 +126,9 @@ public class IoTDBRpcDataSet {
     }
     // deduplicate and map
     this.columnOrdinalMap = new HashMap<>();
+    this.columnName2TsBlockColumnIndexMap = new HashMap<>();
     if (!ignoreTimeStamp) {
+      this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, -1);
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     }
 
@@ -143,17 +143,13 @@ public class IoTDBRpcDataSet {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
-        if (!columnOrdinalMap.containsKey(name)) {
+        if (!columnName2TsBlockColumnIndexMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          if (index >= 0) {
-            if (columnTypeDeduplicatedList.get(index) == null) {
-              columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-            }
-          } else {
-            // -1 for Time Column
-            timeOriginColumnIndex = i + 1;
+          if (columnTypeDeduplicatedList.get(index) == null) {
+            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
           }
-          columnOrdinalMap.put(name, index + startIndex);
+          columnOrdinalMap.put(name, i + startIndex);
+          columnName2TsBlockColumnIndexMap.put(name, index);
         }
       }
     } else {
@@ -164,8 +160,10 @@ public class IoTDBRpcDataSet {
         this.columnNameList.add(name);
         String columnType = columnTypeList.get(i);
         this.columnTypeList.add(columnType);
-        columnOrdinalMap.computeIfAbsent(
-            name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
+        Integer ordinal =
+            columnOrdinalMap.computeIfAbsent(
+                name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
+        columnName2TsBlockColumnIndexMap.put(name, ordinal - startIndex);
       }
     }
 
@@ -452,8 +450,7 @@ public class IoTDBRpcDataSet {
   }
 
   public int findColumn(String columnName) {
-    int columnIndex = columnOrdinalMap.get(columnName);
-    return columnIndex == -1 ? timeOriginColumnIndex : columnIndex;
+    return columnOrdinalMap.get(columnName);
   }
 
   public String getValueByName(String columnName) throws StatementExecutionException {
@@ -563,13 +560,13 @@ public class IoTDBRpcDataSet {
     return columnNameList.get(columnIndex - 1);
   }
 
-  // return -1 for time column
+  // return -1 for time column of tree model
   private int getTsBlockColumnIndex(String columnName) {
-    Integer index = columnOrdinalMap.get(columnName);
+    Integer index = columnName2TsBlockColumnIndexMap.get(columnName);
     if (index == null) {
       throw new IllegalArgumentException("Unknown column name :" + columnName);
     }
-    return index - startIndex;
+    return index;
   }
 
   public void checkRecord() throws StatementExecutionException {

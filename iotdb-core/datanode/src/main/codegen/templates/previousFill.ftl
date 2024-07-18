@@ -30,7 +30,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.${type.column};
 import org.apache.tsfile.read.common.block.column.${type.column}Builder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 <#if type.dataType == "Binary">
   import org.apache.tsfile.utils.Binary;
 </#if>
@@ -57,7 +56,7 @@ public class ${className} implements IFill {
   }
 
   @Override
-  public Column fill(TimeColumn timeColumn, Column valueColumn) {
+  public Column fill(Column timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
     // if this valueColumn is empty, just return itself;
     if (size == 0) {
