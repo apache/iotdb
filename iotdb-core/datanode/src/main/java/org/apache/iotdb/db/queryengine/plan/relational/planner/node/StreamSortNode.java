@@ -26,11 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class StreamSortNode extends SortNode {
 
@@ -51,8 +53,23 @@ public class StreamSortNode extends SortNode {
   }
 
   @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new StreamSortNode(
+        id,
+        Iterables.getOnlyElement(newChildren),
+        orderingScheme,
+        partial,
+        streamCompareKeyEndIndex);
+  }
+
+  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitStreamSort(this, context);
+  }
+
+  @Override
+  public PlanNode clone() {
+    return new StreamSortNode(id, null, orderingScheme, partial, streamCompareKeyEndIndex);
   }
 
   @Override

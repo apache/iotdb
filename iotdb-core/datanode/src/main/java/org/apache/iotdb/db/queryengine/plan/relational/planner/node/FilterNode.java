@@ -50,7 +50,7 @@ public class FilterNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(id, child, predicate);
+    return new FilterNode(id, null, predicate);
   }
 
   @Override

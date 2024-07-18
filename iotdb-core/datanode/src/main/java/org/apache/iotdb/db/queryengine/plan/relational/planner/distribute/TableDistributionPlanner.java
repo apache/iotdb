@@ -30,8 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.Plan
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +53,7 @@ public class TableDistributionPlanner {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = mppQueryContext;
-    this.optimizers = Collections.singletonList(new PushLimitOffsetIntoTableScan());
+    this.optimizers = Arrays.asList(new PushLimitOffsetIntoTableScan(), new SortElimination());
   }
 
   public DistributedQueryPlan plan() {
