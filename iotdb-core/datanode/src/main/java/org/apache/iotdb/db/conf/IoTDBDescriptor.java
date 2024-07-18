@@ -1295,8 +1295,7 @@ public class IoTDBDescriptor {
         innerCompactionTaskSelectionModsFileThreshold
             != conf.getInnerCompactionTaskSelectionModsFileThreshold();
 
-    long compactionMaxAlignedSeriesNumInOneBatch =
-        conf.getCompactionMaxAlignedSeriesNumInOneBatch();
+    int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     int newCompactionMaxAlignedSeriesNumInOneBatch =
         Integer.parseInt(
             properties.getProperty(

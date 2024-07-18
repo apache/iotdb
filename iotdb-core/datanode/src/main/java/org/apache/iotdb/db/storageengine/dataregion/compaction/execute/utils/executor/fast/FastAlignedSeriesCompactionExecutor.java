@@ -154,7 +154,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       List<AlignedChunkMetadata> alignedChunkMetadataList = getAlignedChunkMetadataList(resource);
 
       if (alignedChunkMetadataList.isEmpty()) {
-        // all chunks has been deleted in this file or current file does not contain this aligned
+        // all chunks have been deleted in this file or current file does not contain this aligned
         // device, just remove it
         removeFile(fileElement);
       }
@@ -175,7 +175,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
       throws IOException {
     // read time chunk metadatas and value chunk metadatas in the current file
-    List<IChunkMetadata> timeChunkMetadatas = new ArrayList<>();
+    List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
     for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
         timeseriesMetadataOffsetMap.entrySet()) {

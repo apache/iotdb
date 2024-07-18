@@ -1270,7 +1270,7 @@ min_cross_compaction_unseq_file_level=1
 # Datatype: int
 compaction_thread_count=10
 
-# How many chunk will be compact in aligned series compaction, 10 by default.
+# How many chunk will be compacted in aligned series compaction, 10 by default.
 # Set to Integer.MAX_VALUE when less than or equal to 0.
 # effectiveMode: hot_reload
 # Datatype: int

@@ -214,11 +214,6 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     }
 
     @Override
-    public long estimateMaxSeriesMemSize() {
-      return super.estimateMaxSeriesMemSize();
-    }
-
-    @Override
     public long getCurrentChunkSize() {
       throw new RuntimeException("unimplemented");
     }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -78,12 +77,14 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
 
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
@@ -91,26 +92,29 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
       ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       AbstractCompactionFlushController flushController) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
   public boolean flushBatchedValuePage(
       AlignedPageElement alignedPageElement,
       int subTaskId,
-      AbstractCompactionFlushController flushController)
-      throws PageException, IOException {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+      AbstractCompactionFlushController flushController) {
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 }
