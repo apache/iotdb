@@ -86,7 +86,6 @@ public class WALWriter extends LogWriter {
     buffer.put(
         (version != WALFileVersion.V2 ? MAGIC_STRING_V1 : MAGIC_STRING_V2)
             .getBytes(StandardCharsets.UTF_8));
-    size += buffer.position();
     writeMetadata(buffer);
   }
 
