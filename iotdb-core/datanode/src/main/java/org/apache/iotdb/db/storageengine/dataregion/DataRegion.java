@@ -3441,7 +3441,11 @@ public class DataRegion implements IDataRegionForQuery {
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
         long deviceTTL =
-            DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
+            DataNodeTTLCache.getInstance()
+                .getTTL(
+                    Arrays.stream(insertRowNode.getDeviceID().getSegments())
+                        .map(Object::toString)
+                        .toArray(String[]::new));
         if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()

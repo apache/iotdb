@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
@@ -375,6 +376,11 @@ public class StatementAnalyzer {
 
     protected Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
       return visitInsert(insert, scope);
+    }
+
+    @Override
+    protected Scope visitInsertRows(InsertRows node, Optional<Scope> context) {
+      return visitInsert(node, context);
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {

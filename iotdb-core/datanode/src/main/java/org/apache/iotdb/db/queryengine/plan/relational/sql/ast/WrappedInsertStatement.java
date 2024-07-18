@@ -78,7 +78,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     return tableSchema;
   }
 
-  public void validate(TableSchema realSchema) throws QueryProcessException {
+  public void validate(TableSchema realSchema) {
     final TableSchema incomingTableSchema = getTableSchema();
     final List<ColumnSchema> incomingSchemaColumns = incomingTableSchema.getColumns();
     Map<String, ColumnSchema> realSchemaMap = new HashMap<>();

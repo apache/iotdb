@@ -185,6 +185,7 @@ public class IoTDBSessionRelationalIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void partialInsertRelationalTabletTest()
       throws IoTDBConnectionException, StatementExecutionException {
+    // disable auto-creation only for this test
     EnvFactory.getEnv().cleanClusterEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();

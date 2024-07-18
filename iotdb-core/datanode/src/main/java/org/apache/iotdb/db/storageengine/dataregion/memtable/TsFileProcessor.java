@@ -758,7 +758,10 @@ public class TsFileProcessor {
         memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, null);
         for (int i = 0; i < dataTypes.length; i++) {
           // Skip failed Measurements
-          if (dataTypes[i] == null || measurements[i] == null) {
+          if (dataTypes[i] == null
+              || measurements[i] == null
+              || (insertRowNode.getColumnCategories() != null
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
             continue;
           }
           increasingMemTableInfo
@@ -779,7 +782,10 @@ public class TsFileProcessor {
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
         for (int i = 0; i < dataTypes.length; i++) {
           // Skip failed Measurements
-          if (dataTypes[i] == null || measurements[i] == null) {
+          if (dataTypes[i] == null
+              || measurements[i] == null
+              || (insertRowNode.getColumnCategories() != null
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
             continue;
           }
 
@@ -813,7 +819,10 @@ public class TsFileProcessor {
 
       for (int i = 0; i < dataTypes.length; i++) {
         // Skip failed Measurements
-        if (dataTypes[i] == null || measurements[i] == null) {
+        if (dataTypes[i] == null
+            || measurements[i] == null
+            || (insertRowNode.getColumnCategories() != null
+                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
           continue;
         }
         // TEXT data mem size

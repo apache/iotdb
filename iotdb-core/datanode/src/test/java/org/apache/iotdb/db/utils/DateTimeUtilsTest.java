@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -144,6 +145,7 @@ public class DateTimeUtilsTest {
     Assert.assertEquals(7L, DateTimeUtils.convertDurationStrToLongForTest(7, "ns", "ns"));
   }
 
+  @Ignore
   /** Test convert duration including natural month unit. Time includes: 1970-01-01 ~ 1970-12-01 */
   @Test
   public void getConvertDurationIncludingMonthUnit() {

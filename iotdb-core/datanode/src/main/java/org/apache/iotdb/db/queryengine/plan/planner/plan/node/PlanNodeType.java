@@ -111,6 +111,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 
@@ -243,7 +245,9 @@ public enum PlanNodeType {
   TABLE_COLLECT_NODE((short) 1009),
   TABLE_STREAM_SORT_NODE((short) 1010),
 
-  RELATIONAL_INSERT_TABLET((short) 2000);
+  RELATIONAL_INSERT_TABLET((short) 2000),
+  RELATIONAL_INSERT_ROW((short) 2001),
+  RELATIONAL_INSERT_ROWS((short) 2002);
 
   public static final int BYTES = Short.BYTES;
 
@@ -523,6 +527,10 @@ public enum PlanNodeType {
         return TopKNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
+      case 2001:
+        return RelationalInsertRowNode.deserialize(buffer);
+      case 2002:
+        return RelationalInsertRowsNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

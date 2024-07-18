@@ -17,7 +17,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
@@ -43,11 +46,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -234,6 +239,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitInsertRow(InsertRow node, Void context) {
     InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
+    RelationalInsertRowNode insertNode = fromInsertRowStatement(insertRowStatement);
+    return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
+  }
+
+  protected RelationalInsertRowNode fromInsertRowStatement(InsertRowStatement insertRowStatement) {
     RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
@@ -246,6 +256,22 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertRowStatement.isNeedInferType(),
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
-    return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
+    return insertNode;
+  }
+
+  @Override
+  protected RelationPlan visitInsertRows(InsertRows node, Void context) {
+    InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
+    List<Integer> indices = new ArrayList<>();
+    List<InsertRowNode> insertRowStatements = new ArrayList<>();
+    for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
+      indices.add(i);
+      insertRowStatements.add(
+          fromInsertRowStatement(insertRowsStatement.getInsertRowStatementList().get(i)));
+    }
+    RelationalInsertRowsNode relationalInsertRowsNode =
+        new RelationalInsertRowsNode(idAllocator.genPlanNodeId(), indices, insertRowStatements);
+    return new RelationPlan(
+        relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList());
   }
 }

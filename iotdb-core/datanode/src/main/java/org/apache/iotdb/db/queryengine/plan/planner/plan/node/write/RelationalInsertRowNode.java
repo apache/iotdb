@@ -112,7 +112,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.RELATIONAL_INSERT_TABLET;
+    return PlanNodeType.RELATIONAL_INSERT_ROW;
   }
 
   public String getTableName() {

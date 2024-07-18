@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -468,5 +469,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRow(this, context);
+  }
+
+  @Override
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    super.insertColumn(pos, columnSchema);
+    Object[] tmpValues = new String[measurements.length + 1];
+    System.arraycopy(values, 0, tmpValues, 0, pos);
+    System.arraycopy(values, pos, tmpValues, pos + 1, measurements.length - pos);
+    values = tmpValues;
+  }
+
+  @Override
+  public void swapColumn(int src, int target) {
+    super.swapColumn(src, target);
+    CommonUtils.swapArray(values, src, target);
   }
 }

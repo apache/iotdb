@@ -116,6 +116,17 @@ public class AnalyzeUtils {
               insertRowStatement.getTableDeviceID(),
               Collections.singleton(insertRowStatement.getTimePartitionSlot())),
           context.getSession().getDatabaseName().orElse(null));
+    } else if (statement instanceof InsertRowsStatement) {
+      InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
+      Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        timePartitionSlotMap
+            .computeIfAbsent(insertRowStatement.getTableDeviceID(), id -> new HashSet<>())
+            .add(insertRowStatement.getTimePartitionSlot());
+      }
+      return computeDataPartitionParams(
+          timePartitionSlotMap, context.getSession().getDatabaseName().orElse(null));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
