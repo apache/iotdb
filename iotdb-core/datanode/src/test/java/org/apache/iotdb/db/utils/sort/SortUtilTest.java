@@ -87,8 +87,8 @@ public class SortUtilTest {
     TsBlock tsBlock = new TsBlock(timeColumn, column);
     TsBlock tsBlock2 = new TsBlock(timeColumn2, column2);
 
-    DiskSpiller diskSpiller =
-        new DiskSpiller(folderPath, filePrefix, Collections.singletonList(TSDataType.DOUBLE));
+    TreeDiskSpiller diskSpiller =
+        new TreeDiskSpiller(folderPath, filePrefix, Collections.singletonList(TSDataType.DOUBLE));
 
     List<SortKey> sortKeyList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSe
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.io.IOException;
 
@@ -54,7 +53,7 @@ public class TVListForwardIterator implements ListForwardIterator {
     endPointIndex = tvList.getLastPointIndex(externalIndex, internalIndex);
   }
 
-  public TimeColumn currentTimes() throws IOException {
+  public Column currentTimes() throws IOException {
     return tvList.getTimeColumn(externalIndex, internalIndex);
   }
 

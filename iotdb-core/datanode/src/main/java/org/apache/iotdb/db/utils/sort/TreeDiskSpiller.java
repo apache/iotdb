@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity;
+package org.apache.iotdb.db.utils.sort;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
-import org.apache.tsfile.block.column.Column;
+import java.util.List;
 
-public class IdentityLinearFill implements ILinearFill {
+public class TreeDiskSpiller extends DiskSpiller {
 
-  @Override
-  public Column fill(Column timeColumn, Column valueColumn, long currentRowIndex) {
-    return valueColumn;
+  public TreeDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
+    super(folderPath, filePrefix, dataTypeList);
   }
 
   @Override
-  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
-    return false;
+  protected TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder) {
+    return resultBuilder.build();
   }
 
   @Override
-  public boolean prepareForNext(
-      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
-    throw new UnsupportedOperationException(
-        "IdentityLinearFill's needPrepareForNext() method should always return false.");
+  protected void appendTime(ColumnBuilder timeColumnBuilder, long time) {
+    timeColumnBuilder.writeLong(time);
   }
 }

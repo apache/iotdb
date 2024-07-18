@@ -34,7 +34,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -90,7 +89,7 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
   public static void appendDataIntoBuilder(TsBlock tsBlock, TsBlockBuilder builder) {
     int size = tsBlock.getPositionCount();
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    Column timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
       builder.declarePosition();

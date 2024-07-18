@@ -64,17 +64,17 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProje
 import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeMergeSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
@@ -1142,7 +1142,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                MergeSortOperator.class.getSimpleName());
+                TreeMergeSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -1156,7 +1156,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sortItemList,
         sortItemIndexList,
         sortItemDataTypeList);
-    return new MergeSortOperator(
+    return new TreeMergeSortOperator(
         operatorContext,
         children,
         dataTypes,
@@ -1172,7 +1172,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                MergeSortOperator.class.getSimpleName());
+                TreeMergeSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
@@ -1237,7 +1237,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TopKOperator.class.getSimpleName());
+                TreeTopKOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -1251,7 +1251,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sortItemList,
         sortItemIndexList,
         sortItemDataTypeList);
-    return new TopKOperator(
+    return new TreeTopKOperator(
         operatorContext,
         children,
         dataTypes,
@@ -2180,7 +2180,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SortOperator.class.getSimpleName());
+                TreeSortOperator.class.getSimpleName());
 
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
@@ -2208,7 +2208,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Operator child = node.getChild().accept(this, context);
 
-    return new SortOperator(
+    return new TreeSortOperator(
         operatorContext,
         child,
         dataTypes,

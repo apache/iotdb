@@ -424,7 +424,7 @@ public class SerializableTVListTest extends SerializableListTest {
   private static class ForwardIterator {
     int index;
     int offset;
-    List<TimeColumn> timeColumns;
+    List<Column> timeColumns;
     List<Column> valueColumns;
 
     ForwardIterator(SerializableTVList tvList) {

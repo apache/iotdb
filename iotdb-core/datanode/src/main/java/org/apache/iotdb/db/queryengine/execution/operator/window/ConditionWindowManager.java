@@ -27,7 +27,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.List;
 
@@ -126,7 +125,7 @@ public class ConditionWindowManager implements IWindowManager {
     }
 
     Column controlColumn = conditionWindow.getControlColumn(inputTsBlock);
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     int i = 0;
     int k = 0;
     int size = inputTsBlock.getPositionCount();
