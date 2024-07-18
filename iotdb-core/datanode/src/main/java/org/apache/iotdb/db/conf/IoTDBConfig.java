@@ -905,7 +905,7 @@ public class IoTDBConfig {
   private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   /** The time of data node waiting for the next retry to join into the cluster */
-  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(1);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
