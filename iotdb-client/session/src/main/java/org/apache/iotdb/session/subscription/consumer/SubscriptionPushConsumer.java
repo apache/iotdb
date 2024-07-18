@@ -167,7 +167,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         final List<SubscriptionMessage> messages =
-            poll(subscribedTopics.keySet(), autoPollTimeoutMs);
+            multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);

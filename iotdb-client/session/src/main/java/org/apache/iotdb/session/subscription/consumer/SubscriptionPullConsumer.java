@@ -153,11 +153,25 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     // parse topic names from external source
-    final Set<String> parsedTopicNames =
+    Set<String> parsedTopicNames =
         topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
 
-    // poll messages
-    final List<SubscriptionMessage> messages = super.poll(parsedTopicNames, timeoutMs);
+    if (!parsedTopicNames.isEmpty()) {
+      // filter unsubscribed topics
+      parsedTopicNames.stream()
+          .filter(topicName -> !subscribedTopics.containsKey(topicName))
+          .forEach(
+              topicName ->
+                  LOGGER.warn(
+                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      this,
+                      topicName));
+    } else {
+      parsedTopicNames = subscribedTopics.keySet();
+    }
+
+    // submit multiple tasks to poll messages
+    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
 
     // add to uncommitted messages
     if (autoCommit) {

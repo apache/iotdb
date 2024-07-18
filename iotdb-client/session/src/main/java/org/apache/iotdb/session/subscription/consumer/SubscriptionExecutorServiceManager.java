@@ -22,7 +22,10 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -154,6 +157,13 @@ public final class SubscriptionExecutorServiceManager {
         TimeUnit.MILLISECONDS);
   }
 
+  public static <T> List<Future<List<T>>> submitMultiplePollTasks(
+      final Collection<? extends Callable<List<T>>> tasks, final long timeoutMs)
+      throws InterruptedException {
+    DOWNSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
+    return DOWNSTREAM_DATA_FLOW_EXECUTOR.invokeAll(tasks, timeoutMs);
+  }
+
   /////////////////////////////// subscription executor service ///////////////////////////////
 
   private static class SubscriptionExecutorService {
@@ -269,6 +279,21 @@ public final class SubscriptionExecutorServiceManager {
       }
 
       LOGGER.warn("{} has not been launched, ignore submit task", this.name);
+      return null;
+    }
+
+    public <T> List<Future<List<T>>> invokeAll(
+        final Collection<? extends Callable<List<T>>> tasks, final long timeoutMs)
+        throws InterruptedException {
+      if (!isShutdown()) {
+        synchronized (this) {
+          if (!isShutdown()) {
+            return this.executor.invokeAll(tasks, timeoutMs, TimeUnit.MILLISECONDS);
+          }
+        }
+      }
+
+      LOGGER.warn("{} has not been launched, ignore invoke all tasks", this.name);
       return null;
     }
   }
