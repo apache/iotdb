@@ -474,9 +474,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
-    Object[] tmpValues = new String[measurements.length + 1];
+    Object[] tmpValues = new Object[values.length + 1];
     System.arraycopy(values, 0, tmpValues, 0, pos);
-    System.arraycopy(values, pos, tmpValues, pos + 1, measurements.length - pos);
+    System.arraycopy(values, pos, tmpValues, pos + 1, values.length - pos);
     values = tmpValues;
   }
 

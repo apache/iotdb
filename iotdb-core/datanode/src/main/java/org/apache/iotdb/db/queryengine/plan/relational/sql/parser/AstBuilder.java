@@ -416,6 +416,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     }
     insertRowStatement.setValues(values);
+    insertRowStatement.setNeedInferType(true);
     return insertRowStatement;
   }
 

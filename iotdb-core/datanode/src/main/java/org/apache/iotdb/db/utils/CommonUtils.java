@@ -406,7 +406,7 @@ public class CommonUtils {
   public static String[] deviceIdToStringArray(IDeviceID deviceID) {
     String[] ret = new String[deviceID.segmentNum()];
     for (int i = 0; i < ret.length; i++) {
-      ret[i] = deviceID.segment(i).toString();
+      ret[i] = deviceID.segment(i) != null ? deviceID.segment(i).toString() : null;
     }
     return ret;
   }

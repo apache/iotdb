@@ -35,6 +35,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,21 +103,23 @@ public abstract class WrappedInsertStatement extends WrappedStatement
    * Adjust the order of ID columns in this insertion to be consistent with that from the schema
    * region.
    *
-   * @param realColumnSchemas column order from the schema region
+   * @param realIdColumnSchemas id column order from the schema region
    */
-  public void adjustIdColumns(List<ColumnSchema> realColumnSchemas) {
-    List<ColumnSchema> incomingColumnSchemas = getTableSchema().getIdColumns();
+  public void adjustIdColumns(List<ColumnSchema> realIdColumnSchemas) {
+    List<ColumnSchema> incomingColumnSchemas = getTableSchema().getColumns();
     final InsertBaseStatement baseStatement = getInnerTreeStatement();
-    for (int realIdColPos = 0; realIdColPos < realColumnSchemas.size(); realIdColPos++) {
-      ColumnSchema realColumn = realColumnSchemas.get(realIdColPos);
+    for (int realIdColPos = 0; realIdColPos < realIdColumnSchemas.size(); realIdColPos++) {
+      ColumnSchema realColumn = realIdColumnSchemas.get(realIdColPos);
       int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
       if (incomingIdColPos == -1) {
         // if the realIdColPos-th id column in the table is missing, insert an empty column in the
         // tablet
         baseStatement.insertColumn(realIdColPos, realColumn);
+        incomingColumnSchemas.add(realIdColPos, realColumn);
       } else {
         // move the id column in the tablet to the proper position
         baseStatement.swapColumn(incomingIdColPos, realIdColPos);
+        Collections.swap(incomingColumnSchemas, incomingIdColPos, realIdColPos);
       }
     }
     tableSchema = null;
