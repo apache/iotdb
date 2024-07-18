@@ -100,7 +100,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -1305,8 +1304,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           pointer ->
               deviceAttributeStore.alterAttribute(
                   pointer, attributeNameList, attributeValueList.get(finalI)));
-      logger.info(
-          "Created table device [{}-{}]", tableName, Arrays.toString(devicePathList.get(i)));
     }
   }
 

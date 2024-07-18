@@ -1228,7 +1228,6 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode next;
 
     next = cur.getChild(table);
-    LOGGER.info("The node of table {} is {}", table, next);
     if (next == null) {
       throw new PathNotExistException(
           storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),

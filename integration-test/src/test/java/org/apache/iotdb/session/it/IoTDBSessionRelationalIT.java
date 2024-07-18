@@ -46,7 +46,6 @@ import java.util.List;
 
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionRelationalIT {
@@ -73,18 +72,16 @@ public class IoTDBSessionRelationalIT {
     try (ISession session =
         new Session.Builder().host("127.0.0.1").port(6667).sqlDialect(TABLE_SQL_DIALECT).build()) {
       session.open();
-      try {
-        session.executeNonQueryStatement("DROP DATABASE db1");
-      } catch (Exception ignored) {
-
-      }
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
+      // the table is missing column "m2"
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
               + "m1 double "
               + "measurement)");
 
+      // the insertion contains "m2"
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
@@ -108,6 +105,7 @@ public class IoTDBSessionRelationalIT {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {
+            // a partial insertion should be reported
             if (!e.getMessage()
                 .equals(
                     "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
@@ -119,7 +117,15 @@ public class IoTDBSessionRelationalIT {
       }
 
       if (tablet.rowSize != 0) {
-        session.insertRelationalTablet(tablet);
+        try {
+          session.insertRelationalTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          if (!e.getMessage()
+              .equals(
+                  "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+            throw e;
+          }
+        }
         tablet.reset();
       }
 
@@ -167,7 +173,8 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
-        assertNull(rowRecord.getFields().get(3));
+        // "m2" should not be present
+        assertEquals(3, rowRecord.getFields().size());
         timestamp++;
         //        System.out.println(rowRecord);
       }
@@ -182,18 +189,16 @@ public class IoTDBSessionRelationalIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      try {
-        session.executeNonQueryStatement("DROP DATABASE db1");
-      } catch (Exception ignored) {
-
-      }
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
+      // the table is missing column "m2"
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
               + "m1 double "
               + "measurement)");
 
+      // the insertion contains "m2"
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
@@ -217,6 +222,7 @@ public class IoTDBSessionRelationalIT {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {
+            // a partial insertion should be reported
             if (!e.getMessage()
                 .equals(
                     "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
@@ -228,7 +234,15 @@ public class IoTDBSessionRelationalIT {
       }
 
       if (tablet.rowSize != 0) {
-        session.insertRelationalTablet(tablet);
+        try {
+          session.insertRelationalTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          if (!e.getMessage()
+              .equals(
+                  "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+            throw e;
+          }
+        }
         tablet.reset();
       }
 
@@ -276,7 +290,8 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(0).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(2).getDoubleV(), 0.0001);
-        assertNull(rowRecord.getFields().get(3));
+        // "m2" should not be present
+        assertEquals(3, rowRecord.getFields().size());
         timestamp++;
         //        System.out.println(rowRecord);
       }
