@@ -35,8 +35,16 @@ public class SubscriptionPollTimer {
     return this.currentTimeMs >= this.deadlineMs;
   }
 
+  public boolean isExpired(final long deltaMs) {
+    return this.currentTimeMs >= this.deadlineMs - Math.max(deltaMs, 0);
+  }
+
   public boolean notExpired() {
     return !this.isExpired();
+  }
+
+  public boolean notExpired(final long deltaMs) {
+    return !this.isExpired(deltaMs);
   }
 
   public void reset(final long timeoutMs) {

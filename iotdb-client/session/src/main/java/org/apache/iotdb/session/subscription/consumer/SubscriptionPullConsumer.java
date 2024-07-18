@@ -149,7 +149,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return poll(topicNames, timeout.toMillis());
   }
 
-  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     // parse topic names from external source

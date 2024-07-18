@@ -78,7 +78,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -92,7 +91,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 100_000_000L; // 100ms
+  private static final long SLEEP_MS = 100L;
+  private static final long TIMER_DELTA_MS = 200L;
 
   private static final int PARALLELISM = 4; // TODO: config
 
@@ -460,6 +460,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           SubscriptionExecutorServiceManager.submitMultiplePollTasks(
               Collections.nCopies(PARALLELISM, new PollTask(topicNames, timeoutMs)), timeoutMs)) {
         try {
+          if (future.isCancelled()) {
+            continue;
+          }
           messages.addAll(future.get());
         } catch (final CancellationException e) {
           LOGGER.warn(
@@ -493,9 +496,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           this,
           topicNames,
           e);
-      Thread.currentThread().interrupt();
-      return Collections.emptyList();
+      Thread.currentThread().interrupt(); // restore interrupted state
     }
+
+    // TODO: ignore possible interrupted state?
 
     if (messages.isEmpty()) {
       if (Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
@@ -508,22 +512,23 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return messages;
   }
 
-  protected List<SubscriptionMessage> poll(
+  private List<SubscriptionMessage> singlePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
+    if (topicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
+    final SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
+
     try {
-      if (topicNames.isEmpty()) {
-        return Collections.emptyList();
-      }
-
-      final List<SubscriptionMessage> messages = new ArrayList<>();
-      final SubscriptionPollTimer timer =
-          new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
-
       do {
-        List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
         final List<SubscriptionMessage> currentMessages = new ArrayList<>();
         try {
+          currentResponses.clear();
           currentResponses = pollInternal(topicNames);
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
@@ -562,13 +567,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             currentResponses.clear();
           } catch (final Exception ignored) {
           }
-          // nack and clear all messages
+          // nack and clear result messages
           try {
             nack(messages);
             messages.clear();
           } catch (final Exception ignored) {
           }
-          // rethrow
+
+          // the upper layer perceives ExecutionException
           throw e;
         }
 
@@ -584,28 +590,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         timer.update();
 
         // TODO: associated with timeoutMs instead of hardcoding
-        LockSupport.parkNanos(SLEEP_NS); // wait some time
-
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException(
-              "The current thread is interrupted when it is trying to poll topics.");
-        }
-      } while (timer.notExpired());
-
-      return messages;
+        Thread.sleep(SLEEP_MS); // wait some time
+      } while (timer.notExpired(TIMER_DELTA_MS));
     } catch (final InterruptedException e) {
-      LOGGER.warn(
-          "InterruptedException occurred when SubscriptionConsumer {} polling topics {}",
-          this,
-          topicNames,
-          e);
-      Thread.currentThread().interrupt();
+      Thread.currentThread().interrupt(); // restore interrupted state
+    }
 
+    if (Thread.currentThread().isInterrupted()) {
+      // nack and clear current responses
+      try {
+        nack(currentResponses);
+        currentResponses.clear();
+      } catch (final Exception ignored) {
+      }
+      // nack and clear result messages
+      try {
+        nack(messages);
+        messages.clear();
+      } catch (final Exception ignored) {
+      }
+
+      // the upper layer perceives CancellationException
       return Collections.emptyList();
     }
+
+    return messages;
   }
 
-  protected class PollTask implements Callable<List<SubscriptionMessage>> {
+  private class PollTask implements Callable<List<SubscriptionMessage>> {
 
     private final Set<String> topicNames;
     private final long timeoutMs;
@@ -617,7 +629,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     @Override
     public List<SubscriptionMessage> call() {
-      return poll(topicNames, timeoutMs);
+      return singlePoll(topicNames, timeoutMs);
     }
   }
 
