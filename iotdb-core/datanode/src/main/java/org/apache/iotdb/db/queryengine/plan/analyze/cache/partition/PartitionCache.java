@@ -238,10 +238,14 @@ public class PartitionCache {
         // Try to get database needed to be created from missed device
         Set<String> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : result.getMissedDevices()) {
-          PartialPath storageGroupNameNeedCreated =
-              MetaUtils.getStorageGroupPathByLevel(
-                  new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-          storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+          if (devicePath.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+            storageGroupNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+          } else {
+            PartialPath storageGroupNameNeedCreated =
+                MetaUtils.getStorageGroupPathByLevel(
+                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+          }
         }
 
         // Try to create databases one by one until done or one database fail
@@ -265,6 +269,14 @@ public class PartitionCache {
           }
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
+          if (SchemaConstant.SYSTEM_DATABASE.equals(storageGroupName)) {
+            storageGroupSchema.setSchemaReplicationFactor(1);
+            storageGroupSchema.setDataReplicationFactor(1);
+            storageGroupSchema.setMinSchemaRegionGroupNum(1);
+            storageGroupSchema.setMaxSchemaRegionGroupNum(1);
+            storageGroupSchema.setMaxDataRegionGroupNum(1);
+            storageGroupSchema.setMaxDataRegionGroupNum(1);
+          }
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
