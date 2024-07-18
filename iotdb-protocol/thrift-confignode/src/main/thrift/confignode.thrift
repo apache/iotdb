@@ -673,10 +673,12 @@ struct TCreatePipePluginReq {
   3: required string jarName
   4: required binary jarFile
   5: required string jarMD5
+  6: optional bool isNotExists
 }
 
 struct TDropPipePluginReq {
   1: required string pluginName
+  2: optional bool isExists
 }
 
 // Get PipePlugin table from config node

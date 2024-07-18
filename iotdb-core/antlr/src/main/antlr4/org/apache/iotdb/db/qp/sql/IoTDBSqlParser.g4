@@ -620,11 +620,11 @@ showPipes
 
 // Pipe Plugin =========================================================================================
 createPipePlugin
-    : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
+    : CREATE PIPEPLUGIN ifNotExists? pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 dropPipePlugin
-    : DROP PIPEPLUGIN pluginName=identifier
+    : DROP PIPEPLUGIN ifExists? pluginName=identifier
     ;
 
 showPipePlugins

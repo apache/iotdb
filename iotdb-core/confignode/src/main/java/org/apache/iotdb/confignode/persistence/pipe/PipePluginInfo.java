@@ -91,19 +91,28 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void validateBeforeCreatingPipePlugin(
-      final String pluginName, final String jarName, final String jarMD5) {
+  public boolean validateBeforeCreatingPipePlugin(
+      final String pluginName,
+      final String jarName,
+      final String jarMD5,
+      final boolean ifNotExistsCondition) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (ifNotExistsCondition) {
+        return false;
+      }
       throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
+    return true;
   }
 
-  public void validateBeforeDroppingPipePlugin(final String pluginName) {
+  public boolean validateBeforeDroppingPipePlugin(
+      final String pluginName, boolean ifExistsCondition) {
     if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (ifExistsCondition) return false;
       throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], this PipePlugin has not been created", pluginName));
@@ -114,6 +123,7 @@ public class PipePluginInfo implements SnapshotProcessor {
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
               pluginName));
     }
+    return true;
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(final String jarName) {

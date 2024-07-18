@@ -182,6 +182,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -864,7 +865,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                           "%s-%s.%s",
                           jarFileName.substring(0, jarFileName.lastIndexOf(".")),
                           jarMd5,
-                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1))));
+                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1)))
+                  .setIsNotExists(createPipePluginStatement.hasIfNotExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "Failed to create PipePlugin {}({}) because {}",
@@ -882,13 +884,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropPipePlugin(String pluginName) {
+  public SettableFuture<ConfigTaskResult> dropPipePlugin(
+      DropPipePluginStatement dropPipePluginStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropPipePlugin(new TDropPipePluginReq(pluginName));
+      final TSStatus executionStatus =
+          client.dropPipePlugin(
+              new TDropPipePluginReq()
+                  .setPluginName(dropPipePluginStatement.getPluginName())
+                  .setIsExists(dropPipePluginStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("[{}] Failed to drop pipe plugin {}.", executionStatus, pluginName);
+        LOGGER.warn(
+            "[{}] Failed to drop pipe plugin {}.",
+            executionStatus,
+            dropPipePluginStatement.getPluginName());
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

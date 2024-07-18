@@ -65,15 +65,18 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
 
   private PipePluginMeta pipePluginMeta;
   private byte[] jarFile;
+  private boolean ifNotExistsCondition;
 
   public CreatePipePluginProcedure() {
     super();
   }
 
-  public CreatePipePluginProcedure(PipePluginMeta pipePluginMeta, byte[] jarFile) {
+  public CreatePipePluginProcedure(
+      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean ifNotExistsCondition) {
     super();
     this.pipePluginMeta = pipePluginMeta;
     this.jarFile = jarFile;
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   @Override
@@ -125,14 +128,16 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
     pipePluginCoordinator.lock();
-
+    boolean ifNotExists = true;
     try {
-      pipePluginCoordinator
-          .getPipePluginInfo()
-          .validateBeforeCreatingPipePlugin(
-              pipePluginMeta.getPluginName(),
-              pipePluginMeta.getJarName(),
-              pipePluginMeta.getJarMD5());
+      ifNotExists =
+          pipePluginCoordinator
+              .getPipePluginInfo()
+              .validateBeforeCreatingPipePlugin(
+                  pipePluginMeta.getPluginName(),
+                  pipePluginMeta.getJarName(),
+                  pipePluginMeta.getJarMD5(),
+                  ifNotExistsCondition);
     } catch (PipeException e) {
       // The pipe plugin has already created, we should end the procedure
       LOGGER.warn(
@@ -143,7 +148,14 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
       pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
-
+    if (!ifNotExists) {
+      LOGGER.info(
+          "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
+          pipePluginMeta.getPluginName(),
+          pipePluginMeta.getPluginName());
+      pipePluginCoordinator.unlock();
+      return Flow.NO_MORE_STATE;
+    }
     setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODES);
     return Flow.HAS_MORE_STATE;
   }

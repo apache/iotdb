@@ -61,14 +61,16 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private static final int RETRY_THRESHOLD = 5;
 
   private String pluginName;
+  private boolean ifExistsCondition;
 
   public DropPipePluginProcedure() {
     super();
   }
 
-  public DropPipePluginProcedure(String pluginName) {
+  public DropPipePluginProcedure(String pluginName, boolean ifExistsCondition) {
     super();
     this.pluginName = pluginName;
+    this.ifExistsCondition = ifExistsCondition;
   }
 
   @Override
@@ -116,8 +118,12 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
 
+    boolean isNotExists = true;
     try {
-      pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+      isNotExists =
+          pipePluginCoordinator
+              .getPipePluginInfo()
+              .validateBeforeDroppingPipePlugin(pluginName, ifExistsCondition);
       pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
@@ -125,6 +131,11 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       pipePluginCoordinator.unlock();
       pipeTaskCoordinator.unlock();
       setFailure(new ProcedureException(e.getMessage()));
+      return Flow.NO_MORE_STATE;
+    }
+    if (!isNotExists) {
+      pipePluginCoordinator.unlock();
+      pipeTaskCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
 

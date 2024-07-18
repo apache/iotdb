@@ -959,13 +959,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CreatePipePluginStatement(
         parseIdentifier(ctx.pluginName.getText()),
         parseStringLiteral(ctx.className.getText()),
-        parseAndValidateURI(ctx.uriClause()));
+        parseAndValidateURI(ctx.uriClause()),
+        ctx.ifNotExists() != null);
   }
 
   // Drop PipePlugin =====================================================================
   @Override
   public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
-    return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
+
+    DropPipePluginStatement dropPipePluginStatement = new DropPipePluginStatement();
+    dropPipePluginStatement.setPluginName(parseIdentifier(ctx.pluginName.getText()));
+
+    dropPipePluginStatement.setIfExists(ctx.ifExists() != null);
+
+    return new DropPipePluginStatement();
   }
 
   // Show PipePlugins =====================================================================
@@ -3716,11 +3723,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
 
-    if (ctx.ifNotExists() != null) {
-      createPipeStatement.setIfNotExists(true);
-    } else {
-      createPipeStatement.setIfNotExists(false);
-    }
+    createPipeStatement.setIfNotExists(ctx.ifNotExists() != null);
 
     createPipeStatement.setConnectorAttributes(
         parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
@@ -3815,11 +3818,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
     }
-    if (ctx.ifExists() != null) {
-      dropPipeStatement.setIfExists(true);
-    } else {
-      dropPipeStatement.setIfExists(false);
-    }
+
+    dropPipeStatement.setIfExists(ctx.ifExists() != null);
 
     return dropPipeStatement;
   }

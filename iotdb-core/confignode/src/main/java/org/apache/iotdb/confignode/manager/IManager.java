@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -465,7 +466,7 @@ public interface IManager {
   TSStatus createPipePlugin(TCreatePipePluginReq req);
 
   /** Drop pipe plugin. */
-  TSStatus dropPipePlugin(String pluginName);
+  TSStatus dropPipePlugin(TDropPipePluginReq req);
 
   /** Show pipe plugins. */
   TGetPipePluginTableResp getPipePluginTable();

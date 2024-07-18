@@ -793,7 +793,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
-    return configManager.dropPipePlugin(req.getPluginName());
+    return configManager.dropPipePlugin(req);
   }
 
   @Override

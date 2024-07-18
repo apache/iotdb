@@ -38,13 +38,16 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
   private final String pluginName;
   private final String className;
   private final String uriString;
+  private final boolean ifNotExistsCondition;
 
-  public CreatePipePluginStatement(String pluginName, String className, String uriString) {
+  public CreatePipePluginStatement(
+      String pluginName, String className, String uriString, boolean ifNotExistsCondition) {
     super();
     statementType = StatementType.CREATE_PIPEPLUGIN;
     this.pluginName = pluginName;
     this.className = className;
     this.uriString = uriString;
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   public String getPluginName() {
@@ -57,6 +60,10 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
 
   public String getUriString() {
     return uriString;
+  }
+
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
   }
 
   @Override
