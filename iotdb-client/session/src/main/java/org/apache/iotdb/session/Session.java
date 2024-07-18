@@ -70,6 +70,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -1235,24 +1236,27 @@ public class Session implements ISession {
    */
   @Override
   public void insertRelationalRecord(
-      String deviceId,
+      String tableName,
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      List<ColumnType> columnCategories,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request;
     try {
       request =
           filterAndGenTSInsertRecordReq(
-              deviceId, time, measurements, types, Arrays.asList(values), false);
+              tableName, time, measurements, types, Arrays.asList(values), false);
+      request.setColumnCategoryies(
+          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
       request.setIsWriteToTable(true);
     } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
+      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
       return;
     }
 
-    insertRecord(deviceId, request);
+    insertRecord(tableName, request);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)

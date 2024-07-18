@@ -256,6 +256,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertRowStatement.isNeedInferType(),
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+    insertNode.setMeasurementSchemas(insertRowStatement.getMeasurementSchemas());
     return insertNode;
   }
 

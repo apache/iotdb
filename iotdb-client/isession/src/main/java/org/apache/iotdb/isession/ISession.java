@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -213,10 +214,11 @@ public interface ISession extends AutoCloseable {
       throws IoTDBConnectionException, StatementExecutionException;
 
   void insertRelationalRecord(
-      String deviceId,
+      String tableName,
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      List<ColumnType> columnCategories,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException;
 

@@ -284,7 +284,22 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
-    insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
+    if (insertRecordReq.isSetIsWriteToTable()) {
+      insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
+      if (!insertRecordReq.isSetColumnCategoryies()
+          || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
+        throw new IllegalArgumentException(
+            "Missing or invalid column categories for table " + "insertion");
+      }
+      TsTableColumnCategory[] columnCategories =
+          new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
+      for (int i = 0; i < columnCategories.length; i++) {
+        columnCategories[i] =
+            TsTableColumnCategory.fromTsFileColumnType(
+                ColumnType.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
+      }
+      insertStatement.setColumnCategories(columnCategories);
+    }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }

@@ -453,7 +453,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIdSegments[0] = this.devicePath.getFullPath();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
-        deviceIdSegments[i + 1] = ((Object[]) columns[columnIndex])[rowIdx].toString();
+        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
+        deviceIdSegments[i + 1] = idSeg != null ? idSeg.toString() : null;
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
