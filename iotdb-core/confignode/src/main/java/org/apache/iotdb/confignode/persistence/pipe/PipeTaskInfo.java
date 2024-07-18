@@ -155,19 +155,24 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void checkBeforeCreatePipe(final TCreatePipeReq createPipeRequest) throws PipeException {
+  public boolean checkBeforeCreatePipe(final TCreatePipeReq createPipeRequest)
+      throws PipeException {
     acquireReadLock();
     try {
-      checkBeforeCreatePipeInternal(createPipeRequest);
+      return checkBeforeCreatePipeInternal(createPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
+  private boolean checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
       throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
-      return;
+      return true;
+    } else {
+      if (createPipeRequest.ifNotExistsCondition) {
+        return false;
+      }
     }
 
     final String exceptionMessage =

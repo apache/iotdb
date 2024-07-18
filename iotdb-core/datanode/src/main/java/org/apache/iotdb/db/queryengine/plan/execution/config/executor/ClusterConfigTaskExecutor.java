@@ -1753,7 +1753,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setPipeName(createPipeStatement.getPipeName())
               .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+              .setConnectorAttributes(createPipeStatement.getConnectorAttributes())
+              .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(

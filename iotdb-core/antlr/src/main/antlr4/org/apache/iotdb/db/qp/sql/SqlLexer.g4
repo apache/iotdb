@@ -294,6 +294,10 @@ EXTRACTOR
     : E X T R A C T O R
     ;
 
+EXISTS
+    : E X I S T S
+    ;
+
 FALSE
     : F A L S E
     ;
@@ -944,6 +948,10 @@ ELSE
 
 INF
     : I N F
+    ;
+
+IF
+    : I F
     ;
 
 // Privileges Keywords

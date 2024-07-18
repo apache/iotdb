@@ -535,7 +535,7 @@ verifyConnection
 
 // Pipe Task =========================================================================================
 createPipe
-    : CREATE PIPE pipeName=identifier
+    : CREATE PIPE  ifNotExists? pipeName=identifier
         extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause
@@ -603,7 +603,7 @@ alterConnectorAttributesClause
     ;
 
 dropPipe
-    : DROP PIPE pipeName=identifier
+    : DROP PIPE ifExists? pipeName=identifier
     ;
 
 startPipe
@@ -692,6 +692,14 @@ viewSourcePaths
     : fullPath (COMMA fullPath)*
     | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
     | selectClause fromClause
+    ;
+
+ifNotExists
+    : IF NOT EXISTS
+    ;
+
+ifExists
+    : IF EXISTS
     ;
 
 /**

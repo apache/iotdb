@@ -40,6 +40,7 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
   private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
+  private boolean ifNotExistsCondition;
 
   public CreatePipeStatement(StatementType createPipeStatement) {
     this.statementType = createPipeStatement;
@@ -61,6 +62,10 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     return connectorAttributes;
   }
 
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
+  }
+
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
   }
@@ -75,6 +80,10 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   public void setConnectorAttributes(Map<String, String> connectorAttributes) {
     this.connectorAttributes = connectorAttributes;
+  }
+
+  public void setIfNotExists(boolean ifNotExistsCondition) {
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   @Override

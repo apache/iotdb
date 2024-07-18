@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -110,6 +111,17 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return PipeTaskOperation.CREATE_PIPE;
   }
 
+  /**
+   * Check the {@link PipePlugin} configuration in the Pipe, if there is an error then throw a
+   * {@link PipeException}, if there is the same Pipe name and there is no IfNotExists condition in
+   * the {@link #createPipeRequest} then throw a {@link PipeException}, if there is an IfNotExists
+   * condition then end normally. {@link CreatePipeProcedureV2} process, if there is no Pipe with
+   * the same name then continue the {@link CreatePipeProcedureV2} process.
+   *
+   * @param env
+   * @return
+   * @throws PipeException
+   */
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
@@ -123,9 +135,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
-    pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
 
-    return false;
+    return !pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override
