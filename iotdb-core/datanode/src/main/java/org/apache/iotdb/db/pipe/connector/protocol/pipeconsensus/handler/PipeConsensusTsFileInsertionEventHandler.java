@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -74,12 +75,19 @@ public class PipeConsensusTsFileInsertionEventHandler
 
   private AsyncPipeConsensusServiceClient client;
 
+  private final PipeConsensusConnectorMetrics metric;
+
+  private final long createTime;
+
+  private long startTransferPieceTime;
+
   public PipeConsensusTsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
       final PipeConsensusAsyncConnector connector,
       final TCommitId commitId,
       final TConsensusGroupId consensusGroupId,
-      final int thisDataNodeId)
+      final int thisDataNodeId,
+      final PipeConsensusConnectorMetrics metric)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
@@ -102,15 +110,19 @@ public class PipeConsensusTsFileInsertionEventHandler
             : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
+
+    this.metric = metric;
+    this.createTime = System.nanoTime();
   }
 
   public void transfer(final AsyncPipeConsensusServiceClient client)
       throws TException, IOException {
+    startTransferPieceTime = System.nanoTime();
+
     this.client = client;
     client.setShouldReturnSelf(false);
 
     final int readLength = reader.read(readBuffer);
-
     if (readLength == -1) {
       if (currentFile == modFile) {
         currentFile = tsFile;
@@ -131,6 +143,7 @@ public class PipeConsensusTsFileInsertionEventHandler
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
+                    event.getFlushPointCount(),
                     commitId,
                     consensusGroupId,
                     event.getProgressIndex(),
@@ -138,6 +151,7 @@ public class PipeConsensusTsFileInsertionEventHandler
                 : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
                     tsFile.getName(),
                     tsFile.length(),
+                    event.getFlushPointCount(),
                     commitId,
                     consensusGroupId,
                     event.getProgressIndex(),
@@ -217,6 +231,9 @@ public class PipeConsensusTsFileInsertionEventHandler
           client.setShouldReturnSelf(true);
           client.returnSelf();
         }
+
+        long duration = System.nanoTime() - createTime;
+        metric.recordConnectorTsFileTransferTimer(duration);
       }
       return;
     }
@@ -245,6 +262,8 @@ public class PipeConsensusTsFileInsertionEventHandler
               .handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
+      long duration = System.nanoTime() - startTransferPieceTime;
+      metric.recordConnectorTsFilePieceTransferTimer(duration);
 
       transfer(client);
     } catch (final Exception e) {
@@ -269,6 +288,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
       connector.addFailureEventToRetryQueue(event);
+      metric.recordRetryCounter();
 
       if (client != null) {
         client.setShouldReturnSelf(true);

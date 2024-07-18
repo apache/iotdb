@@ -34,6 +34,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
 
@@ -85,7 +86,9 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
                   configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
               // Pipe only collect user's data, filter metric database here.
               // DatabaseName may be null for config region group
-              if (!SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
+              if (Objects.isNull(databaseName)
+                  || (!databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                      && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + "."))) {
                 // null or -1 means empty origin leader
                 final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left.getLeaderId());
                 final int newLeaderNodeId = (pair.right == null ? -1 : pair.right.getLeaderId());

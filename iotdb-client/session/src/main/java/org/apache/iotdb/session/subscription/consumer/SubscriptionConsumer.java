@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -40,6 +41,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -50,8 +53,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URLEncoder;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -69,12 +74,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 
 abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 1_000_000_000L;
+  private static final long SLEEP_NS = 100_000_000L; // 100ms
 
   private final String username;
   private final String password;
@@ -88,9 +96,21 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final SubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  // This variable indicates whether the consumer has ever been closed.
+  private final AtomicBoolean isReleased = new AtomicBoolean(false);
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
+
+  protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
+
+  public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
+    return subscribedTopics.values().stream()
+        .noneMatch(
+            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
+  }
+
+  /////////////////////////////// getter ///////////////////////////////
 
   public String getConsumerId() {
     return consumerId;
@@ -170,7 +190,27 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
+  private void checkIfHasBeenClosed() throws SubscriptionException {
+    if (isReleased.get()) {
+      final String errorMessage =
+          String.format("%s has ever been closed, unsupported operation after closing.", this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+  }
+
+  private void checkIfOpened() throws SubscriptionException {
+    if (isClosed.get()) {
+      final String errorMessage =
+          String.format("%s is not yet open, please open the subscription consumer first.", this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+  }
+
   public synchronized void open() throws SubscriptionException {
+    checkIfHasBeenClosed();
+
     if (!isClosed.get()) {
       return;
     }
@@ -204,6 +244,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     providers.releaseWriteLock();
 
     isClosed.set(true);
+
+    // mark is released to avoid reopening after closing
+    isReleased.set(true);
   }
 
   boolean isClosed() {
@@ -221,6 +264,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+    // parse topic names from external source
+    subscribe(topicNames, true);
+  }
+
+  private void subscribe(Set<String> topicNames, final boolean needParse)
+      throws SubscriptionException {
+    checkIfOpened();
+
+    if (needParse) {
+      topicNames =
+          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    }
+
     providers.acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
@@ -238,6 +294,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+    // parse topic names from external source
+    unsubscribe(topicNames, true);
+  }
+
+  private void unsubscribe(Set<String> topicNames, final boolean needParse)
+      throws SubscriptionException {
+    checkIfOpened();
+
+    if (needParse) {
+      topicNames =
+          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    }
+
     providers.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
@@ -284,29 +353,57 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return dirPath;
   }
 
-  private Path getFilePath(final String topicName, String fileName) throws SubscriptionException {
-    Path filePath;
+  private Path getFilePath(
+      final String topicName,
+      final String fileName,
+      final boolean allowFileAlreadyExistsException,
+      final boolean allowInvalidPathException)
+      throws SubscriptionException {
     try {
-      filePath = getFileDir(topicName).resolve(fileName);
+      final Path filePath = getFileDir(topicName).resolve(fileName);
       Files.createFile(filePath);
+      return filePath;
     } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      fileName += "." + RandomStringGenerator.generate(16);
-      try {
-        filePath = getFileDir(topicName).resolve(fileName);
-        Files.createFile(filePath);
-      } catch (final IOException e) {
-        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+      if (allowFileAlreadyExistsException) {
+        final String suffix = RandomStringGenerator.generate(16);
+        LOGGER.warn(
+            "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
+            fileName,
+            topicName,
+            suffix);
+        return getFilePath(topicName, fileName + "." + suffix, false, true);
       }
+      throw new SubscriptionRuntimeNonCriticalException(
+          fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
+    } catch (final InvalidPathException invalidPathException) {
+      if (allowInvalidPathException) {
+        return getFilePath(URLEncoder.encode(topicName), fileName, true, false);
+      }
+      throw new SubscriptionRuntimeNonCriticalException(
+          invalidPathException.getMessage(), invalidPathException);
     } catch (final IOException e) {
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    return filePath;
   }
 
   /////////////////////////////// poll ///////////////////////////////
 
-  protected List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
+  protected List<SubscriptionMessage> poll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
+    // check topic names
+    if (subscribedTopics.isEmpty()) {
+      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+      return Collections.emptyList();
+    }
+
+    topicNames.stream()
+        .filter(topicName -> !subscribedTopics.containsKey(topicName))
+        .forEach(
+            topicName ->
+                LOGGER.warn(
+                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+
     final List<SubscriptionMessage> messages = new ArrayList<>();
     final SubscriptionPollTimer timer =
         new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
@@ -336,18 +433,21 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             case ERROR:
               final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
               final String errorMessage = payload.getErrorMessage();
-              final boolean critical = payload.isCritical();
-              LOGGER.warn(
-                  "Error occurred when SubscriptionConsumer {} polling topics {}: {}, critical: {}",
-                  this,
-                  topicNames,
-                  errorMessage,
-                  critical);
-              if (critical) {
+              if (payload.isCritical()) {
                 throw new SubscriptionRuntimeCriticalException(errorMessage);
               } else {
                 throw new SubscriptionRuntimeNonCriticalException(errorMessage);
               }
+            case TERMINATION:
+              final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
+              final String topicNameToUnsubscribe = commitContext.getTopicName();
+              LOGGER.info(
+                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} automatically",
+                  this,
+                  topicNames,
+                  topicNameToUnsubscribe);
+              unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
+              break;
             default:
               LOGGER.warn("unexpected response type: {}", responseType);
               break;
@@ -398,11 +498,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionCommitContext commitContext, final String fileName)
       throws SubscriptionException {
     final String topicName = commitContext.getTopicName();
-    final Path filePath = getFilePath(topicName, fileName);
+    final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, file, fileWriter));
-    } catch (final IOException e) {
+    } catch (final Exception e) {
+      // construct temporary message to nack
+      nack(
+          Collections.singletonList(
+              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -576,6 +680,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "Cluster has no available subscription providers when %s poll topic %s",
@@ -601,6 +708,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "something unexpected happened when %s poll file from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
@@ -641,6 +751,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
+      // make every effort to delete stale intermediate file
+      if (Objects.equals(
+          SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())) {
+        try {
+          message.getTsFileHandler().deleteFile();
+        } catch (final Exception ignored) {
+        }
+      }
       dataNodeIdToSubscriptionCommitContexts
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
@@ -660,6 +778,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return;
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
@@ -775,7 +896,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        provider.subscribe(topicNames);
+        subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -805,7 +926,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        provider.unsubscribe(topicNames);
+        subscribedTopics = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -897,12 +1018,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     public Builder consumerId(final String consumerId) {
-      this.consumerId = consumerId;
+      this.consumerId = IdentifierUtils.parseIdentifier(consumerId);
       return this;
     }
 
     public Builder consumerGroupId(final String consumerGroupId) {
-      this.consumerGroupId = consumerGroupId;
+      this.consumerGroupId = IdentifierUtils.parseIdentifier(consumerGroupId);
       return this;
     }
 
@@ -933,14 +1054,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
-  @Override
-  public String toString() {
-    return "SubscriptionConsumer{consumerId="
-        + consumerId
-        + ", consumerGroupId="
-        + consumerGroupId
-        + "}";
+  protected Map<String, String> coreReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("consumerId", consumerId);
+        put("consumerGroupId", consumerGroupId);
+        put("isClosed", isClosed.toString());
+        put("fileSaveDir", fileSaveDir);
+        put("subscribedTopicNames", subscribedTopics.keySet().toString());
+      }
+    };
+  }
+
+  protected Map<String, String> allReportMessage() {
+    return new HashMap<String, String>() {
+      {
+        put("consumerId", consumerId);
+        put("consumerGroupId", consumerGroupId);
+        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+        put("providers", providers.toString());
+        put("isClosed", isClosed.toString());
+        put("isReleased", isReleased.toString());
+        put("fileSaveDir", fileSaveDir);
+        put("fileSaveFsync", String.valueOf(fileSaveFsync));
+        put("subscribedTopics", subscribedTopics.toString());
+      }
+    };
   }
 }

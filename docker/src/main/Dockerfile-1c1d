@@ -19,7 +19,7 @@
 
 # docker build context is the root path of the repository
 
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:17-jre-focal
 
 ADD distribution/target/apache-iotdb-*-all-bin.zip /
 ADD docker/src/main/DockerCompose/start-1c1d.sh /

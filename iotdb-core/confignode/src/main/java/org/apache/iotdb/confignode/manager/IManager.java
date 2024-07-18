@@ -304,7 +304,7 @@ public interface IManager {
 
   TSStatus setTTL(SetTTLPlan configRequest);
 
-  DataSet showAllTTL(ShowTTLPlan showTTLPlan);
+  DataSet showTTL(ShowTTLPlan showTTLPlan);
 
   TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configPhysicalPlan);
 
@@ -489,6 +489,8 @@ public interface IManager {
 
   /** Stop repair data task */
   TSStatus stopRepairData();
+
+  TSStatus submitLoadConfigurationTask();
 
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();

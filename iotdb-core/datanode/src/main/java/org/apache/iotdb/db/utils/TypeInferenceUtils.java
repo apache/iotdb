@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -40,17 +41,7 @@ import java.util.List;
 
 public class TypeInferenceUtils {
 
-  private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
-
-  private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
-
-  private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+  private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
   private TypeInferenceUtils() {}
 
@@ -108,18 +99,18 @@ public class TypeInferenceUtils {
     } else if (inferType) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
-        return booleanStringInferType;
+        return CONF.getBooleanStringInferType();
       } else if (isNumber(strValue)) {
         if (isLong(StringUtils.trim(strValue))) {
-          return integerStringInferType;
+          return CONF.getIntegerStringInferType();
         } else {
-          return floatingStringInferType;
+          return CONF.getFloatingStringInferType();
         }
       } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
         return null;
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
-        return nanStringInferType;
+        return CONF.getNanStringInferType();
       } else if (isBlob(strValue)) {
         return TSDataType.BLOB;
       } else {

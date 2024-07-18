@@ -171,7 +171,6 @@ public class IoTDBConstant {
   public static final String STATEMENT = "statement";
 
   public static final String COLUMN_DATABASE = "database";
-  public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";

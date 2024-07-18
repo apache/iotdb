@@ -203,7 +203,7 @@ public class MemUtils {
   }
 
   public static long strToBytesCnt(String str) {
-    if (str == null) {
+    if (str == null || str.isEmpty()) {
       return 0;
     }
     str = str.toLowerCase();

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -40,6 +41,8 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
@@ -122,6 +125,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
     super.open(); // throw IoTDBConnectionException
 
+    // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
@@ -215,7 +219,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeSubscribeReq req;
     try {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -241,9 +245,12 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeSubscribeResp subscribeResp =
+        PipeSubscribeSubscribeResp.fromTPipeSubscribeResp(resp);
+    return subscribeResp.getTopics();
   }
 
-  void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  Map<String, TopicConfig> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeUnsubscribeReq req;
     try {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -269,6 +276,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeUnsubscribeResp unsubscribeResp =
+        PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
+    return unsubscribeResp.getTopics();
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

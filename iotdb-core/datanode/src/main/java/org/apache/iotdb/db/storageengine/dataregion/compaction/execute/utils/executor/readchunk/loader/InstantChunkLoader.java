@@ -81,14 +81,13 @@ public class InstantChunkLoader extends ChunkLoader {
         pageHeader = PageHeader.deserializeFrom(chunkData, chunk.getChunkStatistic().getType());
       }
       int pageSize = pageHeader.getCompressedSize();
-      byte[] pageBody = new byte[pageSize];
-      chunkData.get(pageBody);
+      ByteBuffer pageBodyBuffer = getPageBodyBuffer(chunkData, pageSize);
       ModifiedStatus pageModifiedStatus = calculatePageModifiedStatus(pageHeader);
       pageHeader.setModified(pageModifiedStatus != ModifiedStatus.NONE_DELETED);
       pageList.add(
           new InstantPageLoader(
               pageHeader,
-              ByteBuffer.wrap(pageBody),
+              pageBodyBuffer,
               chunk.getHeader().getCompressionType(),
               chunk.getHeader().getDataType(),
               chunk.getHeader().getEncodingType(),
@@ -96,6 +95,13 @@ public class InstantChunkLoader extends ChunkLoader {
               pageModifiedStatus));
     }
     return pageList;
+  }
+
+  private ByteBuffer getPageBodyBuffer(ByteBuffer chunkDataBuffer, int pageSize) {
+    ByteBuffer pageBodyBuffer = chunkDataBuffer.slice();
+    pageBodyBuffer.limit(pageSize);
+    chunkDataBuffer.position(chunkDataBuffer.position() + pageSize);
+    return pageBodyBuffer;
   }
 
   @Override

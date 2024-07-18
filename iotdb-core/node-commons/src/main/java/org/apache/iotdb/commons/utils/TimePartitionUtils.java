@@ -25,17 +25,20 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 public class TimePartitionUtils {
 
+  /**
+   * Time partition origin for dividing database, the time unit is the same with IoTDB's
+   * TimestampPrecision
+   */
+  private static long timePartitionOrigin =
+      CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
+
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (time > 0 || time % timePartitionInterval == 0) {
-      timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime((time / timePartitionInterval - 1) * timePartitionInterval);
-    }
+    timePartitionSlot.setStartTime(getTimePartitionLowerBound(time));
     return timePartitionSlot;
   }
 
@@ -43,21 +46,19 @@ public class TimePartitionUtils {
     return timePartitionInterval;
   }
 
+  public static long getTimePartitionLowerBound(long time) {
+    long lowerBoundOfTimePartition;
+    lowerBoundOfTimePartition =
+        getTimePartitionId(time) * timePartitionInterval + timePartitionOrigin;
+    return lowerBoundOfTimePartition;
+  }
+
   public static long getTimePartitionUpperBound(long time) {
-    long upperBoundOfTimePartition;
-    if (time > 0 || time % TimePartitionUtils.timePartitionInterval == 0) {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval + 1)
-              * TimePartitionUtils.timePartitionInterval;
-    } else {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval;
-    }
-    return upperBoundOfTimePartition;
+    return getTimePartitionLowerBound(time) + timePartitionInterval;
   }
 
   public static long getTimePartitionId(long time) {
+    time -= timePartitionOrigin;
     return time > 0 || time % timePartitionInterval == 0
         ? time / timePartitionInterval
         : time / timePartitionInterval - 1;
@@ -75,11 +76,15 @@ public class TimePartitionUtils {
   }
 
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
-    long partitionStartTime = partitionId * timePartitionInterval;
+    long partitionStartTime = partitionId * timePartitionInterval + timePartitionOrigin;
     return satisfyPartitionStartTime(timeFilter, partitionStartTime);
   }
 
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
+  }
+
+  public static long getEstimateTimePartitionSize(long startTime, long endTime) {
+    return (endTime - startTime) / timePartitionInterval + 1;
   }
 }

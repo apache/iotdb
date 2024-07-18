@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -32,6 +33,7 @@ import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
@@ -50,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -57,11 +60,19 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeTaskAgent.class);
 
-  private final AtomicLong lastLogPrintedTime = new AtomicLong(0);
-
   @Override
   protected boolean isShutdown() {
     return PipeConfigNodeAgent.runtime().isShutdown();
+  }
+
+  @Override
+  protected void thawRate(final String pipeName, final long creationTime) {
+    PipeConfigNodeRemainingTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
+  protected void freezeRate(final String pipeName, final long creationTime) {
+    PipeConfigNodeRemainingTimeMetrics.getInstance().freezeRate(pipeName + "_" + creationTime);
   }
 
   @Override
@@ -204,11 +215,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final boolean shouldPrintLog =
-          System.currentTimeMillis() - lastLogPrintedTime.get() > 1000 * 60 * 10; // 10 minutes
-      if (shouldPrintLog) {
-        lastLogPrintedTime.set(System.currentTimeMillis());
-      }
+      final Optional<Logger> logger =
+          PipeConfigNodeResourceManager.log()
+              .schedule(
+                  PipeConfigNodeTaskAgent.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeMetaKeeper.getPipeMetaCount());
 
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -217,20 +230,20 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         final long remainingEventCount =
             PipeConfigRegionExtractorMetrics.getInstance()
                 .getRemainingEventCount(staticMeta.getPipeName(), staticMeta.getCreationTime());
-        final double remainingTime =
+        final double estimatedRemainingTime =
             PipeConfigNodeRemainingTimeMetrics.getInstance()
                 .getRemainingTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
 
         pipeRemainingEventCountList.add(remainingEventCount);
-        pipeRemainingTimeList.add(remainingTime);
+        pipeRemainingTimeList.add(estimatedRemainingTime);
 
-        if (shouldPrintLog) {
-          LOGGER.info(
-              "Reporting pipe meta: {}, remainingEventCount: {}, remainingTime: {}",
-              pipeMeta.coreReportMessage(),
-              remainingEventCount,
-              remainingTime);
-        }
+        logger.ifPresent(
+            l ->
+                l.info(
+                    "Reporting pipe meta: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                    pipeMeta.coreReportMessage(),
+                    remainingEventCount,
+                    estimatedRemainingTime));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException e) {

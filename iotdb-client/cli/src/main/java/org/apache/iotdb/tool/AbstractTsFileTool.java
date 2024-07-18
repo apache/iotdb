@@ -42,8 +42,8 @@ public abstract class AbstractTsFileTool {
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
 
-  protected static final String TIMEOUT_ARGS = "t";
-  protected static final String TIMEOUT_NAME = "timeout";
+  protected static final String TIMEOUT_ARGS = "timeout";
+  protected static final String TIMEOUT_NAME = "queryTimeout";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final int CODE_OK = 0;
   protected static final int CODE_ERROR = 1;
@@ -109,7 +109,7 @@ public abstract class AbstractTsFileTool {
             .longOpt(HOST_NAME)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name")
+            .desc("Host Name (optional)")
             .build();
     options.addOption(opHost);
 
@@ -118,7 +118,7 @@ public abstract class AbstractTsFileTool {
             .longOpt(PORT_NAME)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port")
+            .desc("Port (optional)")
             .build();
     options.addOption(opPort);
 
@@ -127,7 +127,7 @@ public abstract class AbstractTsFileTool {
             .longOpt(USERNAME_NAME)
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("Username")
+            .desc("Username (optional)")
             .build();
     options.addOption(opUsername);
 
@@ -137,7 +137,7 @@ public abstract class AbstractTsFileTool {
             .optionalArg(true)
             .argName(PW_NAME)
             .hasArg()
-            .desc("Password")
+            .desc("Password (optional)")
             .build();
     options.addOption(opPassword);
   }

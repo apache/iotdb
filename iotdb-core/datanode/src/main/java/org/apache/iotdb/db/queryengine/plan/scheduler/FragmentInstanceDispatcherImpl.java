@@ -124,8 +124,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   //  unsafe for current FragmentInstance scheduler framework. We need to implement the
   //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
+    long startTime = System.nanoTime();
     for (FragmentInstance instance : instances) {
-      long startTime = System.nanoTime();
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
@@ -146,8 +146,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
           instance.getFragment().clearTypeProvider();
         }
-        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
-            DISPATCH_READ, System.nanoTime() - startTime);
+
+        long dispatchReadTime = System.nanoTime() - startTime;
+        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, dispatchReadTime);
+        queryContext.recordDispatchCost(dispatchReadTime);
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));

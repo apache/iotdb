@@ -80,6 +80,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
+
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
   TimeUnit getTimestampPrecision();
@@ -103,6 +105,8 @@ public interface CommonConfig {
       boolean enableAutoLeaderBalanceForIoTConsensus);
 
   CommonConfig setQueryThreadCount(int queryThreadCount);
+
+  CommonConfig setWalBufferSize(int walBufferSize);
 
   CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
 
@@ -139,4 +143,11 @@ public interface CommonConfig {
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
   CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+
+  CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+
+  CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(long pipeMetaSyncerInitialSyncDelayMinutes);
+
+  CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes);
 }

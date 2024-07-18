@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -58,15 +57,11 @@ public class TTLManager {
   public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe)
       throws IllegalPathException {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
-    if (ttl <= 0) {
+    if (ttl < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
       errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
     }
-    ttl =
-        CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
     SetTTLPlan setTTLPlan =
         new SetTTLPlan(
             PathUtils.splitPathToDetachedNodes(databaseSchemaPlan.getSchema().getName()), ttl);
@@ -84,7 +79,7 @@ public class TTLManager {
               path.getFullPath()));
       return errorStatus;
     }
-    if (setTTLPlan.getTTL() <= 0) {
+    if (setTTLPlan.getTTL() < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
       errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
@@ -92,13 +87,6 @@ public class TTLManager {
 
     // if path matches database, then set both path and path.**
     setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
-
-    long ttl =
-        CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            setTTLPlan.getTTL(),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
-    setTTLPlan.setTTL(ttl);
 
     return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
@@ -119,7 +107,7 @@ public class TTLManager {
     return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
 
-  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+  public DataSet showTTL(ShowTTLPlan showTTLPlan) {
     try {
       return configManager.getConsensusManager().read(showTTLPlan);
     } catch (ConsensusException e) {
@@ -133,7 +121,7 @@ public class TTLManager {
   }
 
   public Map<String, Long> getAllTTL() {
-    return ((ShowTTLResp) showAllTTL(new ShowTTLPlan())).getPathTTLMap();
+    return ((ShowTTLResp) showTTL(new ShowTTLPlan())).getPathTTLMap();
   }
 
   public int getTTLCount() {

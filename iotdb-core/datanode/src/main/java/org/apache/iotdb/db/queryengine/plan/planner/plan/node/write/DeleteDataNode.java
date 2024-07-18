@@ -53,21 +53,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
 
-public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
+public class DeleteDataNode extends SearchNode implements WALEntryValue {
   /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
   private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private final List<PartialPath> pathList;
   private final long deleteStartTime;
   private final long deleteEndTime;
-
-  /**
-   * this index is used by wal search, its order should be protected by the upper layer, and the
-   * value should start from 1
-   */
-  protected long searchIndex = NO_CONSENSUS_INDEX;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -102,15 +95,6 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   public long getDeleteEndTime() {
     return deleteEndTime;
-  }
-
-  public long getSearchIndex() {
-    return searchIndex;
-  }
-
-  /** Search index should start from 1 */
-  public void setSearchIndex(long searchIndex) {
-    this.searchIndex = searchIndex;
   }
 
   @Override

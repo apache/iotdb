@@ -401,13 +401,8 @@ public class ConfigManager implements IManager {
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status =
-          ClusterNodeStartUtils.confirmNodeRegistration(
-              NodeType.DataNode,
-              req.getClusterName(),
-              req.getDataNodeConfiguration().getLocation(),
-              this);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status = ClusterNodeStartUtils.confirmDataNodeRegistration(req, this);
+      if (!req.isPreCheck() && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return nodeManager.registerDataNode(req);
       }
     }
@@ -539,7 +534,7 @@ public class ConfigManager implements IManager {
         CONF.getSchemaRegionConsensusProtocolClass());
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setTimePartitionOrigin(COMMON_CONF.getTimePartitionOrigin());
     clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
@@ -626,10 +621,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+  public DataSet showTTL(ShowTTLPlan showTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return ttlManager.showAllTTL(showTTLPlan);
+      return ttlManager.showTTL(showTTLPlan);
     } else {
       ShowTTLResp resp = new ShowTTLResp();
       resp.setStatus(status);
@@ -1211,12 +1206,7 @@ public class ConfigManager implements IManager {
       // Make sure the global configurations are consist
       status = checkConfigNodeGlobalConfig(req);
       if (status == null) {
-        status =
-            ClusterNodeStartUtils.confirmNodeRegistration(
-                NodeType.ConfigNode,
-                req.getClusterParameters().getClusterName(),
-                req.getConfigNodeLocation(),
-                this);
+        status = ClusterNodeStartUtils.confirmConfigNodeRegistration(req, this);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return nodeManager.registerConfigNode(req);
         }
@@ -1260,10 +1250,6 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
 
-    if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
-      return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
-    }
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
@@ -1519,6 +1505,7 @@ public class ConfigManager implements IManager {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
       if (CONF.getConfigNodeId() == req.getNodeId()) {
         return tsStatus;
       }
@@ -1546,11 +1533,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus loadConfiguration() {
+  public TSStatus submitLoadConfigurationTask() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
+        ? RpcUtils.squashResponseStatusList(nodeManager.submitLoadConfigurationTask())
         : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    throw new UnsupportedOperationException("not implement yet");
   }
 
   @Override

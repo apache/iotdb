@@ -40,14 +40,14 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
@@ -96,7 +96,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean isShutdown() {
-    return PipeAgent.runtime().isShutdown();
+    return PipeDataNodeAgent.runtime().isShutdown();
   }
 
   @Override
@@ -159,7 +159,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
     } catch (final Exception e) {
-      throw new PipeException("Failed to clear/close schema region listening queue.", e);
+      LOGGER.warn(
+          "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
+          e.getMessage());
+      // Do not use null pipe name to retain the field "required" to be compatible with the lower
+      // versions
+      exceptionMessages.add(
+          new TPushPipeMetaRespExceptionMessage("", e.getMessage(), System.currentTimeMillis()));
     }
 
     return exceptionMessages;
@@ -204,7 +210,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
         (schemaRegionId, listeningQueueNewFirstIndex) ->
-            PipeAgent.runtime()
+            PipeDataNodeAgent.runtime()
                 .schemaListener(new SchemaRegionId(schemaRegionId))
                 .removeBefore(listeningQueueNewFirstIndex));
 
@@ -218,43 +224,67 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    PipeAgent.runtime()
-        .listeningSchemaRegionIds()
+    PipeDataNodeAgent.runtime().listeningSchemaRegionIds().stream()
+        .filter(
+            schemaRegionId ->
+                !validSchemaRegionIds.contains(schemaRegionId.getId())
+                    && PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId))
         .forEach(
             schemaRegionId -> {
-              if (!validSchemaRegionIds.contains(schemaRegionId.getId())
-                  && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
-                try {
-                  SchemaRegionConsensusImpl.getInstance()
-                      .write(
-                          schemaRegionId,
-                          new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                } catch (final ConsensusException e) {
-                  throw new PipeException(
-                      "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
-                }
+              try {
+                SchemaRegionConsensusImpl.getInstance()
+                    .write(
+                        schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
+              } catch (final ConsensusException e) {
+                throw new PipeException(
+                    "Failed to close listening queue for SchemaRegion "
+                        + schemaRegionId
+                        + ", because "
+                        + e.getMessage(),
+                    e);
               }
             });
   }
 
   @Override
-  protected void dropPipe(final String pipeName, final long creationTime) {
-    super.dropPipe(pipeName, creationTime);
-
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .deregister(pipeName + "_" + creationTime);
+  protected void thawRate(final String pipeName, final long creationTime) {
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }
 
   @Override
-  protected void dropPipe(final String pipeName) {
-    super.dropPipe(pipeName);
+  protected void freezeRate(final String pipeName, final long creationTime) {
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .freezeRate(pipeName + "_" + creationTime);
+  }
 
+  @Override
+  protected boolean dropPipe(final String pipeName, final long creationTime) {
+    if (!super.dropPipe(pipeName, creationTime)) {
+      return false;
+    }
+
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .deregister(pipeName + "_" + creationTime);
+
+    return true;
+  }
+
+  @Override
+  protected boolean dropPipe(final String pipeName) {
+    // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (!super.dropPipe(pipeName)) {
+      return false;
+    }
+
     if (Objects.nonNull(pipeMeta)) {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .deregister(pipeName + "_" + creationTime);
     }
+
+    return true;
   }
 
   public void stopAllPipesWithCriticalException() {
@@ -278,7 +308,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void collectPipeMetaListInternal(final TDataNodeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown()) {
+    if (PipeDataNodeAgent.runtime().isShutdown()) {
       return;
     }
 
@@ -293,7 +323,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -310,19 +340,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        final String extractorModeValue =
+            pipeMeta
+                .getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                        PipeExtractorConstant.SOURCE_MODE_KEY),
+                    PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
                     .getLeft()
-                && pipeMeta
-                    .getStaticMeta()
-                    .getExtractorParameters()
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                            PipeExtractorConstant.SOURCE_MODE_KEY),
-                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+                && (extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+                    || extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -356,7 +390,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown()) {
+    if (PipeDataNodeAgent.runtime().isShutdown()) {
       return;
     }
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
@@ -372,7 +406,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
-          PipeResourceManager.log()
+          PipeDataNodeResourceManager.log()
               .schedule(
                   PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
@@ -389,19 +423,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        final String extractorModeValue =
+            pipeMeta
+                .getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                        PipeExtractorConstant.SOURCE_MODE_KEY),
+                    PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
                     .getLeft()
-                && pipeMeta
-                    .getStaticMeta()
-                    .getExtractorParameters()
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                            PipeExtractorConstant.SOURCE_MODE_KEY),
-                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+                && (extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+                    || extractorModeValue.equalsIgnoreCase(
+                        PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -494,7 +532,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
     try {
       final long linkedButDeletedTsFileSize =
-          PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
+          PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
       final double totalDisk =
           MetricService.getInstance()
               .getAutoGauge(
@@ -517,7 +555,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
@@ -612,7 +650,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+  public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(

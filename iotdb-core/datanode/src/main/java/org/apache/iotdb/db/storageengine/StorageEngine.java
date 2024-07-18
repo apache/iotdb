@@ -163,13 +163,9 @@ public class StorageEngine implements IService {
   }
 
   /** block insertion if the insertion is rejected by memory control */
-  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
-      throws WriteProcessRejectException {
+  public static void blockInsertionIfReject() throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
-      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
-        break;
-      }
       try {
         TimeUnit.MILLISECONDS.sleep(CONFIG.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > CONFIG.getMaxWaitingTimeWhenInsertBlocked()) {
@@ -413,9 +409,6 @@ public class StorageEngine implements IService {
             logicalStorageGroupName);
     WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
     WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
-    WRITING_METRICS.createSeriesFullFlushMemTableCounterMetrics(dataRegionId);
-    WRITING_METRICS.createWalFlushMemTableCounterMetrics(dataRegionId);
-    WRITING_METRICS.createTimedFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
@@ -706,14 +699,17 @@ public class StorageEngine implements IService {
       WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
       WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
       WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
-      WRITING_METRICS.removeWalFlushMemTableCounterMetrics(regionId);
-      WRITING_METRICS.removeTimedFlushMemTableCounterMetrics(regionId);
-      WRITING_METRICS.removeSeriesFullFlushMemTableCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -29,9 +31,10 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -62,7 +65,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -96,7 +98,7 @@ public class LoadTsFileManager {
   }
 
   private void registerCleanupTaskExecutor() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
@@ -293,25 +295,58 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
+  }
 
-    for (final Path loadDirPath :
-        Arrays.stream(LOAD_BASE_DIRS.get())
-            .map(File::new)
-            .filter(File::exists)
-            .map(File::toPath)
-            .collect(Collectors.toList())) {
-      try {
-        Files.deleteIfExists(loadDirPath);
-        LOGGER.info("Load dir {} was deleted.", loadDirPath);
-      } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-      } catch (Exception e) {
-        LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
-      }
+  public static void updateWritePointCountMetrics(
+      final DataRegion dataRegion,
+      final String databaseName,
+      final long writePointCount,
+      final boolean isGeneratedByPipeConsensusLeader) {
+    MemTableFlushTask.recordFlushPointsMetricInternal(
+        writePointCount, databaseName, dataRegion.getDataRegionId());
+    MetricService.getInstance()
+        .count(
+            writePointCount,
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            databaseName,
+            Tag.REGION.toString(),
+            dataRegion.getDataRegionId(),
+            Tag.TYPE.toString(),
+            Metric.LOAD_POINT_COUNT.toString());
+    // Because we cannot accurately judge who is the leader here,
+    // we directly divide the writePointCount by the replicationNum to ensure the
+    // correctness of this metric, which will be accurate in most cases
+    final int replicationNum =
+        DataRegionConsensusImpl.getInstance()
+            .getReplicationNum(
+                ConsensusGroupId.Factory.create(
+                    TConsensusGroupType.DataRegion.getValue(),
+                    Integer.parseInt(dataRegion.getDataRegionId())));
+    // It may happen that the replicationNum is 0 when load and db deletion occurs
+    // concurrently, so we can just not to count the number of points in this case
+    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
+      MetricService.getInstance()
+          .count(
+              writePointCount / replicationNum,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              databaseName,
+              Tag.REGION.toString(),
+              dataRegion.getDataRegionId(),
+              Tag.TYPE.toString(),
+              Metric.LOAD_POINT_COUNT.toString());
     }
   }
 
   private static class TsFileWriterManager {
+
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
@@ -412,27 +447,13 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
+        // Metrics
         dataRegion
             .getNonSystemDatabaseName()
             .ifPresent(
-                databaseName -> {
-                  long writePointCount = getTsFileWritePointCount(writer);
-                  // Report load tsFile points to IoTDB flush metrics
-                  MemTableFlushTask.recordFlushPointsMetricInternal(
-                      writePointCount, databaseName, dataRegion.getDataRegionId());
-
-                  MetricService.getInstance()
-                      .count(
-                          writePointCount,
-                          Metric.QUANTITY.toString(),
-                          MetricLevel.CORE,
-                          Tag.NAME.toString(),
-                          Metric.POINTS_IN.toString(),
-                          Tag.DATABASE.toString(),
-                          databaseName,
-                          Tag.REGION.toString(),
-                          dataRegion.getDataRegionId());
-                });
+                databaseName ->
+                    updateWritePointCountMetrics(
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 

@@ -25,7 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -114,7 +116,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -149,6 +151,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariab
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
@@ -1158,7 +1161,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.loadConfiguration();
+        tsStatus = client.submitLoadConfigurationTask();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
@@ -1289,13 +1292,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> testConnection(boolean needDetails) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TTestConnectionResp result = client.submitTestConnectionTaskToLeader();
+      int configNodeNum = 0, dataNodeNum = 0;
+      if (!needDetails) {
+        configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
+        dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
+      }
+      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, needDetails, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     Map<String, Long> databaseToTTL = new TreeMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTTLResp resp = client.showAllTTL();
-      databaseToTTL.putAll(resp.getPathTTLMap());
+      // TODO: send all paths in one RPC
+      for (PartialPath pathPattern : showTTLStatement.getPaths()) {
+        TShowTTLReq req = new TShowTTLReq(Arrays.asList(pathPattern.getNodes()));
+        TShowTTLResp resp = client.showTTL(req);
+        databaseToTTL.putAll(resp.getPathTTLMap());
+      }
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -1708,7 +1733,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate pipe plugin before creation
     try {
-      PipeAgent.plugin()
+      PipeDataNodeAgent.plugin()
           .validate(
               createPipeStatement.getPipeName(),
               createPipeStatement.getExtractorAttributes(),
@@ -1764,13 +1789,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate pipe plugin before alteration - only validate replace mode
     final String pipeName = alterPipeStatement.getPipeName();
     try {
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+      }
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllProcessorAttributes()) {
-        PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+        PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
       }
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllConnectorAttributes()) {
-        PipeAgent.plugin().validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+        PipeDataNodeAgent.plugin()
+            .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
       }
     } catch (Exception e) {
       LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
@@ -1788,6 +1818,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               alterPipeStatement.getConnectorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
@@ -1968,8 +2000,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
             topicAttributes);
     try {
-      PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
-      PipeAgent.plugin().validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
+      PipeDataNodeAgent.plugin()
+          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
+      PipeDataNodeAgent.plugin()
+          .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
     } catch (Exception e) {
       LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
       future.setException(

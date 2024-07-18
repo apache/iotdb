@@ -704,12 +704,45 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeaderWithResult, 600);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult, long timeoutSeconds) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  TestUtils.assertSingleResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
                 } catch (Exception e) {
                   Assert.fail();
                 }
@@ -735,6 +768,9 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(consistentSeconds, TimeUnit.SECONDS)
           .failFast(
               () -> {

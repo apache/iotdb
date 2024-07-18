@@ -592,7 +592,13 @@ struct TQueryStatistics {
   29: i64 pageReadersDecodeNonAlignedDiskCount,
   30: i64 pageReadersDecodeNonAlignedDiskTime,
   31: i64 pageReadersDecodeNonAlignedMemCount,
-  32: i64 pageReadersDecodeNonAlignedMemTime
+  32: i64 pageReadersDecodeNonAlignedMemTime,
+  33: i64 pageReaderMaxUsedMemorySize
+
+  34: i64 alignedTimeSeriesMetadataModificationCount
+  35: i64 alignedTimeSeriesMetadataModificationTime
+  36: i64 nonAlignedTimeSeriesMetadataModificationCount
+  37: i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 
@@ -618,6 +624,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   15: optional string ip
   16: optional string state
 }
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -999,6 +1006,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
 
 service MPPDataExchangeService {
@@ -1011,4 +1023,7 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }

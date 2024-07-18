@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
@@ -49,8 +50,8 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
   private final Set<IDeviceID> deviceSetForCurrentTsFile;
   private final List<IDeviceID> activeDevices;
 
-  public RegionScanForActiveDeviceUtil(Filter timeFilter) {
-    super(timeFilter);
+  public RegionScanForActiveDeviceUtil(Filter timeFilter, Map<IDeviceID, Long> ttlCache) {
+    super(timeFilter, ttlCache);
     this.deviceSetForCurrentTsFile = new HashSet<>();
     this.activeDevices = new ArrayList<>();
   }
@@ -60,7 +61,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     return deviceSetForCurrentTsFile.isEmpty();
   }
 
-  public boolean nextTsFileHandle(Map<IDeviceID, Boolean> targetDevices)
+  public boolean nextTsFileHandle(Map<IDeviceID, DeviceContext> targetDevices)
       throws IOException, IllegalPathException {
 
     if (!queryDataSource.hasNext()) {
@@ -81,14 +82,14 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       // If this device has already been removed by another TsFileHandle, we should skip it.
       // If the time range is filtered, the devicePath is not active in this time range.
       if (!targetDevices.containsKey(deviceID)
-          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime, deviceID))) {
         continue;
       }
 
-      if ((timeFilter.satisfy(startTime, null)
+      if ((timeFilter.satisfy(startTime, deviceID)
               && !curFileScanHandle.isDeviceTimeDeleted(deviceID, startTime))
           || (endTime >= 0
-              && timeFilter.satisfy(endTime, null)
+              && timeFilter.satisfy(endTime, deviceID)
               && !curFileScanHandle.isDeviceTimeDeleted(deviceID, endTime))) {
         activeDevices.add(deviceID);
       } else {
@@ -122,6 +123,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     // Chunk is active means relating device is active, too.
     deviceSetForCurrentTsFile.remove(deviceID);
     activeDevices.add(deviceID);
+    timeFilter.removeTTLCache(deviceID);
     currentChunkHandle = null;
   }
 
@@ -134,15 +136,15 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       IChunkMetadata valueChunkMetaData = deviceChunkMetaData.nextValueChunkMetadata();
       long startTime = valueChunkMetaData.getStartTime();
       long endTime = valueChunkMetaData.getEndTime();
-      if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
+      if (!timeFilter.satisfyStartEndTime(startTime, endTime, deviceID)) {
         continue;
       }
       String measurement = valueChunkMetaData.getMeasurementUid();
       // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
       // time range.
-      if ((timeFilter.satisfy(startTime, null)
+      if ((timeFilter.satisfy(startTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, startTime))
-          || (timeFilter.satisfy(endTime, null)
+          || (timeFilter.satisfy(endTime, deviceID)
               && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, endTime))) {
         return true;
       }

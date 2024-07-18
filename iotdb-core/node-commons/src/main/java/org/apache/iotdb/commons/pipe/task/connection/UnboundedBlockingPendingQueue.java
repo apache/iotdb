@@ -29,7 +29,7 @@ public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPend
 
   private final BlockingDeque<E> pendingDeque;
 
-  public UnboundedBlockingPendingQueue(PipeEventCounter eventCounter) {
+  public UnboundedBlockingPendingQueue(final PipeEventCounter eventCounter) {
     super(new LinkedBlockingDeque<>(), eventCounter);
     pendingDeque = (BlockingDeque<E>) pendingQueue;
   }

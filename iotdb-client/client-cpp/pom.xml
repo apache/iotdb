@@ -37,6 +37,7 @@
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
+        <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -107,11 +108,12 @@
                         <goals>
                             <goal>wget</goal>
                         </goals>
-                        <phase>generate-resources</phase>
+                        <phase>generate-test-resources</phase>
                         <configuration>
                             <url>${catch2.url}</url>
                             <unpack>false</unpack>
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                            <skip>${ctest.skip.tests}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -257,6 +259,7 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <buildDirectory>${project.build.directory}/build/test</buildDirectory>
+                            <skipTests>${ctest.skip.tests}</skipTests>
                         </configuration>
                     </execution>
                 </executions>
@@ -401,6 +404,29 @@
                 <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
             </properties>
+        </profile>
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cmake-compile-test</id>
+                                <phase>none</phase>
+                                <!-- This effectively skips the execution -->
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

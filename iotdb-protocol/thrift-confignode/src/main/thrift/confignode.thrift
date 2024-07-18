@@ -41,6 +41,7 @@ struct TGlobalConfig {
   9: optional string schemaEngineMode
   10: optional i32 tagAttributeTotalSize
   11: optional bool isEnterprise
+  12: optional i64 timePartitionOrigin
 }
 
 struct TRatisConfig {
@@ -111,6 +112,7 @@ struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional bool preCheck
 }
 
 struct TDataNodeRegisterResp {
@@ -205,6 +207,7 @@ struct TDatabaseSchema {
     7: optional i32 maxSchemaRegionGroupNum
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
+    10: optional i64 timePartitionOrigin
 }
 
 // Schema
@@ -385,17 +388,17 @@ struct TClusterParameters {
   5: required string schemaRegionConsensusProtocolClass
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
-  8: required i64 defaultTTL
-  9: required string readConsistencyLevel
-  10: required double schemaRegionPerDataNode
-  11: required double dataRegionPerDataNode
-  12: required i32 seriesPartitionSlotNum
-  13: required string seriesPartitionExecutorClass
-  14: required double diskSpaceWarningThreshold
-  15: required string timestampPrecision
-  16: optional string schemaEngineMode
-  17: optional i32 tagAttributeTotalSize
-  18: optional i32 databaseLimitThreshold
+  8: required string readConsistencyLevel
+  9: required double schemaRegionPerDataNode
+  10: required double dataRegionPerDataNode
+  11: required i32 seriesPartitionSlotNum
+  12: required string seriesPartitionExecutorClass
+  13: required double diskSpaceWarningThreshold
+  14: required string timestampPrecision
+  15: optional string schemaEngineMode
+  16: optional i32 tagAttributeTotalSize
+  17: optional i32 databaseLimitThreshold
+  18: optional i64 timePartitionOrigin
 }
 
 struct TConfigNodeRegisterReq {
@@ -576,6 +579,7 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
+  12: optional i64 timePartitionOrigin
 }
 
 struct TGetDatabaseReq {
@@ -713,6 +717,8 @@ struct TAlterPipeReq {
     3: required map<string, string> connectorAttributes
     4: required bool isReplaceAllProcessorAttributes
     5: required bool isReplaceAllConnectorAttributes
+    6: optional map<string, string> extractorAttributes
+    7: optional bool isReplaceAllExtractorAttributes
 }
 
 // Deprecated, restored for compatibility
@@ -1308,8 +1314,8 @@ service IConfigNodeRPCService {
   // ======================================================
   // TTL
   // ======================================================
-  /** Show all ttl */
-  TShowTTLResp showAllTTL()
+  /** Show ttl */
+  TShowTTLResp showTTL(common.TShowTTLReq req)
 
   /** Update the specific device's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)
@@ -1339,7 +1345,10 @@ service IConfigNodeRPCService {
   /** Stop repair data task */
   common.TSStatus stopRepairData()
 
-  /** Load configuration on all DataNodes */
+  /** Submit configuration task to every datanodes */
+  common.TSStatus submitLoadConfigurationTask()
+
+  /** Load configuration on this confignode */
   common.TSStatus loadConfiguration()
 
   /** Set system status on DataNodes */
@@ -1375,6 +1384,14 @@ service IConfigNodeRPCService {
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
+
+  /** Test connection of every node in the cluster */
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitTestConnectionTaskToLeader()
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 
   /**
    * Show the matched cluster Regions' information

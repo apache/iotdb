@@ -21,51 +21,27 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-/** This class defines the scan task of schema fetcher. */
-public class SchemaFetchScanNode extends SourceNode {
+public abstract class SchemaFetchScanNode extends SourceNode {
+  protected final PartialPath storageGroup;
+  protected final PathPatternTree patternTree;
+  protected TRegionReplicaSet schemaRegionReplicaSet;
 
-  private final PartialPath storageGroup;
-  private final PathPatternTree patternTree;
-  private final Map<Integer, Template> templateMap;
-  private final boolean withTags;
-  private final boolean withTemplate;
-  private TRegionReplicaSet schemaRegionReplicaSet;
-
-  public SchemaFetchScanNode(
-      PlanNodeId id,
-      PartialPath storageGroup,
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withTemplate) {
+  protected SchemaFetchScanNode(
+      PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
-    this.templateMap = templateMap;
-    this.withTags = withTags;
-    this.withTemplate = withTemplate;
   }
 
   public PartialPath getStorageGroup() {
@@ -74,10 +50,6 @@ public class SchemaFetchScanNode extends SourceNode {
 
   public PathPatternTree getPatternTree() {
     return patternTree;
-  }
-
-  public Map<Integer, Template> getTemplateMap() {
-    return templateMap;
   }
 
   @Override
@@ -89,17 +61,6 @@ public class SchemaFetchScanNode extends SourceNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public PlanNodeType getType() {
-    return PlanNodeType.SCHEMA_FETCH_SCAN;
-  }
-
-  @Override
-  public PlanNode clone() {
-    return new SchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, withTemplate);
-  }
-
-  @Override
   public int allowedChildCount() {
     return 0;
   }
@@ -107,61 +68,6 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of();
-  }
-
-  @Override
-  public String toString() {
-    return String.format(
-        "SchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
-        this.getPlanNodeId(),
-        storageGroup,
-        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH_SCAN.serialize(byteBuffer);
-    storageGroup.serialize(byteBuffer);
-    patternTree.serialize(byteBuffer);
-
-    ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
-    for (Template template : templateMap.values()) {
-      template.serialize(byteBuffer);
-    }
-    ReadWriteIOUtils.write(withTags, byteBuffer);
-    ReadWriteIOUtils.write(withTemplate, byteBuffer);
-  }
-
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.SCHEMA_FETCH_SCAN.serialize(stream);
-    storageGroup.serialize(stream);
-    patternTree.serialize(stream);
-    ReadWriteIOUtils.write(templateMap.size(), stream);
-    for (Template template : templateMap.values()) {
-      template.serialize(stream);
-    }
-    ReadWriteIOUtils.write(withTags, stream);
-    ReadWriteIOUtils.write(withTemplate, stream);
-  }
-
-  public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
-    PartialPath storageGroup = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-
-    int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Integer, Template> templateMap = new HashMap<>();
-    Template template;
-    for (int i = 0; i < templateNum; i++) {
-      template = new Template();
-      template.deserialize(byteBuffer);
-      templateMap.put(template.getId(), template);
-    }
-    boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean withTemplate = ReadWriteIOUtils.readBool(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchScanNode(
-        planNodeId, storageGroup, patternTree, templateMap, withTags, withTemplate);
   }
 
   @Override
@@ -179,17 +85,4 @@ public class SchemaFetchScanNode extends SourceNode {
 
   @Override
   public void close() throws Exception {}
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetchScan(this, context);
-  }
-
-  public boolean isWithTags() {
-    return withTags;
-  }
-
-  public boolean isWithTemplate() {
-    return withTemplate;
-  }
 }

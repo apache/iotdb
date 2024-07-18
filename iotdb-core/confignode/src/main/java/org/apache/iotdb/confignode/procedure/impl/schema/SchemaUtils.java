@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -50,7 +50,8 @@ public class SchemaUtils {
   /**
    * Check whether the specific template is activated on the given pattern tree.
    *
-   * @return true if the template is activated on the given pattern tree, false otherwise.
+   * @return {@code true} if the template is activated on the given pattern tree, {@code false}
+   *     otherwise.
    * @throws MetadataException if any error occurs when checking the activation.
    */
   public static boolean checkDataNodeTemplateActivation(
@@ -61,6 +62,7 @@ public class SchemaUtils {
     try {
       patternTree.serialize(dataOutputStream);
     } catch (IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
     }
     ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
@@ -76,7 +78,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+                CnToDnRequestType.COUNT_PATHS_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCountPathsUsingTemplateReq(
                         template.getId(), patternTreeBytes, consensusGroupIdList))) {
@@ -111,8 +113,8 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "all replicaset of schemaRegion %s failed. %s",
-                            consensusGroupId.id, dataNodeLocationSet));
+                            "Failed to execute in all replicaset of schemaRegion %s when checking the template %s on %s. Failure nodes: %s",
+                            consensusGroupId.id, template, patternTree, dataNodeLocationSet));
                 interruptTask();
               }
             };
@@ -131,13 +133,12 @@ public class SchemaUtils {
   /**
    * Check whether any template is activated on the given schema regions.
    *
-   * @return true if the template is activated on the given pattern tree, false otherwise.
-   * @throws MetadataException if any error occurs when checking the activation.
+   * @throws MetadataException if any error occurs when checking the activation, or there are
+   *     templates under the databases.
    */
   public static void checkSchemaRegionUsingTemplate(
       ConfigManager configManager, List<PartialPath> deleteDatabasePatternPaths)
       throws MetadataException {
-
     PathPatternTree deleteDatabasePatternTree = new PathPatternTree();
     for (PartialPath path : deleteDatabasePatternPaths) {
       deleteDatabasePatternTree.appendPathPattern(path);
@@ -155,7 +156,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+                CnToDnRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckSchemaRegionUsingTemplateReq(consensusGroupIdList))) {
 
@@ -189,8 +190,8 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "all replicaset of schemaRegion %s failed. %s",
-                            consensusGroupId.id, dataNodeLocationSet));
+                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failure nodes: %s",
+                            consensusGroupId.id, deleteDatabasePatternPaths, dataNodeLocationSet));
                 interruptTask();
               }
             };
