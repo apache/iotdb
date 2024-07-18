@@ -172,10 +172,13 @@ public class Analysis implements IAnalysis {
 
   private boolean finishQueryAfterAnalyze;
 
-  // indicate is there a value filter
+  // indicate if value filter exists in query
   private boolean hasValueFilter = false;
 
   private TSStatus failStatus;
+
+  // indicate if sort node exists in query
+  private boolean hasSortNode = false;
 
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
@@ -594,8 +597,16 @@ public class Analysis implements IAnalysis {
     return hasValueFilter;
   }
 
-  public void setHasValueFilter(boolean hasValueFilter) {
+  public void setValueFilter(boolean hasValueFilter) {
     this.hasValueFilter = hasValueFilter;
+  }
+
+  public boolean hasSortNode() {
+    return hasSortNode;
+  }
+
+  public void setSortNode(boolean hasSortNode) {
+    this.hasSortNode = hasSortNode;
   }
 
   public boolean isEmptyDataSource() {

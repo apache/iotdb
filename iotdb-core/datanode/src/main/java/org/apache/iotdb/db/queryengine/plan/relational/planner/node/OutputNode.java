@@ -62,7 +62,7 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new OutputNode(id, child, columnNames, outputSymbols);
+    return new OutputNode(id, null, columnNames, outputSymbols);
   }
 
   @Override
