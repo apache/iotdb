@@ -454,8 +454,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
-    final List<SubscriptionMessage> messages = new ArrayList<>();
-    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
+    if (topicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
 
     // execute single task in current thread
     final int availableCount =
@@ -465,14 +466,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     // dividing topics
+    final List<PollTask> tasks = new ArrayList<>();
     final List<Set<String>> partitionedTopicNames =
         partition(topicNames, Math.min(MAX_POLL_PARALLELISM, availableCount));
-    final List<PollTask> tasks = new ArrayList<>();
     for (final Set<String> partition : partitionedTopicNames) {
       tasks.add(new PollTask(partition, timeoutMs));
     }
 
     // submit multiple tasks to poll messages
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
     try {
       for (final Future<List<SubscriptionMessage>> future :
           SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
@@ -514,12 +517,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     // TODO: ignore possible interrupted state?
 
-    if (messages.isEmpty()) {
-      if (Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
-        throw lastSubscriptionRuntimeCriticalException;
-      }
-      LOGGER.info(
-          "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
+    // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
+    // the client
+    if (messages.isEmpty() && Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
+      throw lastSubscriptionRuntimeCriticalException;
     }
 
     return messages;
@@ -619,6 +620,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         timer.update();
 
         // TODO: associated with timeoutMs instead of hardcoding
+        // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
         Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
       } while (timer.notExpired(TIMER_DELTA_MS));
     } catch (final InterruptedException e) {

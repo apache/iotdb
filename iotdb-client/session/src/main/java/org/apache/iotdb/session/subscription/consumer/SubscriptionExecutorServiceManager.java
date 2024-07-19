@@ -60,7 +60,7 @@ public final class SubscriptionExecutorServiceManager {
 
   /** Downstream Data Flow Executor: execute poll task */
   private static final SubscriptionExecutorService DOWNSTREAM_DATA_FLOW_EXECUTOR =
-      new SubscriptionScheduledExecutorService(
+      new SubscriptionExecutorService(
           DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME,
           Math.max(Runtime.getRuntime().availableProcessors(), 1));
 
@@ -151,8 +151,8 @@ public final class SubscriptionExecutorServiceManager {
     UPSTREAM_DATA_FLOW_EXECUTOR.submit(task);
   }
 
-  public static <T> List<Future<List<T>>> submitMultiplePollTasks(
-      final Collection<? extends Callable<List<T>>> tasks, final long timeoutMs)
+  public static <T> List<Future<T>> submitMultiplePollTasks(
+      final Collection<? extends Callable<T>> tasks, final long timeoutMs)
       throws InterruptedException {
     DOWNSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
     return DOWNSTREAM_DATA_FLOW_EXECUTOR.invokeAll(tasks, timeoutMs);
@@ -266,8 +266,8 @@ public final class SubscriptionExecutorServiceManager {
       return null;
     }
 
-    <T> List<Future<List<T>>> invokeAll(
-        final Collection<? extends Callable<List<T>>> tasks, final long timeoutMs)
+    <T> List<Future<T>> invokeAll(
+        final Collection<? extends Callable<T>> tasks, final long timeoutMs)
         throws InterruptedException {
       if (!isShutdown()) {
         synchronized (this) {

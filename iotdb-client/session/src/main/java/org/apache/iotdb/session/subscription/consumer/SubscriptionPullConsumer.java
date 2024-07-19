@@ -169,7 +169,19 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       parsedTopicNames = subscribedTopics.keySet();
     }
 
+    if (parsedTopicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
+    if (messages.isEmpty()) {
+      LOGGER.info(
+          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
+          this,
+          parsedTopicNames,
+          timeoutMs);
+      return messages;
+    }
 
     // add to uncommitted messages
     if (autoCommit) {
