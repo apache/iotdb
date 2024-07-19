@@ -633,7 +633,7 @@ showPipePlugins
 
 // Topic =========================================================================================
 createTopic
-    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
 topicAttributesClause
@@ -645,7 +645,7 @@ topicAttributeClause
     ;
 
 dropTopic
-    : DROP TOPIC topicName=identifier
+    : DROP TOPIC (IF EXISTS)? topicName=identifier
     ;
 
 showTopics

@@ -40,6 +40,8 @@ public class CreateTopicStatement extends Statement implements IConfigStatement 
 
   private Map<String, String> topicAttributes;
 
+  private boolean ifNotExistsCondition;
+
   public CreateTopicStatement() {
     super();
     statementType = StatementType.CREATE_TOPIC;
@@ -53,12 +55,20 @@ public class CreateTopicStatement extends Statement implements IConfigStatement 
     return topicAttributes;
   }
 
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
+  }
+
   public void setTopicName(String topicName) {
     this.topicName = topicName;
   }
 
   public void setTopicAttributes(Map<String, String> topicAttributes) {
     this.topicAttributes = topicAttributes;
+  }
+
+  public void setIfNotExists(boolean ifNotExistsCondition) {
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   @Override

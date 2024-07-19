@@ -53,6 +53,9 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
+  private static final String SKIP_PROCEDURE_MESSAGE =
+      "Skip the following Procedure execution steps.";
+
   private static final int RETRY_THRESHOLD = 1;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
@@ -156,7 +159,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract SubscriptionOperation getOperation();
 
-  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env)
+  protected abstract boolean executeFromValidate(ConfigNodeProcedureEnv env)
       throws SubscriptionException;
 
   protected abstract void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
@@ -179,7 +182,10 @@ public abstract class AbstractOperateSubscriptionProcedure
     try {
       switch (state) {
         case VALIDATE:
-          executeFromValidate(env);
+          if (!executeFromValidate(env)) {
+            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_PROCEDURE_MESSAGE);
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperateSubscriptionState.OPERATE_ON_CONFIG_NODES);
           break;
         case OPERATE_ON_CONFIG_NODES:

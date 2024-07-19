@@ -781,6 +781,7 @@ struct TAlterLogicalViewReq {
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
+    3: optional bool ifNotExistsCondition
 }
 
 struct TShowTopicReq {

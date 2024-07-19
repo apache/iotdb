@@ -2031,7 +2031,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateTopicReq req =
-          new TCreateTopicReq().setTopicName(topicName).setTopicAttributes(topicAttributes);
+          new TCreateTopicReq()
+              .setTopicName(topicName)
+              .setTopicAttributes(topicAttributes)
+              .setIfNotExistsCondition(createTopicStatement.hasIfNotExistsCondition());
       final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to create topic {} in config node, status is {}.", topicName, tsStatus);

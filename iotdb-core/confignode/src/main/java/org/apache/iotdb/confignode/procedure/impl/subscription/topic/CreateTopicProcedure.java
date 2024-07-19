@@ -68,11 +68,13 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateTopicProcedure: executeFromValidate");
 
     // 1. check if the topic exists
-    subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq);
+    if (!subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq)) {
+      return false;
+    }
 
     // 2. create the topic meta
     topicMeta =
@@ -82,6 +84,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
                 System.currentTimeMillis(),
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
             createTopicReq.getTopicAttributes());
+    return true;
   }
 
   @Override

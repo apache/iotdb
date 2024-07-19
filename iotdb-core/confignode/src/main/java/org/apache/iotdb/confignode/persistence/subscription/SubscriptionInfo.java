@@ -142,20 +142,22 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   /////////////////////////////// Topic ///////////////////////////////
 
-  public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
+  public boolean validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     acquireReadLock();
     try {
-      checkBeforeCreateTopicInternal(createTopicReq);
+      return checkBeforeCreateTopicInternal(createTopicReq);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
+  private boolean checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     if (!isTopicExisted(createTopicReq.getTopicName())) {
-      return;
+      return true;
+    } else if (createTopicReq.isIfNotExistsCondition()) {
+      return false;
     }
 
     final String exceptionMessage =

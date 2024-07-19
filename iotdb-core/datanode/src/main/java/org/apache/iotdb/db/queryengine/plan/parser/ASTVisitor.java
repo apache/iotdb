@@ -3880,6 +3880,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createTopicStatement.setTopicAttributes(new HashMap<>());
     }
+    createTopicStatement.setIfNotExists(
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
     return createTopicStatement;
   }
