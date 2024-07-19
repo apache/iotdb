@@ -722,6 +722,7 @@ struct TAlterPipeReq {
     5: required bool isReplaceAllConnectorAttributes
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
+    8: optional bool ifExistsCondition
 }
 
 struct TDropPipeReq {

@@ -575,7 +575,7 @@ connectorAttributeClause
     ;
 
 alterPipe
-    : ALTER PIPE pipeName=identifier
+    : ALTER PIPE (IF EXISTS)? pipeName=identifier
         alterExtractorAttributesClause?
         alterProcessorAttributesClause?
         alterConnectorAttributesClause?
