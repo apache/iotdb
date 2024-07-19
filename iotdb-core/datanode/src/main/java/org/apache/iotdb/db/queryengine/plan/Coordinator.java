@@ -43,8 +43,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalModelPlanner;
@@ -53,7 +53,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -217,7 +221,7 @@ public class Coordinator {
           queryContext,
           statement.getType(),
           executor,
-          statement.accept(new ConfigTaskVisitor(), queryContext));
+          statement.accept(new TreeConfigTaskVisitor(), queryContext));
     }
     TreeModelPlanner treeModelPlanner =
         new TreeModelPlanner(
@@ -273,7 +277,11 @@ public class Coordinator {
         || statement instanceof CreateTable
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
-        || statement instanceof DropTable) {
+        || statement instanceof DropTable
+        || statement instanceof ShowCluster
+        || statement instanceof ShowRegions
+        || statement instanceof ShowDataNodes
+        || statement instanceof ShowConfigNodes) {
       return new ConfigExecution(
           queryContext,
           null,

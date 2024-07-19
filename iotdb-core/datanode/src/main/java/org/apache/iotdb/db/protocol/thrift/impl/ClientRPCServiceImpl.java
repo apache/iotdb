@@ -354,9 +354,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
 
-        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+        // TODO: permission check
 
         // TODO audit log, quota, StatementType
+
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+
         result =
             COORDINATOR.executeForTableModel(
                 s,
