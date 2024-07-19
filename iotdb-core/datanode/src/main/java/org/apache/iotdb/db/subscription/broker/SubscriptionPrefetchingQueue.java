@@ -231,16 +231,17 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
-   * @return {@code true} if ack successfully
+   * @return the corresponding event if ack successfully, otherwise {@code null}
    */
-  public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
+  public SubscriptionEvent ack(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
-      return false;
+      return null;
     }
 
     if (event.isCommitted()) {
@@ -250,7 +251,7 @@ public abstract class SubscriptionPrefetchingQueue {
           event,
           commitContext,
           this);
-      return false;
+      return null;
     }
 
     if (!event.isCommittable()) {
@@ -259,7 +260,7 @@ public abstract class SubscriptionPrefetchingQueue {
           event,
           commitContext,
           this);
-      return false;
+      return null;
     }
 
     // check if a consumer acks event from another consumer group...
@@ -278,20 +279,21 @@ public abstract class SubscriptionPrefetchingQueue {
     event.cleanup();
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
-    return true;
+    return event;
   }
 
   /**
-   * @return {@code true} if nack successfully
+   * @return the corresponding event if nack successfully, otherwise {@code null}
    */
-  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
+  public SubscriptionEvent nack(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
-      return false;
+      return null;
     }
 
     // check if a consumer nacks event from another consumer group...
@@ -307,7 +309,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     event.nack();
-    return true;
+    return event;
   }
 
   protected SubscriptionCommitContext generateSubscriptionCommitContext() {

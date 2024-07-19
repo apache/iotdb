@@ -29,6 +29,7 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
 
   private final SubscriptionPipeTsFileEventBatch batch;
   private final File tsFile;
+  private final String fileName;
 
   private final AtomicInteger referenceCount; // shared between the same batch
   private final AtomicBoolean isAcked = new AtomicBoolean(false);
@@ -41,11 +42,18 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
     this.batch = batch;
     this.tsFile = tsFile;
     this.referenceCount = referenceCount;
+
+    this.fileName = tsFile.getName();
   }
 
   @Override
   public File getTsFile() {
     return tsFile;
+  }
+
+  @Override
+  public String getFileName() {
+    return fileName;
   }
 
   @Override

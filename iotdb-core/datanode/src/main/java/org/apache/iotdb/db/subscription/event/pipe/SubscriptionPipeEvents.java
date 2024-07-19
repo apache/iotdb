@@ -28,6 +28,11 @@ public interface SubscriptionPipeEvents {
    */
   File getTsFile();
 
+  /**
+   * @return {@code null} if the pipe events do not contain the corresponding tsfile.
+   */
+  String getFileName();
+
   void ack();
 
   void cleanup();

@@ -653,7 +653,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, file, fileWriter));
+      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter));
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -665,12 +665,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private SubscriptionMessage pollFileInternal(
       final SubscriptionCommitContext commitContext,
+      final String rawFileName,
       final File file,
       final RandomAccessFile fileWriter)
       throws IOException, SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
-    final String fileName = file.getName();
 
     LOGGER.info(
         "{} start to poll file {} with commit context {}",
@@ -681,7 +681,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(dataNodeId, topicName, fileName, writingOffset);
+          pollFileInternal(dataNodeId, topicName, rawFileName, writingOffset);
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -718,11 +718,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FilePiecePayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FilePiecePayload) payload).getFileName(), this);
+                      rawFileName, ((FilePiecePayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -765,11 +765,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FileSealPayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FileSealPayload) payload).getFileName(), this);
+                      rawFileName, ((FileSealPayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }

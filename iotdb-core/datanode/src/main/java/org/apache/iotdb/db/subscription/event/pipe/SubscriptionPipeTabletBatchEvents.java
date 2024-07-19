@@ -37,6 +37,11 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
+  public String getFileName() {
+    return null;
+  }
+
+  @Override
   public void ack() {
     batch.ack();
   }
