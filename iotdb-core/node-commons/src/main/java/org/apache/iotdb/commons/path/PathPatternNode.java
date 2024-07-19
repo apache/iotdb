@@ -193,7 +193,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
       ReadWriteIOUtils.write(mark ? -1 : -2, buffer);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), buffer);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, buffer);
       }
     }
@@ -202,7 +202,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
   }
 
   void serializeChildren(final ByteBuffer buffer) {
-    for (PathPatternNode<V, S> childNode : children.values()) {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(buffer);
     }
   }
@@ -213,7 +213,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
       ReadWriteIOUtils.write(mark ? -1 : -2, outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, outputStream);
       }
     }
@@ -227,7 +227,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
       ReadWriteIOUtils.write(mark ? -1 : -2, outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, outputStream);
       }
     }
@@ -236,13 +236,13 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
   }
 
   void serializeChildren(final PublicBAOS outputStream) throws IOException {
-    for (PathPatternNode<V, S> childNode : children.values()) {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
 
   void serializeChildren(final DataOutputStream outputStream) throws IOException {
-    for (PathPatternNode<V, S> childNode : children.values()) {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
@@ -255,7 +255,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
     final int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
     if (typeOrValueSize >= 0) {
       // measurement node in PatternTreeMap
-      Set<V> valueSet = new HashSet<>();
+      final Set<V> valueSet = new HashSet<>();
       for (int i = 0; i < typeOrValueSize; i++) {
         valueSet.add(serializer.read(buffer));
       }
@@ -266,7 +266,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
     }
     int childrenSize = ReadWriteIOUtils.readInt(buffer);
     while (childrenSize > 0) {
-      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer, nodeNameProcessor);
+      final PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer, nodeNameProcessor);
       node.addChild(tmpNode);
       childrenSize--;
     }
