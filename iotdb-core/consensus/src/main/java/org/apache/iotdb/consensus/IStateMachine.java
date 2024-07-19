@@ -90,6 +90,10 @@ public interface IStateMachine {
     return takeSnapshot(snapshotDir);
   }
 
+  default boolean clearSnapshot() {
+    throw new UnsupportedOperationException("not implemented yet");
+  }
+
   /**
    * Load the latest snapshot from given dir.
    *
