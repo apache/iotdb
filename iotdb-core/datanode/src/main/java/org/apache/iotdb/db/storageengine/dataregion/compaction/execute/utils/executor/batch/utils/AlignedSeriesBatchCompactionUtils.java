@@ -44,6 +44,7 @@ public class AlignedSeriesBatchCompactionUtils {
 
   public static List<IMeasurementSchema> selectColumnBatchToCompact(
       List<IMeasurementSchema> schemaList, Set<String> compactedMeasurements, int batchSize) {
+    // TODO: select batch by allocated memory and chunk size to perform more strict memory control
     List<IMeasurementSchema> selectedColumnBatch = new ArrayList<>(batchSize);
     for (IMeasurementSchema schema : schemaList) {
       if (!isLargeDataType(schema.getType())) {
