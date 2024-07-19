@@ -53,7 +53,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     // Create pipe
     String sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe a2b with source ('source'='iotdb-source', 'source.path'='root.test1.**') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -72,9 +72,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -89,7 +87,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     // Create pipe If Not Exists
     sql =
         String.format(
-            "create pipe If Not Exists a2b with sink ('node-urls'='%s', 'source.path'='root.test1.**')",
+            "create pipe If Not Exists a2b with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -107,9 +105,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -118,7 +114,6 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Record last creation time
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertEquals(creationTime, showPipeResult.get(0).creationTime);
     }
 
@@ -139,7 +134,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     expectedResSet.add("2500,4.0,");
     expectedResSet.add("3000,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.test1.**", "Time,root.test1.at1,", expectedResSet);
+        receiverEnv, "select * from root.test1", "Time,root.test1.at1,", expectedResSet);
   }
 
   @Test
@@ -245,7 +240,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.path'='root.test1.**') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -280,7 +275,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
 
     // Check data on receiver
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.test1.**", "Time,root.test1.at1,", new HashSet<>());
+        receiverEnv, "select * from root.test1", "Time,", new HashSet<>());
 
     // Drop pipe If Exists
     try (final Connection connection = senderEnv.getConnection();
