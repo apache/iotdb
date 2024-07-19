@@ -19,16 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
+
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.mergeSort;
@@ -42,7 +46,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
  * <pre>
  * - Limit (limit = x)
  *    - Project (identity, narrowing)
- *       - Sort (order by a, b)
+ *       - MergeSort (order by a, b)
  * </pre>
  *
  * Into:
@@ -56,7 +60,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
  */
 public class MergeLimitOverProjectWithMergeSort implements Rule<LimitNode> {
   private static final Capture<ProjectNode> PROJECT = newCapture();
-  private static final Capture<MergeSortNode> SORT = newCapture();
+  private static final Capture<MergeSortNode> MERGE_SORT = newCapture();
 
   private static final Pattern<LimitNode> PATTERN =
       limit()
@@ -67,7 +71,7 @@ public class MergeLimitOverProjectWithMergeSort implements Rule<LimitNode> {
                       project()
                           .capturedAs(PROJECT)
                           .matching(ProjectNode::isIdentity)
-                          .with(source().matching(mergeSort().capturedAs(SORT)))));
+                          .with(source().matching(mergeSort().capturedAs(MERGE_SORT)))));
 
   @Override
   public Pattern<LimitNode> getPattern() {
@@ -77,17 +81,39 @@ public class MergeLimitOverProjectWithMergeSort implements Rule<LimitNode> {
   @Override
   public Result apply(LimitNode parent, Captures captures, Context context) {
     ProjectNode project = captures.get(PROJECT);
-    MergeSortNode mergeSortNode = captures.get(SORT);
+    MergeSortNode mergeSortNode = captures.get(MERGE_SORT);
 
-    return Result.ofPlanNode(
-        project.replaceChildren(
-            ImmutableList.of(
-                new TopKNode(
-                    parent.getPlanNodeId(),
-                    mergeSortNode.getChildren(),
-                    mergeSortNode.getOrderingScheme(),
-                    parent.getCount(),
-                    parent.getOutputSymbols(),
-                    false))));
+    TopKNode topKNode;
+    PlanNode childOfMergeSort = context.getLookup().resolve(mergeSortNode.getChildren().get(0));
+    if (childOfMergeSort instanceof StreamSortNode) {
+      topKNode =
+          new TopKNode(
+              parent.getPlanNodeId(),
+              mergeSortNode.getOrderingScheme(),
+              parent.getCount(),
+              parent.getOutputSymbols(),
+              true);
+      for (PlanNode child : mergeSortNode.getChildren()) {
+        LimitNode limitNode =
+            new LimitNode(
+                context.getIdAllocator().genPlanNodeId(),
+                child,
+                parent.getCount(),
+                Optional.empty());
+        topKNode.addChild(limitNode);
+      }
+
+    } else {
+      topKNode =
+          new TopKNode(
+              parent.getPlanNodeId(),
+              mergeSortNode.getChildren(),
+              mergeSortNode.getOrderingScheme(),
+              parent.getCount(),
+              parent.getOutputSymbols(),
+              false);
+    }
+
+    return Result.ofPlanNode(project.replaceChildren(ImmutableList.of(topKNode)));
   }
 }
