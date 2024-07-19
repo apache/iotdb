@@ -141,6 +141,16 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public String toString() {
+    return "InsertRowsNode{"
+        + "insertRowNodeIndexList="
+        + insertRowNodeIndexList
+        + ", insertRowNodeList="
+        + insertRowNodeList
+        + '}';
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), insertRowNodeIndexList, insertRowNodeList);
   }
@@ -188,7 +198,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
@@ -202,7 +212,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INSERT_ROWS.serialize(stream);
+    getType().serialize(stream);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
 
@@ -309,7 +319,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     subSerialize(buffer);
   }

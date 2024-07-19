@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -101,9 +103,46 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     return insertRowsNode;
   }
 
-  @Override
-  public int serializedSize() {
-    return super.serializedSize() + columnCategories.length * Byte.BYTES;
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return InsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
+  public static RelationalInsertRowsNode deserializeFromWAL(DataInputStream stream)
+      throws IOException {
+    // we do not store plan node id in wal entry
+    RelationalInsertRowsNode insertRowsNode = new RelationalInsertRowsNode(new PlanNodeId(""));
+    long searchIndex = stream.readLong();
+    int listSize = stream.readInt();
+    for (int i = 0; i < listSize; i++) {
+      RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(stream);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    insertRowsNode.setSearchIndex(searchIndex);
+    return insertRowsNode;
+  }
+
+  /**
+   * Deserialize from wal.
+   *
+   * @param buffer - ByteBuffer
+   * @return InsertRowNode
+   * @throws IllegalArgumentException - If meets illegal argument
+   */
+  public static RelationalInsertRowsNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    RelationalInsertRowsNode insertRowsNode = new RelationalInsertRowsNode(new PlanNodeId(""));
+    long searchIndex = buffer.getLong();
+    int listSize = buffer.getInt();
+    for (int i = 0; i < listSize; i++) {
+      RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(buffer);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    insertRowsNode.setSearchIndex(searchIndex);
+    return insertRowsNode;
   }
 
   @Override

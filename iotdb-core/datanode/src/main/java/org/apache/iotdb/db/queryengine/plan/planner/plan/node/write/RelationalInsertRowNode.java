@@ -19,16 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,6 +59,30 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   public RelationalInsertRowNode(PlanNodeId id) {
     super(id);
+  }
+
+  public RelationalInsertRowNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      MeasurementSchema[] measurementSchemas,
+      long time,
+      Object[] values,
+      boolean isNeedInferType,
+      TsTableColumnCategory[] columnCategories) {
+    super(
+        id,
+        devicePath,
+        isAligned,
+        measurements,
+        dataTypes,
+        measurementSchemas,
+        time,
+        values,
+        isNeedInferType);
+    setColumnCategories(columnCategories);
   }
 
   public IDeviceID getDeviceID() {
@@ -82,33 +112,108 @@ public class RelationalInsertRowNode extends InsertRowNode {
     return insertNode;
   }
 
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return RelationalInsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
+  public static RelationalInsertRowNode deserializeFromWAL(DataInputStream stream)
+      throws IOException {
+    long searchIndex = stream.readLong();
+    RelationalInsertRowNode insertNode = subDeserializeFromWAL(stream);
+    insertNode.setSearchIndex(searchIndex);
+    return insertNode;
+  }
+
+  public static RelationalInsertRowNode deserializeFromWAL(ByteBuffer buffer) {
+    long searchIndex = buffer.getLong();
+    RelationalInsertRowNode insertNode = subDeserializeFromWAL(buffer);
+    insertNode.setSearchIndex(searchIndex);
+    return insertNode;
+  }
+
+  protected static RelationalInsertRowNode subDeserializeFromWAL(DataInputStream stream)
+      throws IOException {
+    // we do not store plan node id in wal entry
+    RelationalInsertRowNode insertNode = new RelationalInsertRowNode(new PlanNodeId(""));
+    insertNode.setTime(stream.readLong());
+    try {
+      insertNode.setDevicePath(
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(ReadWriteIOUtils.readString(stream)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
+    TsTableColumnCategory[] newColumnCategories =
+        new TsTableColumnCategory[insertNode.dataTypes.length];
+    for (int i = 0; i < insertNode.dataTypes.length; i++) {
+      newColumnCategories[i] = TsTableColumnCategory.deserialize(stream);
+    }
+    insertNode.setColumnCategories(newColumnCategories);
+    return insertNode;
+  }
+
+  protected static RelationalInsertRowNode subDeserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    RelationalInsertRowNode insertNode = new RelationalInsertRowNode(new PlanNodeId(""));
+    insertNode.setTime(buffer.getLong());
+    try {
+      insertNode.setDevicePath(
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(ReadWriteIOUtils.readString(buffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(buffer);
+    TsTableColumnCategory[] newColumnCategories =
+        new TsTableColumnCategory[insertNode.dataTypes.length];
+    for (int i = 0; i < insertNode.dataTypes.length; i++) {
+      newColumnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+    }
+    insertNode.setColumnCategories(newColumnCategories);
+    return insertNode;
+  }
+
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    super.serializeAttributes(byteBuffer);
+  void subSerialize(ByteBuffer buffer) {
+    super.subSerialize(buffer);
     for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i].serialize(byteBuffer);
+      columnCategories[i].serialize(buffer);
     }
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    super.serializeAttributes(stream);
+  void subSerialize(DataOutputStream stream) throws IOException {
+    super.subSerialize(stream);
     for (int i = 0; i < dataTypes.length; i++) {
       columnCategories[i].serialize(stream);
     }
   }
 
-  public void subDeserialize(ByteBuffer buffer) {
-    super.subDeserialize(buffer);
-    columnCategories = new TsTableColumnCategory[dataTypes.length];
+  @Override
+  protected void subSerialize(IWALByteBufferView buffer) {
+    super.subSerialize(buffer);
     for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+      buffer.put(columnCategories[i].getCategory());
     }
   }
 
+  public void subDeserialize(ByteBuffer buffer) {
+    super.subDeserialize(buffer);
+    TsTableColumnCategory[] newColumnCategories = new TsTableColumnCategory[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      newColumnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+    }
+    setColumnCategories(newColumnCategories);
+  }
+
   @Override
-  public int serializedSize() {
-    return super.serializedSize() + columnCategories.length * Byte.BYTES;
+  protected int subSerializeSize() {
+    return super.subSerializeSize() + columnCategories.length * Byte.BYTES;
   }
 
   @Override

@@ -101,4 +101,8 @@ public enum TsTableColumnCategory {
         throw new IllegalArgumentException("Unknown column type: " + columnType);
     }
   }
+
+  public byte getCategory() {
+    return category;
+  }
 }

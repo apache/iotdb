@@ -280,6 +280,12 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
+      case 2000:
+        return RelationalInsertTabletNode.deserializeFromWAL(stream);
+      case 2001:
+        return RelationalInsertRowNode.deserializeFromWAL(stream);
+      case 2002:
+        return RelationalInsertRowsNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -296,6 +302,12 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
+      case 2000:
+        return RelationalInsertTabletNode.deserializeFromWAL(buffer);
+      case 2001:
+        return RelationalInsertRowNode.deserializeFromWAL(buffer);
+      case 2002:
+        return RelationalInsertRowsNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

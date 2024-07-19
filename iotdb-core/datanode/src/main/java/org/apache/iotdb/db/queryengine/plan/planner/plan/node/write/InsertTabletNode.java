@@ -679,7 +679,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case BLOB:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(binaryValues[j], stream);
+          if (binaryValues[j] != null) {
+            ReadWriteIOUtils.write(binaryValues[j], stream);
+          } else {
+            ReadWriteIOUtils.write(0, stream);
+          }
         }
         break;
       default:
@@ -850,12 +854,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Serialize measurement schemas, ignoring failed time series */
-  private void writeMeasurementSchemas(IWALByteBufferView buffer) {
+  protected void writeMeasurementSchemas(IWALByteBufferView buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
   }
 
-  private void writeTimes(IWALByteBufferView buffer, int start, int end) {
+  protected void writeTimes(IWALByteBufferView buffer, int start, int end) {
     buffer.putInt(end - start);
     for (int i = start; i < end; i++) {
       buffer.putLong(times[i]);
@@ -863,7 +867,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Serialize bitmaps, ignoring failed time series */
-  private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
+  protected void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
       for (int i = 0; i < bitMaps.length; i++) {
@@ -886,7 +890,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Serialize values, ignoring failed time series */
-  private void writeValues(IWALByteBufferView buffer, int start, int end) {
+  protected void writeValues(IWALByteBufferView buffer, int start, int end) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
@@ -957,7 +961,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return insertNode;
   }
 
-  private void subDeserializeFromWAL(DataInputStream stream) throws IOException {
+  protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
     searchIndex = stream.readLong();
     try {
       devicePath =
@@ -993,7 +997,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return insertNode;
   }
 
-  private void subDeserializeFromWAL(ByteBuffer buffer) {
+  protected void subDeserializeFromWAL(ByteBuffer buffer) {
     searchIndex = buffer.getLong();
     try {
       devicePath =

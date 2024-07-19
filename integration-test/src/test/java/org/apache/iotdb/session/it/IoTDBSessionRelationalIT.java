@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnType;
@@ -42,7 +43,9 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
@@ -170,6 +173,14 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
                       "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
     }
+    Map<String, ChunkMetadata> chunkMetadataMap = new HashMap<>();
+    List<ChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+    chunkMetadataMap.computeIfPresent(
+        "",
+        (k, v) -> {
+          valueChunkMetadataList.add(v);
+          return v;
+        });
   }
 
   @Test

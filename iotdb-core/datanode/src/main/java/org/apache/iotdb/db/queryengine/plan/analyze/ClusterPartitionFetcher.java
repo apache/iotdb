@@ -25,13 +25,16 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -43,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -312,7 +316,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition =
           partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs));
       if (null == schemaPartition) {
-
         List<TSeriesPartitionSlot> partitionSlots =
             deviceIDs.stream()
                 .map(partitionExecutor::getSeriesPartitionSlot)
@@ -345,7 +348,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(String database) {
-    return partitionCache.getSchemaPartition(database);
+    PathPatternTree patternTree = new PathPatternTree();
+    try {
+      patternTree.appendPathPattern(
+          new PartialPath(
+              PathUtils.qualifyDatabaseName(database)
+                  + IoTDBConstant.PATH_SEPARATOR
+                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (IllegalPathException e) {
+      throw new SemanticException(e);
+    }
+    return getSchemaPartition(patternTree);
   }
 
   /** split data partition query param by database */

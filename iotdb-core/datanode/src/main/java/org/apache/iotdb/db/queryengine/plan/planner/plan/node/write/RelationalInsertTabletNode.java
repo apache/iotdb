@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -34,6 +35,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -45,6 +47,21 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   // deviceId cache for Table-view insertion
   private IDeviceID[] deviceIDs;
+
+  public RelationalInsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      long[] times,
+      BitMap[] bitMaps,
+      Object[] columns,
+      int rowCount,
+      TsTableColumnCategory[] columnCategories) {
+    super(id, devicePath, isAligned, measurements, dataTypes, times, bitMaps, columns, rowCount);
+    setColumnCategories(columnCategories);
+  }
 
   public RelationalInsertTabletNode(
       PlanNodeId id,
@@ -142,15 +159,59 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
-    columnCategories = new TsTableColumnCategory[dataTypes.length];
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
     for (int i = 0; i < dataTypes.length; i++) {
       columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+    }
+    setColumnCategories(columnCategories);
+  }
+
+  void subSerialize(IWALByteBufferView buffer, int start, int end) {
+    super.subSerialize(buffer, start, end);
+    for (int i = 0; i < dataTypes.length; i++) {
+      buffer.put(columnCategories[i].getCategory());
     }
   }
 
   @Override
-  public int serializedSize() {
-    return super.serializedSize() + columnCategories.length * Byte.BYTES;
+  protected void subDeserializeFromWAL(ByteBuffer buffer) {
+    super.subDeserializeFromWAL(buffer);
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+    }
+    setColumnCategories(columnCategories);
+  }
+
+  @Override
+  protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
+    super.subDeserializeFromWAL(stream);
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      columnCategories[i] = TsTableColumnCategory.deserialize(stream);
+    }
+    setColumnCategories(columnCategories);
+  }
+
+  /** Deserialize from wal */
+  public static RelationalInsertTabletNode deserializeFromWAL(DataInputStream stream)
+      throws IOException {
+    // we do not store plan node id in wal entry
+    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserializeFromWAL(stream);
+    return insertNode;
+  }
+
+  public static RelationalInsertTabletNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserializeFromWAL(buffer);
+    return insertNode;
+  }
+
+  @Override
+  int subSerializeSize(int start, int end) {
+    return super.subSerializeSize(start, end) + columnCategories.length * Byte.BYTES;
   }
 
   @Override
