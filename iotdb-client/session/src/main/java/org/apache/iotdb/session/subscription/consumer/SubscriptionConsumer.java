@@ -126,7 +126,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Set<TEndPoint> initialEndpoints = new HashSet<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
-    if (Objects.nonNull(builder.host)) {
+    if (Objects.nonNull(builder.host) || Objects.nonNull(builder.port)) {
+      if (Objects.isNull(builder.host)) {
+        builder.host = SessionConfig.DEFAULT_HOST;
+      }
+      if (Objects.isNull(builder.port)) {
+        builder.port = SessionConfig.DEFAULT_PORT;
+      }
+      initialEndpoints.add(new TEndPoint(builder.host, builder.port));
+    } else if (Objects.isNull(builder.nodeUrls)) {
+      builder.host = SessionConfig.DEFAULT_HOST;
+      builder.port = SessionConfig.DEFAULT_PORT;
       initialEndpoints.add(new TEndPoint(builder.host, builder.port));
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
@@ -975,9 +985,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public abstract static class Builder {
 
-    protected String host = SessionConfig.DEFAULT_HOST;
-    protected int port = SessionConfig.DEFAULT_PORT;
-    protected List<String> nodeUrls = null;
+    protected String host;
+    protected Integer port;
+    protected List<String> nodeUrls;
 
     protected String username = SessionConfig.DEFAULT_USER;
     protected String password = SessionConfig.DEFAULT_PASSWORD;
