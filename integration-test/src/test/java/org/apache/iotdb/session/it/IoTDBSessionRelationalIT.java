@@ -75,6 +75,11 @@ public class IoTDBSessionRelationalIT {
   // for manual debugging
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
+    insertRelationalTabletPerformanceTest();
+  }
+
+  private static void insertRelationalTabletPerformanceTest()
+      throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session =
         new Session.Builder().host("127.0.0.1").port(6667).sqlDialect(TABLE_SQL_DIALECT).build()) {
       session.open();
@@ -139,10 +144,6 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
       }
     }
-  }
-
-  private void insertRelationalTabletPerformanceTest() {
-
   }
 
   @Test
