@@ -52,6 +52,14 @@ public class LimitNode extends SingleChildProcessNode {
     return false;
   }
 
+  public boolean isWithTies() {
+    return tiesResolvingScheme.isPresent();
+  }
+
+  public Optional<OrderingScheme> getTiesResolvingScheme() {
+    return tiesResolvingScheme;
+  }
+
   @Override
   public PlanNode clone() {
     return new LimitNode(id, child, count, tiesResolvingScheme);
