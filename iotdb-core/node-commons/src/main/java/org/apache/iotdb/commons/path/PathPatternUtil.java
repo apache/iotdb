@@ -43,14 +43,15 @@ public class PathPatternUtil {
   /**
    * Determine if a node pattern matches a node name.
    *
-   * @param patternNodeWithWildcard must be a string starts or ends with *, e.g. *, **, d*, *d*
+   * @param patternNode must be a full path node or a string starts or ends with *, e.g. d, *, **,
+   *     d*, *d*
    * @param nodeName node to match
    */
-  public static boolean isNodeMatch(final String patternNodeWithWildcard, final String nodeName) {
-    if (patternNodeWithWildcard.equals(ONE_LEVEL_PATH_WILDCARD)
-        || patternNodeWithWildcard.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+  public static boolean isNodeMatch(final String patternNode, final String nodeName) {
+    if (patternNode.equals(ONE_LEVEL_PATH_WILDCARD)
+        || patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
       return true;
     }
-    return Pattern.matches(patternNodeWithWildcard.replace("*", ".*"), nodeName);
+    return Pattern.matches(patternNode.replace("*", ".*"), nodeName);
   }
 }
