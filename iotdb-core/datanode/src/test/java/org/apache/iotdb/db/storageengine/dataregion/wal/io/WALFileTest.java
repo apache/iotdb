@@ -67,6 +67,8 @@ public class WALFileTest {
   public void setUp() throws Exception {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
+    } else {
+      walFile.getParentFile().mkdirs();
     }
   }
 
