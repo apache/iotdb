@@ -70,7 +70,7 @@ pipeline {
 //             }
 //             steps {
 //                 // Publish the site with the scm-publish plugin.
-//                 sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+//                 sh './mvnw -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
 //
 //                 // Clean up the snapshots directory (freeing up more space after deploying).
 //                 dir("target") {
@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building and Unit Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -DskipITs"
+                sh "./mvnw ${MVN_TEST_FAIL_IGNORE} clean install -DskipITs"
             }
             post {
                 always {
@@ -105,7 +105,7 @@ pipeline {
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT,with-integration-tests -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
+                sh "./mvnw ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT,with-integration-tests -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
             }
             post {
                 always {
@@ -132,7 +132,7 @@ pipeline {
                 echo 'Deploy Prepare'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh "mvn -T 1C -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -DskipTests"
+                sh "./mvnw -T 1C -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -DskipTests"
             }
             post {
                 always {
@@ -153,7 +153,7 @@ pipeline {
         //             // Then run the analysis
         //             // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
         //             withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-        //                 sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
+        //                 sh "./mvnw verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
         //             }
         //         }
         //     }
@@ -169,7 +169,7 @@ pipeline {
             steps {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
-                sh 'until mvn -f jenkins.pom -X -P deploy-snapshots wagon:upload || (( count++ >= 5 )); do echo "Retrying to deploy"; done'
+                sh 'until ./mvnw -f jenkins.pom -X -P deploy-snapshots wagon:upload || (( count++ >= 5 )); do echo "Retrying to deploy"; done'
             }
         }
 

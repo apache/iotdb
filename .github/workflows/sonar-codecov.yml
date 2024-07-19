@@ -46,9 +46,9 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: | 
-          mvn -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
-          mvn -B -P with-code-coverage post-integration-test -pl code-coverage
+        run: |
+          ./mvnw -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
+          ./mvnw -B -P with-code-coverage post-integration-test -pl code-coverage
       - name: Upload coverage reports to codecov
         uses: codecov/codecov-action@v4
         with:
@@ -76,7 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
         run: |
-          mvn -B -P with-integration-tests,with-code-coverage verify sonar:sonar \
+          ./mvnw -B -P with-integration-tests,with-code-coverage verify sonar:sonar \
           -Dsonar.organization=apache \
           -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
