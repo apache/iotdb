@@ -128,9 +128,11 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
     pipePluginCoordinator.lock();
-    boolean ifNotExists = true;
+    boolean notExists = true;
     try {
-      ifNotExists =
+      // If the result is ture, the Procedure will continue; if it is false, the Procedure will exit
+      // normally.
+      notExists =
           pipePluginCoordinator
               .getPipePluginInfo()
               .validateBeforeCreatingPipePlugin(
@@ -148,7 +150,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
       pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
-    if (!ifNotExists) {
+    if (!notExists) {
       LOGGER.info(
           "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
           pipePluginMeta.getPluginName(),

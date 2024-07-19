@@ -118,9 +118,9 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
 
-    boolean isNotExists = true;
+    boolean notExists = true;
     try {
-      isNotExists =
+      notExists =
           pipePluginCoordinator
               .getPipePluginInfo()
               .validateBeforeDroppingPipePlugin(pluginName, ifExistsCondition);
@@ -133,7 +133,14 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       setFailure(new ProcedureException(e.getMessage()));
       return Flow.NO_MORE_STATE;
     }
-    if (!isNotExists) {
+
+    // If there is a Plugin with the same name and the IFExists condition exists, the process ends
+    // normally.
+    if (!notExists) {
+      LOGGER.info(
+          "Pipe plugin {} is already exist, end the DropPipePluginProcedure({})",
+          pluginName,
+          pluginName);
       pipePluginCoordinator.unlock();
       pipeTaskCoordinator.unlock();
       return Flow.NO_MORE_STATE;
