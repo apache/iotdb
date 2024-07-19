@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -106,8 +107,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
@@ -151,6 +156,7 @@ import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -493,23 +499,44 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowClusterStatement(RelationalSqlParser.ShowClusterStatementContext ctx) {
-    return super.visitShowClusterStatement(ctx);
+    boolean details = ctx.DETAILS() != null;
+    return new ShowCluster(details);
   }
 
   @Override
   public Node visitShowRegionsStatement(RelationalSqlParser.ShowRegionsStatementContext ctx) {
-    return super.visitShowRegionsStatement(ctx);
+    TConsensusGroupType regionType = null;
+    if (ctx.DATA() != null) {
+      regionType = TConsensusGroupType.DataRegion;
+    } else if (ctx.SCHEMA() != null) {
+      regionType = TConsensusGroupType.SchemaRegion;
+    }
+    List<PartialPath> databases = null;
+    if (ctx.identifier() != null) {
+      try {
+        // When using the table model, only single level databases are allowed to be used.
+        // Therefore, the "root." prefix is omitted from the query syntax, but we need to
+        // add it back before querying the server.
+        databases =
+            Collections.singletonList(new PartialPath("root." + ctx.identifier().getText()));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    // TODO: This will be left untouched for now, well add filtering later on.
+    List<Integer> nodeIds = null;
+    return new ShowRegions(regionType, databases, nodeIds);
   }
 
   @Override
   public Node visitShowDataNodesStatement(RelationalSqlParser.ShowDataNodesStatementContext ctx) {
-    return super.visitShowDataNodesStatement(ctx);
+    return new ShowDataNodes();
   }
 
   @Override
   public Node visitShowConfigNodesStatement(
       RelationalSqlParser.ShowConfigNodesStatementContext ctx) {
-    return super.visitShowConfigNodesStatement(ctx);
+    return new ShowConfigNodes();
   }
 
   @Override

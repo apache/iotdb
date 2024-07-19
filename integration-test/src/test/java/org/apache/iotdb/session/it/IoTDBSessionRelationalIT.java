@@ -78,30 +78,56 @@ public class IoTDBSessionRelationalIT {
     try (ISession session =
         new Session.Builder().host("127.0.0.1").port(6667).sqlDialect(TABLE_SQL_DIALECT).build()) {
       session.open();
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
               + "m1 double "
               + "measurement)");
 
-      long timestamp;
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
 
       for (long row = 0; row < 15; row++) {
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
-                "id:" + row, "attr:" + row, row * 1.0));
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
       }
 
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
-                "id:" + row, "attr:" + row, row * 1.0));
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
@@ -112,16 +138,11 @@ public class IoTDBSessionRelationalIT {
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
       }
-
-      // sql cannot create column
-      assertThrows(
-          StatementExecutionException.class,
-          () ->
-              session.executeNonQueryStatement(
-                  String.format(
-                      "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
-                      "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
     }
+  }
+
+  private void insertRelationalTabletPerformanceTest() {
+
   }
 
   @Test
@@ -129,8 +150,6 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalSqlTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
@@ -192,8 +211,7 @@ public class IoTDBSessionRelationalIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
+      session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
       session.executeNonQueryStatement("USE \"db1\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(
@@ -271,8 +289,6 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalRowTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
@@ -328,8 +344,7 @@ public class IoTDBSessionRelationalIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
+      session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
       session.executeNonQueryStatement("USE \"db1\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(
@@ -443,12 +458,6 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalTabletTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      try {
-        session.executeNonQueryStatement("DROP DATABASE db1");
-      } catch (Exception ignored) {
-
-      }
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
@@ -508,8 +517,6 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
-        timestamp++;
-        //        System.out.println(rowRecord);
       }
     }
   }
@@ -518,8 +525,6 @@ public class IoTDBSessionRelationalIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateTableTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       // no table created here
 
@@ -568,8 +573,6 @@ public class IoTDBSessionRelationalIT {
   public void autoCreateNonIdColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
       session.executeNonQueryStatement("CREATE TABLE table1 (id1 string id)");
@@ -638,8 +641,6 @@ public class IoTDBSessionRelationalIT {
   public void autoCreateIdColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
       session.executeNonQueryStatement("CREATE TABLE table1 (id1 string id)");

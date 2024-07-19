@@ -163,7 +163,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 
 import org.apache.tsfile.exception.NotImplementedException;
 
-public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
+public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
   @Override
   public IConfigTask visitNode(StatementNode node, MPPQueryContext context) {

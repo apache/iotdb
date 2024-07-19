@@ -33,7 +33,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -257,6 +261,14 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB);
+
+  SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
+
+  SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions);
+
+  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes);
+
+  SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes);
 
   SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession);
 
