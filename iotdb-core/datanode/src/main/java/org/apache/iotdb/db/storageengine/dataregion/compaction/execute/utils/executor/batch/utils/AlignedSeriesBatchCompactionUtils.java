@@ -119,9 +119,9 @@ public class AlignedSeriesBatchCompactionUtils {
       if (chunkMetadata == null) {
         continue;
       }
-      if (measurementIndex.containsKey(chunkMetadata.getMeasurementUid())) {
-        valueChunkMetadataList.set(
-            measurementIndex.get(chunkMetadata.getMeasurementUid()), chunkMetadata);
+      Integer idx = measurementIndex.get(chunkMetadata.getMeasurementUid());
+      if (idx != null) {
+        valueChunkMetadataList.set(idx, chunkMetadata);
       }
     }
     return new AlignedChunkMetadata(
