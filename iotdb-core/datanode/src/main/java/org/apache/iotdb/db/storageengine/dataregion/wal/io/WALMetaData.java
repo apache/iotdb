@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.utils.SerializedSize;
 
 import org.slf4j.Logger;
@@ -131,8 +132,7 @@ public class WALMetaData implements SerializedSize {
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
     if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
-      throw new IOException(
-          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+      throw new BrokenWALFileException(logFile);
     }
 
     // load metadata size
@@ -168,8 +168,7 @@ public class WALMetaData implements SerializedSize {
         }
       }
     } catch (IllegalArgumentException e) {
-      throw new IOException(
-          String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+      throw new BrokenWALFileException(logFile);
     } catch (IOException e) {
       throw e;
     } catch (Exception e) {
