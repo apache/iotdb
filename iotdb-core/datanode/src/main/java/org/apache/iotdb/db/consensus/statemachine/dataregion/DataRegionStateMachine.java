@@ -92,7 +92,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public boolean takeSnapshot(File snapshotDir) {
     try {
-      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      SnapshotTaker snapshotTaker = new SnapshotTaker(region);
+      snapshotTaker.cleanSnapshot();
+      return snapshotTaker.takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
@@ -118,6 +120,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
           e);
       return false;
     }
+  }
+
+  @Override
+  public boolean clearSnapshot() {
+    return SnapshotTaker.clearSnapshotOfDataRegion(region);
   }
 
   @Override
