@@ -169,7 +169,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       parsedTopicNames = subscribedTopics.keySet();
     }
 
-    // submit multiple tasks to poll messages
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
 
     // add to uncommitted messages

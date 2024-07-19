@@ -95,7 +95,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private static final long SLEEP_DELTA_MS = 50L;
   private static final long TIMER_DELTA_MS = 250L;
 
-  private static final int PARALLELISM = 4; // TODO: config
+  private static final int MAX_POLL_PARALLELISM = 4; // TODO: config
 
   private final String username;
   private final String password;
@@ -457,13 +457,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
 
+    // execute single task in current thread
+    final int availableCount =
+        SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
+    if (availableCount == 0) {
+      return singlePoll(topicNames, timeoutMs);
+    }
+
     // dividing topics
-    final List<Set<String>> partitionedTopicNames = partition(topicNames, PARALLELISM);
+    final List<Set<String>> partitionedTopicNames =
+        partition(topicNames, Math.min(MAX_POLL_PARALLELISM, availableCount));
     final List<PollTask> tasks = new ArrayList<>();
     for (final Set<String> partition : partitionedTopicNames) {
       tasks.add(new PollTask(partition, timeoutMs));
     }
 
+    // submit multiple tasks to poll messages
     try {
       for (final Future<List<SubscriptionMessage>> future :
           SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {

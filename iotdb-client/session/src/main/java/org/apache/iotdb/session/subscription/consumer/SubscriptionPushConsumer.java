@@ -166,7 +166,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       }
 
       try {
-        // submit multiple tasks to poll messages
         final List<SubscriptionMessage> messages =
             multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
 
