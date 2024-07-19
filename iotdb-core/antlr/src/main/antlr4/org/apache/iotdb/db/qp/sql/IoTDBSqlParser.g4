@@ -535,7 +535,7 @@ verifyConnection
 
 // Pipe Task =========================================================================================
 createPipe
-    : CREATE PIPE  ifNotExists? pipeName=identifier
+    : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
         extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause
@@ -603,7 +603,7 @@ alterConnectorAttributesClause
     ;
 
 dropPipe
-    : DROP PIPE ifExists? pipeName=identifier
+    : DROP PIPE (IF EXISTS)? pipeName=identifier
     ;
 
 startPipe
@@ -620,11 +620,11 @@ showPipes
 
 // Pipe Plugin =========================================================================================
 createPipePlugin
-    : CREATE PIPEPLUGIN ifNotExists? pluginName=identifier AS className=STRING_LITERAL uriClause
+    : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 dropPipePlugin
-    : DROP PIPEPLUGIN ifExists? pluginName=identifier
+    : DROP PIPEPLUGIN (IF EXISTS)? pluginName=identifier
     ;
 
 showPipePlugins
@@ -692,14 +692,6 @@ viewSourcePaths
     : fullPath (COMMA fullPath)*
     | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
     | selectClause fromClause
-    ;
-
-ifNotExists
-    : IF NOT EXISTS
-    ;
-
-ifExists
-    : IF EXISTS
     ;
 
 /**

@@ -866,7 +866,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                           jarFileName.substring(0, jarFileName.lastIndexOf(".")),
                           jarMd5,
                           jarFileName.substring(jarFileName.lastIndexOf(".") + 1)))
-                  .setIsNotExists(createPipePluginStatement.hasIfNotExistsCondition()));
+                  .setIfNotExistsCondition(createPipePluginStatement.hasIfNotExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "Failed to create PipePlugin {}({}) because {}",
@@ -893,7 +893,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           client.dropPipePlugin(
               new TDropPipePluginReq()
                   .setPluginName(dropPipePluginStatement.getPluginName())
-                  .setIsExists(dropPipePluginStatement.hasIfExistsCondition()));
+                  .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "[{}] Failed to drop pipe plugin {}.",

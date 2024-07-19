@@ -2028,18 +2028,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropPipe(String pipeName) {
+  public TSStatus dropPipe(TDropPipeReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().dropPipe(pipeName)
-        : status;
-  }
-
-  @Override
-  public TSStatus extendDropPipe(TDropPipeReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().extendDropPipe(req)
+        ? pipeManager.getPipeTaskCoordinator().dropPipe(req)
         : status;
   }
 

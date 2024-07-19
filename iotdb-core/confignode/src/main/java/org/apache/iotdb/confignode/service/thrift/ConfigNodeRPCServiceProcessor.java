@@ -1023,11 +1023,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropPipe(String pipeName) {
-    return configManager.dropPipe(pipeName);
+    return configManager.dropPipe(
+        new TDropPipeReq().setPipeName(pipeName).setIfExistsCondition(false));
   }
 
+  @Override
   public TSStatus extendDropPipe(TDropPipeReq req) {
-    return configManager.extendDropPipe(req);
+    return configManager.dropPipe(req);
   }
 
   @Override

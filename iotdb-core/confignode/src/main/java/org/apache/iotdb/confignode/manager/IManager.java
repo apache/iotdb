@@ -631,22 +631,13 @@ public interface IManager {
   TSStatus stopPipe(String pipeName);
 
   /**
-   * Drop Pipe.
-   *
-   * @param pipeName name of Pipe
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
-   */
-  TSStatus dropPipe(String pipeName);
-
-  /**
-   * Extend Drop pipe plugin. function to support IF Exists
+   * Drop Pipe function with IF Exists semantics.
    *
    * @param req
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
    *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
-  TSStatus extendDropPipe(TDropPipeReq req);
+  TSStatus dropPipe(TDropPipeReq req);
 
   /**
    * Get Pipe by name. If pipeName is empty, get all Pipe.

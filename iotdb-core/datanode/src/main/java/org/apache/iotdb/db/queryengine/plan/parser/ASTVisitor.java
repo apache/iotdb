@@ -960,7 +960,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         parseIdentifier(ctx.pluginName.getText()),
         parseStringLiteral(ctx.className.getText()),
         parseAndValidateURI(ctx.uriClause()),
-        ctx.ifNotExists() != null);
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
   }
 
   // Drop PipePlugin =====================================================================
@@ -970,7 +970,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     DropPipePluginStatement dropPipePluginStatement = new DropPipePluginStatement();
 
     dropPipePluginStatement.setPluginName(parseIdentifier(ctx.pluginName.getText()));
-    dropPipePluginStatement.setIfExists(ctx.ifExists() != null);
+    dropPipePluginStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
     return dropPipePluginStatement;
   }
@@ -3723,7 +3723,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
 
-    createPipeStatement.setIfNotExists(ctx.ifNotExists() != null);
+    createPipeStatement.setIfNotExists(
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
     createPipeStatement.setConnectorAttributes(
         parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
@@ -3819,7 +3820,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
     }
 
-    dropPipeStatement.setIfExists(ctx.ifExists() != null);
+    dropPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
     return dropPipeStatement;
   }
