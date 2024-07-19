@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -211,6 +212,37 @@ public class DistributedPlanGenerator
     for (PlanNode child : childrenNodes) {
       SortNode subSortNode =
           new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false);
+      mergeSortNode.addChild(subSortNode);
+    }
+    nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
+
+    return Collections.singletonList(mergeSortNode);
+  }
+
+  @Override
+  public List<PlanNode> visitStreamSort(StreamSortNode node, PlanContext context) {
+    context.expectedOrderingScheme = node.getOrderingScheme();
+    context.hasSortNode = true;
+    nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
+
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    // may have ProjectNode above SortNode later, so use MergeSortNode but not return SortNode list
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
+    for (PlanNode child : childrenNodes) {
+      StreamSortNode subSortNode =
+          new StreamSortNode(
+              queryId.genPlanNodeId(),
+              child,
+              node.getOrderingScheme(),
+              false,
+              node.getStreamCompareKeyEndIndex());
       mergeSortNode.addChild(subSortNode);
     }
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());

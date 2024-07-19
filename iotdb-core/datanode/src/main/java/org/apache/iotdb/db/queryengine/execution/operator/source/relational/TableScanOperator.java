@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
@@ -271,11 +270,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   public List<TSDataType> getResultDataTypes() {
     List<TSDataType> resultDataTypes = new ArrayList<>(columnSchemas.size());
     for (ColumnSchema columnSchema : columnSchemas) {
-      if (columnSchema.getColumnCategory() != TsTableColumnCategory.TIME) {
-        resultDataTypes.add(getTSDataType(columnSchema.getType()));
-      } else {
-        throw new IllegalArgumentException("Should not have TimeColumnSchema");
-      }
+      resultDataTypes.add(getTSDataType(columnSchema.getType()));
     }
     return resultDataTypes;
   }

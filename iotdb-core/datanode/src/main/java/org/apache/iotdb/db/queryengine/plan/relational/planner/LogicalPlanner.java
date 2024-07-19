@@ -75,8 +75,9 @@ public class LogicalPlanner {
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    PlannerContext plannerContext = new PlannerContext(metadata, new InternalTypeManager());
-    this.planOptimizers = new OptimizeFactory(plannerContext).getPlanOptimizers();
+    this.planOptimizers =
+        new OptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers();
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
@@ -141,7 +142,7 @@ public class LogicalPlanner {
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
 
-      columnHeaders.add(new ColumnHeader(symbol.getName(), getTSDataType(field.getType())));
+      columnHeaders.add(new ColumnHeader(name, getTSDataType(field.getType())));
 
       columnNumber++;
     }

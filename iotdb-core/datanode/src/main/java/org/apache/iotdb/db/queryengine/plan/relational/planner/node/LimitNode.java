@@ -62,7 +62,7 @@ public class LimitNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LimitNode(id, child, count, tiesResolvingScheme);
+    return new LimitNode(id, null, count, tiesResolvingScheme);
   }
 
   @Override

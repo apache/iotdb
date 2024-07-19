@@ -43,7 +43,7 @@ public class SortNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new SortNode(id, child, orderingScheme, partial);
+    return new SortNode(id, null, orderingScheme, partial);
   }
 
   @Override
@@ -89,6 +89,10 @@ public class SortNode extends SingleChildProcessNode {
 
   public OrderingScheme getOrderingScheme() {
     return orderingScheme;
+  }
+
+  public boolean isPartial() {
+    return this.partial;
   }
 
   @Override
