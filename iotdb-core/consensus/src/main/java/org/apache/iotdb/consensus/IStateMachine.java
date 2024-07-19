@@ -90,6 +90,11 @@ public interface IStateMachine {
     return takeSnapshot(snapshotDir);
   }
 
+  /**
+   * Clear snapshot of current statemachine.
+   *
+   * @return true if all snapshot dir delete successfully
+   */
   default boolean clearSnapshot() {
     throw new UnsupportedOperationException("not implemented yet");
   }
