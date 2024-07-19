@@ -228,7 +228,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        if (values[i] != null) {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        }
       } catch (Exception e) {
         LOGGER.warn(
             "data type of {}.{} is not consistent, "
@@ -458,7 +460,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceIdSegments[0] = this.devicePath.getFullPath();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
-        deviceIdSegments[i + 1] = values[columnIndex].toString();
+        deviceIdSegments[i + 1] =
+            values[columnIndex] != null ? values[columnIndex].toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }

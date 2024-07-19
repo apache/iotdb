@@ -56,7 +56,6 @@ public class ColumnSchema {
   public ColumnSchema(
       String name, Type type, boolean hidden, TsTableColumnCategory columnCategory) {
     requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
 
     this.name = name.toLowerCase(ENGLISH);
     this.type = type;

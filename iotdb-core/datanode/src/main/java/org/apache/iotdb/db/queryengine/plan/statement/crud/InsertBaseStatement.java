@@ -146,6 +146,9 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   public void setDataType(TSDataType dataType, int i) {
+    if (dataTypes == null) {
+      dataTypes = new TSDataType[measurements.length];
+    }
     this.dataTypes[i] = dataType;
   }
 
@@ -267,6 +270,9 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   public void setColumnCategory(TsTableColumnCategory columnCategory, int i) {
+    if (columnCategories == null) {
+      columnCategories = new TsTableColumnCategory[measurements.length];
+    }
     this.columnCategories[i] = columnCategory;
     this.idColumnIndices = null;
   }
@@ -462,18 +468,31 @@ public abstract class InsertBaseStatement extends Statement {
     System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
     measurements = tmpMeasurements;
 
-    TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
-    System.arraycopy(dataTypes, 0, tmpTypes, 0, pos);
-    tmpTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
-    System.arraycopy(dataTypes, pos, tmpTypes, pos + 1, dataTypes.length - pos);
-    dataTypes = tmpTypes;
+    if (dataTypes == null) {
+      // sql insertion
+      dataTypes = new TSDataType[measurements.length + 1];
+      dataTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
+    } else {
+      TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
+      System.arraycopy(dataTypes, 0, tmpTypes, 0, pos);
+      tmpTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
+      System.arraycopy(dataTypes, pos, tmpTypes, pos + 1, dataTypes.length - pos);
+      dataTypes = tmpTypes;
+    }
 
-    TsTableColumnCategory[] tmpCategories = new TsTableColumnCategory[columnCategories.length + 1];
-    System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
-    tmpCategories[pos] = columnSchema.getColumnCategory();
-    System.arraycopy(columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
-    columnCategories = tmpCategories;
-    idColumnIndices = null;
+    if (columnCategories == null) {
+      columnCategories = new TsTableColumnCategory[measurements.length + 1];
+      columnCategories[pos] = columnSchema.getColumnCategory();
+    } else {
+      TsTableColumnCategory[] tmpCategories =
+          new TsTableColumnCategory[columnCategories.length + 1];
+      System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
+      tmpCategories[pos] = columnSchema.getColumnCategory();
+      System.arraycopy(
+          columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
+      columnCategories = tmpCategories;
+      idColumnIndices = null;
+    }
   }
 
   public void swapColumn(int src, int target) {
@@ -484,8 +503,13 @@ public abstract class InsertBaseStatement extends Statement {
       CommonUtils.swapArray(measurementSchemas, src, target);
     }
     CommonUtils.swapArray(measurements, src, target);
-    CommonUtils.swapArray(dataTypes, src, target);
-    CommonUtils.swapArray(columnCategories, src, target);
+    // dataTypes is null for sql insertion
+    if (dataTypes != null) {
+      CommonUtils.swapArray(dataTypes, src, target);
+    }
+    if (columnCategories != null) {
+      CommonUtils.swapArray(columnCategories, src, target);
+    }
     idColumnIndices = null;
   }
 

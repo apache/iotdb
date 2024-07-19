@@ -61,7 +61,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < idColumnIndices.size(); i++) {
         final Integer columnIndex = idColumnIndices.get(i);
-        deviceIdSegments[i + 1] = getValues()[columnIndex].toString();
+        deviceIdSegments[i + 1] =
+            getValues()[columnIndex] != null ? getValues()[columnIndex].toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }

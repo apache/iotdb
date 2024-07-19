@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -169,23 +167,5 @@ public class InsertRowsStatement extends InsertBaseStatement {
     return insertRowStatementList.stream()
         .map(s -> s.getTableDeviceID().getSegments())
         .collect(Collectors.toList());
-  }
-
-  @Override
-  public void insertColumn(int pos, ColumnSchema columnSchema) {
-    super.insertColumn(pos, columnSchema);
-    insertRowStatementList.forEach(s -> s.insertColumn(pos, columnSchema));
-  }
-
-  @Override
-  public void swapColumn(int src, int target) {
-    super.swapColumn(src, target);
-    insertRowStatementList.forEach(s -> s.swapColumn(src, target));
-  }
-
-  @Override
-  public void setMeasurementSchema(MeasurementSchema measurementSchema, int i) {
-    super.setMeasurementSchema(measurementSchema, i);
-    insertRowStatementList.forEach(s -> s.setMeasurementSchema(measurementSchema, i));
   }
 }

@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RelationalInsertRowsNode extends InsertRowsNode {
   // deviceId cache for Table-view insertion
@@ -106,5 +113,37 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
   public String getTableName() {
     return devicePath.getFullPath();
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
+    List<TEndPoint> redirectInfo = new ArrayList<>();
+    for (int i = 0; i < getInsertRowNodeList().size(); i++) {
+      InsertRowNode insertRowNode = getInsertRowNodeList().get(i);
+      // Data region for insert row node
+      // each row may belong to different database, pass null for auto-detection
+      TRegionReplicaSet dataRegionReplicaSet =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(
+                  insertRowNode.getDeviceID(),
+                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
+                  analysis.getDatabaseName());
+      // Collect redirectInfo
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
+      RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+      if (tmpNode != null) {
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+      } else {
+        tmpNode = new RelationalInsertRowsNode(this.getPlanNodeId());
+        tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+        splitMap.put(dataRegionReplicaSet, tmpNode);
+      }
+    }
+    analysis.setRedirectNodeList(redirectInfo);
+
+    return new ArrayList<>(splitMap.values());
   }
 }

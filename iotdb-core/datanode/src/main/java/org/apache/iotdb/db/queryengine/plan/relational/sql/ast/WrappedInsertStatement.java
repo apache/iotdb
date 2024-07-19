@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -62,41 +63,55 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public TableSchema getTableSchema() {
     if (tableSchema == null) {
       InsertBaseStatement insertBaseStatement = getInnerTreeStatement();
-      String tableName = insertBaseStatement.getDevicePath().getFullPath();
-      List<ColumnSchema> columnSchemas =
-          new ArrayList<>(insertBaseStatement.getMeasurements().length);
-      for (int i = 0; i < insertBaseStatement.getMeasurements().length; i++) {
-        columnSchemas.add(
-            new ColumnSchema(
-                insertBaseStatement.getMeasurements()[i],
-                TypeFactory.getType(insertBaseStatement.getDataTypes()[i]),
-                false,
-                insertBaseStatement.getColumnCategories()[i]));
-      }
-      tableSchema = new TableSchema(tableName, columnSchemas);
+      tableSchema = toTableSchema(insertBaseStatement);
     }
 
     return tableSchema;
   }
 
-  public void validate(TableSchema realSchema) {
+  protected TableSchema toTableSchema(InsertBaseStatement insertBaseStatement) {
+    String tableName = insertBaseStatement.getDevicePath().getFullPath();
+    List<ColumnSchema> columnSchemas =
+        new ArrayList<>(insertBaseStatement.getMeasurements().length);
+    for (int i = 0; i < insertBaseStatement.getMeasurements().length; i++) {
+      columnSchemas.add(
+          new ColumnSchema(
+              insertBaseStatement.getMeasurements()[i],
+              insertBaseStatement.getDataTypes() != null
+                  ? TypeFactory.getType(insertBaseStatement.getDataTypes()[i])
+                  : null,
+              false,
+              insertBaseStatement.getColumnCategories() != null
+                  ? insertBaseStatement.getColumnCategories()[i]
+                  : null));
+    }
+    return new TableSchema(tableName, columnSchemas);
+  }
+
+  public void validateTableSchema(TableSchema realSchema) {
     final TableSchema incomingTableSchema = getTableSchema();
+    InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
+    validateTableSchema(realSchema, incomingTableSchema, innerTreeStatement);
+  }
+
+  protected void validateTableSchema(
+      TableSchema realSchema,
+      TableSchema incomingTableSchema,
+      InsertBaseStatement innerTreeStatement) {
     final List<ColumnSchema> incomingSchemaColumns = incomingTableSchema.getColumns();
     Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
     realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
-
-    InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
     // incoming schema should be consistent with real schema
     for (int i = 0, incomingSchemaColumnsSize = incomingSchemaColumns.size();
         i < incomingSchemaColumnsSize;
         i++) {
       ColumnSchema incomingSchemaColumn = incomingSchemaColumns.get(i);
       final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
-      validate(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
+      validateTableSchema(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
     }
     // incoming schema should contain all id columns in real schema and have consistent order
     final List<ColumnSchema> realIdColumns = realSchema.getIdColumns();
-    adjustIdColumns(realIdColumns);
+    adjustIdColumns(realIdColumns, innerTreeStatement);
   }
 
   /**
@@ -105,9 +120,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
    *
    * @param realIdColumnSchemas id column order from the schema region
    */
-  public void adjustIdColumns(List<ColumnSchema> realIdColumnSchemas) {
+  public void adjustIdColumns(
+      List<ColumnSchema> realIdColumnSchemas, final InsertBaseStatement baseStatement) {
     List<ColumnSchema> incomingColumnSchemas = getTableSchema().getColumns();
-    final InsertBaseStatement baseStatement = getInnerTreeStatement();
     for (int realIdColPos = 0; realIdColPos < realIdColumnSchemas.size(); realIdColPos++) {
       ColumnSchema realColumn = realIdColumnSchemas.get(realIdColPos);
       int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
@@ -125,7 +140,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     tableSchema = null;
   }
 
-  public static void validate(
+  public static void validateTableSchema(
       ColumnSchema incoming, ColumnSchema real, int i, InsertBaseStatement innerTreeStatement) {
     if (real == null) {
       // the column does not exist and auto-creation is disabled
@@ -175,5 +190,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
             getDefaultEncoding(tsDataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor());
     innerTreeStatement.setMeasurementSchema(measurementSchema, i);
+  }
+
+  public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
+    metadata.validateDeviceSchema(this, context);
   }
 }

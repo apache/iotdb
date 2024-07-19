@@ -103,7 +103,7 @@ public class InsertStatementTest {
                 TsTableColumnCategory.MEASUREMENT));
     TableSchema tableSchema = new TableSchema("table1", columnSchemas);
 
-    insertRow.validate(tableSchema);
+    insertRow.validateTableSchema(tableSchema);
 
     // id3 should be added into the statement to generate right DeviceIds
     assertArrayEquals(
@@ -155,7 +155,7 @@ public class InsertStatementTest {
                 TsTableColumnCategory.ATTRIBUTE));
     TableSchema tableSchema = new TableSchema("table1", columnSchemas);
 
-    assertThrows(SemanticException.class, () -> insertRow.validate(tableSchema));
+    assertThrows(SemanticException.class, () -> insertRow.validateTableSchema(tableSchema));
   }
 
   @Test
@@ -177,6 +177,6 @@ public class InsertStatementTest {
                 "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID));
     TableSchema tableSchema = new TableSchema("table1", columnSchemas);
 
-    assertThrows(SemanticException.class, () -> insertRow.validate(tableSchema));
+    assertThrows(SemanticException.class, () -> insertRow.validateTableSchema(tableSchema));
   }
 }

@@ -73,8 +73,8 @@ public class SchemaValidator {
         throw new SemanticException(
             "Schema validation failed, table cannot be created: " + incomingSchema);
       }
-      insertStatement.validate(realSchema);
-      metadata.validateDeviceSchema(insertStatement, context);
+      insertStatement.validateTableSchema(realSchema);
+      insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());

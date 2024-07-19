@@ -40,6 +40,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,6 +49,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionRelationalIT {
@@ -77,52 +79,97 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE db1");
       session.executeNonQueryStatement("USE \"db1\"");
-      // the id order in the table is (id1, id2)
       session.executeNonQueryStatement(
-          "CREATE TABLE table1 (id1 string id, id2 string id, attr1 string attribute, "
+          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
               + "m1 double "
               + "measurement)");
 
-      // the id order in the row is (id2, id1)
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
-      List<String> measurementIds =
-          schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-
-      long timestamp = 0;
+      long timestamp;
 
       for (long row = 0; row < 15; row++) {
-        Object[] values = new Object[] {"id2:" + row, "id1:" + row, "attr1:" + row, row * 1.0};
-        session.insertRelationalRecord(
-            "table1", timestamp + row, measurementIds, dataTypes, columnTypes, values);
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
+                "id:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        Object[] values = new Object[] {"id2:" + row, "id1:" + row, "attr1:" + row, row * 1.0};
-        session.insertRelationalRecord(
-            "table1", timestamp + row, measurementIds, dataTypes, columnTypes, values);
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
+                "id:" + row, "attr:" + row, row * 1.0));
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id1:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals("id2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(4).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(5).getDoubleV(), 0.0001);
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
       }
+
+      // sql cannot create column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
+                      "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRelationalSqlTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
+      session.executeNonQueryStatement("CREATE DATABASE db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      long timestamp;
+
+      for (long row = 0; row < 15; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
+                "id:" + row, "attr:" + row, row * 1.0));
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
+                "id:" + row, "attr:" + row, row * 1.0));
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+      }
+
+      // sql cannot create column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
+                      "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
     }
   }
 

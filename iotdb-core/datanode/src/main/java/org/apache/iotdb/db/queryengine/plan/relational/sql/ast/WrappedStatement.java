@@ -27,7 +27,7 @@ import java.util.Objects;
 
 public abstract class WrappedStatement extends Statement {
   protected org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
-  protected final MPPQueryContext context;
+  protected MPPQueryContext context;
 
   public WrappedStatement(
       org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement,
@@ -75,5 +75,9 @@ public abstract class WrappedStatement extends Statement {
 
   public MPPQueryContext getContext() {
     return context;
+  }
+
+  public void setContext(MPPQueryContext context) {
+    this.context = context;
   }
 }

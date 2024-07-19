@@ -73,4 +73,9 @@ public class NullLiteral extends Literal {
   public NullLiteral(ByteBuffer byteBuffer) {
     super(null);
   }
+
+  @Override
+  public Object getTsValue() {
+    return null;
+  }
 }

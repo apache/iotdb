@@ -22,11 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class InsertRows extends WrappedInsertStatement {
 
@@ -67,31 +71,73 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public List<String> getAttributeColumnNameList() {
-    final InsertRowsStatement insertRowStatement = getInnerTreeStatement();
-    List<String> result = new ArrayList<>();
-    for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-      if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-        result.add(insertRowStatement.getMeasurements()[i]);
-      }
-    }
-    return result;
+    // each row may have different columns
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public List<Object[]> getAttributeValueList() {
-    final InsertRowsStatement insertRowStatement = getInnerTreeStatement();
-    final List<Integer> attrColumnIndices = insertRowStatement.getAttrColumnIndices();
+    // each row may have different columns
+    throw new UnsupportedOperationException();
+  }
 
-    return insertRowStatement.getInsertRowStatementList().stream()
-        .map(
-            s -> {
-              Object[] attrValues = new Object[attrColumnIndices.size()];
-              for (int j = 0; j < attrColumnIndices.size(); j++) {
-                final int columnIndex = attrColumnIndices.get(j);
-                attrValues[j] = s.getValues()[columnIndex];
-              }
-              return attrValues;
-            })
-        .collect(Collectors.toList());
+  @Override
+  public void validateTableSchema(TableSchema realSchema) {
+    for (InsertRowStatement insertRowStatement :
+        getInnerTreeStatement().getInsertRowStatementList()) {
+      final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
+      validateTableSchema(realSchema, incomingTableSchema, insertRowStatement);
+    }
+  }
+
+  @Override
+  public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
+    for (InsertRowStatement insertRowStatement :
+        getInnerTreeStatement().getInsertRowStatementList()) {
+      metadata.validateDeviceSchema(createTableSchemaValidation(insertRowStatement), context);
+    }
+  }
+
+  protected ITableDeviceSchemaValidation createTableSchemaValidation(
+      InsertRowStatement insertRowStatement) {
+    return new ITableDeviceSchemaValidation() {
+
+      @Override
+      public String getDatabase() {
+        return InsertRows.this.getDatabase();
+      }
+
+      @Override
+      public String getTableName() {
+        return InsertRows.this.getTableName();
+      }
+
+      @Override
+      public List<Object[]> getDeviceIdList() {
+        return Collections.singletonList(insertRowStatement.getTableDeviceID().getSegments());
+      }
+
+      @Override
+      public List<String> getAttributeColumnNameList() {
+        List<String> attributeColumnNameList = new ArrayList<>();
+        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
+          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+            attributeColumnNameList.add(insertRowStatement.getMeasurements()[i]);
+          }
+        }
+        return attributeColumnNameList;
+      }
+
+      @Override
+      public List<Object[]> getAttributeValueList() {
+        List<Object> attributeValueList = new ArrayList<>();
+        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
+          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+            attributeValueList.add(insertRowStatement.getValues()[i]);
+          }
+        }
+        return Collections.singletonList(attributeValueList.toArray());
+      }
+    };
   }
 }

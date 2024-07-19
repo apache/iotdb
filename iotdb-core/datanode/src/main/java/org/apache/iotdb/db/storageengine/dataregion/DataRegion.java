@@ -3444,7 +3444,7 @@ public class DataRegion implements IDataRegionForQuery {
             DataNodeTTLCache.getInstance()
                 .getTTL(
                     Arrays.stream(insertRowNode.getDeviceID().getSegments())
-                        .map(Object::toString)
+                        .map(seg -> seg != null ? seg.toString() : null)
                         .toArray(String[]::new));
         if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode

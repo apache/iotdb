@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -330,6 +331,9 @@ public class Coordinator {
           null,
           executor,
           statement.accept(new TableConfigTaskVisitor(clientSession, metadata), queryContext));
+    }
+    if (statement instanceof WrappedInsertStatement) {
+      ((WrappedInsertStatement) statement).setContext(queryContext);
     }
     RelationalModelPlanner relationalModelPlanner =
         new RelationalModelPlanner(

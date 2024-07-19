@@ -129,6 +129,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -412,7 +413,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int valuePos = 0;
     for (int i = 0; i < row.getItems().size(); i++) {
       if (i != timeColumnIndex) {
-        values[valuePos++] = row.getItems().get(i);
+        values[valuePos++] = AstUtil.expressionToTsValue(row.getItems().get(i));
       }
     }
     insertRowStatement.setValues(values);
