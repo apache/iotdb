@@ -34,6 +34,8 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -45,10 +47,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
-
+  private static final Logger logger = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
@@ -320,12 +321,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    int[] capacities = new int[serializedSize()];
-    int i = 0;
-    for (IMeasurementSchema schema : schemaList) {
-      capacities[i++] = list.rowCount() * schema.getType().getDataTypeSize();
-    }
-    return new AlignedChunkWriterImpl(schemaList, capacities);
+    return new AlignedChunkWriterImpl(schemaList, list.rowCount());
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
@@ -345,6 +341,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       range++;
       if (range == MAX_NUMBER_OF_POINTS_IN_PAGE) {
         pageRange.add(sortedRowIndex);
+
         range = 0;
       }
 
@@ -367,24 +364,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       pageRange.add(list.rowCount() - 1);
     }
 
+    for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {}
+
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
-    // {
-    //   // reserve pageWriter capacity
-    //   List<Integer> list =
-    //       dataTypes.parallelStream()
-    //           .map(TSDataType::getDataTypeSize)
-    //           .map(size -> (size * MAX_NUMBER_OF_POINTS_IN_PAGE))
-    //           .collect(Collectors.toList());
-    //   for (int i = 0; i < list.size(); ++i) {
-    //     alignedChunkWriter
-    //         .getValueChunkWriterByIndex(i)
-    //         .getPageWriter()
-    //         .getPageBuffer()
-    //         .reserve(list.get(i));
-    //   }
-    // }
-
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
@@ -483,6 +466,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
       alignedChunkWriter.write(times, pointsInPage, 0);
     }
+    logger.warn("write tot row is: {}", list.rowCount());
+
   }
 
   @Override

@@ -291,8 +291,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    int capacity = serializedSize();
-    return new ChunkWriterImpl(schema, capacity);
+    return new ChunkWriterImpl(schema, list.rowCount());
   }
 
   @Override
@@ -332,7 +331,10 @@ public class WritableMemChunk implements IWritableMemChunk {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
 
-    chunkWriterImpl.getPageWriter().getPageBuffer().reserve(80896);
+    chunkWriterImpl
+        .getPageWriter()
+        .getPageBuffer()
+        .reserve(schema.getType().getDataTypeSize() * 10000 + schema.serializedSize());
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
