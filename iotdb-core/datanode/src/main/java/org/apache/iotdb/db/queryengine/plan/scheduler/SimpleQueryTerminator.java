@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -57,12 +58,15 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
+  private boolean hasThrowable;
+
   public SimpleQueryTerminator(
-      ScheduledExecutorService scheduledExecutor,
-      MPPQueryContext queryContext,
-      List<FragmentInstance> fragmentInstances,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IFragInstanceStateTracker stateTracker) {
+      final ScheduledExecutorService scheduledExecutor,
+      final MPPQueryContext queryContext,
+      final List<FragmentInstance> fragmentInstances,
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+          internalServiceClientManager,
+      final IFragInstanceStateTracker stateTracker) {
     this.scheduledExecutor = scheduledExecutor;
     this.queryId = queryContext.getQueryId();
     this.queryContext = queryContext;
@@ -71,50 +75,48 @@ public class SimpleQueryTerminator implements IQueryTerminator {
     calculateParameter(fragmentInstances);
   }
 
-  private void calculateParameter(List<FragmentInstance> instances) {
+  private void calculateParameter(final List<FragmentInstance> instances) {
     this.relatedHost = getRelatedHost(instances);
     this.ownedFragmentInstance = new HashMap<>();
-    for (TEndPoint endPoint : relatedHost) {
+    for (final TEndPoint endPoint : relatedHost) {
       ownedFragmentInstance.put(endPoint, getRelatedFragmentInstances(endPoint, instances));
     }
   }
 
   @Override
-  public Future<Boolean> terminate(Throwable t) {
+  public Future<Boolean> terminate(final Throwable t) {
     // For the failure dispatch, the termination should not be triggered because of connection issue
     this.relatedHost =
         this.relatedHost.stream()
             .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
             .collect(Collectors.toList());
-    if (t == null) {
-      return scheduledExecutor.schedule(
-          this::syncTerminate, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
-    }
+    this.hasThrowable = Objects.nonNull(t);
+
     return scheduledExecutor.schedule(
-        this::syncTerminateThrowable, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
+        this::syncTerminate, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
   }
 
   public Boolean syncTerminate() {
     boolean succeed = true;
-    for (TEndPoint endPoint : relatedHost) {
-      // we only send cancel query request if there is remaining unfinished FI in that node
-      List<FragmentInstanceId> unfinishedFIs =
+    for (final TEndPoint endPoint : relatedHost) {
+      // We only send cancel query request if there is remaining unfinished FI in that node
+      final List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
       if (unfinishedFIs.isEmpty()) {
         continue;
       }
 
-      String internalAddress = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-      int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+      final String internalAddress = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+      final int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
       if (internalAddress.equalsIgnoreCase(endPoint.getIp())
           && internalPort == endPoint.getPort()) {
-        for (FragmentInstanceId insId : unfinishedFIs) {
-          FragmentInstanceManager.getInstance().cancelTask(insId, false);
+        for (final FragmentInstanceId insId : unfinishedFIs) {
+          FragmentInstanceManager.getInstance().cancelTask(insId, hasThrowable);
         }
         continue;
       }
 
-      try (SyncDataNodeInternalServiceClient client =
+      try (final SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
         client.cancelQuery(
             new TCancelQueryReq(
@@ -122,12 +124,12 @@ public class SimpleQueryTerminator implements IQueryTerminator {
                 unfinishedFIs.stream()
                     .map(FragmentInstanceId::toThrift)
                     .collect(Collectors.toList()),
-                false));
-      } catch (ClientManagerException e) {
+                hasThrowable));
+      } catch (final ClientManagerException e) {
         logger.warn("can't connect to node {}", endPoint, e);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
-      } catch (TException t) {
+      } catch (final TException t) {
         logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
@@ -136,49 +138,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
     return succeed;
   }
 
-  public Boolean syncTerminateThrowable() {
-    boolean succeed = true;
-    for (TEndPoint endPoint : relatedHost) {
-      // we only send cancel query request if there is remaining unfinished FI in that node
-      List<FragmentInstanceId> unfinishedFIs =
-          stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
-      if (unfinishedFIs.isEmpty()) {
-        continue;
-      }
-
-      String internalAddress = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-      int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
-      if (internalAddress.equalsIgnoreCase(endPoint.getIp())
-          && internalPort == endPoint.getPort()) {
-        for (FragmentInstanceId insId : unfinishedFIs) {
-          FragmentInstanceManager.getInstance().cancelTask(insId, true);
-        }
-        continue;
-      }
-
-      try (SyncDataNodeInternalServiceClient client =
-          internalServiceClientManager.borrowClient(endPoint)) {
-        client.cancelQuery(
-            new TCancelQueryReq(
-                queryId.getId(),
-                unfinishedFIs.stream()
-                    .map(FragmentInstanceId::toThrift)
-                    .collect(Collectors.toList()),
-                true));
-      } catch (ClientManagerException e) {
-        logger.warn("can't connect to node {}", endPoint, e);
-        // we shouldn't return here and need to cancel queryTasks in other nodes
-        succeed = false;
-      } catch (TException t) {
-        logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
-        // we shouldn't return here and need to cancel queryTasks in other nodes
-        succeed = false;
-      }
-    }
-    return succeed;
-  }
-
-  private List<TEndPoint> getRelatedHost(List<FragmentInstance> fragmentInstances) {
+  private List<TEndPoint> getRelatedHost(final List<FragmentInstance> fragmentInstances) {
     return fragmentInstances.stream()
         .map(instance -> instance.getHostDataNode().internalEndPoint)
         .distinct()
@@ -186,7 +146,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   }
 
   private List<FragmentInstanceId> getRelatedFragmentInstances(
-      TEndPoint endPoint, List<FragmentInstance> fragmentInstances) {
+      final TEndPoint endPoint, final List<FragmentInstance> fragmentInstances) {
     return fragmentInstances.stream()
         .filter(instance -> instance.getHostDataNode().internalEndPoint.equals(endPoint))
         .map(FragmentInstance::getId)

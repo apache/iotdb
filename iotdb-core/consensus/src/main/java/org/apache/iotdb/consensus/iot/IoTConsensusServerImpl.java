@@ -890,6 +890,7 @@ public class IoTConsensusServerImpl {
   public void cleanupLocalSnapshot() {
     try {
       cleanupSnapshot(newSnapshotDirName);
+      stateMachine.clearSnapshot();
     } catch (ConsensusGroupModifyPeerException e) {
       logger.warn(
           "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
