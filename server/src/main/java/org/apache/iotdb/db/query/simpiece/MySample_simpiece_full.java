@@ -32,13 +32,7 @@ public class MySample_simpiece_full {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    String[] datasetNameList =
-        new String[] {
-          "NISTPV-Ground-2015-WindSpeed_ms",
-          "NISTPV-Ground-2015-Qloss_Ah",
-          "NISTPV-Ground-2015-Pyra1_Wm2",
-          "NISTPV-Ground-2015-RTD_C_3"
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
     int[] noutList = new int[] {320, 360, 400, 440, 480, 520, 560, 600, 640};
 
     double[][] epsilonArray = {

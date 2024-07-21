@@ -31,13 +31,7 @@ public class MySample_fsw_full {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    String[] datasetNameList =
-        new String[] {
-          "NISTPV-Ground-2015-WindSpeed_ms",
-          "NISTPV-Ground-2015-Qloss_Ah",
-          "NISTPV-Ground-2015-Pyra1_Wm2",
-          "NISTPV-Ground-2015-RTD_C_3"
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
     int[] noutList = new int[] {320, 360, 400, 440, 480, 520, 560, 600, 640};
 
     double[][] epsilonArray = {
@@ -142,8 +136,8 @@ public class MySample_fsw_full {
       }
     }
 
-    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
-      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
+    for (int i = 0; i < epsilonArray.length; i++) {
+      for (int j = 0; j < epsilonArray[i].length; j++) {
         System.out.print(epsilonArray[i][j] + ",");
       }
       System.out.println();

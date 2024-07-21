@@ -31,26 +31,17 @@ public class MySample_shrinkingcone {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    String[] datasetNameList =
-        new String[]{
-            "NISTPV-Ground-2015-Qloss_Ah",
-            "NISTPV-Ground-2015-Pyra1_Wm2",
-            "NISTPV-Ground-2015-RTD_C_3",
-            "NISTPV-Ground-2015-WindSpeed_ms"
-        };
-    int[] noutList = new int[]{100};
-    double[] r = new double[]{0.1, 0.5, 1.3, 0};
-    int[] NList = new int[]{2500000, 2500000, 2500000, 500000};
-    double[] epsilonList = new double[]{0.001, 408.55843019485474, 7.996772289276123,
-        14.692305088043213};
-    for (int y = 3; y < datasetNameList.length; y++) {
+    String[] datasetNameList = new String[] {"Qloss", "Pyra1", "RTD", "WindSpeed"};
+    int[] noutList = new int[] {100};
+    double[] r = new double[] {0.1, 0.5, 1.3, 0};
+    int[] NList = new int[] {2500000, 2500000, 2500000, 500000};
+    double[] epsilonList =
+        new double[] {0.001, 408.55843019485474, 7.996772289276123, 14.692305088043213};
+    for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
       int start = (int) (10000000 / 2 - NList[y] * r[y]); // 从0开始计数
       int end = (int) (10000000 / 2 + NList[y] * (1 - r[y]));
       int N = end - start;
-      //      int start = 0;
-      //      int end = 10000;
-      //      int N = end - start;
 
       for (int nout : noutList) {
         boolean hasHeader = false;
@@ -59,7 +50,7 @@ public class MySample_shrinkingcone {
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
                   inputStream, delimiter, false, N, start, hasHeader, false);
-//          double epsilon = getSCParam(nout, ts, 1e-6);
+          //          double epsilon = getSCParam(nout, ts, 1e-6);
           double epsilon = epsilonList[y];
           List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
           System.out.println(

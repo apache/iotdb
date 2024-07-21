@@ -31,18 +31,8 @@ public class MySample_shrinkingcone_full {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    String[] datasetNameList =
-        new String[] {
-          "NISTPV-Ground-2015-WindSpeed_ms",
-          "NISTPV-Ground-2015-Qloss_Ah",
-          "NISTPV-Ground-2015-Pyra1_Wm2",
-          "NISTPV-Ground-2015-RTD_C_3"
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
     int[] noutList = new int[] {320, 360, 400, 440, 480, 520, 560, 600, 640};
-
-    //    double[] epsilonList = new double[]{0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
-    // 0.001,
-    //        0.0009999999999999999};
 
     double[][] epsilonArray = {
       {
@@ -92,7 +82,7 @@ public class MySample_shrinkingcone_full {
       int end = 1000_0000;
       int N = end - start;
       boolean hasHeader = false;
-      try (FileInputStream inputStream = new  FileInputStream(fileDir + datasetName + ".csv")) {
+      try (FileInputStream inputStream = new FileInputStream(fileDir + datasetName + ".csv")) {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
@@ -104,8 +94,6 @@ public class MySample_shrinkingcone_full {
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
-
-          //          double epsilon = epsilonList[x]; // 单独给Qloss手调
 
           List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
           System.out.println(

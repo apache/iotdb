@@ -133,9 +133,6 @@ public class LocalGroupByExecutorTri_SimPiece implements GroupByExecutor {
       result.reset();
     }
 
-    //
-    // series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
-
     SimPiece simPiece = new SimPiece(timeSeries.data, epsilon);
     List<SimPieceSegment> segments = simPiece.segments;
     segments.sort(Comparator.comparingLong(SimPieceSegment::getInitTimestamp));
@@ -175,9 +172,6 @@ public class LocalGroupByExecutorTri_SimPiece implements GroupByExecutor {
         .append(simPiece.lastTimeStamp)
         .append("]")
         .append(",");
-
-    //
-    // series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
 
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series.toString(), 0));

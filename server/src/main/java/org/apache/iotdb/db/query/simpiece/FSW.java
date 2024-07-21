@@ -57,14 +57,12 @@ public class FSW {
               ((p_upper[i] - points.get(segmentPoint.get(seg_no)[1]).getValue())
                   / (points.get(i).getTimestamp()
                       - points.get(segmentPoint.get(seg_no)[1]).getTimestamp())));
-      //              (i - segmentPoint.get(seg_no)[1])));
       lowSlope =
           Math.max(
               lowSlope,
               ((p_lower[i] - points.get(segmentPoint.get(seg_no)[1]).getValue())
                   / (points.get(i).getTimestamp()
                       - points.get(segmentPoint.get(seg_no)[1]).getTimestamp())));
-      //              (i - segmentPoint.get(seg_no)[1])));
       if (upSlope < lowSlope) {
         seg_no += 1;
         segmentPoint.add(new int[] {seg_no, csp_id});
@@ -76,7 +74,6 @@ public class FSW {
             (points.get(i).getValue() - points.get(segmentPoint.get(seg_no)[1]).getValue())
                 / (points.get(i).getTimestamp()
                     - points.get(segmentPoint.get(seg_no)[1]).getTimestamp());
-        //                (i - segmentPoint.get(seg_no)[1]);
         if (s >= lowSlope && s <= upSlope) {
           csp_id = i;
         }
