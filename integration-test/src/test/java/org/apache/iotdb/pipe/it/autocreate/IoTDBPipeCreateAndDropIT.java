@@ -180,7 +180,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     // Create pipe If Not Exists
     sql =
         String.format(
-            "create pipe If Not Exists a2b with sink ('node-urls'='%s', 'source.path'='root.test1.**')",
+            "create pipe If Not Exists a2b with sink ('node-urls'='%s', 'source.path'='root.test2.**')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -209,7 +209,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Record last creation time
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test2.**"));
       Assert.assertTrue(creationTime == showPipeResult.get(0).creationTime);
     }
 
@@ -230,7 +230,7 @@ public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
     expectedResSet.add("2500,4.0,");
     expectedResSet.add("3000,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.test1.**", "Time,root.test1.at1,", expectedResSet);
+        receiverEnv, "select * from root.test1", "Time,root.test1.at1,", expectedResSet);
   }
 
   @Test

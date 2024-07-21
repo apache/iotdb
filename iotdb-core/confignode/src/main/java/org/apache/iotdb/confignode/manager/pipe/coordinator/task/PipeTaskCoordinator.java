@@ -177,7 +177,7 @@ public class PipeTaskCoordinator {
 
       // If the IF EXISTS condition is not set and the pipe existed before drop,
       // return an error status indicating that the pipe does not exist.
-      RpcUtils.getStatus(
+      return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
               "Failed to drop pipe %s. Failures: %s does not exist.",
