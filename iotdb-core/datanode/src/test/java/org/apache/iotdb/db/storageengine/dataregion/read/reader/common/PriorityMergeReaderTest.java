@@ -69,7 +69,7 @@ public class PriorityMergeReaderTest {
   }
 
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
-    PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
+    PriorityMergeReader priorityMergeReader = new PriorityMergeReader(false);
     for (int i = 0; i < sources.length; i++) {
       priorityMergeReader.addReader(new FakedSeriesReader(sources[i], i + 1), i + 1);
     }

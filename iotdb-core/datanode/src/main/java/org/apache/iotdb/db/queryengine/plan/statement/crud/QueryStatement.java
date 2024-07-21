@@ -133,6 +133,8 @@ public class QueryStatement extends AuthorityInformationStatement {
   // we can skip the query
   private boolean isResultSetEmpty = false;
 
+  private boolean debug = false;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -819,5 +821,15 @@ public class QueryStatement extends AuthorityInformationStatement {
         throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
       }
     }
+  }
+
+  @Override
+  public boolean isDebug() {
+    return debug;
+  }
+
+  @Override
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 }

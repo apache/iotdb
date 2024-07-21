@@ -115,9 +115,27 @@ public class ChunkMetadata implements IChunkMetadata {
 
   @Override
   public String toString() {
-    return String.format(
-        "measurementId: %s, datatype: %s, version: %d, " + "Statistics: %s, deleteIntervalList: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList);
+    return "ChunkMetadata{"
+        + "measurementUid='"
+        + measurementUid
+        + '\''
+        + ", offsetOfChunkHeader="
+        + offsetOfChunkHeader
+        + ", tsDataType="
+        + tsDataType
+        + ", version="
+        + version
+        + ", deleteIntervalList="
+        + deleteIntervalList
+        + ", modified="
+        + modified
+        + ", statistics="
+        + statistics
+        + ", isSeq="
+        + isSeq
+        + ", isClosed="
+        + isClosed
+        + '}';
   }
 
   public long getNumOfPoints() {

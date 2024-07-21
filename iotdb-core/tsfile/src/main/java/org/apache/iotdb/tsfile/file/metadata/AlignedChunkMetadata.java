@@ -211,4 +211,14 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   public List<IChunkMetadata> getValueChunkMetadataList() {
     return valueChunkMetadataList;
   }
+
+  @Override
+  public String toString() {
+    return "AlignedChunkMetadata{"
+        + "timeChunkMetadata="
+        + timeChunkMetadata
+        + ", valueChunkMetadataList="
+        + valueChunkMetadataList
+        + '}';
+  }
 }
