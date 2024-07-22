@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ConfigTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -144,13 +145,20 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             qualifiedName.getSuffix());
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
-    TableScanNode tableScanNode =
-        new TableScanNode(
-            idAllocator.genPlanNodeId(),
-            qualifiedObjectName,
-            outputSymbols,
-            tableColumnSchema,
-            idAndAttributeIndexMap);
+    final TableScanNode tableScanNode =
+        analysis.isConfigQuery()
+            ? new ConfigTableScanNode(
+                idAllocator.genPlanNodeId(),
+                qualifiedObjectName,
+                outputSymbols,
+                tableColumnSchema,
+                idAndAttributeIndexMap)
+            : new TableScanNode(
+                idAllocator.genPlanNodeId(),
+                qualifiedObjectName,
+                outputSymbols,
+                tableColumnSchema,
+                idAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);

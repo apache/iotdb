@@ -27,13 +27,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ConfigTableMetaD
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-public class ConfigQueryOperator extends AbstractSourceOperator {
+public class ConfigTableScanOperator extends AbstractSourceOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(ConfigQueryOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(ConfigTableScanOperator.class);
 
   private final String tableName;
 
-  public ConfigQueryOperator(
+  private boolean hasNext = true;
+
+  public ConfigTableScanOperator(
       final OperatorContext context, final PlanNodeId sourceId, final String tableName) {
     this.sourceId = sourceId;
     this.operatorContext = context;
@@ -42,12 +44,13 @@ public class ConfigQueryOperator extends AbstractSourceOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    hasNext = false;
     return ConfigTableMetaData.getTsBlock(tableName);
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return true;
+    return hasNext;
   }
 
   @Override
@@ -57,7 +60,7 @@ public class ConfigQueryOperator extends AbstractSourceOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return false;
+    return !hasNext;
   }
 
   @Override
