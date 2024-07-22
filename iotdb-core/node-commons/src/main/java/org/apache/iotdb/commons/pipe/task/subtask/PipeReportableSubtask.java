@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -55,6 +56,18 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     // is dropped or the process is running normally.
   }
 
+  public static void main(String[] args) {
+    PipeRuntimeConnectorRetryTimesConfigurableException test =
+        new PipeRuntimeConnectorRetryTimesConfigurableException("test", Integer.MAX_VALUE);
+    final int maxRetryTimes =
+        test instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) test).getRetryTimes()
+            : MAX_RETRY_TIMES;
+    if (test instanceof PipeRuntimeConnectorCriticalException) {
+      System.out.println(maxRetryTimes);
+    }
+  }
+
   private void onEnrichedEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
@@ -73,7 +86,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     retryCount.incrementAndGet();
-    if (retryCount.get() <= MAX_RETRY_TIMES) {
+    if (retryCount.get() <= maxRetryTimes) {
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
           taskID,
