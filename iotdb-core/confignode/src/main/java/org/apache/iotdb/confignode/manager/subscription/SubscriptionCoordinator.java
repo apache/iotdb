@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -149,11 +151,31 @@ public class SubscriptionCoordinator {
     return status;
   }
 
-  public TSStatus dropTopic(String topicName) {
-    final TSStatus status = configManager.getProcedureManager().dropTopic(topicName);
+  public TSStatus dropTopic(TDropTopicReq req) {
+    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(req.getTopicName());
+    final TSStatus status = configManager.getProcedureManager().dropTopic(req.getTopicName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop topic {}. Result status: {}.", topicName, status);
+      LOGGER.warn("Failed to drop topic {}. Result status: {}.", req.getTopicName(), status);
     }
+
+    // After the deletion operation is completed, handle the situation where the topic does not
+    // exist
+    if (!isTopicExistedBeforeDrop) {
+      // If the IF EXISTS condition is set in the request, return the current status.
+      if (req.isIfExistsCondition()) {
+        return status;
+      }
+
+      // If the IF EXISTS condition is not set and the topic does not exist before the delete
+      // operation,
+      // return an error status indicating that the topic does not exist.
+      return RpcUtils.getStatus(
+          TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+          String.format(
+              "Failed to drop Topic %s. Failures: %s does not exist.",
+              req.getTopicName(), req.getTopicName()));
+    }
+
     return status;
   }
 

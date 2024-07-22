@@ -168,14 +168,16 @@ public class PipeTaskCoordinator {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", req.getPipeName(), status);
     }
 
-    // Check if the pipe existed before attempting to drop it.
+    // After the deletion operation is completed, handle the situation where the pipe does not
+    // exist
     if (!isPipeExistedBeforeDrop) {
       // If the IF EXISTS condition is set in the request, return the current status.
       if (req.isIfExistsCondition()) {
         return status;
       }
 
-      // If the IF EXISTS condition is not set and the pipe existed before drop,
+      // If the IF EXISTS condition is not set and the pipe does not exist before the delete
+      // operation,
       // return an error status indicating that the pipe does not exist.
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,

@@ -785,6 +785,11 @@ struct TCreateTopicReq {
     3: optional bool ifNotExistsCondition
 }
 
+struct TDropTopicReq {
+    1: required string topicName
+    2: optional bool ifExistsCondition
+}
+
 struct TShowTopicReq {
     1: optional string topicName
 }
@@ -1517,6 +1522,9 @@ service IConfigNodeRPCService {
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
+
+  /** Drop Topic */
+  common.TSStatus extendDropTopic(TDropTopicReq req)
 
   /** Show Topic by name, if name is empty, show all Topic */
   TShowTopicResp showTopic(TShowTopicReq req)

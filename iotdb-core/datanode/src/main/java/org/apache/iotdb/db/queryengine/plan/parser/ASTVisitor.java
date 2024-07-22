@@ -3911,6 +3911,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Not support for this sql in DROP TOPIC, please enter topicName.");
     }
 
+    dropTopicStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
     return dropTopicStatement;
   }
 

@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -672,7 +673,7 @@ public interface IManager {
   TSStatus createTopic(TCreateTopicReq topic);
 
   /** Drop Topic. */
-  TSStatus dropTopic(String topicName);
+  TSStatus dropTopic(TDropTopicReq req);
 
   /** Show Topic. */
   TShowTopicResp showTopic(TShowTopicReq req);

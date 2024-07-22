@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -1002,6 +1003,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus dropTopic(String topicName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.dropTopic(topicName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus extendDropTopic(TDropTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.extendDropTopic(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
