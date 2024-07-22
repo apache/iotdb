@@ -73,11 +73,12 @@ public class WALRepairWriterTest {
     new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + head magic
     // string + tail magic string
+    // empty file will be assumed as V1 (because of no header magic)
     Assert.assertEquals(
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALFileVersion.V2.getVersionBytes().length * 2L,
+            + WALFileVersion.V1.getVersionBytes().length,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -97,11 +98,12 @@ public class WALRepairWriterTest {
     // repair
     new WALRepairWriter(logFile).repair(walMetaData);
     // verify file, marker + metadata(search index + size number) + metadata size + magic string
+    // file too small will be assumed as V1 (because of no header magic)
     Assert.assertEquals(
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALFileVersion.V2.getVersionBytes().length * 2L,
+            + WALFileVersion.V1.getVersionBytes().length,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());

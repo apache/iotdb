@@ -42,7 +42,7 @@ public class WALRepairWriter {
     // locate broken data
     long truncateSize;
     WALFileVersion version = WALFileVersion.getVersion(logFile);
-    if (readTailMagic(version).equals(version.getVersionString())) { // complete file
+    if (version.getVersionString().equals(readTailMagic(version))) { // complete file
       return;
     } else { // file with broken magic string
       truncateSize = metaData.getTruncateOffSet();
@@ -60,6 +60,9 @@ public class WALRepairWriter {
 
   private String readTailMagic(WALFileVersion version) throws IOException {
     int size = version.getVersionBytes().length;
+    if (logFile.length() < size) {
+      return null;
+    }
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
       ByteBuffer magicStringBytes = ByteBuffer.allocate(size);
       channel.read(magicStringBytes, channel.size() - size);

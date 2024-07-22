@@ -68,7 +68,7 @@ public abstract class LogWriter implements ILogWriter {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
-    if (!logFile.exists() || logFile.length() == 0) {
+    if ((!logFile.exists() || logFile.length() == 0) && version == WALFileVersion.V2) {
       this.logChannel.write(ByteBuffer.wrap(version.getVersionBytes()));
     }
   }
