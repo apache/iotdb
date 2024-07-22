@@ -501,7 +501,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   }
 
   protected static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
