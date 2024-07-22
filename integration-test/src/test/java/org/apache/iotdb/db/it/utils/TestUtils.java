@@ -63,6 +63,8 @@ public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
 
+  public static final String USE_DB = "use db";
+
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

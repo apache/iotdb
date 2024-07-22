@@ -212,12 +212,12 @@ public class IoTDBSessionRelationalIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
-      session.executeNonQueryStatement("USE \"db1\"");
-      // the table is missing column "m2"
+      session.executeNonQueryStatement("CREATE DATABASE \"db0\"");
+      session.executeNonQueryStatement("USE \"db0\"");
+      // the table is missing column "m1"
       session.executeNonQueryStatement(
-          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
-              + "m1 double "
+          "CREATE TABLE table0 (id1 string id, attr1 string attribute, "
+              + "m0 double "
               + "measurement)");
 
       // the insertion contains "m2"
