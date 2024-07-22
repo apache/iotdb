@@ -81,7 +81,8 @@ public abstract class PipePluginMetaKeeper {
 
   public String getPluginNameByJarName(String jarName) {
     for (Map.Entry<String, PipePluginMeta> entry : pipePluginNameToMetaMap.entrySet()) {
-      if (entry.getValue().getJarName().equals(jarName)) {
+      String jarNameInMeta = entry.getValue().getJarName();
+      if (Objects.nonNull(jarNameInMeta) && jarNameInMeta.equals(jarName)) {
         return entry.getKey();
       }
     }
