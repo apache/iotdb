@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ConfigQuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -783,6 +784,40 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new QuerySpecification(
         getLocation(ctx),
         new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
+        from,
+        visitIfPresent(ctx.queryWithoutSelect().where, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().groupBy(), GroupBy.class),
+        visitIfPresent(ctx.queryWithoutSelect().having, Expression.class),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
+  public Node visitConfigQuerySpecification(
+      final RelationalSqlParser.ConfigQuerySpecificationContext ctx) {
+    Optional<Relation> from = Optional.empty();
+    final List<SelectItem> selectItems =
+        !ctx.selectItem().isEmpty()
+            ? visit(ctx.selectItem(), SelectItem.class)
+            : Collections.singletonList(new AllColumns());
+
+    final List<Relation> relations = visit(ctx.relation(), Relation.class);
+    if (!relations.isEmpty()) {
+      // synthesize implicit join nodes
+      Iterator<Relation> iterator = relations.iterator();
+      Relation relation = iterator.next();
+
+      while (iterator.hasNext()) {
+        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
+      }
+
+      from = Optional.of(relation);
+    }
+
+    return new ConfigQuerySpecification(
+        getLocation(ctx),
+        new Select(getLocation(ctx.SHOW()), isDistinct(ctx.setQuantifier()), selectItems),
         from,
         visitIfPresent(ctx.queryWithoutSelect().where, Expression.class),
         visitIfPresent(ctx.queryWithoutSelect().groupBy(), GroupBy.class),

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ConfigQuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -701,6 +702,8 @@ public class StatementAnalyzer {
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
+
+      analysis.setConfigQuery(node instanceof ConfigQuerySpecification);
 
       Scope sourceScope = analyzeFrom(node, scope);
 
