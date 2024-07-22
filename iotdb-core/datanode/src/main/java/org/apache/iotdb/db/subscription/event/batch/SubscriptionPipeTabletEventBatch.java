@@ -79,8 +79,9 @@ public class SubscriptionPipeTabletEventBatch {
       constructBatch(event);
     }
     if (shouldEmit()) {
+      final List<SubscriptionEvent> events = generateSubscriptionEvents();
       isSealed = true;
-      return generateSubscriptionEvents();
+      return events;
     }
     return Collections.emptyList();
   }

@@ -63,8 +63,9 @@ public class SubscriptionPipeTsFileEventBatch {
       batch.onEvent(event);
     }
     if (batch.shouldEmit()) {
+      final List<SubscriptionEvent> events = generateSubscriptionEvents();
       isSealed = true;
-      return generateSubscriptionEvents();
+      return events;
     }
     return Collections.emptyList();
   }
