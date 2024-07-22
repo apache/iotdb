@@ -64,7 +64,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -82,7 +82,7 @@ dclStatement
     ;
 
 utilityStatement
-    : flush | clearCache | settle | startRepairData | stopRepairData | explain
+    : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -317,12 +317,12 @@ alterSchemaTemplate
 // TTL =============================================================================================
 // ---- Set TTL
 setTTL
-    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
+    : SET TTL TO path=prefixPath time=(INTEGER_LITERAL | INF)
     ;
 
 // ---- Unset TTL
 unsetTTL
-    : UNSET TTL TO path=prefixPath
+    : UNSET TTL (TO | FROM) path=prefixPath
     ;
 
 // ---- Show TTL
@@ -529,6 +529,10 @@ migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+verifyConnection
+    : VERIFY CONNECTION (DETAILS)?
+    ;
+
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE pipeName=identifier
@@ -572,8 +576,16 @@ connectorAttributeClause
 
 alterPipe
     : ALTER PIPE pipeName=identifier
+        alterExtractorAttributesClause?
         alterProcessorAttributesClause?
         alterConnectorAttributesClause?
+    ;
+
+alterExtractorAttributesClause
+    : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
+        LR_BRACKET
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        RR_BRACKET
     ;
 
 alterProcessorAttributesClause
@@ -976,6 +988,15 @@ flush
 // Clear Cache
 clearCache
     : CLEAR CACHE (ON (LOCAL | CLUSTER))?
+    ;
+
+// Set Configuration
+setConfiguration
+    : SET CONFIGURATION setConfigurationEntry+ (ON INTEGER_LITERAL)?
+    ;
+
+setConfigurationEntry
+    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
     ;
 
 // Settle

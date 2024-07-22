@@ -97,7 +97,7 @@ public abstract class MppBaseConfig {
    * @throws IOException if properties storage failed.
    */
   public final void persistent(String filePath) throws IOException {
-    try (FileWriter confOutput = new FileWriter(filePath)) {
+    try (FileWriter confOutput = new FileWriter(filePath, true)) {
       properties.store(confOutput, null);
     }
   }

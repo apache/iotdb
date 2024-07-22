@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.progress;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
@@ -29,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class PipeEventCommitManager {
 
@@ -38,7 +37,7 @@ public class PipeEventCommitManager {
   // key: pipeName_regionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
-  private Consumer<PipeTaskRuntimeEnvironment> commitRateMarker;
+  private BiConsumer<String, Boolean> commitRateMarker;
 
   public void register(
       final String pipeName,
@@ -88,10 +87,26 @@ public class PipeEventCommitManager {
   }
 
   public void commit(final EnrichedEvent event, final String committerKey) {
-    if (committerKey == null
-        || event == null
+    if (event == null
         || !event.needToCommit()
-        || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+        || Objects.isNull(event.getPipeName())
+        || event.getCreationTime() == 0) {
+      return;
+    }
+    if (Objects.nonNull(commitRateMarker)) {
+      try {
+        commitRateMarker.accept(
+            event.getPipeName() + '_' + event.getCreationTime(), event.isDataRegionEvent());
+      } catch (final Exception e) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Failed to mark commit rate for pipe task: {}, stack trace: {}",
+              committerKey,
+              Thread.currentThread().getStackTrace());
+        }
+      }
+    }
+    if (committerKey == null || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
       return;
     }
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
@@ -108,20 +123,6 @@ public class PipeEventCommitManager {
     }
 
     committer.commit(event);
-    if (Objects.nonNull(commitRateMarker)) {
-      try {
-        commitRateMarker.accept(
-            new PipeTaskRuntimeEnvironment(
-                committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
-      } catch (Exception e) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "Failed to mark commit rate for pipe: {}, stack trace: {}",
-              committerKey,
-              Thread.currentThread().getStackTrace());
-        }
-      }
-    }
   }
 
   private static String generateCommitterKey(
@@ -129,12 +130,20 @@ public class PipeEventCommitManager {
     return String.format("%s_%s_%s", pipeName, regionId, creationTime);
   }
 
-  public void setCommitRateMarker(final Consumer<PipeTaskRuntimeEnvironment> commitRateMarker) {
+  public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
 
   private PipeEventCommitManager() {
     // Do nothing but make it private.
+  }
+
+  public long getGivenConsensusPipeCommitId(String committerKey) {
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
+      return 0;
+    }
+    return committer.getCurrentCommitId();
   }
 
   private static class PipeEventCommitManagerHolder {

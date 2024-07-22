@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
@@ -232,7 +233,9 @@ public class InnerSeqCompactionWithFastPerformerTest {
               performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
-                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+                  Collections.singletonList(targetTsFileResource),
+                  CompactionTaskType.INNER_SEQ,
+                  COMPACTION_TEST_SG);
               CompactionUtils.combineModsInInnerCompaction(sourceResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
@@ -526,7 +529,9 @@ public class InnerSeqCompactionWithFastPerformerTest {
             performer.setSummary(new FastCompactionTaskSummary());
             performer.perform();
             CompactionUtils.moveTargetFile(
-                Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+                Collections.singletonList(targetTsFileResource),
+                CompactionTaskType.INNER_SEQ,
+                COMPACTION_TEST_SG);
             CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
@@ -853,7 +858,9 @@ public class InnerSeqCompactionWithFastPerformerTest {
               performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
-                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+                  Collections.singletonList(targetTsFileResource),
+                  CompactionTaskType.INNER_SEQ,
+                  COMPACTION_TEST_SG);
               CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);

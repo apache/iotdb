@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
@@ -34,39 +35,17 @@ import java.io.IOException;
  * <p>It's mainly used for a UDF with aggregation query as its parameters.
  */
 public class TransparentTransformer extends UnaryTransformer {
-
-  public TransparentTransformer(LayerPointReader layerPointReader) {
-    super(layerPointReader);
+  public TransparentTransformer(LayerReader layerReader) {
+    super(layerReader);
   }
 
   @Override
-  public TSDataType getDataType() {
-    return layerPointReaderDataType;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {layerReaderDataType};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReaderDataType) {
-      case BOOLEAN:
-        cachedBoolean = layerPointReader.currentBoolean();
-        break;
-      case DOUBLE:
-        cachedDouble = layerPointReader.currentDouble();
-        break;
-      case FLOAT:
-        cachedFloat = layerPointReader.currentFloat();
-        break;
-      case INT32:
-        cachedInt = layerPointReader.currentInt();
-        break;
-      case INT64:
-        cachedLong = layerPointReader.currentLong();
-        break;
-      case TEXT:
-        cachedBinary = layerPointReader.currentBinary();
-        break;
-      default:
-        throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());
-    }
+  protected Column[] transform(Column[] columns) throws QueryProcessException, IOException {
+    return columns;
   }
 }

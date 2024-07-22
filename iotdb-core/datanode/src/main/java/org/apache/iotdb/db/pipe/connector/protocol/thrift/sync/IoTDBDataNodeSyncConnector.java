@@ -120,6 +120,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
                   pipeSchemaRegionWritePlanEvent.getPlanNode()));
       rateLimitIfNeeded(
           pipeSchemaRegionWritePlanEvent.getPipeName(),
+          pipeSchemaRegionWritePlanEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);

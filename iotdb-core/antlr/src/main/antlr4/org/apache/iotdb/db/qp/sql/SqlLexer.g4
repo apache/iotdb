@@ -165,6 +165,10 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONNECTION
+    : C O N N E C T I O N
+    ;
+
 CONNECTOR
     : C O N N E C T O R
     ;
@@ -936,6 +940,10 @@ THEN
 
 ELSE
     : E L S E
+    ;
+
+INF
+    : I N F
     ;
 
 // Privileges Keywords

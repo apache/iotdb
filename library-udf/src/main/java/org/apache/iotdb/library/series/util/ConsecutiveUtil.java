@@ -81,7 +81,7 @@ public class ConsecutiveUtil {
   }
 
   /** check Null values. */
-  public boolean check(Row row) {
+  public boolean check(Row row) throws IOException {
     for (int i = 0; i < row.size(); i++) {
       if (row.isNull(i)) {
         return true;

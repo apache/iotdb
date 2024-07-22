@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:17-jre-focal
 ARG version=1.0.0
 ARG target=apache-iotdb-${version}-confignode-bin
 

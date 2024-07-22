@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -27,7 +28,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractL
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -113,15 +113,6 @@ public class ConfigNodeConfig {
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /** whether to use Snappy compression before sending data through the network. */
-  private boolean rpcAdvancedCompressionEnable = false;
-
-  /** max frame size. */
-  private int thriftMaxFrameSize = 536870912;
-
-  /** buffer size. */
-  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
-
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
 
@@ -140,9 +131,6 @@ public class ConfigNodeConfig {
   /** Consensus directory, storage consensus protocol logs. */
   private String consensusDir =
       IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.CONSENSUS_FOLDER_NAME;
-
-  /** External lib directory, stores user-uploaded JAR files. */
-  private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
 
   /** External lib directory for UDF, stores user-uploaded JAR files. */
   private String udfDir =
@@ -311,7 +299,6 @@ public class ConfigNodeConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
-    extLibDir = addHomeDir(extLibDir);
     udfDir = addHomeDir(udfDir);
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
@@ -424,30 +411,6 @@ public class ConfigNodeConfig {
 
   public void setCnRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public boolean isCnRpcAdvancedCompressionEnable() {
-    return rpcAdvancedCompressionEnable;
-  }
-
-  public void setCnRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
-  }
-
-  public int getCnThriftMaxFrameSize() {
-    return thriftMaxFrameSize;
-  }
-
-  public void setCnThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-  }
-
-  public int getCnThriftDefaultBufferSize() {
-    return thriftDefaultBufferSize;
-  }
-
-  public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
   public int getMaxClientNumForEachNode() {
@@ -565,14 +528,6 @@ public class ConfigNodeConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
-  }
-
-  public String getExtLibDir() {
-    return extLibDir;
-  }
-
-  public void setExtLibDir(String extLibDir) {
-    this.extLibDir = extLibDir;
   }
 
   public String getUdfDir() {
@@ -1229,5 +1184,19 @@ public class ConfigNodeConfig {
   public void setDataRegionRatisPeriodicSnapshotInterval(
       long dataRegionRatisPeriodicSnapshotInterval) {
     this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public TConfigNodeLocation generateLocalConfigNodeLocationWithSpecifiedNodeId(int configNodeId) {
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
+  }
+
+  public TConfigNodeLocation generateLocalConfigNodeLocation() {
+    return new TConfigNodeLocation(
+        getConfigNodeId(),
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
   }
 }

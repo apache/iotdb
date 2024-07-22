@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -79,6 +81,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
   private final String oldThreadName = Thread.currentThread().getName();
 
   private ICrossCompactionPerformer performer = new FastCompactionPerformer(true);
+  private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
 
   @Before
   public void setUp()
@@ -87,6 +90,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    SystemInfo.getInstance().setMemorySizeForCompaction(100 * 1024 * 1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
@@ -95,6 +99,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
     TsFileValidationTool.badFileNum = 0;
   }
 
@@ -2106,7 +2111,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG + "-" + "0");
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
@@ -2224,7 +2230,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG + "-" + "0");
     CompactionUtils.combineModsInCrossCompaction(
         sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources);
     tsFileManager.replace(

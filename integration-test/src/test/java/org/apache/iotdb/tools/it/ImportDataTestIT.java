@@ -25,8 +25,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,7 +46,7 @@ public class ImportDataTestIT extends AbstractScript {
 
   private static String libPath;
 
-  @Before
+  @BeforeClass
   public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     ip = EnvFactory.getEnv().getIP();
@@ -55,7 +55,7 @@ public class ImportDataTestIT extends AbstractScript {
     libPath = EnvFactory.getEnv().getLibPath();
   }
 
-  @After
+  @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
@@ -74,7 +74,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\" or \"sql\"!",
+      "The file name must end with \"csv\" or \"txt\"!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -89,7 +89,7 @@ public class ImportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-s",
             "./",
             "&",
             "exit",
@@ -101,7 +101,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\" or \"sql\"!",
+      "The file name must end with \"csv\" or \"txt\"!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -115,7 +115,7 @@ public class ImportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-s",
             "./");
     builder.environment().put("CLASSPATH", libPath);
     testOutput(builder, output, 0);

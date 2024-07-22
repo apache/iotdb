@@ -24,12 +24,13 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
 
 jobs:
   cpp:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 15
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os}}
@@ -60,16 +61,15 @@ jobs:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server and client
+      - name: Build IoTDB server
+        shell: bash
+        run: ./mvnw clean install -pl distribution -am -DskipTests
+      - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
-      - name: Test with Maven
-        shell: bash
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -97,10 +97,18 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+          cd iotdb-client 
+          git clone https://github.com/apache/iotdb-client-go.git 
+          cd iotdb-client-go 
+          make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        python: [ '3.6', '3.x' ]
+    runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -116,9 +124,13 @@ jobs:
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
       - name: Check code style
+        if: ${{ matrix.python == '3.x'}}
         shell: bash
         run: black iotdb-client/client-py/ --check --diff
       - name: Integration test

@@ -28,19 +28,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TabletsPayload implements SubscriptionPollPayload {
 
   protected transient List<Tablet> tablets = new ArrayList<>();
 
-  // Pure in-memory object, not involved in serialization and deserialization.
-  protected transient long calculatedTabletsSizeInBytes;
-
   public TabletsPayload() {}
 
-  public TabletsPayload(final List<Tablet> tablets, final long calculatedTabletsSizeInBytes) {
-    this.tablets = tablets;
-    this.calculatedTabletsSizeInBytes = calculatedTabletsSizeInBytes;
+  public TabletsPayload(final List<Tablet> tablets) {
+    this.tablets = new CopyOnWriteArrayList<>(tablets);
   }
 
   public List<Tablet> getTablets() {
@@ -62,7 +59,7 @@ public class TabletsPayload implements SubscriptionPollPayload {
     for (int i = 0; i < size; ++i) {
       tablets.add(Tablet.deserialize(buffer));
     }
-    this.tablets = tablets;
+    this.tablets = new CopyOnWriteArrayList<>(tablets);
     return this;
   }
 
@@ -85,8 +82,6 @@ public class TabletsPayload implements SubscriptionPollPayload {
 
   @Override
   public String toString() {
-    return "TabletsPayload{calculatedTabletsSizeInBytes="
-        + (calculatedTabletsSizeInBytes == 0 ? "<unknown>" : calculatedTabletsSizeInBytes)
-        + "}";
+    return "TabletsPayload{size of tablets=" + tablets.size() + "}";
   }
 }

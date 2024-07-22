@@ -19,7 +19,7 @@
 
 # docker build context is the root path of the repository
 
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:17-jre-focal
 
 ADD distribution/target/apache-iotdb-*-all-bin.zip /
 ADD docker/src/main/DockerCompose/start-1c1d.sh /
@@ -30,13 +30,13 @@ RUN apt update \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
   && mv /start-1c1d.sh /iotdb/sbin \
-  && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
-  && sed -i 's/cn_seed_config_node=127.0.0.1:10710/cn_seed_config_node=0.0.0.0:10710/g' /iotdb/conf/iotdb-confignode.properties \
-  && sed -i 's/dn_seed_config_node=127.0.0.1:10710/dn_seed_config_node=0.0.0.0:10710/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/# config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
-  && sed -i 's/# schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
-  && sed -i 's/# data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus/data_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/cn_seed_config_node=127.0.0.1:10710/cn_seed_config_node=0.0.0.0:10710/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/dn_seed_config_node=127.0.0.1:10710/dn_seed_config_node=0.0.0.0:10710/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/# config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/# schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-system.properties \
+  && sed -i 's/# data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus/data_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-system.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \

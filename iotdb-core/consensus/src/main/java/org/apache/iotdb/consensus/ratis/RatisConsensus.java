@@ -278,7 +278,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(groupId) && Utils.rejectWrite()) {
+    if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
@@ -288,7 +288,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(request);
+    RequestMessage message = new RequestMessage(request);
 
     // 1. first try the local server
     RaftClientRequest clientRequest;
@@ -709,6 +709,16 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.get().getDivision(raftGroupId).getGroup().getPeers().size();
+    } catch (IOException e) {
+      return 0;
+    }
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     List<ConsensusGroupId> ids = new ArrayList<>();
     try {
@@ -771,14 +781,22 @@ class RatisConsensus implements IConsensus {
             300000,
             force ? 1 : 0);
 
-    final RaftClientReply reply;
-    try {
-      reply = server.get().snapshotManagement(request);
-      if (!reply.isSuccess()) {
-        throw new RatisRequestFailedException(reply.getException());
+    synchronized (raftGroupId) {
+      final RaftClientReply reply;
+      try {
+        reply = server.get().snapshotManagement(request);
+        if (!reply.isSuccess()) {
+          throw new RatisRequestFailedException(reply.getException());
+        }
+        logger.info(
+            "{} group {}: successfully taken snapshot at index {} with force = {}",
+            this,
+            raftGroupId,
+            reply.getLogIndex(),
+            force);
+      } catch (IOException ioException) {
+        throw new RatisRequestFailedException(ioException);
       }
-    } catch (IOException ioException) {
-      throw new RatisRequestFailedException(ioException);
     }
   }
 

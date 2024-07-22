@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -88,7 +88,7 @@ class PipeAgentLauncher {
         if (meta.isBuiltin()) {
           continue;
         }
-        PipeAgent.plugin().doRegister(meta);
+        PipeDataNodeAgent.plugin().doRegister(meta);
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -114,7 +114,8 @@ class PipeAgentLauncher {
       }
       // If jar does not exist, add current pipePluginMeta to list
       if (!PipePluginExecutableManager.getInstance()
-          .hasFileUnderInstallDir(pipePluginMeta.getJarName())) {
+          .hasPluginFileUnderInstallDir(
+              pipePluginMeta.getPluginName(), pipePluginMeta.getJarName())) {
         pipePluginMetaList.add(pipePluginMeta);
       } else {
         try {
@@ -144,7 +145,10 @@ class PipeAgentLauncher {
       final List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < pipePluginMetaList.size(); i++) {
         PipePluginExecutableManager.getInstance()
-            .saveToInstallDir(jarList.get(i), pipePluginMetaList.get(i).getJarName());
+            .savePluginToInstallDir(
+                jarList.get(i),
+                pipePluginMetaList.get(i).getPluginName(),
+                pipePluginMetaList.get(i).getJarName());
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
@@ -159,7 +163,7 @@ class PipeAgentLauncher {
         throw new StartupException("Failed to get pipe task meta from config node.");
       }
 
-      PipeAgent.task()
+      PipeDataNodeAgent.task()
           .handlePipeMetaChanges(
               getAllPipeInfoResp.getAllPipeInfo().stream()
                   .map(

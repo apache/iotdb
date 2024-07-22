@@ -523,6 +523,20 @@ public class IoTDBRpcDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
+  public TSDataType getDataType(int columnIndex) throws StatementExecutionException {
+    return getDataType(findColumnNameByIndex(columnIndex));
+  }
+
+  public TSDataType getDataType(String columnName) throws StatementExecutionException {
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return TSDataType.INT64;
+    }
+    final int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    return index < 0 || index >= columnTypeDeduplicatedList.size()
+        ? null
+        : columnTypeDeduplicatedList.get(index);
+  }
+
   public int findColumn(String columnName) {
     return columnOrdinalMap.get(columnName);
   }
@@ -548,6 +562,7 @@ public class IoTDBRpcDataSet {
       case INT32:
         return String.valueOf(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       case INT64:
+      case TIMESTAMP:
         return String.valueOf(curTsBlock.getColumn(index).getLong(tsBlockIndex));
       case FLOAT:
         return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
@@ -562,9 +577,6 @@ public class IoTDBRpcDataSet {
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
-      case TIMESTAMP:
-        return RpcUtils.formatDatetime(
-            timeFormat, "ms", curTsBlock.getColumn(index).getLong(tsBlockIndex), zoneId);
       case DATE:
         return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       default:
@@ -575,7 +587,7 @@ public class IoTDBRpcDataSet {
   public Object getObjectByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return curTsBlock.getTimeByIndex(tsBlockIndex);
+      return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {

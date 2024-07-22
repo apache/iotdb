@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -47,11 +48,13 @@ public abstract class EnrichedEvent implements Event {
   protected final AtomicBoolean isReleased;
 
   protected final String pipeName;
+  protected final long creationTime;
   protected final PipeTaskMeta pipeTaskMeta;
 
   protected String committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  protected int rebootTimes = 0;
 
   protected final PipePattern pipePattern;
 
@@ -65,6 +68,7 @@ public abstract class EnrichedEvent implements Event {
 
   protected EnrichedEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
       final long startTime,
@@ -72,6 +76,7 @@ public abstract class EnrichedEvent implements Event {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
     this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pipePattern = pipePattern;
     this.startTime = startTime;
@@ -127,7 +132,7 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} if the {@link EnrichedEvent} is not controlled by the invoker, which means
    *     the data stored in the event is not safe to use
    */
-  public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyIncreaseResourceReferenceCount(final String holderMessage);
 
   /**
    * Decrease the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent} by 1. If the
@@ -156,7 +161,7 @@ public abstract class EnrichedEvent implements Event {
         isReleased.set(true);
       }
       if (newReferenceCount < 0) {
-        LOGGER.warn(
+        LOGGER.debug(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
@@ -206,7 +211,7 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code true} otherwise
    */
-  public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyDecreaseResourceReferenceCount(final String holderMessage);
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
@@ -241,6 +246,14 @@ public abstract class EnrichedEvent implements Event {
 
   public final String getPipeName() {
     return pipeName;
+  }
+
+  public final long getCreationTime() {
+    return creationTime;
+  }
+
+  public final boolean isDataRegionEvent() {
+    return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }
 
   /**
@@ -289,11 +302,12 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime);
 
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
@@ -308,9 +322,19 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
+  public abstract boolean mayEventPathsOverlappedWithPattern();
+
   public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
+  }
+
+  public void setRebootTimes(final int rebootTimes) {
+    this.rebootTimes = rebootTimes;
+  }
+
+  public int getRebootTimes() {
+    return rebootTimes;
   }
 
   public String getCommitterKey() {
@@ -329,6 +353,23 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean isReleased() {
     return isReleased.get();
+  }
+
+  /**
+   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * to uniquely identify an event
+   */
+  public boolean equalsInPipeConsensus(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final EnrichedEvent otherEvent = (EnrichedEvent) o;
+    return Objects.equals(committerKey, otherEvent.committerKey)
+        && commitId == otherEvent.commitId
+        && rebootTimes == otherEvent.rebootTimes;
   }
 
   @Override

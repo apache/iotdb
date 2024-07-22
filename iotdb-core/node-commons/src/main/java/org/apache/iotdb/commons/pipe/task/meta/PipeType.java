@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.task.meta;
 public enum PipeType {
   USER((byte) 0),
   SUBSCRIPTION((byte) 1),
+  CONSENSUS((byte) 2),
   ;
 
   private final byte type;
@@ -33,6 +34,8 @@ public enum PipeType {
   public static PipeType getPipeType(String pipeName) {
     if (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)) {
       return SUBSCRIPTION;
+    } else if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      return CONSENSUS;
     }
     return USER;
   }

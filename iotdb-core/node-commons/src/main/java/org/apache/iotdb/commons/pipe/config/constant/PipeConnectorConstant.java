@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.pipe.config.constant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import com.github.luben.zstd.Zstd;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,11 +65,13 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_KEY = "connector.batch.max-delay-seconds";
   public static final String SINK_IOTDB_BATCH_DELAY_KEY = "sink.batch.max-delay-seconds";
-  public static final int CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE = 1;
+  public static final int CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE = 1;
+  public static final int CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE = 5;
 
   public static final String CONNECTOR_IOTDB_BATCH_SIZE_KEY = "connector.batch.size-bytes";
   public static final String SINK_IOTDB_BATCH_SIZE_KEY = "sink.batch.size-bytes";
-  public static final long CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
+  public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
+  public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 80 * MB;
 
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
@@ -177,12 +181,29 @@ public class PipeConnectorConstant {
                   CONNECTOR_COMPRESSOR_ZSTD,
                   CONNECTOR_COMPRESSOR_LZMA2)));
 
+  public static final String CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY =
+      "connector.compressor.zstd.level";
+  public static final String SINK_COMPRESSOR_ZSTD_LEVEL_KEY = "sink.compressor.zstd.level";
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE =
+      Zstd.defaultCompressionLevel();
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = Zstd.minCompressionLevel();
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE = Zstd.maxCompressionLevel();
+
   public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";
   public static final double CONNECTOR_RATE_LIMIT_DEFAULT_VALUE = -1;
 
+  public static final String CONNECTOR_FORMAT_KEY = "connector.format";
+  public static final String SINK_FORMAT_KEY = "sink.format";
+  public static final String CONNECTOR_FORMAT_TABLET_VALUE = "tablet";
+  public static final String CONNECTOR_FORMAT_TS_FILE_VALUE = "tsfile";
+  public static final String CONNECTOR_FORMAT_HYBRID_VALUE = "hybrid";
+
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
+
+  public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
+  public static final String CONNECTOR_CONSENSUS_PIPE_NAME = "connector.consensus.pipe-name";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

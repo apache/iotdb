@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.utils;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
@@ -33,9 +34,7 @@ public interface IMNodeFactory<N extends IMNode<N>> {
 
   IDatabaseMNode<N> createDatabaseMNode(N parent, String name);
 
-  IDatabaseMNode<N> createDatabaseMNode(N parent, String name, long dataTTL);
-
-  N createDatabaseDeviceMNode(N parent, String name, long dataTTL);
+  N createDatabaseDeviceMNode(N parent, String name);
 
   N createAboveDatabaseMNode(N parent, String name);
 

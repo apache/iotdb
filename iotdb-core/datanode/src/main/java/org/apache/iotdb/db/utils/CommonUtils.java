@@ -87,7 +87,7 @@ public class CommonUtils {
           }
         case TIMESTAMP:
           try {
-            if (StringUtils.isNumeric(value)) {
+            if (TypeInferenceUtils.isNumber(value)) {
               return Long.parseLong(value);
             } else {
               return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
@@ -102,24 +102,7 @@ public class CommonUtils {
                     + e.getMessage());
           }
         case DATE:
-          try {
-            if (value.length() == 12
-                && ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-                    || (value.startsWith(SqlConstant.DQUOTE)
-                        && value.endsWith(SqlConstant.DQUOTE)))) {
-              return DateTimeUtils.parseDateExpressionToInt(value.substring(1, value.length() - 1));
-            } else {
-              return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
-            }
-          } catch (Throwable e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input "
-                    + value
-                    + ", registered "
-                    + dataType
-                    + " because "
-                    + e.getMessage());
-          }
+          return parseIntFromString(value);
         case FLOAT:
           float f;
           try {
@@ -171,6 +154,26 @@ public class CommonUtils {
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
+    }
+  }
+
+  public static Integer parseIntFromString(String value) {
+    try {
+      if (value.length() == 12
+          && ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE)))) {
+        return DateTimeUtils.parseDateExpressionToInt(value.substring(1, value.length() - 1));
+      } else {
+        return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+      }
+    } catch (Throwable e) {
+      throw new NumberFormatException(
+          "data type is not consistent, input "
+              + value
+              + ", registered "
+              + TSDataType.DATE
+              + " because "
+              + e.getMessage());
     }
   }
 

@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
@@ -32,42 +34,96 @@ public class RoundFunctionTransformer extends UnaryTransformer {
 
   protected int places;
 
-  public RoundFunctionTransformer(
-      LayerPointReader layerPointReader, TSDataType targetDataType, int places) {
-    super(layerPointReader);
+  public RoundFunctionTransformer(LayerReader layerReader, TSDataType targetDataType, int places) {
+    super(layerReader);
     this.targetDataType = targetDataType;
     this.places = places;
   }
 
   @Override
-  public TSDataType getDataType() {
-    return targetDataType;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {targetDataType};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReaderDataType) {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    switch (layerReaderDataType) {
       case INT32:
-        cachedDouble =
-            Math.rint(layerPointReader.currentInt() * Math.pow(10, places)) / Math.pow(10, places);
+        transformInt(columns, builder);
         return;
       case INT64:
-        cachedDouble =
-            Math.rint(layerPointReader.currentLong() * Math.pow(10, places)) / Math.pow(10, places);
+        transformLong(columns, builder);
         return;
       case FLOAT:
-        cachedDouble =
-            Math.rint(layerPointReader.currentFloat() * Math.pow(10, places))
-                / Math.pow(10, places);
+        transformFloat(columns, builder);
         return;
       case DOUBLE:
-        cachedDouble =
-            Math.rint(layerPointReader.currentDouble() * Math.pow(10, places))
-                / Math.pow(10, places);
+        transformDouble(columns, builder);
         return;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported source dataType: %s", layerReaderDataType));
+    }
+  }
+
+  private void transformInt(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+
+    int[] values = columns[0].getInts();
+    boolean[] isNulls = columns[0].isNull();
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        double res = Math.rint(values[i] * Math.pow(10, places)) / Math.pow(10, places);
+        builder.writeDouble(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformLong(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+
+    long[] values = columns[0].getLongs();
+    boolean[] isNulls = columns[0].isNull();
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        double res = Math.rint(values[i] * Math.pow(10, places)) / Math.pow(10, places);
+        builder.writeDouble(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+
+    float[] values = columns[0].getFloats();
+    boolean[] isNulls = columns[0].isNull();
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        double res = Math.rint(values[i] * Math.pow(10, places)) / Math.pow(10, places);
+        builder.writeDouble(res);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+
+    double[] values = columns[0].getDoubles();
+    boolean[] isNulls = columns[0].isNull();
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        double res = Math.rint(values[i] * Math.pow(10, places)) / Math.pow(10, places);
+        builder.writeDouble(res);
+      } else {
+        builder.appendNull();
+      }
     }
   }
 }

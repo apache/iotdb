@@ -55,6 +55,11 @@ public enum Metric {
   IOT_CONSENSUS("iot_consensus"),
   IOT_SEND_LOG("iot_send_log"),
   IOT_RECEIVE_LOG("iot_receive_log"),
+  PIPE_CONSENSUS("pipe_consensus"),
+  PIPE_CONSENSUS_MODE("pipe_consensus_mode"),
+  PIPE_SEND_EVENT("pipe_send_event"),
+  PIPE_RETRY_SEND_EVENT("pipe_retry_send_event"),
+  PIPE_RECEIVE_EVENT("pipe_receive_event"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
@@ -71,11 +76,8 @@ public enum Metric {
   WAL_COST("wal_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
-  FLUSH_THRESHOLD("flush_threshold"),
-  REJECT_THRESHOLD("reject_threshold"),
-  TIMED_FLUSH_MEMTABLE_COUNT("timed_flush_memtable_count"),
-  WAL_FLUSH_MEMTABLE_COUNT("wal_flush_memtable_count"),
-  SERIES_FULL_FLUSH_MEMTABLE("series_full_flush_memtable"),
+  MEMTABLE_THRESHOLD("memtable_threshold"),
+  FLUSH_MEMTABLE_COUNT("flush_memtable_count"),
   ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
   ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
   MEMTABLE_LIVE_DURATION("memtable_live_duration"),
@@ -94,6 +96,7 @@ public enum Metric {
   CACHE("cache"),
   CACHE_HIT_RATE("cache_hit"),
   QUANTITY("quantity"),
+  LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
   // query engine related
@@ -127,9 +130,6 @@ public enum Metric {
   UNPROCESSED_HISTORICAL_TSFILE_COUNT("unprocessed_historical_tsfile_count"),
   UNPROCESSED_REALTIME_TSFILE_COUNT("unprocessed_realtime_tsfile_count"),
   UNPROCESSED_HEARTBEAT_COUNT("unprocessed_heartbeat_count"),
-  BUFFERED_TABLET_COUNT("buffered_tablet_count"),
-  BUFFERED_TSFILE_COUNT("buffered_tsfile_count"),
-  BUFFERED_HEARTBEAT_COUNT("buffered_heartbeat_count"),
   UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
   UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
   UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
@@ -170,7 +170,12 @@ public enum Metric {
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
-  LOAD_MEM("load_mem");
+  LOAD_MEM("load_mem"),
+  LOAD_DISK_IO("load_disk_io"),
+  LOAD_TIME_COST("load_time_cost"),
+  LOAD_POINT_COUNT("load_point_count"),
+  MEMTABLE_POINT_COUNT("memtable_point_count"),
+  ;
 
   final String value;
 

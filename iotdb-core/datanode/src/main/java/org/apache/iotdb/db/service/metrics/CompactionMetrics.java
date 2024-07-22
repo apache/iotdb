@@ -59,14 +59,17 @@ public class CompactionMetrics implements IMetricSet {
   private final AtomicInteger waitingUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingCrossCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingInsertionCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger waitingSettleCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger runningSeqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger runningUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger runningCrossCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger runningInsertionCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger runningSettleCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishSeqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishCrossCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishInsertionCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger finishSettleCompactionTaskNum = new AtomicInteger(0);
   // compaction type -> Counter[ Not-Aligned, Aligned, Metadata]
   private final Map<String, Counter[]> writeCounters = new ConcurrentHashMap<>();
   private final Map<String, Counter[]> readCounters = new ConcurrentHashMap<>();
@@ -301,6 +304,7 @@ public class CompactionMetrics implements IMetricSet {
   private Timer unSeqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer crossCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer insertionCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer settleCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public void recordTaskFinishOrAbort(CompactionTaskType type, long timeCost) {
     switch (type) {
@@ -319,6 +323,10 @@ public class CompactionMetrics implements IMetricSet {
       case INNER_UNSEQ:
         finishUnseqInnerCompactionTaskNum.incrementAndGet();
         unSeqCompactionCostTimer.update(timeCost, TimeUnit.MILLISECONDS);
+        break;
+      case SETTLE:
+        finishSettleCompactionTaskNum.incrementAndGet();
+        settleCompactionCostTimer.update(timeCost, TimeUnit.MILLISECONDS);
         break;
     }
   }
@@ -345,6 +353,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "insertion_compaction");
+    settleCompactionCostTimer =
+        metricService.getOrCreateTimer(
+            Metric.COST_TASK.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "settle_compaction");
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
@@ -399,6 +413,18 @@ public class CompactionMetrics implements IMetricSet {
         this,
         (metrics) -> {
           updateCompactionTaskInfo();
+          return waitingSettleCompactionTaskNum.get();
+        },
+        Tag.NAME.toString(),
+        "compaction_settle",
+        Tag.STATUS.toString(),
+        "waiting");
+    metricService.createAutoGauge(
+        Metric.QUEUE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
           return runningCrossCompactionTaskNum.get();
         },
         Tag.NAME.toString(),
@@ -442,6 +468,18 @@ public class CompactionMetrics implements IMetricSet {
         Tag.STATUS.toString(),
         "running");
     metricService.createAutoGauge(
+        Metric.QUEUE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return runningSettleCompactionTaskNum.get();
+        },
+        Tag.NAME.toString(),
+        "compaction_settle",
+        Tag.STATUS.toString(),
+        "running");
+    metricService.createAutoGauge(
         Metric.COMPACTION_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -481,12 +519,23 @@ public class CompactionMetrics implements IMetricSet {
         },
         Tag.NAME.toString(),
         "insertion");
+    metricService.createAutoGauge(
+        Metric.COMPACTION_TASK_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return finishSettleCompactionTaskNum.get();
+        },
+        Tag.NAME.toString(),
+        "settle");
   }
 
   private void unbindTaskInfo(AbstractMetricService metricService) {
     seqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     unSeqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     crossCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    settleCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     metricService.remove(
         MetricType.TIMER, Metric.COST_TASK.toString(), Tag.NAME.toString(), "inner_seq_compaction");
     metricService.remove(
@@ -499,6 +548,8 @@ public class CompactionMetrics implements IMetricSet {
     metricService.remove(
         MetricType.TIMER, Metric.COST_TASK.toString(), Tag.NAME.toString(), "insertion_compaction");
     metricService.remove(
+        MetricType.TIMER, Metric.COST_TASK.toString(), Tag.NAME.toString(), "settle_compaction");
+    metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
@@ -530,6 +581,13 @@ public class CompactionMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
+        "compaction_settle",
+        Tag.STATUS.toString(),
+        "waiting");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
         "compaction_cross",
         Tag.STATUS.toString(),
         "running");
@@ -552,6 +610,13 @@ public class CompactionMetrics implements IMetricSet {
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         "compaction_inner_unseq",
+        Tag.STATUS.toString(),
+        "running");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_settle",
         Tag.STATUS.toString(),
         "running");
     metricService.remove(
@@ -574,6 +639,11 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_COUNT.toString(),
         Tag.NAME.toString(),
         "insertion");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_TASK_COUNT.toString(),
+        Tag.NAME.toString(),
+        "settle");
   }
 
   // endregion
@@ -583,6 +653,7 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram unseqInnerSpaceCompactionTaskMemory =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram crossSpaceCompactionTaskMemory = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram settleCompactionTaskMemory = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public void updateCompactionMemoryMetrics(CompactionTaskType taskType, long memory) {
     switch (taskType) {
@@ -594,6 +665,9 @@ public class CompactionMetrics implements IMetricSet {
         break;
       case CROSS:
         crossSpaceCompactionTaskMemory.update(memory);
+        break;
+      case SETTLE:
+        settleCompactionTaskMemory.update(memory);
         break;
       case INSERTION:
       default:
@@ -620,6 +694,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "cross");
+    settleCompactionTaskMemory =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_MEMORY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle");
     metricService.createAutoGauge(
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         MetricLevel.IMPORTANT,
@@ -648,6 +728,13 @@ public class CompactionMetrics implements IMetricSet {
         metrics -> SystemInfo.getInstance().getCrossSpaceCompactionMemoryCost().get(),
         Tag.NAME.toString(),
         "cross");
+    metricService.createAutoGauge(
+        Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        metrics -> SystemInfo.getInstance().getSettleCompactionMemoryCost().get(),
+        Tag.NAME.toString(),
+        "settle");
   }
 
   private void unbindCompactionTaskMemory(AbstractMetricService metricService) {
@@ -663,6 +750,11 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_MEMORY.toString(),
         Tag.NAME.toString(),
         "cross");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_MEMORY.toString(),
+        Tag.NAME.toString(),
+        "settle");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
@@ -683,6 +775,11 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         Tag.NAME.toString(),
         "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
+        Tag.NAME.toString(),
+        "settle");
   }
 
   // endregion
@@ -693,6 +790,7 @@ public class CompactionMetrics implements IMetricSet {
   private Gauge crossInnerSpaceCompactionTaskSelectedNum = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge insertionCrossSpaceCompactionTaskSelectedNum =
       DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge settleCompactionTaskSelectedNum = DoNothingMetricManager.DO_NOTHING_GAUGE;
 
   private Histogram seqSpaceCompactionTaskSelectionTimeCost =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -703,11 +801,16 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram insertionCrossSpaceCompactionTaskSelectionTimeCost =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
+  private Histogram settleCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   private Histogram seqInnerSpaceCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram unseqInnerSpaceCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram crossSpaceCompactionTaskSelectedFileNum =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram settleCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public void updateCompactionTaskSelectionNum(CompactionScheduleSummary summary) {
@@ -717,6 +820,7 @@ public class CompactionMetrics implements IMetricSet {
     crossInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitCrossSpaceCompactionTaskNum());
     insertionCrossSpaceCompactionTaskSelectedNum.set(
         summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
+    settleCompactionTaskSelectedNum.set(summary.getSubmitSettleCompactionTaskNum());
   }
 
   public void updateCompactionTaskSelectionTimeCost(CompactionTaskType taskType, long time) {
@@ -732,6 +836,9 @@ public class CompactionMetrics implements IMetricSet {
         break;
       case INSERTION:
         insertionCrossSpaceCompactionTaskSelectionTimeCost.update(time);
+        break;
+      case SETTLE:
+        settleCompactionTaskSelectionTimeCost.update(time);
         break;
       default:
         break;
@@ -749,6 +856,9 @@ public class CompactionMetrics implements IMetricSet {
         break;
       case CROSS:
         crossSpaceCompactionTaskSelectedFileNum.update(selectedFileNum);
+        break;
+      case SETTLE:
+        settleCompactionTaskSelectedFileNum.update(selectedFileNum);
         break;
       case INSERTION:
       default:
@@ -781,6 +891,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insertion");
+    settleCompactionTaskSelectedNum =
+        metricService.getOrCreateGauge(
+            Metric.COMPACTION_TASK_SELECTION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle");
     seqSpaceCompactionTaskSelectionTimeCost =
         metricService.getOrCreateHistogram(
             Metric.COMPACTION_TASK_SELECTION_COST.toString(),
@@ -805,6 +921,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insertion");
+    settleCompactionTaskSelectionTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle");
     seqInnerSpaceCompactionTaskSelectedFileNum =
         metricService.getOrCreateHistogram(
             Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
@@ -823,6 +945,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "cross");
+    settleCompactionTaskSelectedFileNum =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle");
   }
 
   private void unbindCompactionTaskSelection(AbstractMetricService metricService) {
@@ -844,6 +972,11 @@ public class CompactionMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "insertion");
     metricService.remove(
+        MetricType.GAUGE,
+        Metric.COMPACTION_TASK_SELECTION.toString(),
+        Tag.NAME.toString(),
+        "settle");
+    metricService.remove(
         MetricType.HISTOGRAM,
         Metric.COMPACTION_TASK_SELECTION_COST.toString(),
         Tag.NAME.toString(),
@@ -865,6 +998,11 @@ public class CompactionMetrics implements IMetricSet {
         "insertion");
     metricService.remove(
         MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+        Tag.NAME.toString(),
+        "settle");
+    metricService.remove(
+        MetricType.HISTOGRAM,
         Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
         Tag.NAME.toString(),
         "seq");
@@ -878,6 +1016,11 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
         Tag.NAME.toString(),
         "cross");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+        Tag.NAME.toString(),
+        "settle");
   }
 
   // endregion
@@ -924,6 +1067,10 @@ public class CompactionMetrics implements IMetricSet {
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INSERTION, Collections.emptyMap())
             .getOrDefault(CompactionTaskStatus.WAITING, 0));
+    this.waitingSettleCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.SETTLE, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
     this.runningSeqInnerCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
@@ -939,6 +1086,10 @@ public class CompactionMetrics implements IMetricSet {
     this.runningInsertionCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INSERTION, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
+    this.runningSettleCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.SETTLE, Collections.emptyMap())
             .getOrDefault(CompactionTaskStatus.RUNNING, 0));
   }
 

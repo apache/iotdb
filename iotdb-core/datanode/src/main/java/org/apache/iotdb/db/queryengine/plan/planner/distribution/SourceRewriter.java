@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -49,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -721,11 +721,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     boolean outputCountInScanNode = node.isOutputCount() && !context.isOneSeriesInMultiRegion();
-    RegionMergeNode regionMergeNode =
-        new RegionMergeNode(
+    ActiveRegionScanMergeNode regionMergeNode =
+        new ActiveRegionScanMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.isOutputCount(),
-            !outputCountInScanNode);
+            !outputCountInScanNode,
+            node.getSize());
     for (PlanNode planNode : planNodeList) {
       ((RegionScanNode) planNode).setOutputCount(outputCountInScanNode);
       regionMergeNode.addChild(planNode);
@@ -773,6 +774,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   RegionScanNode regionScanNode = (RegionScanNode) node.clone();
                   regionScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
                   regionScanNode.setRegionReplicaSet(dataRegion);
+                  regionScanNode.setOutputCount(node.isOutputCount());
                   regionScanNode.clearPath();
                   return regionScanNode;
                 })

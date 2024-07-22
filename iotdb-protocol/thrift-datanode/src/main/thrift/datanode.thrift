@@ -28,7 +28,6 @@ struct TCreateSchemaRegionReq {
 struct TCreateDataRegionReq {
   1: required common.TRegionReplicaSet regionReplicaSet
   2: required string storageGroup
-  3: optional i64 ttl
 }
 
 struct TInvalidateCacheReq {
@@ -57,7 +56,6 @@ struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
   3: required string storageGroup
-  4: optional i64 ttl
 }
 
 struct TMaintainPeerReq {
@@ -594,7 +592,13 @@ struct TQueryStatistics {
   29: i64 pageReadersDecodeNonAlignedDiskCount,
   30: i64 pageReadersDecodeNonAlignedDiskTime,
   31: i64 pageReadersDecodeNonAlignedMemCount,
-  32: i64 pageReadersDecodeNonAlignedMemTime
+  32: i64 pageReadersDecodeNonAlignedMemTime,
+  33: i64 pageReaderMaxUsedMemorySize
+
+  34: i64 alignedTimeSeriesMetadataModificationCount
+  35: i64 alignedTimeSeriesMetadataModificationTime
+  36: i64 nonAlignedTimeSeriesMetadataModificationCount
+  37: i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 
@@ -620,6 +624,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   15: optional string ip
   16: optional string state
 }
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -853,6 +858,10 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache()
 
+  common.TShowConfigurationResp showConfiguration()
+
+  common.TSStatus setConfiguration(common.TSetConfigurationReq req)
+
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
@@ -860,9 +869,9 @@ service IDataNodeRPCService {
   common.TSStatus killQueryInstance(string queryId)
 
   /**
-   * Config node will Set the TTL for the database on a list of data nodes.
-   */
-  common.TSStatus setTTL(common.TSetTTLReq req)
+     * Config node will Set the TTL for the database on a list of data nodes.
+     */
+    common.TSStatus setTTL(common.TSetTTLReq req)
 
   /**
    * Update template cache when template info or template set info is updated
@@ -997,6 +1006,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }
 
 service MPPDataExchangeService {
@@ -1009,4 +1023,7 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  /** Empty rpc, only for connection test */
+  common.TSStatus testConnectionEmptyRPC()
 }

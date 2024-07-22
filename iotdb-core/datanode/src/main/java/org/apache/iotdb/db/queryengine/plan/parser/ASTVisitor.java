@@ -196,11 +196,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -1981,7 +1983,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setDatabaseLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
+      if (!Boolean.parseBoolean(ctx.boolean_literal().getText())) {
+        throw new SemanticException("Load option VERIFY can only be set to true.");
+      }
+      loadTsFileStatement.setVerifySchema(true);
     } else {
       throw new SemanticException(
           String.format(
@@ -2541,8 +2546,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
-    setTTLStatement.setDatabasePath(path);
+
+    String ttlStr =
+        ctx.INTEGER_LITERAL() != null ? ctx.INTEGER_LITERAL().getText() : ctx.INF().getText();
+    long ttl =
+        ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)
+            ? Long.MAX_VALUE
+            : Long.parseLong(ttlStr);
+    setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
   }
@@ -2551,7 +2562,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
     UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
-    unSetTTLStatement.setDatabasePath(partialPath);
+    unSetTTLStatement.setPath(partialPath);
     return unSetTTLStatement;
   }
 
@@ -2568,7 +2579,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
-    showTTLStatement.setAll(true);
+    showTTLStatement.addPathPatterns(new PartialPath(SqlConstant.getSingleRootArray()));
     return showTTLStatement;
   }
 
@@ -3247,6 +3258,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return clearCacheStatement;
   }
 
+  // Set Configuration
+
+  @Override
+  public Statement visitSetConfiguration(IoTDBSqlParser.SetConfigurationContext ctx) {
+    SetConfigurationStatement setConfigurationStatement =
+        new SetConfigurationStatement(StatementType.SET_CONFIGURATION);
+    int nodeId =
+        Integer.parseInt(ctx.INTEGER_LITERAL() == null ? "-1" : ctx.INTEGER_LITERAL().getText());
+    Map<String, String> configItems = new HashMap<>();
+    for (IoTDBSqlParser.SetConfigurationEntryContext entry : ctx.setConfigurationEntry()) {
+      String key = parseStringLiteral(entry.STRING_LITERAL(0).getText()).trim();
+      String value = parseStringLiteral(entry.STRING_LITERAL(1).getText()).trim();
+      configItems.put(key, value);
+    }
+    setConfigurationStatement.setNodeId(nodeId);
+    setConfigurationStatement.setConfigItems(configItems);
+    return setConfigurationStatement;
+  }
+
   // Start Repair Data
 
   @Override
@@ -3558,6 +3588,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
+        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        }
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }
@@ -3697,6 +3730,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
+
+    if (ctx.alterExtractorAttributesClause() != null) {
+      alterPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(
+              ctx.alterExtractorAttributesClause().extractorAttributeClause()));
+      alterPipeStatement.setReplaceAllExtractorAttributes(
+          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
+    } else {
+      alterPipeStatement.setExtractorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllExtractorAttributes(false);
+    }
+
     if (ctx.alterProcessorAttributesClause() != null) {
       alterPipeStatement.setProcessorAttributes(
           parseProcessorAttributesClause(
@@ -3707,6 +3752,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setProcessorAttributes(new HashMap<>());
       alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
+
     if (ctx.alterConnectorAttributesClause() != null) {
       alterPipeStatement.setConnectorAttributes(
           parseConnectorAttributesClause(
@@ -3989,6 +4035,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
         Integer.parseInt(ctx.toId.getText()));
+  }
+
+  @Override
+  public Statement visitVerifyConnection(IoTDBSqlParser.VerifyConnectionContext ctx) {
+    return new TestConnectionStatement(ctx.DETAILS() != null);
   }
 
   // Quota

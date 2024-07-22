@@ -18,8 +18,16 @@
 # under the License.
 #
 
+source "$(dirname "$0")/iotdb-common.sh"
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
-cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+
+if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
+else
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+fi
+
+check_config_unique "cn_internal_port" "$cn_internal_port"
 
 echo Check whether the internal_port is used..., port is "$cn_internal_port"
 

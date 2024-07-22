@@ -238,10 +238,14 @@ public class PartitionCache {
         // Try to get database needed to be created from missed device
         Set<String> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : result.getMissedDevices()) {
-          PartialPath storageGroupNameNeedCreated =
-              MetaUtils.getStorageGroupPathByLevel(
-                  new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-          storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+          if (devicePath.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+            storageGroupNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+          } else {
+            PartialPath storageGroupNameNeedCreated =
+                MetaUtils.getStorageGroupPathByLevel(
+                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+          }
         }
 
         // Try to create databases one by one until done or one database fail
@@ -265,6 +269,14 @@ public class PartitionCache {
           }
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
+          if (SchemaConstant.SYSTEM_DATABASE.equals(storageGroupName)) {
+            storageGroupSchema.setSchemaReplicationFactor(1);
+            storageGroupSchema.setDataReplicationFactor(1);
+            storageGroupSchema.setMinSchemaRegionGroupNum(1);
+            storageGroupSchema.setMaxSchemaRegionGroupNum(1);
+            storageGroupSchema.setMaxDataRegionGroupNum(1);
+            storageGroupSchema.setMaxDataRegionGroupNum(1);
+          }
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
@@ -296,8 +308,8 @@ public class PartitionCache {
    */
   private void getStorageGroupMap(
       StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
+    storageGroupCacheLock.readLock().lock();
     try {
-      storageGroupCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;
@@ -429,16 +441,16 @@ public class PartitionCache {
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet result;
     // try to get regionReplicaSet from cache
+    regionReplicaSetLock.readLock().lock();
     try {
-      regionReplicaSetLock.readLock().lock();
       result = groupIdToReplicaSetMap.get(consensusGroupId);
     } finally {
       regionReplicaSetLock.readLock().unlock();
     }
     if (result == null) {
       // if not hit then try to get regionReplicaSet from confignode
+      regionReplicaSetLock.writeLock().lock();
       try {
-        regionReplicaSetLock.writeLock().lock();
         // verify that there are not hit in cache
         if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
           try (ConfigNodeClient client =
@@ -472,12 +484,12 @@ public class PartitionCache {
    *
    * @param timestamp the timestamp of map that need to update
    * @param map consensusGroupId to regionReplicaSet map
-   * @return true if update successfully or false when map is not latest
+   * @return {@code true} if update successfully or false when map is not latest
    */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
+    regionReplicaSetLock.writeLock().lock();
     try {
-      regionReplicaSetLock.writeLock().lock();
       boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
       // if timestamp is greater than latestUpdateTime, then update
       if (result) {
@@ -492,8 +504,8 @@ public class PartitionCache {
 
   /** invalidate replicaSetCache */
   public void invalidReplicaSetCache() {
+    regionReplicaSetLock.writeLock().lock();
     try {
-      regionReplicaSetLock.writeLock().lock();
       groupIdToReplicaSetMap.clear();
     } finally {
       regionReplicaSetLock.writeLock().unlock();

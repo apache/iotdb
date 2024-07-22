@@ -40,10 +40,9 @@ setuptools.setup(
     url="https://github.com/apache/iotdb",
     packages=setuptools.find_packages(),
     install_requires=[
-        "thrift>=0.13.0",
-        "pandas>=1.0.0,<1.99.99",
+        "thrift>=0.14.1",
+        "pandas>=1.0.0",
         "numpy>=1.0.0",
-        "testcontainers>=2.0.0",
         "sqlalchemy<1.5,>=1.4",
         "sqlalchemy-utils>=0.37.8",
     ],
@@ -54,7 +53,7 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     license="Apache License, Version 2.0",
     website="https://iotdb.apache.org",
     entry_points={

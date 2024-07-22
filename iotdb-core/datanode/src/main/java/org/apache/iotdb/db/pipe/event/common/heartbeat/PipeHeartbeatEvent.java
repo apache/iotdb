@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -40,8 +38,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
   private final String dataRegionId;
-  private String pipeName;
-  private PipeRealtimeDataRegionExtractor extractor = null;
 
   private long timePublished;
   private long timeAssigned;
@@ -62,31 +58,32 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private final boolean shouldPrintMessage;
 
-  public PipeHeartbeatEvent(String dataRegionId, boolean shouldPrintMessage) {
-    super(null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
+    super(null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
   public PipeHeartbeatEvent(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      String dataRegionId,
-      long timePublished,
-      boolean shouldPrintMessage) {
-    super(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final String dataRegionId,
+      final long timePublished,
+      final boolean shouldPrintMessage) {
+    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
     if (shouldPrintMessage && pipeName != null && LOGGER.isDebugEnabled()) {
@@ -102,15 +99,16 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
-        pipeName, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
+        pipeName, creationTime, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override
@@ -123,6 +121,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return true;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
   /////////////////////////////// Whether to print ///////////////////////////////
 
   public boolean isShouldPrintMessage() {
@@ -130,12 +133,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
-
-  public void bindPipeName(String pipeName) {
-    if (shouldPrintMessage) {
-      this.pipeName = pipeName;
-    }
-  }
 
   public void onPublished() {
     if (shouldPrintMessage) {
@@ -175,13 +172,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// Queue size Reporting ///////////////////////////////
 
-  public void recordDisruptorSize(RingBuffer<?> ringBuffer) {
+  public void recordDisruptorSize(final RingBuffer<?> ringBuffer) {
     if (shouldPrintMessage) {
       disruptorSize = ringBuffer.getBufferSize() - (int) ringBuffer.remainingCapacity();
     }
   }
 
-  public void recordExtractorQueueSize(UnboundedBlockingPendingQueue<Event> pendingQueue) {
+  public void recordExtractorQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
       extractorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       extractorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
@@ -189,23 +186,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void recordConnectorQueueSize(UnboundedBlockingPendingQueue<Event> pendingQueue) {
+  public void recordConnectorQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
       connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       connectorQueueSize = pendingQueue.size();
     }
-
-    if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
-      ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informConnectorInputPendingQueueTsFileSize(pendingQueue.getTsFileInsertionEventCount());
-    }
-  }
-
-  /////////////////////////////// For Hybrid extractor ///////////////////////////////
-
-  public void bindExtractor(PipeRealtimeDataRegionExtractor extractor) {
-    this.extractor = extractor;
   }
 
   /////////////////////////////// For Commit Ordering ///////////////////////////////

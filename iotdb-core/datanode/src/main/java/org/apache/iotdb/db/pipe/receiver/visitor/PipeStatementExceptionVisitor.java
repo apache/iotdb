@@ -61,7 +61,7 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitLoadFile(loadTsFileStatement, context);
+    return visitStatement(loadTsFileStatement, context);
   }
 
   @Override

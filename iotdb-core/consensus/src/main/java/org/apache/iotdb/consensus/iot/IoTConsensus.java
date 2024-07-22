@@ -428,6 +428,12 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    IoTConsensusServerImpl impl = stateMachineMap.get(groupId);
+    return impl != null ? impl.getConfiguration().size() : 0;
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
   }
@@ -473,6 +479,7 @@ public class IoTConsensus implements IConsensus {
         .init(config.getReplication().getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
     IoTConsensusServerImpl impl =

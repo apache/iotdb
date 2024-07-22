@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,18 +35,19 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -81,6 +84,7 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -91,6 +95,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -100,6 +105,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -163,6 +169,11 @@ public class TsFileProcessor {
   /** This callback is called before the workMemtable is added into the flushingMemTables. */
   private final DataRegion.UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
+  public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
+
+  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
+
   /** Wal node. */
   private final IWALNode walNode;
 
@@ -189,6 +200,8 @@ public class TsFileProcessor {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  public static final int MEMTABLE_NOT_EXIST = -1;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -295,7 +308,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -369,7 +382,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -480,7 +493,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -921,7 +934,22 @@ public class TsFileProcessor {
     if (dataRegionInfo.needToReportToSystem()) {
       try {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(dataRegionInfo, this)) {
-          StorageEngine.blockInsertionIfReject(this);
+          long startTime = System.currentTimeMillis();
+          while (SystemInfo.getInstance().isRejected()) {
+            if (workMemTable.shouldFlush()) {
+              break;
+            }
+            try {
+              TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+              if (System.currentTimeMillis() - startTime
+                  > config.getMaxWaitingTimeWhenInsertBlocked()) {
+                throw new WriteProcessRejectException(
+                    "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
         }
       } catch (WriteProcessRejectException e) {
         dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
@@ -997,15 +1025,11 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
+      WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       return true;
     }
-    if (workMemTable.reachTotalPointNumThreshold()) {
-      logger.info(
-          "The avg series points num {} of tsfile {} reaches the threshold",
-          workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
-          tsFileResource.getTsFile().getAbsolutePath());
-      WritingMetrics.getInstance()
-          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+    if (workMemTable.reachChunkSizeOrPointNumThreshold()) {
+      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
       return true;
     }
     return false;
@@ -1355,6 +1379,7 @@ public class TsFileProcessor {
                   storageGroupName,
                   dataRegionInfo.getDataRegion().getDataRegionId());
           flushTask.syncFlushMemTable();
+          memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
           if (writer == null) {
             logger.info(
@@ -1622,6 +1647,7 @@ public class TsFileProcessor {
   }
 
   private void processAlignedChunkMetaDataFromFlushedMemTable(
+      IDeviceID deviceID,
       AlignedChunkMetadata alignedChunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
@@ -1629,13 +1655,16 @@ public class TsFileProcessor {
     SharedTimeDataBuffer sharedTimeDataBuffer =
         new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata());
     for (IChunkMetadata valueChunkMetaData : alignedChunkMetadata.getValueChunkMetadataList()) {
+      String measurement = valueChunkMetaData.getMeasurementUid();
       measurementToChunkMetaMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(valueChunkMetaData);
       measurementToChunkHandleMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
               new DiskAlignedChunkHandleImpl(
+                  deviceID,
+                  measurement,
                   filePath,
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
@@ -1645,17 +1674,21 @@ public class TsFileProcessor {
   }
 
   private void processChunkMetaDataFromFlushedMemTable(
+      IDeviceID deviceID,
       ChunkMetadata chunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
       String filePath) {
+    String measurement = chunkMetadata.getMeasurementUid();
     measurementToChunkMetaMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(chunkMetadata);
     measurementToChunkHandleMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(
             new DiskChunkHandleImpl(
+                deviceID,
+                measurement,
                 filePath,
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
@@ -1663,18 +1696,21 @@ public class TsFileProcessor {
   }
 
   private void buildChunkHandleForFlushedMemTable(
+      IDeviceID deviceID,
       List<IChunkMetadata> chunkMetadataList,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaList,
       Map<String, List<IChunkHandle>> measurementToChunkHandleList) {
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata instanceof AlignedChunkMetadata) {
         processAlignedChunkMetaDataFromFlushedMemTable(
+            deviceID,
             (AlignedChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
             this.tsFileResource.getTsFilePath());
       } else {
         processChunkMetaDataFromFlushedMemTable(
+            deviceID,
             (ChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
@@ -1710,7 +1746,9 @@ public class TsFileProcessor {
 
   private List<IChunkMetadata> getVisibleMetadataListFromWriterByDeviceID(
       QueryContext queryContext, IDeviceID deviceID) throws IllegalPathException {
-
+    long timeLowerBound =
+        getQueryTimeLowerBound(
+            PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
     List<ChunkMetadata> processedChunkMetadataForOneDevice = new ArrayList<>();
@@ -1722,19 +1760,23 @@ public class TsFileProcessor {
           chunkMetadataList,
           queryContext.getPathModifications(
               tsFileResource, deviceID, chunkMetadataList.get(0).getMeasurementUid()));
-      chunkMetadataList.removeIf(queryContext::chunkNotSatisfy);
+      chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
       processedChunkMetadataForOneDevice.addAll(chunkMetadataList);
     }
     return new ArrayList<>(processedChunkMetadataForOneDevice);
   }
 
   private List<IChunkMetadata> getAlignedVisibleMetadataListFromWriterByDeviceID(
-      QueryContext queryContext, IDeviceID deviceID) throws QueryProcessException {
-
+      QueryContext queryContext, IDeviceID deviceID)
+      throws QueryProcessException, IllegalPathException {
     List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
     List<List<Modification>> modifications = new ArrayList<>();
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
+
+    if (chunkMetaDataListForDevice.isEmpty()) {
+      return Collections.emptyList();
+    }
 
     int timeChunkMetadataListIndex =
         searchTimeChunkMetaDataIndexAndSetModifications(
@@ -1764,8 +1806,11 @@ public class TsFileProcessor {
       }
     }
 
+    long timeLowerBound =
+        getQueryTimeLowerBound(
+            PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
     ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataForOneDevice, modifications);
-    alignedChunkMetadataForOneDevice.removeIf(queryContext::chunkNotSatisfy);
+    alignedChunkMetadataForOneDevice.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
   }
 
@@ -1783,39 +1828,44 @@ public class TsFileProcessor {
         for (PartialPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevicePath().getNodes());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
             }
             flushingMemTable.queryForSeriesRegionScan(
                 seriesPath,
-                queryContext.getQueryTimeLowerBound(),
+                timeLowerBound,
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
                 modsToMemtable);
-            if (workMemTable != null) {
-              workMemTable.queryForSeriesRegionScan(
-                  seriesPath,
-                  queryContext.getQueryTimeLowerBound(),
-                  measurementToChunkMetaList,
-                  measurementToChunkHandleList,
-                  null);
-            }
-
-            // Some memTable have been flushed already, so we need to get the chunk metadata from
-            // writer and build chunk handle for disk scanning
-            buildChunkHandleForFlushedMemTable(
-                ResourceByPathUtils.getResourceInstance(seriesPath)
-                    .getVisibleMetadataListFromWriter(writer, tsFileResource, queryContext),
+          }
+          if (workMemTable != null) {
+            workMemTable.queryForSeriesRegionScan(
+                seriesPath,
+                timeLowerBound,
                 measurementToChunkMetaList,
-                measurementToChunkHandleList);
+                measurementToChunkHandleList,
+                null);
+          }
+          IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
+          // Some memTable have been flushed already, so we need to get the chunk metadata from
+          // writer and build chunk handle for disk scanning
+          buildChunkHandleForFlushedMemTable(
+              deviceID,
+              ResourceByPathUtils.getResourceInstance(seriesPath)
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, queryContext, timeLowerBound),
+              measurementToChunkMetaList,
+              measurementToChunkHandleList);
 
-            IDeviceID devicePath =
-                DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
-            if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
-              deviceToMemChunkHandleMap.put(devicePath, measurementToChunkHandleList);
-              deviceToChunkMetadataListMap.put(devicePath, measurementToChunkMetaList);
-            }
+          if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
+            deviceToMemChunkHandleMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkHandleList);
+            deviceToChunkMetadataListMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkMetaList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {
@@ -1853,7 +1903,7 @@ public class TsFileProcessor {
    * get the related ChunkMetadata of data on disk.
    */
   public void queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
     long startTime = System.nanoTime();
@@ -1863,9 +1913,12 @@ public class TsFileProcessor {
           new HashMap<>();
       flushQueryLock.readLock().lock();
       try {
-        for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
-          IDeviceID devicePath = entry.getKey();
-          boolean isAligned = entry.getValue();
+        for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
+          IDeviceID deviceID = entry.getKey();
+          boolean isAligned = entry.getValue().isAligned();
+          long timeLowerBound =
+              getQueryTimeLowerBound(
+                  PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();
           for (IMemTable flushingMemTable : flushingMemTables) {
@@ -1873,34 +1926,35 @@ public class TsFileProcessor {
               continue;
             }
             flushingMemTable.queryForDeviceRegionScan(
-                devicePath,
+                deviceID,
                 isAligned,
-                queryContext.getQueryTimeLowerBound(),
+                timeLowerBound,
                 measurementToChunkMetadataList,
                 measurementToMemChunkHandleList,
                 modsToMemtable);
           }
           if (workMemTable != null) {
             workMemTable.queryForDeviceRegionScan(
-                devicePath,
+                deviceID,
                 isAligned,
-                queryContext.getQueryTimeLowerBound(),
+                timeLowerBound,
                 measurementToChunkMetadataList,
                 measurementToMemChunkHandleList,
                 null);
           }
 
           buildChunkHandleForFlushedMemTable(
+              deviceID,
               isAligned
-                  ? getAlignedVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath)
-                  : getVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath),
+                  ? getAlignedVisibleMetadataListFromWriterByDeviceID(queryContext, deviceID)
+                  : getVisibleMetadataListFromWriterByDeviceID(queryContext, deviceID),
               measurementToChunkMetadataList,
               measurementToMemChunkHandleList);
 
           if (!measurementToMemChunkHandleList.isEmpty()
               || !measurementToChunkMetadataList.isEmpty()) {
-            deviceToMemChunkHandleMap.put(devicePath, measurementToMemChunkHandleList);
-            deviceToChunkMetadataListMap.put(devicePath, measurementToChunkMetadataList);
+            deviceToMemChunkHandleMap.put(deviceID, measurementToMemChunkHandleList);
+            deviceToChunkMetadataListMap.put(deviceID, measurementToChunkMetadataList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {
@@ -1955,20 +2009,20 @@ public class TsFileProcessor {
       try {
         for (PartialPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevicePath().getNodes());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(
-                    context, seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
+                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(context, seriesPath, context.getQueryTimeLowerBound(), null);
+                workMemTable.query(context, seriesPath, timeLowerBound, null);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
@@ -1976,7 +2030,8 @@ public class TsFileProcessor {
 
           List<IChunkMetadata> chunkMetadataList =
               ResourceByPathUtils.getResourceInstance(seriesPath)
-                  .getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, context, timeLowerBound);
 
           // get in memory data
           if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
@@ -2013,6 +2068,13 @@ public class TsFileProcessor {
       QUERY_EXECUTION_METRICS.recordExecutionCost(
           GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
     }
+  }
+
+  private long getQueryTimeLowerBound(String[] device) {
+    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
+    return deviceTTL != Long.MAX_VALUE
+        ? CommonDateTimeUtils.currentTime() - deviceTTL
+        : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {
@@ -2055,6 +2117,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableUpdateTime() {
     return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
+  }
+
+  public long getMemTableFlushPointCount() {
+    return memTableFlushPointCount;
   }
 
   public boolean isSequence() {

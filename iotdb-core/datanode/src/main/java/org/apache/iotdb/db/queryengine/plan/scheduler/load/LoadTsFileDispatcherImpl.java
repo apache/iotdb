@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -166,7 +166,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       try {
-        PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+        PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.serialize();
 
         StorageEngine.getInstance()
@@ -257,7 +257,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
     } else {
       // fallback to use local generated progress index for compatibility
-      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
       LOGGER.info(
           "Use local generated load progress index {} for uuid {}.",
           progressIndex,

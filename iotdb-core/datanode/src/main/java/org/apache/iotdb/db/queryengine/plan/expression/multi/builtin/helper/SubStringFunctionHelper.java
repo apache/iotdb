@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
@@ -97,7 +97,7 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
 
   @Override
   public Transformer getBuiltInScalarFunctionTransformer(
-      FunctionExpression expression, LayerPointReader layerPointReader) {
+      FunctionExpression expression, LayerReader layerReader) {
     LinkedHashMap<String, String> functionAttributes = expression.getFunctionAttributes();
     int subStringLength =
         Integer.parseInt(
@@ -107,7 +107,7 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
       throw new SemanticException(
           "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
     }
-    return new SubStringFunctionTransformer(layerPointReader, subStringStart, subStringLength);
+    return new SubStringFunctionTransformer(layerReader, subStringStart, subStringLength);
   }
 
   @Override

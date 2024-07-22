@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-client</artifactId>
-        <version>1.3.2-SNAPSHOT</version>
+        <version>1.3.3-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-python-api</artifactId>
     <name>IoTDB: Client: Python-API</name>
@@ -34,7 +34,13 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>1.3.3-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>1.3.3-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -188,6 +194,7 @@
                     <usedDependencies>
                         <!-- This dependency is only used for ensuring the build order -->
                         <usedDependency>org.apache.iotdb:iotdb-thrift-commons</usedDependency>
+                        <usedDependency>org.apache.iotdb:iotdb-thrift</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>

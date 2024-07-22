@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -29,8 +31,10 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -38,6 +42,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -51,12 +57,15 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -74,7 +83,9 @@ public class LoadTsFileManager {
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
 
-  private final File loadDir;
+  private static final AtomicReference<String[]> LOAD_BASE_DIRS =
+      new AtomicReference<>(CONFIG.getLoadTsFileDirs());
+  private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
@@ -82,14 +93,12 @@ public class LoadTsFileManager {
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
   public LoadTsFileManager() {
-    this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
-
     registerCleanupTaskExecutor();
     recover();
   }
 
   private void registerCleanupTaskExecutor() {
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
@@ -130,28 +139,43 @@ public class LoadTsFileManager {
   }
 
   private void recover() {
-    if (!loadDir.exists()) {
-      return;
-    }
-
-    final File[] files = loadDir.listFiles();
-    if (files == null) {
-      return;
-    }
-    for (final File taskDir : files) {
-      String uuid = taskDir.getName();
-      TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
-
-      uuid2WriterManager.put(uuid, writerManager);
-      writerManager.close();
-
-      synchronized (uuid2CleanupTask) {
-        final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-        uuid2CleanupTask.put(uuid, cleanupTask);
-        cleanupTaskQueue.add(cleanupTask);
+    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+      synchronized (FOLDER_MANAGER) {
+        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
+        }
       }
     }
+
+    final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS.get()).map(File::new).toArray(File[]::new);
+    final File[] files =
+        Arrays.stream(baseDirs)
+            .filter(File::exists)
+            .flatMap(
+                dir -> {
+                  final File[] listedFiles = dir.listFiles();
+                  return listedFiles != null ? Arrays.stream(listedFiles) : Stream.empty();
+                })
+            .toArray(File[]::new);
+
+    Arrays.stream(files)
+        .parallel()
+        .forEach(
+            taskDir -> {
+              final String uuid = taskDir.getName();
+              final TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
+
+              uuid2WriterManager.put(uuid, writerManager);
+              writerManager.close();
+
+              synchronized (uuid2CleanupTask) {
+                final CleanupTask cleanupTask =
+                    new CleanupTask(
+                        uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
+                uuid2CleanupTask.put(uuid, cleanupTask);
+                cleanupTaskQueue.add(cleanupTask);
+              }
+            });
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
@@ -168,10 +192,26 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
+      final AtomicReference<Exception> exception = new AtomicReference<>();
       final TsFileWriterManager writerManager =
           uuid2WriterManager.computeIfAbsent(
               uuid,
-              o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
+              o -> {
+                try {
+                  return new TsFileWriterManager(new File(getNextFolder(), uuid));
+                } catch (DiskSpaceInsufficientException e) {
+                  exception.set(e);
+                  return null;
+                }
+              });
+      if (exception.get() != null || writerManager == null) {
+        throw new IOException(
+            "Failed to create TsFileWriterManager for uuid "
+                + uuid
+                + " because of insufficient disk space.",
+            exception.get());
+      }
+
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
         if (!tsFileData.isModification()) {
           ChunkData chunkData = (ChunkData) tsFileData;
@@ -184,6 +224,33 @@ public class LoadTsFileManager {
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
+  }
+
+  private String getNextFolder() throws DiskSpaceInsufficientException {
+    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+      synchronized (FOLDER_MANAGER) {
+        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
+          FOLDER_MANAGER.set(
+              new FolderManager(
+                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+          return FOLDER_MANAGER.get().getNextFolder();
+        }
+      }
+    }
+
+    if (FOLDER_MANAGER.get() == null) {
+      synchronized (FOLDER_MANAGER) {
+        if (FOLDER_MANAGER.get() == null) {
+          FOLDER_MANAGER.set(
+              new FolderManager(
+                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+          return FOLDER_MANAGER.get().getNextFolder();
+        }
+      }
+    }
+
+    return FOLDER_MANAGER.get().getNextFolder();
   }
 
   public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
@@ -228,22 +295,58 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
+  }
 
-    final Path loadDirPath = loadDir.toPath();
-    if (!Files.exists(loadDirPath)) {
-      return;
-    }
-    try {
-      Files.deleteIfExists(loadDirPath);
-      LOGGER.info("Load dir {} was deleted.", loadDirPath);
-    } catch (DirectoryNotEmptyException e) {
-      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-    } catch (IOException e) {
-      LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
+  public static void updateWritePointCountMetrics(
+      final DataRegion dataRegion,
+      final String databaseName,
+      final long writePointCount,
+      final boolean isGeneratedByPipeConsensusLeader) {
+    MemTableFlushTask.recordFlushPointsMetricInternal(
+        writePointCount, databaseName, dataRegion.getDataRegionId());
+    MetricService.getInstance()
+        .count(
+            writePointCount,
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            databaseName,
+            Tag.REGION.toString(),
+            dataRegion.getDataRegionId(),
+            Tag.TYPE.toString(),
+            Metric.LOAD_POINT_COUNT.toString());
+    // Because we cannot accurately judge who is the leader here,
+    // we directly divide the writePointCount by the replicationNum to ensure the
+    // correctness of this metric, which will be accurate in most cases
+    final int replicationNum =
+        DataRegionConsensusImpl.getInstance()
+            .getReplicationNum(
+                ConsensusGroupId.Factory.create(
+                    TConsensusGroupType.DataRegion.getValue(),
+                    Integer.parseInt(dataRegion.getDataRegionId())));
+    // It may happen that the replicationNum is 0 when load and db deletion occurs
+    // concurrently, so we can just not to count the number of points in this case
+    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
+      MetricService.getInstance()
+          .count(
+              writePointCount / replicationNum,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              databaseName,
+              Tag.REGION.toString(),
+              dataRegion.getDataRegionId(),
+              Tag.TYPE.toString(),
+              Metric.LOAD_POINT_COUNT.toString());
     }
   }
 
   private static class TsFileWriterManager {
+
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
@@ -344,27 +447,13 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
+        // Metrics
         dataRegion
             .getNonSystemDatabaseName()
             .ifPresent(
-                databaseName -> {
-                  long writePointCount = getTsFileWritePointCount(writer);
-                  // Report load tsFile points to IoTDB flush metrics
-                  MemTableFlushTask.recordFlushPointsMetricInternal(
-                      writePointCount, databaseName, dataRegion.getDataRegionId());
-
-                  MetricService.getInstance()
-                      .count(
-                          writePointCount,
-                          Metric.QUANTITY.toString(),
-                          MetricLevel.CORE,
-                          Tag.NAME.toString(),
-                          Metric.POINTS_IN.toString(),
-                          Tag.DATABASE.toString(),
-                          databaseName,
-                          Tag.REGION.toString(),
-                          dataRegion.getDataRegionId());
-                });
+                databaseName ->
+                    updateWritePointCountMetrics(
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 

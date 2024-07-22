@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import com.google.common.base.Supplier;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.DataInputStream;
@@ -33,6 +34,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 public class IOUtils {
 
@@ -272,5 +275,34 @@ public class IOUtils {
     original.rewind();
     clone.flip();
     return clone;
+  }
+
+  /**
+   * Retry a method at most 'maxRetry' times, each time calling 'retryFunc' and passing the result
+   * to 'validator'. If 'validator' returns true, returns the result.
+   *
+   * @param maxRetry maximum number of retires
+   * @param retryIntervalMS retry interval in milliseconds
+   * @param retryFunc function to be retried
+   * @param validator validating the result of 'retryFunc'
+   * @return true if the result from 'retryFunc' passes validation, false if all retries fail or is
+   *     interrupted
+   * @param <T>
+   */
+  public static <T> Optional<T> retryNoException(
+      int maxRetry, long retryIntervalMS, Supplier<T> retryFunc, Function<T, Boolean> validator) {
+    for (int i = 0; i < maxRetry; i++) {
+      T result = retryFunc.get();
+      if (Boolean.TRUE.equals(validator.apply(result))) {
+        return Optional.of(result);
+      }
+      try {
+        Thread.sleep(retryIntervalMS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return Optional.empty();
+      }
+    }
+    return Optional.empty();
   }
 }

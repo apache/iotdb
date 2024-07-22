@@ -34,8 +34,15 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -48,17 +55,19 @@ public class PipeDataNodeTaskBuilder {
 
   static {
     PROCESSOR_EXECUTOR = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
-    CONNECTOR_EXECUTOR_MAP = new HashMap<>();
+    CONNECTOR_EXECUTOR_MAP = new EnumMap<>(PipeType.class);
     CONNECTOR_EXECUTOR_MAP.put(
         PipeType.USER, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
     CONNECTOR_EXECUTOR_MAP.put(
         PipeType.SUBSCRIPTION, PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
+    CONNECTOR_EXECUTOR_MAP.put(
+        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConsensusExecutor());
   }
 
   protected final Map<String, String> systemParameters = new HashMap<>();
 
   public PipeDataNodeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta, int regionId, PipeTaskMeta pipeTaskMeta) {
+      final PipeStaticMeta pipeStaticMeta, final int regionId, final PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
@@ -78,7 +87,7 @@ public class PipeDataNodeTaskBuilder {
             pipeTaskMeta);
 
     final PipeTaskConnectorStage connectorStage;
-    PipeType pipeType = pipeStaticMeta.getPipeType();
+    final PipeType pipeType = pipeStaticMeta.getPipeType();
     if (PipeType.SUBSCRIPTION.equals(pipeType)) {
       connectorStage =
           new SubscriptionTaskConnectorStage(
@@ -87,7 +96,7 @@ public class PipeDataNodeTaskBuilder {
               blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
-    } else { // user pipe
+    } else { // user pipe or consensus pipe
       connectorStage =
           new PipeTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
@@ -107,7 +116,13 @@ public class PipeDataNodeTaskBuilder {
             extractorStage.getEventSupplier(),
             connectorStage.getPipeConnectorPendingQueue(),
             PROCESSOR_EXECUTOR,
-            pipeTaskMeta);
+            pipeTaskMeta,
+            pipeStaticMeta
+                .getConnectorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
+                    CONNECTOR_FORMAT_HYBRID_VALUE)
+                .equals(CONNECTOR_FORMAT_TABLET_VALUE));
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
@@ -119,7 +134,7 @@ public class PipeDataNodeTaskBuilder {
     }
   }
 
-  private PipeParameters blendUserAndSystemParameters(PipeParameters userParameters) {
+  private PipeParameters blendUserAndSystemParameters(final PipeParameters userParameters) {
     // Deep copy the user parameters to avoid modification of the original parameters.
     // If the original parameters are modified, progress index report will be affected.
     final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());

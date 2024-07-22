@@ -53,6 +53,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1062,20 +1063,20 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("Database");
-            add("TTL");
+            add("Device");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.**");
           }
         };
     List<Object> values2 =
         new ArrayList<Object>() {
           {
-            add(null);
+            add("INF");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1093,9 +1094,9 @@ public class IoTDBRestServiceIT {
         new ArrayList<Object>() {
           {
             add("Database");
-            add("TTL");
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
+            add("TimePartitionOrigin");
             add("TimePartitionInterval");
           }
         };
@@ -1307,6 +1308,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("IsAligned");
             add("Template");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =
@@ -1344,6 +1346,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("IsAligned");
             add("Template");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =
@@ -1712,20 +1715,20 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("Database");
-            add("TTL");
+            add("Device");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.**");
           }
         };
     List<Object> values2 =
         new ArrayList<Object>() {
           {
-            add(null);
+            add("INF");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1743,9 +1746,9 @@ public class IoTDBRestServiceIT {
         new ArrayList<Object>() {
           {
             add("Database");
-            add("TTL");
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
+            add("TimePartitionOrigin");
             add("TimePartitionInterval");
           }
         };
@@ -1957,6 +1960,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("IsAligned");
             add("Template");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =
@@ -1995,6 +1999,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("IsAligned");
             add("Template");
+            add(COLUMN_TTL);
           }
         };
     List<Object> values1 =

@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -53,6 +58,9 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -137,31 +145,54 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
 
-    // data regions & schema regions
-    env.getConfigManager()
-        .getLoadManager()
-        .getRegionLeaderMap()
-        .forEach(
-            (regionGroupId, regionLeaderNodeId) -> {
-              final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
-              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                // Pipe only collect user's data, filter out metric database here.
-                consensusGroupIdToTaskMetaMap.put(
-                    regionGroupId.getId(),
-                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
-              }
-            });
+    if (PipeType.CONSENSUS.equals(pipeStaticMeta.getPipeType())) {
+      final TConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(
+                  createPipeRequest.getExtractorAttributes().get(EXTRACTOR_CONSENSUS_GROUP_ID_KEY))
+              .convertToTConsensusGroupId();
 
-    // config region
-    consensusGroupIdToTaskMetaMap.put(
-        // 0 is the consensus group id of the config region, but data region id and schema region id
-        // also start from 0, so we use Integer.MIN_VALUE to represent the config region
-        Integer.MIN_VALUE,
-        new PipeTaskMeta(
-            MinimumProgressIndex.INSTANCE,
-            // The leader of the config region is the config node itself
-            ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      final int senderDataNodeId =
+          Integer.parseInt(
+              createPipeRequest
+                  .getExtractorAttributes()
+                  .get(EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY));
+      consensusGroupIdToTaskMetaMap.put(
+          groupId.getId(),
+          new PipeTaskMeta(
+              new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
+              senderDataNodeId));
+    } else {
+      // data regions & schema regions
+      env.getConfigManager()
+          .getLoadManager()
+          .getRegionLeaderMap()
+          .forEach(
+              (regionGroupId, regionLeaderNodeId) -> {
+                final String databaseName =
+                    env.getConfigManager()
+                        .getPartitionManager()
+                        .getRegionStorageGroup(regionGroupId);
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
+                  // Pipe only collect user's data, filter out metric database here.
+                  consensusGroupIdToTaskMetaMap.put(
+                      regionGroupId.getId(),
+                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
+                }
+              });
+
+      // config region
+      consensusGroupIdToTaskMetaMap.put(
+          // 0 is the consensus group id of the config region, but data region id and schema region
+          // id
+          // also start from 0, so we use Integer.MIN_VALUE to represent the config region
+          Integer.MIN_VALUE,
+          new PipeTaskMeta(
+              MinimumProgressIndex.INSTANCE,
+              // The leader of the config region is the config node itself
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+    }
 
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);

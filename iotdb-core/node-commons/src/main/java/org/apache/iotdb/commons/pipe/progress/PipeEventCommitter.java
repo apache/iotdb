@@ -63,14 +63,26 @@ public class PipeEventCommitter {
   public synchronized void commit(final EnrichedEvent event) {
     commitQueue.offer(event);
 
-    LOGGER.info(
-        "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
-        pipeName,
-        creationTime,
-        regionId,
-        event.getCommitId(),
-        lastCommitId.get(),
-        commitQueue.size());
+    final int commitQueueSizeBeforeCommit = commitQueue.size();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
+          pipeName,
+          creationTime,
+          regionId,
+          event.getCommitId(),
+          lastCommitId.get(),
+          commitQueueSizeBeforeCommit);
+    } else if (commitQueueSizeBeforeCommit != 0 && commitQueueSizeBeforeCommit % 100 == 0) {
+      LOGGER.info(
+          "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
+          pipeName,
+          creationTime,
+          regionId,
+          event.getCommitId(),
+          lastCommitId.get(),
+          commitQueueSizeBeforeCommit);
+    }
 
     while (!commitQueue.isEmpty()) {
       final EnrichedEvent e = commitQueue.peek();
@@ -94,13 +106,15 @@ public class PipeEventCommitter {
       lastCommitId.incrementAndGet();
       commitQueue.poll();
 
-      LOGGER.info(
-          "COMMIT QUEUE POLL: pipe name {}, creation time {}, region id {}, last commit id {}, commit queue size after commit {}",
-          pipeName,
-          creationTime,
-          regionId,
-          lastCommitId.get(),
-          commitQueue.size());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "COMMIT QUEUE POLL: pipe name {}, creation time {}, region id {}, last commit id {}, commit queue size after commit {}",
+            pipeName,
+            creationTime,
+            regionId,
+            lastCommitId.get(),
+            commitQueue.size());
+      }
     }
   }
 
@@ -121,5 +135,9 @@ public class PipeEventCommitter {
 
   public long commitQueueSize() {
     return commitQueue.size();
+  }
+
+  public long getCurrentCommitId() {
+    return commitIdGenerator.get();
   }
 }

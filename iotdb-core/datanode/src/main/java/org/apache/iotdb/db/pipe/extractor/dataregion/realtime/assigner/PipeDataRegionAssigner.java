@@ -76,6 +76,7 @@ public class PipeDataRegionAssigner implements Closeable {
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeName(),
+                      extractor.getCreationTime(),
                       extractor.getPipeTaskMeta(),
                       extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
@@ -90,7 +91,6 @@ public class PipeDataRegionAssigner implements Closeable {
               extractor.extract(copiedEvent);
 
               if (innerEvent instanceof PipeHeartbeatEvent) {
-                ((PipeHeartbeatEvent) innerEvent).bindPipeName(extractor.getPipeName());
                 ((PipeHeartbeatEvent) innerEvent).onAssigned();
               }
             });

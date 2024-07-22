@@ -89,6 +89,12 @@ public class CompressionRatio {
 
     totalMemorySize.addAndGet(memorySize);
     totalDiskSize += diskSize;
+    if (memorySize < 0 || totalMemorySize.get() < 0) {
+      LOGGER.warn(
+          "The compression ratio is negative, current memTableSize: {}, totalMemTableSize: {}",
+          memorySize,
+          totalMemorySize);
+    }
     File newFile =
         SystemFileFactory.INSTANCE.getFile(
             directory,
@@ -138,17 +144,25 @@ public class CompressionRatio {
       int maxRatioIndex = 0;
       for (int i = 0; i < ratioFiles.length; i++) {
         String[] fileNameArray = ratioFiles[i].getName().split("-");
-        long diskSize = Long.parseLong(fileNameArray[2]);
-        if (diskSize > totalDiskSize) {
-          totalMemorySize = new AtomicLong(Long.parseLong(fileNameArray[1]));
-          totalDiskSize = diskSize;
-          maxRatioIndex = i;
+        // fileNameArray.length != 3 means the compression ratio may be negative, ignore it
+        if (fileNameArray.length == 3) {
+          try {
+            long diskSize = Long.parseLong(fileNameArray[2]);
+            if (diskSize > totalDiskSize) {
+              totalMemorySize = new AtomicLong(Long.parseLong(fileNameArray[1]));
+              totalDiskSize = diskSize;
+              maxRatioIndex = i;
+            }
+          } catch (NumberFormatException ignore) {
+            // ignore illegal compression file name
+          }
         }
       }
       LOGGER.debug(
           "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
           totalMemorySize,
           totalDiskSize);
+      oldFileName = ratioFiles[maxRatioIndex].getName();
       deleteRedundantFilesByIndex(ratioFiles, maxRatioIndex);
     } else { // If there is no new file, try to restore from the old version file
       File[] ratioFilesBeforeV121 =
@@ -158,11 +172,18 @@ public class CompressionRatio {
         totalDiskSize = 1;
         for (int i = 0; i < ratioFilesBeforeV121.length; i++) {
           String[] fileNameArray = ratioFilesBeforeV121[i].getName().split("-");
-          double currentCompressRatio =
-              Double.parseDouble(fileNameArray[1]) / Double.parseDouble(fileNameArray[2]);
-          if (getRatio() < currentCompressRatio) {
-            totalMemorySize = new AtomicLong((long) currentCompressRatio);
-            maxRatioIndex = i;
+          // fileNameArray.length != 3 means the compression ratio may be negative, ignore it
+          if (fileNameArray.length == 3) {
+            try {
+              double currentCompressRatio =
+                  Double.parseDouble(fileNameArray[1]) / Double.parseDouble(fileNameArray[2]);
+              if (getRatio() < currentCompressRatio) {
+                totalMemorySize = new AtomicLong((long) currentCompressRatio);
+                maxRatioIndex = i;
+              }
+            } catch (NumberFormatException ignore) {
+              // ignore illegal compression file name
+            }
           }
         }
         deleteRedundantFilesByIndex(ratioFilesBeforeV121, maxRatioIndex);
@@ -192,10 +213,6 @@ public class CompressionRatio {
     }
     totalMemorySize = new AtomicLong(0);
     totalDiskSize = 0L;
-  }
-
-  public static void decreaseDuplicatedMemorySize(long size) {
-    totalMemorySize.addAndGet(-size);
   }
 
   public static CompressionRatio getInstance() {

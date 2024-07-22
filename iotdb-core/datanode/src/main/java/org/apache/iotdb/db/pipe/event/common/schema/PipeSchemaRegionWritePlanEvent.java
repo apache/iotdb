@@ -40,16 +40,17 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   public PipeSchemaRegionWritePlanEvent(final PlanNode planNode, final boolean isGeneratedByPipe) {
-    this(planNode, null, null, null, isGeneratedByPipe);
+    this(planNode, null, 0, null, null, isGeneratedByPipe);
   }
 
   public PipeSchemaRegionWritePlanEvent(
       final PlanNode planNode,
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
+    super(pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.planNode = planNode;
   }
 
@@ -60,12 +61,13 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionWritePlanEvent(
-        planNode, pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
+        planNode, pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
   }
 
   @Override

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -134,7 +134,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     return insertNode.splitByPartition(analysis).stream()
         .map(
             plan ->
@@ -248,11 +248,6 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public long getMinTime() {
     return insertNode.getMinTime();
-  }
-
-  @Override
-  public boolean isSyncFromLeaderWhenUsingIoTConsensus() {
-    return insertNode.isSyncFromLeaderWhenUsingIoTConsensus();
   }
 
   @Override

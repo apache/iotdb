@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -420,9 +422,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         result.targetFileTimestamp =
             Math.min(System.currentTimeMillis(), getTimestampInFileName(unseqFiles.get(0)));
       } else {
-        for (TsFileResourceCandidate unseqFile : unseqFiles) {
-          // skip unseq file which is overlapped with files in seq space
-          if (!unseqFile.resource.isInsertionCompactionTaskCandidate()) {
+        for (int i = 0; i < unseqFiles.size(); i++) {
+          TsFileResourceCandidate unseqFile = unseqFiles.get(i);
+          // skip unseq file which is overlapped with files in seq space or overlapped with previous
+          // unseq files
+          if (!isValidInsertionCompactionCandidate(unseqFiles, i)) {
             continue;
           }
           result = selectCurrentUnSeqFile(unseqFile);
@@ -464,7 +468,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           // overlap
           if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
               && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
-            unseqFile.resource.setInsertionCompactionTaskCandidate(false);
+            unseqFile.resource.setInsertionCompactionTaskCandidate(
+                InsertionCompactionCandidateStatus.NOT_VALID);
             return result;
           }
 
@@ -524,6 +529,68 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         result.toInsertUnSeqFile = unseqFile.resource;
       }
       return result;
+    }
+
+    private boolean isValidInsertionCompactionCandidate(
+        List<TsFileResourceCandidate> unseqFiles, int selectedUnseqFileIndex) throws IOException {
+      TsFileResourceCandidate selectedUnseqFile = unseqFiles.get(selectedUnseqFileIndex);
+      InsertionCompactionCandidateStatus status =
+          selectedUnseqFile.resource.getInsertionCompactionCandidateStatus();
+      if (status == InsertionCompactionCandidateStatus.NOT_VALID) {
+        return false;
+      }
+      // The selected unseq file should not overlap with the previous unseq file
+      // Example:
+      // seq files:
+      // 1-1-0-0.tsfile (device timestamps: [1-5]) 10-2-0-0.tsfile (device timestamps:[30-40])
+      // unseq files:
+      // 20-3-0-0.tsfile (device timestamps: [1-20]) 30-4-0-0.tsfile (device timestamps: [15-20])
+      // If 30-40-0-0.tsfile is moved to the sequential area and a merge is triggered later, a
+      // target file 1-1-1-0.tsfile will be generated.
+      // Then, the version of the data originally in 30-4-0-0.tsfile changes to 1, and will be
+      // overwritten by the overlapping data in 20-3-0-0.tsfile during query.
+      if (status != InsertionCompactionCandidateStatus.NOT_CHECKED) {
+        return true;
+      }
+      for (int i = 0; i < selectedUnseqFileIndex; i++) {
+        TsFileResourceCandidate unseqFile = unseqFiles.get(i);
+        if (isOverlap(selectedUnseqFile, unseqFile)) {
+          selectedUnseqFile.resource.setInsertionCompactionTaskCandidate(
+              InsertionCompactionCandidateStatus.NOT_VALID);
+          return false;
+        }
+      }
+      selectedUnseqFile.resource.setInsertionCompactionTaskCandidate(
+          InsertionCompactionCandidateStatus.VALID);
+      return true;
+    }
+
+    private boolean isOverlap(
+        TsFileResourceCandidate candidate1, TsFileResourceCandidate candidate2) throws IOException {
+      TimeRange timeRangeOfFile1 =
+          new TimeRange(
+              candidate1.resource.getFileStartTime(), candidate1.resource.getFileEndTime());
+      TimeRange timeRangeOfFile2 =
+          new TimeRange(
+              candidate2.resource.getFileStartTime(), candidate2.resource.getFileEndTime());
+      if (!timeRangeOfFile1.overlaps(timeRangeOfFile2)) {
+        return false;
+      }
+
+      for (DeviceInfo device : candidate2.getDevices()) {
+        IDeviceID deviceId = device.deviceId;
+        if (!candidate1.containsDevice(deviceId)) {
+          continue;
+        }
+        DeviceInfo deviceInfoOfFile1 = candidate1.getDeviceInfoById(deviceId);
+        DeviceInfo deviceInfoOfFile2 = candidate2.getDeviceInfoById(deviceId);
+
+        if (new TimeRange(deviceInfoOfFile1.startTime, deviceInfoOfFile1.endTime)
+            .overlaps(new TimeRange(deviceInfoOfFile2.startTime, deviceInfoOfFile2.endTime))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private long getTimestampInFileName(TsFileResourceCandidate tsFileResourceCandidate)

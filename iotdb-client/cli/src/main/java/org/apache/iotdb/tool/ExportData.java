@@ -60,6 +60,8 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
+
 /**
  * Export CSV file.
  *
@@ -67,14 +69,14 @@ import java.util.regex.Pattern;
  */
 public class ExportData extends AbstractDataTool {
 
-  private static final String TARGET_DIR_ARGS = "td";
+  private static final String TARGET_DIR_ARGS = "t";
   private static final String TARGET_DIR_NAME = "targetDirectory";
 
-  private static final String TARGET_FILE_ARGS = "f";
-  private static final String TARGET_FILE_NAME = "targetFile";
+  private static final String TARGET_FILE_ARGS = "tfn";
+  private static final String TARGET_FILE_NAME = "targetFileName";
 
   private static final String SQL_FILE_ARGS = "s";
-  private static final String SQL_FILE_NAME = "sqlfile";
+  private static final String SQL_FILE_NAME = "sourceSqlFile";
 
   private static final String DATA_TYPE_ARGS = "datatype";
   private static final String DATA_TYPE_NAME = "datatype";
@@ -90,8 +92,8 @@ public class ExportData extends AbstractDataTool {
 
   private static final String ALIGNED_ARGS = "aligned";
   private static final String ALIGNED_NAME = "export aligned insert sql";
-  private static final String LINES_PER_FILE_ARGS = "linesPerFile";
-  private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
+  private static final String LINES_PER_FILE_ARGS = "lpf";
+  private static final String LINES_PER_FILE_ARGS_NAME = "linesPerFile";
 
   private static final String TSFILEDB_CLI_PREFIX = "ExportData";
 
@@ -207,7 +209,7 @@ public class ExportData extends AbstractDataTool {
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-    targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
+    targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine, null);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
@@ -517,14 +519,14 @@ public class ExportData extends AbstractDataTool {
           List<String> timeseries = new ArrayList<>();
           if (headers.contains("Device")) {
             deviceName = fields.get(0).toString();
-            if (deviceName.startsWith("root.__system")) {
+            if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
               continue;
             }
             for (String header : headersTemp) {
               timeseries.add(deviceName + "." + header);
             }
           } else {
-            if (headers.get(1).startsWith("root.__system")) {
+            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
               continue;
             }
             timeseries.addAll(headers);

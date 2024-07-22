@@ -93,7 +93,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class LoadTsfileAnalyzer {
+public class LoadTsfileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsfileAnalyzer.class);
 
@@ -136,11 +136,10 @@ public class LoadTsfileAnalyzer {
   }
 
   public Analysis analyzeFileByFile() {
-    context.setQueryType(QueryType.WRITE);
+    final Analysis analysis = new Analysis();
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      Analysis analysis = new Analysis();
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
@@ -170,18 +169,17 @@ public class LoadTsfileAnalyzer {
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
-      } catch (IllegalArgumentException e) {
-        LOGGER.warn(
-            "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
-        throw new SemanticException(
-            String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
       } catch (Exception e) {
-        LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
-        throw new SemanticException(
+        final String exceptionMessage =
             String.format(
-                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
+                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        LOGGER.warn(exceptionMessage, e);
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        return analysis;
       }
     }
 
@@ -189,16 +187,31 @@ public class LoadTsfileAnalyzer {
       schemaAutoCreatorAndVerifier.flush();
     } catch (AuthException e) {
       return createFailAnalysisForAuthException(e);
+    } catch (Exception e) {
+      final String exceptionMessage =
+          String.format(
+              "Auto create or verify schema error when executing statement %s. Detail: %s.",
+              loadTsFileStatement,
+              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+      LOGGER.warn(exceptionMessage, e);
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_FILE_ERROR,
+              String.format(
+                  "Auto create or verify schema error when executing statement %s.",
+                  loadTsFileStatement)));
+      return analysis;
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
-    final Analysis analysis = new Analysis();
     analysis.setStatement(loadTsFileStatement);
     return analysis;
   }
 
+  @Override
   public void close() {
     schemaAutoCreatorAndVerifier.close();
   }
@@ -352,8 +365,7 @@ public class LoadTsfileAnalyzer {
      * This can only be invoked after all timeseries in the current tsfile have been processed.
      * Otherwise, the isAligned status may be wrong.
      */
-    public void flushAndClearDeviceIsAlignedCacheIfNecessary()
-        throws SemanticException, AuthException {
+    public void flushAndClearDeviceIsAlignedCacheIfNecessary() throws SemanticException {
       // avoid OOM when loading a tsfile with too many timeseries
       // or loading too many tsfiles at the same time
       schemaCache.clearDeviceIsAlignedCacheIfNecessary();

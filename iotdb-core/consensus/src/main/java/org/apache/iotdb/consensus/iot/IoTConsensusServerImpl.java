@@ -890,6 +890,7 @@ public class IoTConsensusServerImpl {
   public void cleanupLocalSnapshot() {
     try {
       cleanupSnapshot(newSnapshotDirName);
+      stateMachine.clearSnapshot();
     } catch (ConsensusGroupModifyPeerException e) {
       logger.warn(
           "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
@@ -1132,6 +1133,7 @@ public class IoTConsensusServerImpl {
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
+          insertNode.markAsGeneratedByRemoteConsensusLeader();
           subStatus.add(stateMachine.write(insertNode));
         }
         long applyTime = System.nanoTime();

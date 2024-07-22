@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.doubletype;
 
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -28,6 +29,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.Map;
 
 public class FractionPoweredSumOperator implements IntermediateResultOperator {
@@ -41,7 +43,7 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
    *
    * @param power the power to use
    */
-  public FractionPoweredSumOperator(double power) {
+  public FractionPoweredSumOperator(final double power) {
     this.power = power;
   }
 
@@ -51,74 +53,96 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
   }
 
   @Override
-  public void configureSystemParameters(Map<String, String> systemParams) {
+  public void configureSystemParameters(final Map<String, String> systemParams) {
     // Do nothing
   }
 
   @Override
-  public boolean initAndGetIsSupport(boolean initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final boolean initialInput, final long initialTimestamp) {
     return false;
   }
 
   @Override
-  public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp) {
     sum = Math.pow(initialInput, power);
     return true;
   }
 
   @Override
-  public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
-    return true;
-  }
-
-  @Override
-  public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
-    return true;
-  }
-
-  @Override
-  public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
-    return true;
-  }
-
-  @Override
-  public boolean initAndGetIsSupport(String initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final LocalDate initialInput, final long initialTimestamp) {
     return false;
   }
 
   @Override
-  public void updateValue(boolean input, long timestamp) {
+  public boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp) {
+    sum = Math.pow(initialInput, power);
+    return true;
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp) {
+    sum = Math.pow(initialInput, power);
+    return true;
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp) {
+    sum = Math.pow(initialInput, power);
+    return true;
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(final String initialInput, final long initialTimestamp) {
+    return false;
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(final Binary initialInput, final long initialTimestamp) {
+    return false;
+  }
+
+  @Override
+  public void updateValue(final boolean input, final long timestamp) {
     throw new UnsupportedOperationException(
         "FractionPoweredSumOperator does not support boolean input");
   }
 
   @Override
-  public void updateValue(int input, long timestamp) {
+  public void updateValue(final int input, final long timestamp) {
     sum += Math.pow(input, power);
   }
 
   @Override
-  public void updateValue(long input, long timestamp) {
+  public void updateValue(final LocalDate input, final long timestamp) {
+    throw new UnsupportedOperationException(
+        "FractionPoweredSumOperator does not support date input");
+  }
+
+  @Override
+  public void updateValue(final long input, final long timestamp) {
     sum += Math.pow(input, power);
   }
 
   @Override
-  public void updateValue(float input, long timestamp) {
+  public void updateValue(final float input, final long timestamp) {
     sum += Math.pow(input, power);
   }
 
   @Override
-  public void updateValue(double input, long timestamp) {
+  public void updateValue(final double input, final long timestamp) {
     sum += Math.pow(input, power);
   }
 
   @Override
-  public void updateValue(String input, long timestamp) {
+  public void updateValue(final String input, final long timestamp) {
     throw new UnsupportedOperationException(
         "FractionPoweredSumOperator does not support string input");
+  }
+
+  @Override
+  public void updateValue(final Binary initialInput, final long initialTimestamp) {
+    throw new UnsupportedOperationException(
+        "FractionPoweredSumOperator does not support binary input");
   }
 
   @Override
@@ -127,12 +151,12 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
   }
 
   @Override
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(final DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(sum, outputStream);
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     sum = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 }

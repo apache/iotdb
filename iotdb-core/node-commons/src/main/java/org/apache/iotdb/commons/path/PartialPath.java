@@ -324,6 +324,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
+   * Test if current PartialPath matches a full path. Current partialPath acts as a full path
+   * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g.
+   * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
+   * and "root.sg.vehicle.s1"
+   *
+   * @param rPath a plain full path of a timeseries
+   * @return true if a successful match, otherwise return false
+   */
+  public boolean matchFullPath(String[] rPath) {
+    return matchPath(rPath, 0, 0, false, false);
+  }
+
+  /**
    * Check if current pattern PartialPath can match 1 prefix path.
    *
    * <p>1) Current partialPath acts as a full path pattern.
@@ -924,6 +937,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath transformToPartialPath() {
     return this;
+  }
+
+  /** Return true if the path ends with ** and no other nodes contain *. Otherwise, return false. */
+  public boolean isPrefixPath() {
+    if (nodes.length <= 0) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length - 1; i++) {
+      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return false;
+      }
+    }
+    return nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD);
   }
 
   /**

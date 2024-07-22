@@ -44,4 +44,11 @@ public class PipeGZIPCompressor extends PipeCompressor {
   public byte[] decompress(byte[] byteArray) throws IOException {
     return DECOMPRESSOR.uncompress(byteArray);
   }
+
+  @Override
+  public byte[] decompress(byte[] byteArray, int decompressedLength) throws IOException {
+    byte[] uncompressed = new byte[decompressedLength];
+    DECOMPRESSOR.uncompress(byteArray, 0, byteArray.length, uncompressed, 0);
+    return uncompressed;
+  }
 }

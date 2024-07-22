@@ -32,6 +32,9 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -663,7 +666,7 @@ public abstract class AbstractCli {
                 RpcUtils.formatDatetime(
                     timeFormat, timestampPrecision, resultSet.getLong(i), zoneId);
           } else {
-            tmp = resultSet.getString(i);
+            tmp = getStringByColumnIndex(ioTDBJDBCResultSet, i, zoneId);
           }
           if (tmp == null) {
             tmp = NULL;
@@ -711,6 +714,44 @@ public abstract class AbstractCli {
       isReachEnd = !resultSet.next();
     }
     return lists;
+  }
+
+  private static String getStringByColumnIndex(
+      IoTDBJDBCResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException {
+    TSDataType type = TSDataType.valueOf(resultSet.getColumnTypeByIndex(columnIndex));
+    switch (type) {
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+      case TEXT:
+      case STRING:
+        return resultSet.getString(columnIndex);
+      case BLOB:
+        byte[] v = resultSet.getBytes(columnIndex);
+        if (v == null) {
+          return null;
+        } else {
+          return BytesUtils.parseBlobByteArrayToString(v);
+        }
+      case DATE:
+        int intValue = resultSet.getInt(columnIndex);
+        if (resultSet.wasNull()) {
+          return null;
+        } else {
+          return DateUtils.formatDate(intValue);
+        }
+      case TIMESTAMP:
+        long longValue = resultSet.getLong(columnIndex);
+        if (resultSet.wasNull()) {
+          return null;
+        } else {
+          return RpcUtils.formatDatetime(timeFormat, timestampPrecision, longValue, zoneId);
+        }
+      default:
+        return null;
+    }
   }
 
   private static List<List<String>> cacheTracingInfo(ResultSet resultSet, List<Integer> maxSizeList)

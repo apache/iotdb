@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -134,7 +133,6 @@ public class ConfigMTree {
       } else {
         IDatabaseMNode<IConfigMNode> databaseMNode =
             nodeFactory.createDatabaseMNode(cur, nodeNames[i]);
-        databaseMNode.setDataTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
 
         IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode.getAsMNode());
 

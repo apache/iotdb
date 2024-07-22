@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Collections;
@@ -41,32 +41,12 @@ import java.util.List;
 
 public class TypeInferenceUtils {
 
-  private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
-
-  private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
-
-  private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
-
-  private static final int inferStringMaxLength =
-      IoTDBDescriptor.getInstance().getConfig().getInferStringMaxLength();
+  private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
   private TypeInferenceUtils() {}
 
   private static boolean isBlob(String s) {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
-  }
-
-  private static boolean isString(String s) {
-    if (s.getBytes(TSFileConfig.STRING_CHARSET).length <= inferStringMaxLength) {
-      return true;
-    }
-    return false;
   }
 
   static boolean isNumber(String s) {
@@ -119,22 +99,20 @@ public class TypeInferenceUtils {
     } else if (inferType) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
-        return booleanStringInferType;
+        return CONF.getBooleanStringInferType();
       } else if (isNumber(strValue)) {
         if (isLong(StringUtils.trim(strValue))) {
-          return integerStringInferType;
+          return CONF.getIntegerStringInferType();
         } else {
-          return floatingStringInferType;
+          return CONF.getFloatingStringInferType();
         }
       } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
         return null;
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
-        return nanStringInferType;
+        return CONF.getNanStringInferType();
       } else if (isBlob(strValue)) {
         return TSDataType.BLOB;
-      } else if (isString(strValue)) {
-        return TSDataType.STRING;
       } else {
         return TSDataType.TEXT;
       }

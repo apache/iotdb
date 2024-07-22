@@ -111,6 +111,7 @@ public class TimeSeriesSchemaCache {
                   value.getIMeasurementSchema(),
                   value.getTagMap(),
                   null,
+                  null,
                   value.isAligned());
               storageGroupSet.add(value.getStorageGroup());
             }
@@ -129,6 +130,7 @@ public class TimeSeriesSchemaCache {
           fullPath,
           schemaCacheEntry.getIMeasurementSchema(),
           schemaCacheEntry.getTagMap(),
+          null,
           null,
           schemaCacheEntry.isAligned());
       schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
@@ -413,7 +415,7 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public int updateValue(int index, SchemaCacheEntry value) {
-              return DataNodeLastCacheManager.invalidateLastCache(value);
+              return -DataNodeLastCacheManager.invalidateLastCache(value);
             }
           });
     } else {

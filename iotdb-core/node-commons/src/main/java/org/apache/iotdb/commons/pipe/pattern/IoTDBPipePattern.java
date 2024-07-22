@@ -50,7 +50,9 @@ public class IoTDBPipePattern extends PipePattern {
 
   public static <T> List<T> applyIndexesOnList(
       final int[] filteredIndexes, final List<T> originalList) {
-    return Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList());
+    return Objects.nonNull(originalList)
+        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
   }
 
   @Override
@@ -181,6 +183,10 @@ public class IoTDBPipePattern extends PipePattern {
 
   public boolean isFullPath() {
     return !patternPartialPath.hasWildcard();
+  }
+
+  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
+    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
   }
 
   @Override

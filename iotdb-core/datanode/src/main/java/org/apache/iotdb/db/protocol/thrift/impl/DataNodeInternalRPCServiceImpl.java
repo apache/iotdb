@@ -19,18 +19,28 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSender;
+import org.apache.iotdb.common.rpc.thrift.TServiceType;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -64,8 +74,14 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -244,10 +260,12 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -258,9 +276,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -425,7 +446,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-
     TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
@@ -440,7 +460,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
     } else {
       // fallback to use local generated progress index for compatibility
-      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
       LOGGER.info(
           "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
     }
@@ -471,8 +491,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    return regionManager.createDataRegion(
-        req.getRegionReplicaSet(), req.getStorageGroup(), req.getTtl());
+    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
@@ -495,32 +514,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req) throws TException {
-    PathPatternTree patternTree =
+  public TSStatus constructSchemaBlackList(final TConstructSchemaBlackListReq req)
+      throws TException {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    AtomicInteger preDeletedNum = new AtomicInteger(0);
-    TSStatus executionResult =
-        executeInternalSchemaTask(
+    final AtomicLong preDeletedNum = new AtomicLong(0);
+    final TSStatus executionResult =
+        executeSchemaBlackListTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
-              String storageGroup =
+              final String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                       .getDatabaseFullPath();
-              PathPatternTree filteredPatternTree =
+              final PathPatternTree filteredPatternTree =
                   filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
-                return RpcUtils.SUCCESS_STATUS;
+                return new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode());
               }
-              RegionWriteExecutor executor = new RegionWriteExecutor();
-              TSStatus status =
+              final RegionWriteExecutor executor = new RegionWriteExecutor();
+              final TSStatus status =
                   executor
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
                           new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
                       .getStatus();
-              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                preDeletedNum.getAndAdd(Integer.parseInt(status.getMessage()));
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  || status.code == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+                preDeletedNum.getAndAdd(Long.parseLong(status.getMessage()));
               }
               return status;
             });
@@ -1031,7 +1052,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     try {
       List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
-          PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+          PipeDataNodeAgent.task().handlePipeMetaChanges(pipeMetas);
 
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
@@ -1051,10 +1072,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TPushPipeMetaRespExceptionMessage exceptionMessage;
       if (req.isSetPipeNameToDrop()) {
-        exceptionMessage = PipeAgent.task().handleDropPipe(req.getPipeNameToDrop());
+        exceptionMessage = PipeDataNodeAgent.task().handleDropPipe(req.getPipeNameToDrop());
       } else if (req.isSetPipeMeta()) {
         final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
-        exceptionMessage = PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+        exceptionMessage = PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       } else {
         throw new Exception("Invalid TPushSinglePipeMetaReq");
       }
@@ -1080,7 +1101,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (req.isSetPipeNamesToDrop()) {
         for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
           TPushPipeMetaRespExceptionMessage message =
-              PipeAgent.task().handleDropPipe(pipeNameToDrop);
+              PipeDataNodeAgent.task().handleDropPipe(pipeNameToDrop);
           exceptionMessages.add(message);
           if (message != null) {
             // If there is any exception, skip the remaining pipes
@@ -1092,7 +1113,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         for (ByteBuffer byteBuffer : req.getPipeMetas()) {
           final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
           TPushPipeMetaRespExceptionMessage message =
-              PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+              PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
           exceptionMessages.add(message);
           if (message != null) {
             // If there is any exception, skip the remaining pipes
@@ -1272,8 +1293,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
     final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
-    PipeAgent.task().collectPipeMetaList(req, resp);
+    PipeDataNodeAgent.task().collectPipeMetaList(req, resp);
     return resp;
+  }
+
+  private TSStatus executeSchemaBlackListTask(
+      final List<TConsensusGroupId> consensusGroupIdList,
+      final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
+    final List<TSStatus> statusList = new ArrayList<>();
+    TSStatus status;
+    boolean hasFailure = false;
+    for (final TConsensusGroupId consensusGroupId : consensusGroupIdList) {
+      status = executeOnOneRegion.apply(consensusGroupId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+        hasFailure = true;
+      }
+      statusList.add(status);
+    }
+    if (hasFailure) {
+      return RpcUtils.getStatus(statusList);
+    } else {
+      return statusList.stream()
+          .filter(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .findFirst()
+          .orElse(new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()));
+    }
   }
 
   private TSStatus executeInternalSchemaTask(
@@ -1409,6 +1454,88 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
+  @Override
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        Stream.of(
+                testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
+                testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations()))
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList()));
+  }
+
+  private static <Location, RequestType> List<TTestConnectionResult> testConnections(
+      List<Location> nodeLocations,
+      Function<Location, Integer> getId,
+      Function<Location, TEndPoint> getEndPoint,
+      TServiceType serviceType,
+      RequestType requestType,
+      Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
+    TSender sender =
+        new TSender()
+            .setDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+    return testConnectionsImpl(
+        nodeLocations, sender, getId, getEndPoint, serviceType, requestType, sendRequest);
+  }
+
+  private List<TTestConnectionResult> testAllConfigNodeConnection(
+      List<TConfigNodeLocation> configNodeLocations) {
+    return testConnections(
+        configNodeLocations,
+        TConfigNodeLocation::getConfigNodeId,
+        TConfigNodeLocation::getInternalEndPoint,
+        TServiceType.ConfigNodeInternalService,
+        DnToCnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
+            DnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getInternalEndPoint,
+        TServiceType.DataNodeInternalService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getMPPDataExchangeEndPoint,
+        TServiceType.DataNodeMPPService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getClientRpcEndPoint,
+        TServiceType.DataNodeExternalService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DataNodeExternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+  }
+
+  @Override
+  public TSStatus testConnectionEmptyRPC() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
@@ -1487,7 +1614,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {
-      PipeAgent.task().collectPipeMetaList(resp);
+      PipeDataNodeAgent.task().collectPipeMetaList(resp);
     }
 
     if (req.isSetConfigNodeEndPoints()) {
@@ -1712,6 +1839,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
+    return StorageEngine.getInstance().setConfiguration(req);
+  }
+
+  @Override
   public TSStatus settle(TSettleReq req) throws TException {
     return SettleRequestHandler.getInstance().handleSettleRequest(req);
   }
@@ -1727,11 +1859,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TShowConfigurationResp showConfiguration() {
+    TShowConfigurationResp resp =
+        new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
+    try {
+      URL propsUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      resp.setContent(ConfigurationFileUtils.readConfigFileContent(propsUrl));
+    } catch (Exception e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    }
+    return resp;
+  }
+
+  @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
       commonConfig.setNodeStatus(NodeStatus.parse(status));
       if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
-        PipeAgent.runtime().stop();
+        PipeDataNodeAgent.runtime().stop();
       }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1760,7 +1905,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return storageEngine.setTTL(req);
+    try {
+      return storageEngine.setTTL(req);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override
@@ -1905,7 +2054,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         location.getDataNodeId(),
                         getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
-    TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
+    TSStatus status = createNewRegion(regionId, req.getStorageGroup());
     if (!isSucceed(status)) {
       return status;
     }
@@ -1977,8 +2126,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
   }
 
-  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    return regionManager.createNewRegion(regionId, storageGroup, ttl);
+  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
+    return regionManager.createNewRegion(regionId, storageGroup);
   }
 
   @Override
@@ -2124,7 +2273,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createPipePlugin(TCreatePipePluginInstanceReq req) {
     try {
       PipePluginMeta pipePluginMeta = PipePluginMeta.deserialize(req.pipePluginMeta);
-      PipeAgent.plugin().register(pipePluginMeta, req.jarFile);
+      PipeDataNodeAgent.plugin().register(pipePluginMeta, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
@@ -2135,7 +2284,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropPipePlugin(TDropPipePluginInstanceReq req) {
     try {
-      PipeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
+      PipeDataNodeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())

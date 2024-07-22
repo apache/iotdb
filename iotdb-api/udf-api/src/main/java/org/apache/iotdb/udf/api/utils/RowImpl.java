@@ -45,36 +45,57 @@ public class RowImpl implements Row {
 
   @Override
   public int getInt(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (int) rowRecord[columnIndex];
   }
 
   @Override
   public long getLong(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (long) rowRecord[columnIndex];
   }
 
   @Override
   public float getFloat(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (float) rowRecord[columnIndex];
   }
 
   @Override
   public double getDouble(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (double) rowRecord[columnIndex];
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (boolean) rowRecord[columnIndex];
   }
 
   @Override
   public Binary getBinary(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return transformToUDFBinary((org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return rowRecord[columnIndex].toString();
   }
 
@@ -88,9 +109,11 @@ public class RowImpl implements Row {
     return rowRecord[columnIndex] == null;
   }
 
+  // Value columns count
+  // thus exclude time column
   @Override
   public int size() {
-    return size;
+    return size - 1;
   }
 
   public void setRowRecord(Object[] rowRecord) {
@@ -119,6 +142,14 @@ public class RowImpl implements Row {
         return Type.DOUBLE;
       case 5:
         return Type.TEXT;
+      case 8:
+        return Type.TIMESTAMP;
+      case 9:
+        return Type.DATE;
+      case 10:
+        return Type.BLOB;
+      case 11:
+        return Type.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
