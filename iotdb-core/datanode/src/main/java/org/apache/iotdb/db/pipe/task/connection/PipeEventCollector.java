@@ -97,8 +97,7 @@ public class PipeEventCollector implements EventCollector {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
-        hasNoGeneratedEvent = false;
-        collectEvent(parsedEvent);
+        collectParsedRawTableEvent(parsedEvent);
       }
     } else {
       collectEvent(sourceEvent);
@@ -107,11 +106,7 @@ public class PipeEventCollector implements EventCollector {
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
-      if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
-        hasNoGeneratedEvent = false;
-        collectEvent(parsedEvent);
-      }
+      collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
     } else {
       collectEvent(sourceEvent);
     }
@@ -132,11 +127,17 @@ public class PipeEventCollector implements EventCollector {
 
     try {
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
-        hasNoGeneratedEvent = false;
-        collectEvent(parsedEvent);
+        collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
       }
     } finally {
       sourceEvent.close();
+    }
+  }
+
+  private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
+    if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+      hasNoGeneratedEvent = false;
+      collectEvent(parsedEvent);
     }
   }
 
