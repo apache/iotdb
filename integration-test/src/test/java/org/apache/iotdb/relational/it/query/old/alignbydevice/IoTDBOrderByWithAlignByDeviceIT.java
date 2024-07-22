@@ -1547,12 +1547,12 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         new String[] {"Time", "plant_id", "device_id", "temperature", "status", "hardware"};
     String[] retArray =
         new String[] {
-          "2017-11-01T00:01:00.000Z,wf02,wt02,null,true,v2",
-          "2017-11-01T00:01:00.000Z,wf01,wt01,24.36,true,null",
-          "2017-11-01T00:00:00.000Z,wf02,wt02,null,false,v2",
-          "2017-11-01T00:00:00.000Z,wf01,wt01,25.96,true,null",
-          "1970-01-01T08:00:00.002Z,wf02,wt02,null,false,v2",
-          "1970-01-01T08:00:00.001Z,wf02,wt02,null,true,v1",
+          "2017-10-31T16:01:00.000Z,wf02,wt02,null,true,v2",
+          "2017-10-31T16:01:00.000Z,wf01,wt01,24.36,true,null",
+          "2017-10-31T16:00:00.000Z,wf02,wt02,null,false,v2",
+          "2017-10-31T16:00:00.000Z,wf01,wt01,25.96,true,null",
+          "1970-01-01T00:00:00.002Z,wf02,wt02,null,false,v2",
+          "1970-01-01T00:00:00.001Z,wf02,wt02,null,true,v1",
         };
 
     tableResultSetEqualTest(
