@@ -167,6 +167,7 @@
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>1.0.1-1f8da86-SNAPSHOT</tsfile.version>
+        <enablePTS>false</enablePTS>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -228,6 +229,16 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-csv</artifactId>
                 <version>${commons-csv.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId>
+                <version>5.10.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-api</artifactId>
+                <version>5.10.2</version>
             </dependency>
             <dependency>
                 <groupId>junit</groupId>
@@ -740,9 +751,27 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.1.2</version>
+                    <version>3.2.5</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <properties>
+                            <predictiveSelection>
+                                <enabled>${enablePTS}</enabled>
+                            </predictiveSelection>
+                        </properties>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.2.5</version>
+                    <configuration>
+                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <properties>
+                            <predictiveSelection>
+                                <enabled>${enablePTS}</enabled>
+                            </predictiveSelection>
+                        </properties>
                     </configuration>
                 </plugin>
                 <!--
@@ -1191,6 +1220,9 @@
                         <phase>verify</phase>
                         <configuration>
                             <failOnWarning>true</failOnWarning>
+                            <ignoredDependencies>
+                                <ignoredDependency>org.junit.vintage:junit-vintage-engine</ignoredDependency>
+                            </ignoredDependencies>
                         </configuration>
                     </execution>
                 </executions>
@@ -1891,6 +1923,11 @@
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
                             <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <properties>
+                                <predictiveSelection>
+                                    <enabled>${enablePTS}</enabled>
+                                </predictiveSelection>
+                            </properties>
                         </configuration>
                         <executions>
                             <execution>

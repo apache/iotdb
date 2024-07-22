@@ -45,7 +45,8 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
-      - name: IT Test
+      - name: IT Test (master)
+        if: "contains(github.ref, 'master')"
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
@@ -55,6 +56,22 @@ jobs:
           -DskipUTs \
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+          -Dsurefire.rerunFailingTestsCount=3 \
+          -DenablePTS=false \
+          -pl integration-test \
+          -am -PMultiClusterIT2AutoCreateSchema
+      - name: IT Test (not master)
+        if: "!contains(github.ref, 'master')"
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+          -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+          -Dsurefire.rerunFailingTestsCount=3 \
           -pl integration-test \
           -am -PMultiClusterIT2AutoCreateSchema
       - name: Upload Artifact

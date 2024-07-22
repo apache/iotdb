@@ -291,6 +291,11 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- This dependency is needed at runtime, so please not set test scope -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -513,7 +518,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
-                    <ignoredDependencies>
+                    <ignoredDependencies combine.children="append">
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                     </ignoredDependencies>
