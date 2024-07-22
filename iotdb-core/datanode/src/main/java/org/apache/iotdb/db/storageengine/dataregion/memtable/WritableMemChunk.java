@@ -331,10 +331,6 @@ public class WritableMemChunk implements IWritableMemChunk {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
 
-    chunkWriterImpl
-        .getPageWriter()
-        .getPageBuffer()
-        .reserve(schema.getType().getDataTypeSize() * 10000 + schema.serializedSize());
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 

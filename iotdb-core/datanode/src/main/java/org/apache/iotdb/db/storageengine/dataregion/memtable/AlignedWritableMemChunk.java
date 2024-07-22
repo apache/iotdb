@@ -466,8 +466,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
       alignedChunkWriter.write(times, pointsInPage, 0);
     }
-    logger.warn("write tot row is: {}", list.rowCount());
-
   }
 
   @Override
