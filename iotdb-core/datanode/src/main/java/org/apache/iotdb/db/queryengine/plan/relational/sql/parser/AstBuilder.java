@@ -784,9 +784,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
         from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().where, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().groupBy(), GroupBy.class),
+        visitIfPresent(ctx.queryWithoutSelect().having, Expression.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());

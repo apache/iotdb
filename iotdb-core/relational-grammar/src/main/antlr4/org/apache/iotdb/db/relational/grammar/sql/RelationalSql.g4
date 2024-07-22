@@ -397,6 +397,7 @@ queryTerm
 
 queryPrimary
     : querySpecification                   #queryPrimaryDefault
+    | configQuerySpecification             #forConfigQuery
     | TABLE qualifiedName                  #table
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
@@ -409,7 +410,17 @@ sortItem
 querySpecification
     : SELECT setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
-      (WHERE where=booleanExpression)?
+      queryWithoutSelect
+    ;
+
+configQuerySpecification
+    : SHOW (setQuantifier? selectItem (',' selectItem)* IN)?
+      (relation (',' relation)*)?
+      queryWithoutSelect
+    ;
+
+queryWithoutSelect
+    : (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
     ;

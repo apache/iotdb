@@ -71,7 +71,7 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
 
       TRegionReplicaSet region =
           context.nodeDistributionMap.get(rewriteNode.getPlanNodeId()).getRegion();
-      if (!region.equals(context.mostUsedDataRegion)) {
+      if (!region.equals(context.mostUsedRegion)) {
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
         newNode.addChild(exchangeNode);
@@ -82,8 +82,7 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
     }
 
     context.nodeDistributionMap.put(
-        node.getPlanNodeId(),
-        new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedDataRegion));
+        node.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
 
     return newNode;
   }

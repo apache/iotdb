@@ -333,7 +333,7 @@ public class DistributedPlanGenerator
         maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
       }
     }
-    context.mostUsedDataRegion = mostUsedDataRegion;
+    context.mostUsedRegion = mostUsedDataRegion;
 
     if (!context.hasSortNode) {
       return resultTableScanNodeList;
@@ -455,7 +455,7 @@ public class DistributedPlanGenerator
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
-    context.mostUsedDataRegion = schemaRegionSet.iterator().next();
+    context.mostUsedRegion = schemaRegionSet.iterator().next();
     if (schemaRegionSet.size() == 1) {
       node.setRegionReplicaSet(schemaRegionSet.iterator().next());
       return Collections.singletonList(node);
@@ -483,8 +483,8 @@ public class DistributedPlanGenerator
         (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
     if (schemaRegionSet.size() == 1) {
-      context.mostUsedDataRegion = schemaRegionSet.iterator().next();
-      node.setRegionReplicaSet(context.mostUsedDataRegion);
+      context.mostUsedRegion = schemaRegionSet.iterator().next();
+      node.setRegionReplicaSet(context.mostUsedRegion);
       return Collections.singletonList(node);
     } else {
       Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
@@ -522,7 +522,7 @@ public class DistributedPlanGenerator
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedDataRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedDataRegion;
       return res;
     }
   }
@@ -532,7 +532,7 @@ public class DistributedPlanGenerator
     boolean hasExchangeNode = false;
     boolean hasSortNode = false;
     OrderingScheme expectedOrderingScheme;
-    TRegionReplicaSet mostUsedDataRegion;
+    TRegionReplicaSet mostUsedRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();
