@@ -80,7 +80,7 @@ public class IoTDBSessionRelationalIT {
 
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
-      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS table1 (id1 string id)");
+      session.executeNonQueryStatement("CREATE TABLE table1 (id1 string id)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
