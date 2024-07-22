@@ -114,8 +114,7 @@ class PipeAgentLauncher {
       }
       // If jar does not exist, add current pipePluginMeta to list
       if (!PipePluginExecutableManager.getInstance()
-          .hasPluginFileUnderInstallDir(
-              pipePluginMeta.getPluginName(), pipePluginMeta.getJarName())) {
+          .hasFileUnderInstallDir(pipePluginMeta.getJarName())) {
         pipePluginMetaList.add(pipePluginMeta);
       } else {
         try {
@@ -145,10 +144,7 @@ class PipeAgentLauncher {
       final List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < pipePluginMetaList.size(); i++) {
         PipePluginExecutableManager.getInstance()
-            .savePluginToInstallDir(
-                jarList.get(i),
-                pipePluginMetaList.get(i).getPluginName(),
-                pipePluginMetaList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), pipePluginMetaList.get(i).getJarName());
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
