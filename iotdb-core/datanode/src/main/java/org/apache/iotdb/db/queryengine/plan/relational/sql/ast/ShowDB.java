@@ -23,15 +23,9 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
-import static java.util.Objects.requireNonNull;
-
 public class ShowDB extends Statement {
   public ShowDB() {
     super(null);
-  }
-
-  public ShowDB(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
   }
 
   @Override

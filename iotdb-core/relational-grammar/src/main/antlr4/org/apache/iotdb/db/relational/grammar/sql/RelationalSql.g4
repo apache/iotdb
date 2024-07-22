@@ -44,7 +44,6 @@ statement
 
     // Database Statement
     | useDatabaseStatement
-    | showDatabasesStatement
     | createDbStatement
     | dropDbStatement
 
@@ -110,10 +109,6 @@ statement
 // ---------------------------------------- DataBase Statement ---------------------------------------------------------
 useDatabaseStatement
     : USE database=identifier
-    ;
-
-showDatabasesStatement
-    : SHOW DATABASES
     ;
 
 createDbStatement
