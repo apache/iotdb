@@ -17,28 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.schema.quota;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.util.AbstractSchemaIT;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
-import org.junit.runners.Parameterized;
+/**
+ * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
+ * request</a> for details.
+ */
+public class ContinuousSameSearchIndexSeparatorNode implements WALEntryValue {
 
-public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterQuotaIT {
-  public IoTDBClusterDeviceQuotaIT(final AbstractSchemaIT.SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putShort(PlanNodeType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR.getNodeType());
+    // search index is always -1
+    buffer.putLong(-1);
   }
 
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    setUpEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterDeviceLimitThreshold(3);
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
+  @Override
+  public int serializedSize() {
+    return Short.BYTES + Long.BYTES;
   }
 }

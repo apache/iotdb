@@ -17,18 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
+package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
 
-import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
+import java.io.File;
+import java.io.IOException;
 
-public interface ICachedMNode extends IMNode<ICachedMNode> {
-  CacheEntry getCacheEntry();
+public class BrokenWALFileException extends IOException {
 
-  void setCacheEntry(CacheEntry cacheEntry);
-
-  LockEntry getLockEntry();
-
-  void setLockEntry(LockEntry lockEntry);
+  public BrokenWALFileException(File logFile) {
+    super(String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+  }
 }

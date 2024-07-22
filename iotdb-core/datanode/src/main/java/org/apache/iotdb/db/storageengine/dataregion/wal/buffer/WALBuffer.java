@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
@@ -740,14 +741,20 @@ public class WALBuffer extends AbstractWALBuffer {
             return WALMetaData.readFromWALFile(
                     file, FileChannel.open(file.toPath(), StandardOpenOption.READ))
                 .getMemTablesId();
+          } catch (BrokenWALFileException e) {
+            logger.warn(
+                "Fail to read memTable ids from the wal file {} of wal node {}: {}",
+                id,
+                identifier,
+                e.getMessage());
           } catch (IOException e) {
             logger.warn(
                 "Fail to read memTable ids from the wal file {} of wal node {}.",
                 id,
                 identifier,
                 e);
-            return Collections.emptySet();
           }
+          return Collections.emptySet();
         });
   }
 

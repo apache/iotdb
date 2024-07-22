@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -69,7 +70,10 @@ public class PipeConsensusProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    if (tsFileInsertionEvent instanceof EnrichedEvent) {
+    // Only user-generated TsFileInsertionEvent can be replicated. Any tsFile synchronized from a
+    // replica should not be replicated again
+    if (tsFileInsertionEvent instanceof EnrichedEvent
+        && !((PipeTsFileInsertionEvent) tsFileInsertionEvent).isGeneratedByPipeConsensus()) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tsFileInsertionEvent;
       if (isContainLocalData(enrichedEvent)) {
         eventCollector.collect(tsFileInsertionEvent);
@@ -80,6 +84,7 @@ public class PipeConsensusProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    // Only user-generated TabletInsertionEvent can be replicated.
     if (tabletInsertionEvent instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
       if (isContainLocalData(enrichedEvent)) {

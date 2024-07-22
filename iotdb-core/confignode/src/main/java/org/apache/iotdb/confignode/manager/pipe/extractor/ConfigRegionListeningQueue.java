@@ -61,9 +61,10 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public synchronized void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
+  public synchronized void tryListenToPlan(
+      final ConfigPhysicalPlan plan, final boolean isGeneratedByPipe) {
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
-      PipeConfigRegionWritePlanEvent event;
+      final PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
           tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
@@ -96,9 +97,9 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   }
 
   public synchronized void tryListenToSnapshots(
-      List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPathInfoList) {
-    List<PipeSnapshotEvent> events = new ArrayList<>();
-    for (Pair<Pair<Path, Path>, CNSnapshotFileType> snapshotPathInfo : snapshotPathInfoList) {
+      final List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPathInfoList) {
+    final List<PipeSnapshotEvent> events = new ArrayList<>();
+    for (final Pair<Pair<Path, Path>, CNSnapshotFileType> snapshotPathInfo : snapshotPathInfoList) {
       final Path snapshotPath = snapshotPathInfo.getLeft().getLeft();
       final CNSnapshotFileType type = snapshotPathInfo.getRight();
       // Filter empty and superuser snapshots
@@ -133,19 +134,19 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
   @Override
-  protected ByteBuffer serializeToByteBuffer(Event event) {
+  protected ByteBuffer serializeToByteBuffer(final Event event) {
     return ((SerializableEvent) event).serializeToByteBuffer();
   }
 
   @Override
-  protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
+  protected Event deserializeFromByteBuffer(final ByteBuffer byteBuffer) {
     try {
-      SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
+      final SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
       // We assume the caller of this method will put the deserialize result into a queue,
       // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }
     return null;
@@ -154,12 +155,14 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override
-  public synchronized boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized boolean processTakeSnapshot(final File snapshotDir)
+      throws TException, IOException {
     return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 
   @Override
-  public synchronized void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized void processLoadSnapshot(final File snapshotDir)
+      throws TException, IOException {
     super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 }

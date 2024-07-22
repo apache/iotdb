@@ -79,6 +79,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeleteTimeSer
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
@@ -89,6 +91,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -101,6 +104,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -551,52 +555,62 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces and Implementation for Timeseries operation
   // including create and delete
 
-  public void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(plan, -1);
+  public void createTimeseries(final ICreateTimeSeriesPlan plan) throws MetadataException {
+    createTimeSeries(plan, -1);
   }
 
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeSeries(final ICreateTimeSeriesPlan plan, long offset)
+      throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
-    IMeasurementMNode<IMemMNode> leafMNode;
+    final IMeasurementMNode<IMemMNode> leafMNode;
 
     try {
-      PartialPath path = plan.getPath();
+      final PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
+      final TSDataType type = plan.getDataType();
+      // Create time series in MTree
       leafMNode =
-          mtree.createTimeseries(
+          mtree.createTimeSeries(
               path,
               type,
               plan.getEncoding(),
               plan.getCompressor(),
               plan.getProps(),
-              plan.getAlias());
+              plan.getAlias(),
+              (plan instanceof CreateTimeSeriesPlanImpl
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
 
-      // update statistics and schemaDataTypeNumMap
+      // Should merge
+      if (Objects.isNull(leafMNode)) {
+        // Write an upsert plan directly
+        upsertAliasAndTagsAndAttributes(
+            plan.getAlias(), plan.getTags(), plan.getAttributes(), path);
+        return;
+      }
+
+      // Update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(1L);
 
-      // update tag index
+      // Update tag index
       if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag
-        // info
-        // in tagFile to recover index directly
+        // The time series has already been created and now system is recovering, using the tag
+        // info in tagFile to recover index directly
         tagManager.recoverIndex(offset, leafMNode);
       } else if (plan.getTags() != null) {
-        // tag key, tag value
+        // Tag key, tag value
         tagManager.addIndex(plan.getTags(), leafMNode);
       }
 
-      // write log
+      // Write log
       if (!isRecovering) {
-        // either tags or attributes is not empty
+        // Either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
@@ -619,42 +633,81 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   @Override
-  public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    int seriesCount = plan.getMeasurements().size();
+  public void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan)
+      throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     try {
-      PartialPath prefixPath = plan.getDevicePath();
-      List<String> measurements = plan.getMeasurements();
-      List<TSDataType> dataTypes = plan.getDataTypes();
-      List<TSEncoding> encodings = plan.getEncodings();
-      List<Map<String, String>> tagsList = plan.getTagsList();
-      List<Map<String, String>> attributesList = plan.getAttributesList();
-      List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
+      final PartialPath prefixPath = plan.getDevicePath();
+      final List<String> measurements = plan.getMeasurements();
+      final List<TSDataType> dataTypes = plan.getDataTypes();
+      final List<TSEncoding> encodings = plan.getEncodings();
+      final List<CompressionType> compressors = plan.getCompressors();
+      final List<String> aliasList = plan.getAliasList();
+      final List<Map<String, String>> tagsList = plan.getTagsList();
+      final List<Map<String, String>> attributesList = plan.getAttributesList();
+      final List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
 
       for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
 
+      // Used iff with merge
+      final Set<Integer> existingMeasurementIndexes = new HashSet<>();
+
       // create time series in MTree
       measurementMNodeList =
-          mtree.createAlignedTimeseries(
+          mtree.createAlignedTimeSeries(
               prefixPath,
               measurements,
-              plan.getDataTypes(),
-              plan.getEncodings(),
-              plan.getCompressors(),
-              plan.getAliasList());
+              dataTypes,
+              encodings,
+              compressors,
+              aliasList,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
+              existingMeasurementIndexes);
 
       // update statistics and schemaDataTypeNumMap
-      regionStatistics.addMeasurement(seriesCount);
+      regionStatistics.addMeasurement(measurementMNodeList.size());
 
       List<Long> tagOffsets = plan.getTagOffsets();
+
+      // Merge the existing ones
+      // The existing measurements are written into the "upsert" but not written
+      // to the "createSeries" in mLog
+      for (int i = measurements.size() - 1; i >= 0; --i) {
+        if (existingMeasurementIndexes.isEmpty()) {
+          break;
+        }
+        if (!existingMeasurementIndexes.remove(i)) {
+          continue;
+        }
+        // WARNING: The input lists can not be immutable when the "withMerge" is set.
+        upsertAliasAndTagsAndAttributes(
+            Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
+            Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
+            Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
+            prefixPath.concatNode(measurements.get(i)));
+        if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
+          tagOffsets.remove(i);
+        }
+        // Nonnull
+        measurements.remove(i);
+        dataTypes.remove(i);
+        encodings.remove(i);
+        compressors.remove(i);
+      }
+
+      if (measurementMNodeList.isEmpty()) {
+        return;
+      }
+
       for (int i = 0; i < measurements.size(); i++) {
-        if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
+        if (tagOffsets != null && !tagOffsets.isEmpty() && isRecovering) {
           if (tagOffsets.get(i) != -1) {
             tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
           }
@@ -666,7 +719,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         }
       }
 
-      // write log
+      // Write log
       tagOffsets = new ArrayList<>();
       if (!isRecovering) {
         if ((tagsList != null && !tagsList.isEmpty())
@@ -696,7 +749,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
         }
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new MetadataException(e);
     }
   }
@@ -1339,7 +1392,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     public RecoverOperationResult visitCreateTimeSeries(
         ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionMemoryImpl context) {
       try {
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        createTimeSeries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);

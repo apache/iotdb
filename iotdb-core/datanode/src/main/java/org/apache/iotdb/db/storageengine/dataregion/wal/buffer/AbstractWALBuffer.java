@@ -84,8 +84,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   }
 
   @Override
-  public long getCurrentWALFileSize() {
-    return currentWALFileWriter.size();
+  public long getCurrentWALOriginalFileSize() {
+    return currentWALFileWriter.originalSize();
   }
 
   /**
