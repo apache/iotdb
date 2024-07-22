@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -76,7 +77,7 @@ public class WALRepairWriterTest {
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
+            + WALFileVersion.V2.getVersionBytes().length * 2L,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -100,7 +101,7 @@ public class WALRepairWriterTest {
         Byte.BYTES
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
+            + WALFileVersion.V2.getVersionBytes().length * 2L,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
