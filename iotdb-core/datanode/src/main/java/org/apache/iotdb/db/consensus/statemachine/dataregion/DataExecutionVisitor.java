@@ -38,6 +38,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,6 +59,15 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     return null;
   }
 
+  public TSStatus visitRelationalInsertRow(RelationalInsertRowNode node, DataRegion context) {
+    return visitInsertRow(node, context);
+  }
+
+  @Override
+  public TSStatus visitRelationalInsertRows(RelationalInsertRowsNode node, DataRegion context) {
+    return visitInsertRows(node, context);
+  }
+
   @Override
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
@@ -71,6 +83,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, DataRegion dataRegion) {
+    return visitInsertTablet(node, dataRegion);
   }
 
   @Override

@@ -27,10 +27,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -40,6 +42,8 @@ import static com.google.common.base.Preconditions.checkArgument;
  * some cases, while some children are blocked, it may output the content of other children.
  */
 public class CollectNode extends MultiChildProcessNode {
+
+  private List<Symbol> outputSymbols;
 
   public CollectNode(PlanNodeId id) {
     super(id);
@@ -56,12 +60,18 @@ public class CollectNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new CollectNode(id);
+    CollectNode collectNode = new CollectNode(id);
+    collectNode.outputSymbols = outputSymbols;
+    return collectNode;
+  }
+
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
+    this.outputSymbols = outputSymbols;
   }
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return children.get(0).getOutputSymbols();
+    return outputSymbols;
   }
 
   @Override
@@ -78,16 +88,29 @@ public class CollectNode extends MultiChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_COLLECT_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+    outputSymbols.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_COLLECT_NODE.serialize(stream);
+    ReadWriteIOUtils.write(outputSymbols.size(), stream);
+    for (Symbol symbol : outputSymbols) {
+      Symbol.serialize(symbol, stream);
+    }
   }
 
   public static CollectNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new CollectNode(planNodeId);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> outputs = new ArrayList<>(size);
+    while (size-- > 0) {
+      outputs.add(Symbol.deserialize(byteBuffer));
+    }
+    CollectNode collectNode = new CollectNode(planNodeId);
+    collectNode.setOutputSymbols(outputs);
+    return collectNode;
   }
 
   @Override

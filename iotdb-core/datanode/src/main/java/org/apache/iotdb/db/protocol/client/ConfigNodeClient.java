@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -162,6 +163,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -540,10 +542,26 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getSchemaPartitionTableWithSlots(dbSlotMap),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getOrCreateSchemaPartitionTable(req),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getOrCreateSchemaPartitionTableWithSlots(dbSlotMap),
         resp -> !updateConfigNodeLeader(resp.status));
   }
 

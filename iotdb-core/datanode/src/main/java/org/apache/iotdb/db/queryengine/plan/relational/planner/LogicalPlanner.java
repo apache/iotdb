@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
@@ -83,20 +85,22 @@ public class LogicalPlanner {
   public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
-    for (PlanOptimizer optimizer : planOptimizers) {
-      planNode =
-          optimizer.optimize(
-              planNode,
-              new PlanOptimizer.Context(
-                  sessionInfo,
-                  analysis,
-                  metadata,
-                  queryContext,
-                  queryContext.getTypeProvider(),
-                  symbolAllocator,
-                  queryContext.getQueryId(),
-                  warningCollector,
-                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+    if (analysis.getStatement() instanceof Query) {
+      for (PlanOptimizer optimizer : planOptimizers) {
+        planNode =
+            optimizer.optimize(
+                planNode,
+                new PlanOptimizer.Context(
+                    sessionInfo,
+                    analysis,
+                    metadata,
+                    queryContext,
+                    queryContext.getTypeProvider(),
+                    symbolAllocator,
+                    queryContext.getQueryId(),
+                    warningCollector,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
     }
 
     return new LogicalQueryPlan(queryContext, planNode);
@@ -122,11 +126,17 @@ public class LogicalPlanner {
     if (statement instanceof Explain) {
       return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
     }
+    if (statement instanceof WrappedStatement) {
+      return createRelationPlan(analysis, ((WrappedStatement) statement));
+    }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
 
   private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis) {
+    if (plan.getRoot() instanceof WritePlanNode) {
+      return plan.getRoot();
+    }
     ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
     ImmutableList.Builder<String> names = ImmutableList.builder();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
@@ -158,6 +168,10 @@ public class LogicalPlanner {
     analysis.setRespDatasetHeader(respDatasetHeader);
 
     return outputNode;
+  }
+
+  private RelationPlan createRelationPlan(Analysis analysis, WrappedStatement statement) {
+    return getRelationPlanner(analysis).process(statement, null);
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
@@ -229,6 +243,8 @@ public class LogicalPlanner {
 
     List<ColumnHeader> columnHeaderList =
         getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
     TableDeviceQueryNode queryNode =
         new TableDeviceQueryNode(

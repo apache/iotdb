@@ -70,6 +70,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -1226,6 +1227,38 @@ public class Session implements ISession {
     insertRecord(deviceId, request);
   }
 
+  /**
+   * insert data in one row to the table model, if you want to improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  @Override
+  public void insertRelationalRecord(
+      String tableName,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<ColumnType> columnCategories,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordReq(
+              tableName, time, measurements, types, Arrays.asList(values), false);
+      request.setColumnCategoryies(
+          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
+      request.setIsWriteToTable(true);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
+      return;
+    }
+
+    insertRecord(tableName, request);
+  }
+
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -1579,14 +1612,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * When the value is null,filter this,don't use this measurement.
-   *
-   * @param times
-   * @param measurementsList
-   * @param valuesList
-   * @param typesList
-   */
+  /** When the value is null,filter this,don't use this measurement. */
   private void filterNullValueAndMeasurement(
       List<String> deviceIds,
       List<Long> times,
@@ -1612,15 +1638,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * Filter the null value of list。
-   *
-   * @param deviceId
-   * @param times
-   * @param measurementsList
-   * @param typesList
-   * @param valuesList
-   */
+  /** Filter the null value of list。 */
   private void filterNullValueAndMeasurementOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1645,14 +1663,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * Filter the null value of list。
-   *
-   * @param times
-   * @param deviceId
-   * @param measurementsList
-   * @param valuesList
-   */
+  /** Filter the null value of list。 */
   private void filterNullValueAndMeasurementWithStringTypeOfOneDevice(
       List<Long> times,
       String deviceId,
@@ -1677,10 +1688,6 @@ public class Session implements ISession {
   /**
    * Filter the null object of list。
    *
-   * @param deviceId
-   * @param measurementsList
-   * @param types
-   * @param valuesList
    * @return true:all value is null;false:not all null value is null.
    */
   private boolean filterNullValueAndMeasurement(
@@ -1710,9 +1717,6 @@ public class Session implements ISession {
    * Filter the null object of list。
    *
    * @param prefixPaths devices path。
-   * @param times
-   * @param measurementsList
-   * @param valuesList
    * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
    */
   private void filterNullValueAndMeasurementWithStringType(
@@ -1740,8 +1744,6 @@ public class Session implements ISession {
   /**
    * When the value is null,filter this,don't use this measurement.
    *
-   * @param valuesList
-   * @param measurementsList
    * @return true:all value is null;false:not all null value is null.
    */
   private boolean filterNullValueAndMeasurementWithStringType(
@@ -2639,6 +2641,11 @@ public class Session implements ISession {
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    insertTabletInternal(tablet, request);
+  }
+
+  private void insertTabletInternal(Tablet tablet, TSInsertTabletReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
       getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
@@ -2659,6 +2666,33 @@ public class Session implements ISession {
         throw e;
       }
     }
+  }
+
+  /**
+   * insert a relational Tablet
+   *
+   * @param tablet data batch
+   * @param sorted deprecated, whether times in Tablet are in ascending order
+   */
+  @Override
+  public void insertRelationalTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    request.setWriteToTable(true);
+    request.setColumnCategories(
+        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
+    insertTabletInternal(tablet, request);
+  }
+
+  /**
+   * insert a relational Tablet
+   *
+   * @param tablet data batch
+   */
+  @Override
+  public void insertRelationalTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertRelationalTablet(tablet, false);
   }
 
   /**
@@ -3470,8 +3504,6 @@ public class Session implements ISession {
    * @param encodings the encoding of each measurement, only the first one in each nested list
    *     matters as above
    * @param compressors the compressor of each measurement
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
    * @deprecated
    */
   @Override
@@ -3777,9 +3809,6 @@ public class Session implements ISession {
    *       <li>{@link TSInsertStringRecordsReq}
    *       <li>{@link TSInsertTabletsReq}
    *     </ul>
-   *
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
    */
   @SuppressWarnings({
     "squid:S3776"
@@ -3875,6 +3904,7 @@ public class Session implements ISession {
   }
 
   public static class Builder {
+
     private String host = SessionConfig.DEFAULT_HOST;
     private int rpcPort = SessionConfig.DEFAULT_PORT;
     private String username = SessionConfig.DEFAULT_USER;

@@ -39,4 +39,9 @@ public abstract class Literal extends Expression {
   public List<Node> getChildren() {
     return ImmutableList.of();
   }
+
+  /**
+   * @return a value that can be processed by IoTDB storage engine
+   */
+  public abstract Object getTsValue();
 }

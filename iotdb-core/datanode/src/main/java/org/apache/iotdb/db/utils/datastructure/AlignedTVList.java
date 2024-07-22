@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -722,7 +725,8 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
+  public void putAlignedValues(
+      long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     checkExpansion();
     int idx = start;
 
@@ -741,7 +745,10 @@ public abstract class AlignedTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
+                || results != null
+                    && results[idx + i] != null
+                    && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -757,7 +764,10 @@ public abstract class AlignedTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
+                || results != null
+                    && results[idx + i] != null
+                    && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -857,12 +867,19 @@ public abstract class AlignedTVList extends TVList {
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemCost(TSDataType[] types) {
+  public static long alignedTvListArrayMemCost(
+      TSDataType[] types, TsTableColumnCategory[] columnCategories) {
+
+    int measurementColumnNum = 0;
     long size = 0;
     // value array mem size
-    for (TSDataType type : types) {
-      if (type != null) {
-        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    for (int i = 0; i < types.length; i++) {
+      TSDataType type = types[i];
+      if (type != null
+          && (columnCategories == null
+              || columnCategories[i] == TsTableColumnCategory.MEASUREMENT)) {
+        size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
+        measurementColumnNum++;
       }
     }
     // size is 0 when all types are null
@@ -874,9 +891,9 @@ public abstract class AlignedTVList extends TVList {
     // index array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // array headers mem size
-    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.length);
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + measurementColumnNum);
     // Object references size in ArrayList
-    size += (long) NUM_BYTES_OBJECT_REF * (2 + types.length);
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + measurementColumnNum);
     return size;
   }
 
@@ -1252,7 +1269,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
-    tvList.putAlignedValues(times, values, bitMaps, 0, rowCount);
+    tvList.putAlignedValues(times, values, bitMaps, 0, rowCount, null);
     return tvList;
   }
 

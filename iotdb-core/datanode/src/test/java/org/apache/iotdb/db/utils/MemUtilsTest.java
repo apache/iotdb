@@ -36,6 +36,7 @@ import org.apache.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.tsfile.write.record.datapoint.StringDataPoint;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -87,7 +88,7 @@ public class MemUtilsTest {
     dataTypes.add(TSDataType.TEXT);
     // time and index size
     sizeSum += 8 + 4;
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row));
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row, null));
   }
 
   @Test
@@ -163,7 +164,15 @@ public class MemUtilsTest {
             null,
             columns,
             1);
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1));
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.FLOAT),
+          new MeasurementSchema("s4", TSDataType.DOUBLE),
+          new MeasurementSchema("s5", TSDataType.TEXT)
+        });
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1, null));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */

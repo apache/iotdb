@@ -687,7 +687,7 @@ public class ConfigMTree {
     return getAllDatabasePaths().stream()
         .collect(
             Collectors.toMap(
-                databasePath -> databasePath.getFullPath().substring(ROOT.length() + 1),
+                PartialPath::getFullPath,
                 databasePath -> {
                   try {
                     return getAllUsingTablesUnderSpecificDatabase(databasePath);

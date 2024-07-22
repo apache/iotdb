@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -51,7 +52,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end) {
+      int end,
+      TSStatus[] results) {
     boolean flushFlag = false;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {

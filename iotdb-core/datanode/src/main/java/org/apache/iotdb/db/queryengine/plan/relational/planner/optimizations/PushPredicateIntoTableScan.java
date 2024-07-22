@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
@@ -241,6 +243,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitTableScan(TableScanNode node, Void context) {
       tableMetadataIndexScan(node, Collections.emptyList());
+      return node;
+    }
+
+    @Override
+    public PlanNode visitInsertTablet(InsertTabletNode node, Void context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
       return node;
     }
 

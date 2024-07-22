@@ -79,7 +79,7 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
-    context.getAnalysis().setStatement(node.getQueryStatement());
+    context.getAnalysis().setRealStatement(node.getQueryStatement());
     DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(

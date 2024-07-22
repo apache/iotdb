@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,7 +61,7 @@ public enum TsTableColumnCategory {
     return deserialize(category);
   }
 
-  private static TsTableColumnCategory deserialize(byte category) {
+  public static TsTableColumnCategory deserialize(byte category) {
     switch (category) {
       case 0:
         return ID;
@@ -73,5 +74,35 @@ public enum TsTableColumnCategory {
       default:
         throw new IllegalArgumentException();
     }
+  }
+
+  public ColumnType toTsFileColumnType() {
+    switch (this) {
+      case ID:
+        return ColumnType.ID;
+      case ATTRIBUTE:
+        return ColumnType.ATTRIBUTE;
+      case MEASUREMENT:
+        return ColumnType.MEASUREMENT;
+      default:
+        throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
+    }
+  }
+
+  public static TsTableColumnCategory fromTsFileColumnType(ColumnType columnType) {
+    switch (columnType) {
+      case MEASUREMENT:
+        return MEASUREMENT;
+      case ID:
+        return ID;
+      case ATTRIBUTE:
+        return ATTRIBUTE;
+      default:
+        throw new IllegalArgumentException("Unknown column type: " + columnType);
+    }
+  }
+
+  public byte getCategory() {
+    return category;
   }
 }

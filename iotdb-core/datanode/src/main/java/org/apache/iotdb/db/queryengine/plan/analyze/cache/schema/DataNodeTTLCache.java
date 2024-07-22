@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -75,23 +76,9 @@ public class DataNodeTTLCache {
   }
 
   public long getTTL(IDeviceID deviceID) {
-    try {
-      // TODO Tien change this way
-      return getTTL(deviceID.toString());
-    } catch (IllegalPathException e) {
-      return Long.MAX_VALUE;
-    }
-  }
-
-  /** Get ttl with time precision conversion. */
-  public long getTTL(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      long ttl = ttlCache.getClosestTTL(PathUtils.splitPathToDetachedNodes(path));
-      return ttl == Long.MAX_VALUE
-          ? ttl
-          : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-              ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      return ttlCache.getClosestTTL(CommonUtils.deviceIdToStringArray(deviceID));
     } finally {
       lock.readLock().unlock();
     }

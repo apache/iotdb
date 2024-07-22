@@ -80,6 +80,8 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -122,6 +124,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
  * </ol>
  */
 public class MTreeBelowSGMemoryImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowSGMemoryImpl.class);
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -1185,6 +1189,7 @@ public class MTreeBelowSGMemoryImpl {
         while (deviceIdIterator.hasNext()) {
           try {
             IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
+
             if (!node.isDevice()) {
               continue;
             }
@@ -1502,19 +1507,13 @@ public class MTreeBelowSGMemoryImpl {
       IntConsumer attributeUppdater)
       throws MetadataException {
     // todo implement storage for device of diverse data types
-    IMemMNode cur = storageGroupMNode;
-    IMemMNode child = cur.getChild(tableName);
-    if (child == null) {
-      child = store.addChild(cur, tableName, nodeFactory.createInternalMNode(cur, tableName));
-    }
-    cur = child;
 
-    String nodeName;
+    IMemMNode cur = storageGroupMNode;
     for (Object o : devicePath) {
-      nodeName = o == null ? null : (String) o;
-      child = cur.getChild(nodeName);
+      String childName = o == null ? null : o.toString();
+      IMemMNode child = cur.getChild(childName);
       if (child == null) {
-        child = store.addChild(cur, nodeName, nodeFactory.createInternalMNode(cur, nodeName));
+        child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
       }
       cur = child;
     }

@@ -58,11 +58,12 @@ public class TTLCache {
    * @param nodes should be prefix path or specific device path without wildcard
    */
   public void setTTL(String[] nodes, long ttl) {
-    if (nodes.length < 2 || ttl < 0) {
+    int start = nodes[0].equals("root") ? 1 : 0;
+    if (nodes.length <= start || ttl < 0) {
       return;
     }
     CacheNode current = ttlCacheTree;
-    for (int i = 1; i < nodes.length; i++) {
+    for (int i = start; i < nodes.length; i++) {
       CacheNode child = current.getChild(nodes[i]);
       if (child == null) {
         child = current.addChild(nodes[i], NULL_TTL);
@@ -82,10 +83,11 @@ public class TTLCache {
    * @param nodes path to be removed
    */
   public TSStatus unsetTTL(String[] nodes) {
-    if (nodes.length < 2) {
+    int start = nodes[0].equals("root") ? 1 : 0;
+    if (nodes.length <= start) {
       return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
           .setMessage(String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
-    } else if (nodes.length == 2) {
+    } else if (nodes.length == start + 1) {
       // if path equals to root.**, then unset it to configured ttl
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
           && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
@@ -97,7 +99,7 @@ public class TTLCache {
     int index = 0;
     boolean hasNonDefaultTTL;
     CacheNode parentOfSubPathToBeRemoved = null;
-    for (int i = 1; i < nodes.length; i++) {
+    for (int i = start; i < nodes.length; i++) {
       hasNonDefaultTTL = !current.getChildren().isEmpty() || current.ttl != NULL_TTL;
       CacheNode child = current.getChild(nodes[i]);
       if (child == null) {
@@ -141,7 +143,8 @@ public class TTLCache {
   public long getClosestTTL(String[] nodes) {
     long ttl = ttlCacheTree.ttl;
     CacheNode current = ttlCacheTree;
-    for (int i = 1; i < nodes.length; i++) {
+    int start = nodes[0].equals("root") ? 1 : 0;
+    for (int i = start; i < nodes.length; i++) {
       CacheNode child = current.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
       ttl = child != null ? child.ttl : ttl;
       current = current.getChild(nodes[i]);
@@ -263,6 +266,9 @@ public class TTLCache {
     }
 
     public CacheNode getChild(String name) {
+      if (name.startsWith("root.")) {
+        name = name.substring("root.".length());
+      }
       return children.get(name);
     }
 

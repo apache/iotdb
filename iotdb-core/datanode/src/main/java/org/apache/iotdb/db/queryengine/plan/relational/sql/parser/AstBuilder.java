@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -69,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
@@ -131,6 +134,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -158,6 +166,7 @@ import java.util.function.Function;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
@@ -336,13 +345,86 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitInsertStatement(RelationalSqlParser.InsertStatementContext ctx) {
     if (ctx.columnAliases() != null) {
-      return new Insert(
-          new Table(getQualifiedName(ctx.tableName)),
-          visit(ctx.columnAliases().identifier(), Identifier.class),
-          (Query) visit(ctx.query()));
+      Query query = (Query) visit(ctx.query());
+      List<Identifier> identifiers = visit(ctx.columnAliases().identifier(), Identifier.class);
+      if (query.getQueryBody() instanceof Values) {
+        return visitInsertValues(
+            getQualifiedName(ctx.tableName), identifiers, ((Values) query.getQueryBody()));
+      }
+      return new Insert(new Table(getQualifiedName(ctx.tableName)), identifiers, query);
     } else {
       return new Insert(new Table(getQualifiedName(ctx.tableName)), (Query) visit(ctx.query()));
     }
+  }
+
+  private Node visitInsertValues(
+      QualifiedName tableName, List<Identifier> identifiers, Values queryBody) {
+    String tableNameString = tableName.toString();
+    List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
+    int timeColumnIndex = -1;
+    for (int i = 0; i < columnNames.size(); i++) {
+      if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
+        timeColumnIndex = i;
+        break;
+      }
+    }
+    if (timeColumnIndex != -1) {
+      columnNames.remove(timeColumnIndex);
+    }
+    String[] columnNameArray = columnNames.toArray(new String[0]);
+
+    List<Expression> rows = queryBody.getRows();
+    int finalTimeColumnIndex = timeColumnIndex;
+    List<InsertRowStatement> rowStatements =
+        rows.stream()
+            // Row -> List<Expression>
+            .map(
+                r ->
+                    toInsertRowStatement(
+                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableNameString))
+            .collect(toList());
+
+    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    insertRowsStatement.setInsertRowStatementList(rowStatements);
+    insertRowsStatement.setWriteToTable(true);
+    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableNameString}));
+    insertRowsStatement.setMeasurements(columnNameArray);
+    return new InsertRows(insertRowsStatement, null);
+  }
+
+  private InsertRowStatement toInsertRowStatement(
+      Row row, int timeColumnIndex, String[] columnNames, String tableName) {
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setWriteToTable(true);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
+    long timestamp;
+    if (timeColumnIndex == -1) {
+      timestamp = CommonDateTimeUtils.currentTime();
+    } else {
+      Expression timeExpression = row.getItems().get(timeColumnIndex);
+      if (timeExpression instanceof LongLiteral) {
+        timestamp = ((LongLiteral) timeExpression).getParsedValue();
+      } else {
+        timestamp =
+            parseDateTimeFormat(
+                ((StringLiteral) timeExpression).getValue(),
+                CommonDateTimeUtils.currentTime(),
+                zoneId);
+      }
+    }
+    insertRowStatement.setTime(timestamp);
+    insertRowStatement.setMeasurements(columnNames);
+
+    Object[] values = new Object[columnNames.length];
+    int valuePos = 0;
+    for (int i = 0; i < row.getItems().size(); i++) {
+      if (i != timeColumnIndex) {
+        values[valuePos++] = AstUtil.expressionToTsValue(row.getItems().get(i));
+      }
+    }
+    insertRowStatement.setValues(values);
+    insertRowStatement.setNeedInferType(true);
+    return insertRowStatement;
   }
 
   @Override
@@ -497,7 +579,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
-    return super.visitFlushStatement(ctx);
+    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<PartialPath> storageGroups = null;
+    if (ctx.booleanValue() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
+    }
+    flushStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
+    if (ctx.identifier() != null) {
+      storageGroups = new ArrayList<>();
+      List<Identifier> identifiers = getIdentifiers(ctx.identifier());
+      for (Identifier identifier : identifiers) {
+        try {
+          storageGroups.add(new PartialPath(PathUtils.qualifyDatabaseName(identifier.getValue())));
+        } catch (IllegalPathException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    flushStatement.setStorageGroups(storageGroups);
+    return new Flush(flushStatement, null);
   }
 
   @Override

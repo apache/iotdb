@@ -282,7 +282,7 @@ public class AddTableColumnProcedure
 
   @Override
   protected AddTableColumnState getInitialState() {
-    return AddTableColumnState.ADD_COLUMN;
+    return AddTableColumnState.COLUMN_CHECK;
   }
 
   public String getDatabase() {

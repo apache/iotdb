@@ -261,6 +261,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @FunctionalInterface
   public interface SelectResult {
+
     boolean apply(TSExecuteStatementResp resp, IQueryExecution queryExecution, int fetchSize)
         throws IoTDBException, IOException;
   }
@@ -2013,15 +2014,28 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "",
-              partitionFetcher,
-              schemaFetcher);
-
+      ExecutionResult result;
+      if (statement.isWriteToTable()) {
+        result =
+            COORDINATOR.executeForTableModel(
+                statement,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                metadata,
+                config.getConnectionTimeoutInMS());
+      } else {
+        result =
+            COORDINATOR.executeForTreeModel(
+                statement,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                partitionFetcher,
+                schemaFetcher);
+      }
       return result.status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -2128,15 +2142,28 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "",
-              partitionFetcher,
-              schemaFetcher);
-
+      ExecutionResult result;
+      if (statement.isWriteToTable()) {
+        result =
+            COORDINATOR.executeForTableModel(
+                statement,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                metadata,
+                config.getConnectionTimeoutInMS());
+      } else {
+        result =
+            COORDINATOR.executeForTreeModel(
+                statement,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                partitionFetcher,
+                schemaFetcher);
+      }
       return result.status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());

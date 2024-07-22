@@ -100,7 +100,7 @@ public class TsFilePlanRedoer {
     } else {
       if (node.isAligned()) {
         recoveryMemTable.insertAlignedTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount(), null);
       } else {
         recoveryMemTable.insertTablet(
             (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());

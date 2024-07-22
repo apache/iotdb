@@ -39,7 +39,9 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -384,16 +386,17 @@ public class SchemaRegionTestUtil {
   public static void createTableDevice(
       ISchemaRegion schemaRegion, String table, Object[] deviceIds, Map<String, String> attributes)
       throws MetadataException {
-    String[] fullId = new String[deviceIds.length + 3];
-    fullId[0] = ROOT;
-    fullId[1] = schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1);
-    fullId[2] = table;
-    System.arraycopy(deviceIds, 0, fullId, 3, deviceIds.length);
+    String[] fullId = new String[deviceIds.length + 1];
+    fullId[0] = table;
+    System.arraycopy(deviceIds, 0, fullId, 1, deviceIds.length);
     schemaRegion.createTableDevice(
         table,
-        Collections.singletonList(deviceIds),
+        Collections.singletonList(fullId),
         new ArrayList<>(attributes.keySet()),
-        Collections.singletonList(attributes.values().toArray()));
+        Collections.singletonList(
+            attributes.values().stream()
+                .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)
+                .toArray()));
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(

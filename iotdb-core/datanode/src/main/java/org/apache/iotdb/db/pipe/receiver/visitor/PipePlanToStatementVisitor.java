@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -87,18 +88,13 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
+  public Statement visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
+    return new InsertTabletStatement(node);
+  }
+
+  @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
-    final InsertTabletStatement statement = new InsertTabletStatement();
-    statement.setDevicePath(node.getDevicePath());
-    statement.setMeasurements(node.getMeasurements());
-    statement.setTimes(node.getTimes());
-    statement.setColumns(node.getColumns());
-    statement.setBitMaps(node.getBitMaps());
-    statement.setRowCount(node.getRowCount());
-    statement.setDataTypes(node.getDataTypes());
-    statement.setAligned(node.isAligned());
-    statement.setMeasurementSchemas(node.getMeasurementSchemas());
-    return statement;
+    return new InsertTabletStatement(node);
   }
 
   @Override

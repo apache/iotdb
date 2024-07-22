@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingExcepti
 
 import com.google.common.base.CharMatcher;
 import com.google.common.io.BaseEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -129,5 +130,10 @@ public class BinaryLiteral extends Literal {
     for (int i = 0; i < length; i++) {
       value[i] = ReadWriteIOUtils.readByte(byteBuffer);
     }
+  }
+
+  @Override
+  public Object getTsValue() {
+    return new Binary(value);
   }
 }

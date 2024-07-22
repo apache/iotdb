@@ -1088,9 +1088,8 @@ public class SessionConnection {
     return client.insertStringRecordsOfOneDevice(request);
   }
 
-  protected void insertTablet(TSInsertTabletReq request)
-      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-
+  protected void withRetry(TFunction<TSStatus> function)
+      throws StatementExecutionException, RedirectException, IoTDBConnectionException {
     TException lastTException = null;
     TSStatus status = null;
     for (int i = 0; i <= maxRetryCount; i++) {
@@ -1110,7 +1109,7 @@ public class SessionConnection {
         }
       }
       try {
-        status = insertTabletInternal(request);
+        status = function.run();
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1137,6 +1136,11 @@ public class SessionConnection {
     } else {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
+  }
+
+  protected void insertTablet(TSInsertTabletReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    withRetry(() -> insertTabletInternal(request));
   }
 
   private TSStatus insertTabletInternal(TSInsertTabletReq request) throws TException {
@@ -1685,5 +1689,9 @@ public class SessionConnection {
   @Override
   public String toString() {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
+  }
+
+  private interface TFunction<T> {
+    T run() throws TException;
   }
 }

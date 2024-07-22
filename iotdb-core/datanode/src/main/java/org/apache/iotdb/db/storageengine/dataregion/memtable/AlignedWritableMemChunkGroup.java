@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -55,9 +56,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end) {
+      int end,
+      TSStatus[] results) {
     return memChunk.writeAlignedValuesWithFlushCheck(
-        times, columns, bitMaps, schemaList, start, end);
+        times, columns, bitMaps, schemaList, start, end, results);
   }
 
   @Override

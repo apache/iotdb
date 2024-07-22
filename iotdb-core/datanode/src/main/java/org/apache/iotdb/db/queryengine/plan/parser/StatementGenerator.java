@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -100,6 +101,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -282,6 +284,22 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
+    if (insertRecordReq.isSetIsWriteToTable()) {
+      insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
+      if (!insertRecordReq.isSetColumnCategoryies()
+          || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
+        throw new IllegalArgumentException(
+            "Missing or invalid column categories for table " + "insertion");
+      }
+      TsTableColumnCategory[] columnCategories =
+          new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
+      for (int i = 0; i < columnCategories.length; i++) {
+        columnCategories[i] =
+            TsTableColumnCategory.fromTsFileColumnType(
+                ColumnType.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
+      }
+      insertStatement.setColumnCategories(columnCategories);
+    }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
@@ -335,6 +353,22 @@ public class StatementGenerator {
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
+    insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
+    if (insertTabletReq.isWriteToTable()) {
+      if (!insertTabletReq.isSetColumnCategories()
+          || insertTabletReq.getColumnCategoriesSize() != insertTabletReq.getMeasurementsSize()) {
+        throw new IllegalArgumentException(
+            "Missing or invalid column categories for table " + "insertion");
+      }
+      TsTableColumnCategory[] columnCategories =
+          new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
+      for (int i = 0; i < columnCategories.length; i++) {
+        columnCategories[i] =
+            TsTableColumnCategory.fromTsFileColumnType(
+                ColumnType.values()[insertTabletReq.columnCategories.get(i).intValue()]);
+      }
+      insertStatement.setColumnCategories(columnCategories);
+    }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }

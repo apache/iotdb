@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -49,6 +50,16 @@ public interface IAnalysis {
 
   String getStatementType();
 
+  void setFinishQueryAfterAnalyze(boolean b);
+
+  void setFailStatus(TSStatus status);
+
+  boolean isFinishQueryAfterAnalyze();
+
+  default void setRealStatement(Statement realStatement) {}
+
+  void setDataPartitionInfo(DataPartition dataPartition);
+
   SchemaPartition getSchemaPartitionInfo();
 
   void setSchemaPartitionInfo(SchemaPartition schemaPartition);
@@ -60,4 +71,8 @@ public interface IAnalysis {
   void addEndPointToRedirectNodeList(TEndPoint endPoint);
 
   TimePredicate getCovertedTimePredicate();
+
+  void setDatabaseName(String databaseName);
+
+  String getDatabaseName();
 }

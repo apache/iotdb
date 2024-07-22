@@ -1093,6 +1093,11 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
 
   /**
+  * Get SchemaPartitionTable by specific database name and series slots.
+  **/
+  TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
+
+  /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable always contains all the SeriesPartitionSlots
    * since the unallocated SeriesPartitionSlots will be allocated by the way
@@ -1102,6 +1107,11 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
+
+  /**
+   * Get or create SchemaPartitionTable by specific database name and series slots.
+   **/
+   TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
 
   // ======================================================
   // Node Management

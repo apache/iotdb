@@ -104,4 +104,9 @@ public class BooleanLiteral extends Literal {
     super(null);
     this.value = ReadWriteIOUtils.readBool(byteBuffer);
   }
+
+  @Override
+  public Object getTsValue() {
+    return value;
+  }
 }

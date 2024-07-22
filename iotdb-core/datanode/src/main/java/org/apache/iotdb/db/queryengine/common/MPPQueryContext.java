@@ -81,6 +81,8 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
+  private boolean isTableQuery = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -329,4 +331,12 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+  public boolean isTableQuery() {
+    return isTableQuery;
+  }
+
+  public void setTableQuery(boolean tableQuery) {
+    isTableQuery = tableQuery;
+  }
 }

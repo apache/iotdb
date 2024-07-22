@@ -21,9 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -59,6 +62,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
@@ -100,6 +106,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -156,7 +164,7 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private final Analysis analysis;
+  private Analysis analysis;
 
   private final AccessControl accessControl;
 
@@ -215,6 +223,7 @@ public class StatementAnalyzer {
    * scopes hierarchy should always have outer query scope (if provided) as ancestor.
    */
   private final class Visitor extends AstVisitor<Scope, Optional<Scope>> {
+
     private final boolean isTopLevel;
     private final Optional<Scope> outerQueryScope;
     private final WarningCollector warningCollector;
@@ -358,6 +367,41 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
       throw new SemanticException("Insert statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitInsertRow(InsertRow node, Optional<Scope> context) {
+      return visitInsert(node, context);
+    }
+
+    protected Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
+      return visitInsert(insert, scope);
+    }
+
+    @Override
+    protected Scope visitInsertRows(InsertRows node, Optional<Scope> context) {
+      return visitInsert(node, context);
+    }
+
+    private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      final Scope ret = Scope.create();
+
+      final MPPQueryContext context = insert.getContext();
+      InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
+
+      innerInsert =
+          AnalyzeUtils.analyzeInsert(
+              context,
+              innerInsert,
+              () -> SchemaValidator.validate(metadata, insert, context),
+              metadata::getOrCreateDataPartition,
+              AnalyzeUtils::computeTableDataPartitionParams,
+              analysis,
+              false);
+      insert.setInnerTreeStatement(innerInsert);
+      analysis.setScope(insert, ret);
+
+      return ret;
     }
 
     @Override

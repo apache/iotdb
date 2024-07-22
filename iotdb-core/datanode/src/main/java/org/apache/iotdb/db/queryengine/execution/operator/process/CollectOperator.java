@@ -68,6 +68,9 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (currentIndex >= children.size()) {
+      return NOT_BLOCKED;
+    }
     return children.get(currentIndex).isBlocked();
   }
 
