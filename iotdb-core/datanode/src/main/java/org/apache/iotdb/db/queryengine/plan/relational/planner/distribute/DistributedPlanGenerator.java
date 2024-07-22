@@ -17,6 +17,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -61,7 +61,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator.parseDeviceIdArray;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
@@ -85,6 +84,7 @@ public class DistributedPlanGenerator
       return res;
     } else if (res.size() > 1) {
       CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
+      collectNode.setOutputSymbols(res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
@@ -396,6 +396,7 @@ public class DistributedPlanGenerator
 
     // children has no sort property, use CollectNode to merge children
     CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
+    collectNode.setOutputSymbols(firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
   }
@@ -483,8 +484,7 @@ public class DistributedPlanGenerator
   // ------------------- schema related interface ---------------------------------------------
   @Override
   public List<PlanNode> visitTableDeviceQuery(TableDeviceQueryNode node, PlanContext context) {
-    String database =
-        ROOT + "." + ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
+    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
@@ -511,8 +511,7 @@ public class DistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTableDeviceFetch(TableDeviceFetchNode node, PlanContext context) {
-    String database =
-        ROOT + "." + ((TableDeviceSourceNode) node.getChildren().get(0)).getDatabase();
+    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
     Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -50,6 +51,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 
 public class TableDistributionPlanner {
+
   private final Analysis analysis;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
@@ -117,7 +119,9 @@ public class TableDistributionPlanner {
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
             ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
-            : new WriteFragmentParallelPlanner(subPlan, analysis, mppQueryContext).parallelPlan();
+            : new WriteFragmentParallelPlanner(
+                    subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
+                .parallelPlan();
 
     // only execute this step for READ operation
     if (mppQueryContext.getQueryType() == QueryType.READ) {

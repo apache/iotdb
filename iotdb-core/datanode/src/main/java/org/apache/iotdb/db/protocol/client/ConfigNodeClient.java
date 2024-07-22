@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -162,6 +163,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -169,14 +171,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
-  private static final int RETRY_NUM = 5;
+  private static final int RETRY_NUM = 10;
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 2000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
 
@@ -540,10 +542,26 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getSchemaPartitionTableWithSlots(dbSlotMap),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getOrCreateSchemaPartitionTable(req),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getOrCreateSchemaPartitionTableWithSlots(dbSlotMap),
         resp -> !updateConfigNodeLeader(resp.status));
   }
 

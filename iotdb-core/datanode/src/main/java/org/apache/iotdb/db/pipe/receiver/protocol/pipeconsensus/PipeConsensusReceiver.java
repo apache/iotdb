@@ -668,7 +668,7 @@ public class PipeConsensusReceiver {
         .ifPresent(
             databaseName ->
                 LoadTsFileManager.updateWritePointCountMetrics(
-                    dataRegion, databaseName, writePointCount));
+                    dataRegion, databaseName, writePointCount, true));
   }
 
   private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
@@ -682,6 +682,7 @@ public class PipeConsensusReceiver {
 
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.setProgressIndex(progressIndex);
+    tsFileResource.setGeneratedByPipeConsensus(true);
     tsFileResource.serialize();
     return tsFileResource;
   }

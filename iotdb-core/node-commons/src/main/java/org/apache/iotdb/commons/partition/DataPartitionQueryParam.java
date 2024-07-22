@@ -27,6 +27,7 @@ import java.util.List;
 
 public class DataPartitionQueryParam {
 
+  private String databaseName;
   private IDeviceID deviceID;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
@@ -87,5 +88,13 @@ public class DataPartitionQueryParam {
 
   public void setNeedRightAll(boolean needRightAll) {
     this.needRightAll = needRightAll;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
   }
 }

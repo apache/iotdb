@@ -51,6 +51,8 @@ public class SubscriptionCoordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionCoordinator.class);
 
   private final ConfigManager configManager;
+
+  // NEVER EXPOSE THIS DIRECTLY TO THE OUTSIDE
   private final SubscriptionInfo subscriptionInfo;
 
   private final PipeTaskCoordinatorLock coordinatorLock;
@@ -78,6 +80,18 @@ public class SubscriptionCoordinator {
     }
 
     return null;
+  }
+
+  /**
+   * Lock the {@link SubscriptionInfo} coordinator.
+   *
+   * @return the {@link SubscriptionInfo} holder, which can be used to get the {@link
+   *     SubscriptionInfo}. Wait until lock is acquired
+   */
+  public AtomicReference<SubscriptionInfo> lock() {
+    coordinatorLock.lock();
+    subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
+    return subscriptionInfoHolder;
   }
 
   public boolean unlock() {
@@ -110,7 +124,9 @@ public class SubscriptionCoordinator {
     subscriptionMetaSyncer.stop();
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock}. */
+  /**
+   * Caller should ensure that the method is called in the write lock of {@link #subscriptionInfo}.
+   */
   public void updateLastSyncedVersion() {
     subscriptionInfo.updateLastSyncedVersion();
   }

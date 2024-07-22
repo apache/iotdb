@@ -215,7 +215,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
-    analysis.setStatement(loadTsFileStatement);
+    analysis.setRealStatement(loadTsFileStatement);
     return analysis;
   }
 

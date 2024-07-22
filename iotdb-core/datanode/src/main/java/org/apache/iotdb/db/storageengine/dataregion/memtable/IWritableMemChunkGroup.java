@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
@@ -36,7 +37,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end);
+      int end,
+      TSStatus[] results);
 
   void release();
 

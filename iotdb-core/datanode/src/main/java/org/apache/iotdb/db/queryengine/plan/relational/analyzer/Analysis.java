@@ -94,6 +94,9 @@ import static java.util.Objects.requireNonNull;
 
 public class Analysis implements IAnalysis {
 
+  private String databaseName;
+  private List<TEndPoint> redirectNodeList;
+
   @Nullable private Statement root;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
@@ -172,11 +175,17 @@ public class Analysis implements IAnalysis {
   // indicate if value filter exists in query
   private boolean hasValueFilter = false;
 
+  private TSStatus failStatus;
+
   // indicate if sort node exists in query
   private boolean hasSortNode = false;
 
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
+
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -610,12 +619,17 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isFailed() {
-    return false;
+    return failStatus != null;
   }
 
   @Override
   public TSStatus getFailStatus() {
-    return null;
+    return failStatus;
+  }
+
+  @Override
+  public void setFailStatus(TSStatus failStatus) {
+    this.failStatus = failStatus;
   }
 
   @Override
@@ -627,8 +641,18 @@ public class Analysis implements IAnalysis {
     this.finishQueryAfterAnalyze = true;
   }
 
+  @Override
+  public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
+    this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
+  }
+
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
+  }
+
+  @Override
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
   @Override
@@ -694,12 +718,15 @@ public class Analysis implements IAnalysis {
 
   @Override
   public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
-    throw new UnsupportedOperationException();
+    this.redirectNodeList = redirectNodeList;
   }
 
   @Override
   public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
-    throw new UnsupportedOperationException();
+    if (redirectNodeList == null) {
+      redirectNodeList = new ArrayList<>();
+    }
+    redirectNodeList.add(endPoint);
   }
 
   @Override
@@ -956,5 +983,15 @@ public class Analysis implements IAnalysis {
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
     }
+  }
+
+  @Override
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  @Override
+  public String getDatabaseName() {
+    return databaseName;
   }
 }

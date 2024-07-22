@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.table;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -94,7 +95,8 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preUpdateTable(final String database, final TsTable table) {
+  public void preUpdateTable(String database, final TsTable table) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preUpdateTableMap
@@ -107,7 +109,8 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void rollbackUpdateTable(final String database, final String tableName) {
+  public void rollbackUpdateTable(String database, final String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
@@ -134,7 +137,8 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void commitUpdateTable(final String database, final String tableName) {
+  public void commitUpdateTable(String database, final String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       final TsTable table = preUpdateTableMap.get(database).get(tableName);
@@ -149,7 +153,8 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void invalid(final String database) {
+  public void invalid(String database) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
@@ -159,7 +164,8 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public TsTable getTable(final String database, final String tableName) {
+  public TsTable getTable(String database, final String tableName) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       if (databaseTableMap.containsKey(database)) {
@@ -171,7 +177,8 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public Optional<List<TsTable>> getTables(final String database) {
+  public Optional<List<TsTable>> getTables(String database) {
+    database = PathUtils.qualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       final Map<String, TsTable> tableMap = databaseTableMap.get(database);

@@ -102,14 +102,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     } finally {
       seqResources.get(0).readUnlock();
     }
-    if (summaryFuture != null) {
-      summaryFuture.get();
-    }
+    manager.waitAllCompactionFinish();
     Assert.assertEquals(0, manager.getTotalTaskCount());
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
     }
-    manager.waitAllCompactionFinish();
   }
 
   @Test

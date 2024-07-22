@@ -376,7 +376,7 @@ public class PrimitiveMemTableTest {
 
   private void writeVector(IMemTable memTable)
       throws IOException, QueryProcessException, MetadataException, WriteProcessException {
-    memTable.insertAlignedTablet(genInsertTableNode(), 0, 100);
+    memTable.insertAlignedTablet(genInsertTableNode(), 0, 100, null);
 
     IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.device5");
 

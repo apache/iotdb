@@ -253,8 +253,8 @@ showClusterStatement
     ;
 
 showRegionsStatement
-    : SHOW (SCHEMA | DATA)? REGIONS (OF DATABASE identifier? (',' identifier)*)?
-          (ON NODEID INTEGER_VALUE (',' INTEGER_VALUE)*)?
+    : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
+          // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
 showDataNodesStatement

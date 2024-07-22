@@ -175,6 +175,7 @@ public class Util {
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
 
       dataPartitionMap.put("root.sg", sgPartitionMap);
+      analysis.setDatabaseName("root.sg");
 
       dataPartition.setDataPartitionMap(dataPartitionMap);
 
@@ -229,8 +230,8 @@ public class Util {
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setSchemaTree(genSchemaTree());
       // to avoid some special case which is not the point of test
-      analysis.setStatement(Mockito.mock(QueryStatement.class));
-      Mockito.when(analysis.getStatement().isQuery()).thenReturn(false);
+      analysis.setRealStatement(Mockito.mock(QueryStatement.class));
+      Mockito.when(analysis.getTreeStatement().isQuery()).thenReturn(false);
       return analysis;
     } catch (IllegalPathException e) {
       return new Analysis();

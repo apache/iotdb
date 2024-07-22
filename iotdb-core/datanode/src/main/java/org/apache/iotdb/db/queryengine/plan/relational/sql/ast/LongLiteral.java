@@ -129,4 +129,9 @@ public class LongLiteral extends Literal {
     this.value = ReadWriteIOUtils.readString(byteBuffer);
     this.parsedValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
+
+  @Override
+  public Object getTsValue() {
+    return value;
+  }
 }

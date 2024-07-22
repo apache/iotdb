@@ -38,6 +38,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,10 +59,20 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     return null;
   }
 
+  public TSStatus visitRelationalInsertRow(RelationalInsertRowNode node, DataRegion context) {
+    return visitInsertRow(node, context);
+  }
+
+  @Override
+  public TSStatus visitRelationalInsertRows(RelationalInsertRowsNode node, DataRegion context) {
+    return visitInsertRows(node, context);
+  }
+
   @Override
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -74,9 +87,16 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
+  public TSStatus visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, DataRegion dataRegion) {
+    return visitInsertTablet(node, dataRegion);
+  }
+
+  @Override
   public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -113,6 +133,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRows(InsertRowsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -146,6 +167,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertMultiTablets(InsertMultiTabletsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablets(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
       LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
@@ -177,6 +199,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       InsertRowsOfOneDeviceNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -235,6 +258,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
               path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
         }
       }
+      dataRegion.insertSeparatorToWAL();
       PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {

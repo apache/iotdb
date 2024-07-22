@@ -81,6 +81,8 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
+  private boolean isTableQuery = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -264,6 +266,17 @@ public class MPPQueryContext {
     return queryPlanStatistics.getLogicalOptimizationCost();
   }
 
+  public void recordDispatchCost(long dispatchCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.recordDispatchCost(dispatchCost);
+  }
+
+  public long getDispatchCost() {
+    return queryPlanStatistics.getDispatchCost();
+  }
+
   public void setAnalyzeCost(long analyzeCost) {
     if (queryPlanStatistics == null) {
       queryPlanStatistics = new QueryPlanStatistics();
@@ -329,4 +342,12 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+  public boolean isTableQuery() {
+    return isTableQuery;
+  }
+
+  public void setTableQuery(boolean tableQuery) {
+    isTableQuery = tableQuery;
+  }
 }

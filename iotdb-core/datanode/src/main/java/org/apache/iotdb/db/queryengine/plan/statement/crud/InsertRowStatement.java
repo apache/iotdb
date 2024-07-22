@@ -32,12 +32,17 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -71,6 +76,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    * views.
    */
   private boolean[] measurementIsAligned;
+
+  private IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -221,7 +228,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        if (values[i] != null) {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        }
       } catch (Exception e) {
         LOGGER.warn(
             "data type of {}.{} is not consistent, "
@@ -443,5 +452,40 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+  }
+
+  public IDeviceID getTableDeviceID() {
+    if (deviceID == null) {
+      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      deviceIdSegments[0] = this.devicePath.getFullPath();
+      for (int i = 0; i < getIdColumnIndices().size(); i++) {
+        final Integer columnIndex = getIdColumnIndices().get(i);
+        deviceIdSegments[i + 1] =
+            values[columnIndex] != null ? values[columnIndex].toString() : null;
+      }
+      deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceID;
+  }
+
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return new InsertRow(this, context);
+  }
+
+  @Override
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    super.insertColumn(pos, columnSchema);
+    Object[] tmpValues = new Object[values.length + 1];
+    System.arraycopy(values, 0, tmpValues, 0, pos);
+    System.arraycopy(values, pos, tmpValues, pos + 1, values.length - pos);
+    values = tmpValues;
+  }
+
+  @Override
+  public void swapColumn(int src, int target) {
+    super.swapColumn(src, target);
+    CommonUtils.swapArray(values, src, target);
   }
 }

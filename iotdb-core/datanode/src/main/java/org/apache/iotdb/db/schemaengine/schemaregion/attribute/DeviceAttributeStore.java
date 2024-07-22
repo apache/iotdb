@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +125,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
-      value = valueList[i] == null ? null : (String) valueList[i];
+      value =
+          valueList[i] == null
+              ? null
+              : ((Binary) valueList[i]).getStringValue(TSFileConfig.STRING_CHARSET);
       if (value != null) {
         attributeMap.put(nameList.get(i), value);
         memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
@@ -144,7 +149,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     String value;
     for (int i = 0; i < nameList.size(); i++) {
       String key = nameList.get(i);
-      value = valueList[i] == null ? null : (String) valueList[i];
+      value = valueList[i] == null ? null : valueList[i].toString();
       if (value != null) {
         originMemUsage =
             attributeMap.containsKey(key)

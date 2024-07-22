@@ -117,6 +117,18 @@ public interface Metadata {
    */
   void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
 
+  /**
+   * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
+   * true and database/series/time slots not exists, then automatically create.
+   *
+   * @param dataPartitionQueryParams the list of DataPartitionQueryParams
+   * @param userName
+   */
+  default DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+    throw new UnsupportedOperationException();
+  }
+
   // ======================== Table Model Schema Partition Interface ========================
   /**
    * Get or create schema partition, used in data insertion with enable_auto_create_schema is true.

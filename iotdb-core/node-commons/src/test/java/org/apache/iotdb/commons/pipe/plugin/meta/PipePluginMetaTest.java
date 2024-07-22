@@ -54,6 +54,6 @@ public class PipePluginMetaTest {
     DataNodePipePluginMetaKeeper keeper = new DataNodePipePluginMetaKeeper();
     Assert.assertEquals(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginClass(),
-        keeper.getPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+        keeper.getBuiltinPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 }

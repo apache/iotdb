@@ -19,7 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,9 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -52,13 +65,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -75,6 +94,7 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -788,13 +808,188 @@ public class AnalyzerTest {
     assertEquals(8, limitNode.getCount());
   }
 
+  @Test
+  public void sortTest() {
+    // when TableScan locates multi regions, use default MergeSortNode
+    sql = "SELECT * FROM table1 ";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+  }
+
+  private Metadata mockMetadataForInsertion() {
+    return new TestMatadata() {
+      @Override
+      public Optional<TableSchema> validateTableHeaderSchema(
+          String database, TableSchema schema, MPPQueryContext context) {
+        TableSchema tableSchema = StatementTestUtils.genTableSchema();
+        assertEquals(tableSchema, schema);
+        return Optional.of(tableSchema);
+      }
+
+      @Override
+      public void validateDeviceSchema(
+          ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
+        assertEquals(sessionInfo.getDatabaseName().get(), schemaValidation.getDatabase());
+        assertEquals(StatementTestUtils.tableName(), schemaValidation.getTableName());
+        Object[] columns = StatementTestUtils.genColumns();
+        for (int i = 0; i < schemaValidation.getDeviceIdList().size(); i++) {
+          Object[] objects = schemaValidation.getDeviceIdList().get(i);
+          assertEquals(objects[0].toString(), StatementTestUtils.tableName());
+          assertEquals(objects[1].toString(), ((Binary[]) columns[0])[i].toString());
+        }
+        List<String> attributeColumnNameList = schemaValidation.getAttributeColumnNameList();
+        assertEquals(Collections.singletonList("attr1"), attributeColumnNameList);
+        for (int i = 0; i < schemaValidation.getAttributeValueList().size(); i++) {
+          assertEquals(
+              ((Object[]) columns[1])[i],
+              ((Object[]) schemaValidation.getAttributeValueList().get(i))[0]);
+        }
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+        int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
+        String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
+        SeriesPartitionExecutor seriesPartitionExecutor =
+            SeriesPartitionExecutor.getSeriesPartitionExecutor(
+                partitionExecutorName, seriesSlotNum);
+
+        Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            dataPartitionMap = new HashMap<>();
+
+        for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+          String databaseName = dataPartitionQueryParam.getDatabaseName();
+          assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
+          databaseName = PathUtils.qualifyDatabaseName(databaseName);
+
+          String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
+          assertEquals(StatementTestUtils.tableName(), tableName);
+
+          TSeriesPartitionSlot partitionSlot =
+              seriesPartitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
+          for (TTimePartitionSlot tTimePartitionSlot :
+              dataPartitionQueryParam.getTimePartitionSlotList()) {
+            dataPartitionMap
+                .computeIfAbsent(databaseName, d -> new HashMap<>())
+                .computeIfAbsent(partitionSlot, slot -> new HashMap<>())
+                .computeIfAbsent(tTimePartitionSlot, slot -> new ArrayList<>())
+                .add(
+                    new TRegionReplicaSet(
+                        new TConsensusGroupId(TConsensusGroupType.DataRegion, partitionSlot.slotId),
+                        Collections.singletonList(
+                            new TDataNodeLocation(
+                                partitionSlot.slotId, null, null, null, null, null))));
+          }
+        }
+        return new DataPartition(dataPartitionMap, partitionExecutorName, seriesSlotNum);
+      }
+    };
+  }
+
+  @Test
+  public void analyzeInsertTablet() {
+    Metadata mockMetadata = mockMetadataForInsertion();
+
+    InsertTabletStatement insertTabletStatement = StatementTestUtils.genInsertTabletStatement(true);
+    context = new MPPQueryContext("", queryId, sessionInfo, null, null);
+    actualAnalysis =
+        analyzeStatement(
+            insertTabletStatement.toRelationalStatement(context),
+            mockMetadata,
+            new SqlParser(),
+            sessionInfo);
+    assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        partitionSlotMapMap =
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+    assertEquals(3, partitionSlotMapMap.size());
+
+    logicalQueryPlan =
+        new LogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+
+    RelationalInsertTabletNode insertTabletNode =
+        (RelationalInsertTabletNode) logicalQueryPlan.getRootNode();
+
+    assertEquals(insertTabletNode.getTableName(), StatementTestUtils.tableName());
+    assertEquals(3, insertTabletNode.getRowCount());
+    Object[] columns = StatementTestUtils.genColumns();
+    for (int i = 0; i < insertTabletNode.getRowCount(); i++) {
+      assertEquals(
+          Factory.DEFAULT_FACTORY.create(
+              new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
+          insertTabletNode.getDeviceID(i));
+    }
+    assertArrayEquals(columns, insertTabletNode.getColumns());
+    assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getInstances().size());
+  }
+
+  @Test
+  public void analyzeInsertRow() {
+    Metadata mockMetadata = mockMetadataForInsertion();
+
+    InsertRowStatement insertStatement = StatementTestUtils.genInsertRowStatement(true);
+    context = new MPPQueryContext("", queryId, sessionInfo, null, null);
+    actualAnalysis =
+        analyzeStatement(
+            insertStatement.toRelationalStatement(context),
+            mockMetadata,
+            new SqlParser(),
+            sessionInfo);
+    assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        partitionSlotMapMap =
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+    assertEquals(1, partitionSlotMapMap.size());
+
+    logicalQueryPlan =
+        new LogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+
+    RelationalInsertRowNode insertNode = (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
+
+    assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
+    Object[] columns = StatementTestUtils.genValues(0);
+    assertEquals(
+        Factory.DEFAULT_FACTORY.create(
+            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
+        insertNode.getDeviceID());
+
+    assertArrayEquals(columns, insertNode.getValues());
+    assertEquals(StatementTestUtils.genTimestamps()[0], insertNode.getTime());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(1, distributedQueryPlan.getInstances().size());
+  }
+
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
+    SqlParser sqlParser = new SqlParser();
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    SessionInfo session =
+        new SessionInfo(
+            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+    return analyzeStatement(statement, metadata, sqlParser, session);
+  }
+
+  public static Analysis analyzeStatement(
+      Statement statement, Metadata metadata, SqlParser sqlParser, SessionInfo session) {
     try {
-      SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
-      SessionInfo session =
-          new SessionInfo(
-              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 
@@ -808,7 +1003,7 @@ public class AnalyzerTest {
       return analyzer.analyze(statement);
     } catch (Exception e) {
       e.printStackTrace();
-      fail(sql + ", " + e.getMessage());
+      fail(statement + ", " + e.getMessage());
     }
     fail();
     return null;

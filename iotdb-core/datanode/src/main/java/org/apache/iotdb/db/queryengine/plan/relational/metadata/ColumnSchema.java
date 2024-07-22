@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -31,6 +32,7 @@ import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -54,7 +56,6 @@ public class ColumnSchema {
   public ColumnSchema(
       String name, Type type, boolean hidden, TsTableColumnCategory columnCategory) {
     requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
 
     this.name = name.toLowerCase(ENGLISH);
     this.type = type;
@@ -154,6 +155,14 @@ public class ColumnSchema {
       default:
         return UnknownType.UNKNOWN;
     }
+  }
+
+  public static ColumnSchema ofTsColumnSchema(TsTableColumnSchema schema) {
+    return new ColumnSchema(
+        schema.getColumnName(),
+        TypeFactory.getType(schema.getDataType()),
+        false,
+        schema.getColumnCategory());
   }
 
   public static Builder builder() {

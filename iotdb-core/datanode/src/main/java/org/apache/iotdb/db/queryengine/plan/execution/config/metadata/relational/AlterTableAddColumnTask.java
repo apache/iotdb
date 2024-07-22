@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -52,6 +53,7 @@ public class AlterTableAddColumnTask implements IConfigTask {
 
   public AlterTableAddColumnTask(
       String database, String tableName, List<ColumnSchema> columnList, String queryId) {
+    database = PathUtils.qualifyDatabaseName(database);
     this.database = database;
     this.tableName = tableName;
     this.columnList = parseInputColumnSchema(columnList);

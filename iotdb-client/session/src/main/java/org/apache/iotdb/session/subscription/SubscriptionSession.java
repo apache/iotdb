@@ -97,6 +97,7 @@ public class SubscriptionSession extends Session {
       throws IoTDBConnectionException, StatementExecutionException {
     if (properties.isEmpty()) {
       createTopic(topicName);
+      return;
     }
     final StringBuilder sb = new StringBuilder();
     sb.append('(');

@@ -47,9 +47,9 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public synchronized void tryListenToNode(PlanNode node) {
+  public synchronized void tryListenToNode(final PlanNode node) {
     if (SchemaRegionListeningFilter.shouldPlanBeListened(node)) {
-      PipeSchemaRegionWritePlanEvent event;
+      final PipeSchemaRegionWritePlanEvent event;
       switch (node.getType()) {
         case PIPE_ENRICHED_WRITE:
           event =
@@ -69,7 +69,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   }
 
   public synchronized void tryListenToSnapshot(
-      String mTreeSnapshotPath, String tLogPath, String databaseName) {
+      final String mTreeSnapshotPath, final String tLogPath, final String databaseName) {
     tryListen(
         Objects.nonNull(mTreeSnapshotPath)
             ? Collections.singletonList(
@@ -80,19 +80,19 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
   @Override
-  protected ByteBuffer serializeToByteBuffer(Event event) {
+  protected ByteBuffer serializeToByteBuffer(final Event event) {
     return ((SerializableEvent) event).serializeToByteBuffer();
   }
 
   @Override
-  protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
+  protected Event deserializeFromByteBuffer(final ByteBuffer byteBuffer) {
     try {
-      SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      final SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
       // We assume the caller of this method will put the deserialize result into a queue,
       // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       return result;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }
     return null;
@@ -100,19 +100,19 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public synchronized boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(final File snapshotDir) {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Take snapshot error: {}", e.getMessage());
       return false;
     }
   }
 
-  public synchronized void loadSnapshot(File snapshotDir) {
+  public synchronized void loadSnapshot(final File snapshotDir) {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error("Failed to load snapshot {}", e.getMessage());
     }
   }

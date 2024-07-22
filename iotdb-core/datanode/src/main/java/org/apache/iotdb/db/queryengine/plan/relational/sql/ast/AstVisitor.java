@@ -331,6 +331,22 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowCluster(ShowCluster node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowRegions(ShowRegions node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowDataNodes(ShowDataNodes node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowConfigNodes(ShowConfigNodes node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitRenameTable(RenameTable node, C context) {
     return visitStatement(node, context);
   }
@@ -368,6 +384,22 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitInsert(Insert node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitInsertTablet(InsertTablet node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitFlush(Flush node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitInsertRow(InsertRow node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitInsertRows(InsertRows node, C context) {
     return visitStatement(node, context);
   }
 

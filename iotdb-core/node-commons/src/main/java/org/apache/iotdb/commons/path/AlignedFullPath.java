@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
+import java.util.Objects;
 
 public class AlignedFullPath implements IFullPath {
 
@@ -72,5 +73,23 @@ public class AlignedFullPath implements IFullPath {
     return INSTANCE_SIZE
         + deviceID.ramBytesUsed()
         + measurementList.stream().mapToLong(RamUsageEstimator::sizeOf).sum() * 2;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AlignedFullPath that = (AlignedFullPath) o;
+    return Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(measurementList, that.measurementList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceID, measurementList);
   }
 }
