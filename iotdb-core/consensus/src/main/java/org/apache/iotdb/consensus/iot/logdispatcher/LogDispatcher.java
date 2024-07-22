@@ -303,7 +303,10 @@ public class LogDispatcher {
       stopped = true;
       try {
         if (!threadSemaphore.tryAcquire(30, TimeUnit.SECONDS)) {
-          logger.error("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
+          logger.warn(
+              "{}: Dispatcher for {} didn't stop after 30s. It's ok to see this log during data region migration.",
+              impl.getThisNode(),
+              peer);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
