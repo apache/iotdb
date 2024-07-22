@@ -34,7 +34,8 @@ import java.util.List;
 public class SortNode extends SingleChildProcessNode {
   protected final OrderingScheme orderingScheme;
   protected final boolean partial;
-  // when order by all ids and time, this sort node can be eliminated in a way
+  // when order by all ids and time, this sort node can be eliminated in a way, no need serialize
+  // initialize in construction method of StreamSortNode
   protected boolean orderByAllIdsAndTime;
 
   public SortNode(
@@ -68,14 +69,12 @@ public class SortNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_SORT_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);
-    ReadWriteIOUtils.write(orderByAllIdsAndTime, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_SORT_NODE.serialize(stream);
     orderingScheme.serialize(stream);
-    ReadWriteIOUtils.write(orderByAllIdsAndTime, stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
@@ -106,10 +105,6 @@ public class SortNode extends SingleChildProcessNode {
 
   public boolean isOrderByAllIdsAndTime() {
     return orderByAllIdsAndTime;
-  }
-
-  public void setOrderByAllIdsAndTime(boolean orderByAllIdsAndTime) {
-    this.orderByAllIdsAndTime = orderByAllIdsAndTime;
   }
 
   @Override
