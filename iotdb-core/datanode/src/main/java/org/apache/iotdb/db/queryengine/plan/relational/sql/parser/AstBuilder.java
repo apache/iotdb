@@ -739,16 +739,27 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       return new Query(
           getLocation(ctx),
           Optional.empty(),
-          new QuerySpecification(
-              getLocation(ctx),
-              query.getSelect(),
-              query.getFrom(),
-              query.getWhere(),
-              query.getGroupBy(),
-              query.getHaving(),
-              orderBy,
-              offset,
-              limit),
+          term instanceof ConfigQuerySpecification
+              ? new ConfigQuerySpecification(
+                  getLocation(ctx),
+                  query.getSelect(),
+                  query.getFrom(),
+                  query.getWhere(),
+                  query.getGroupBy(),
+                  query.getHaving(),
+                  orderBy,
+                  offset,
+                  limit)
+              : new QuerySpecification(
+                  getLocation(ctx),
+                  query.getSelect(),
+                  query.getFrom(),
+                  query.getWhere(),
+                  query.getGroupBy(),
+                  query.getHaving(),
+                  orderBy,
+                  offset,
+                  limit),
           Optional.empty(),
           Optional.empty(),
           Optional.empty());

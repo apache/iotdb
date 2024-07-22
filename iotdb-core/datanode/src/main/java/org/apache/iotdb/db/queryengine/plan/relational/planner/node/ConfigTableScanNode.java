@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -42,6 +45,28 @@ public class ConfigTableScanNode extends TableScanNode {
       final Map<Symbol, ColumnSchema> assignments,
       final Map<Symbol, Integer> idAndAttributeIndexMap) {
     super(id, qualifiedObjectName, outputSymbols, assignments, idAndAttributeIndexMap);
+  }
+
+  public ConfigTableScanNode(
+      final PlanNodeId id,
+      final QualifiedObjectName qualifiedObjectName,
+      final List<Symbol> outputSymbols,
+      final Map<Symbol, ColumnSchema> assignments,
+      final List<DeviceEntry> deviceEntries,
+      final Map<Symbol, Integer> idAndAttributeIndexMap,
+      final Ordering scanOrder,
+      final Expression timePredicate,
+      final Expression pushDownPredicate) {
+    super(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate);
   }
 
   @Override

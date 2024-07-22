@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ConfigTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
@@ -88,15 +89,26 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
             });
 
     return Optional.of(
-        new TableScanNode(
-            node.getPlanNodeId(),
-            node.getQualifiedObjectName(),
-            newOutputs,
-            newAssignments,
-            node.getDeviceEntries(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate()));
+        node instanceof ConfigTableScanNode
+            ? new ConfigTableScanNode(
+                node.getPlanNodeId(),
+                node.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                node.getDeviceEntries(),
+                node.getIdAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate())
+            : new TableScanNode(
+                node.getPlanNodeId(),
+                node.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                node.getDeviceEntries(),
+                node.getIdAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate()));
   }
 }

@@ -409,7 +409,7 @@ querySpecification
     ;
 
 configQuerySpecification
-    : SHOW (setQuantifier? selectItem (',' selectItem)* IN)?
+    : SHOW (setQuantifier? selectItem (',' selectItem)* (FROM | IN))?
       (relation (',' relation)*)?
       queryWithoutSelect
     ;
