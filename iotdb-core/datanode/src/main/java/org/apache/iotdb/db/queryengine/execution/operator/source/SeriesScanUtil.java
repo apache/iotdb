@@ -811,7 +811,7 @@ public class SeriesScanUtil implements Accountable {
                     orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
                 context
                     .getQueryStatistics()
-                    .pageReaderMaxUsedMemorySize
+                    .getPageReaderMaxUsedMemorySize()
                     .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
                 currentPageEndPointTime =
                     updateEndPointTime(currentPageEndPointTime, firstPageReader);
@@ -839,7 +839,7 @@ public class SeriesScanUtil implements Accountable {
                     orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
                 context
                     .getQueryStatistics()
-                    .pageReaderMaxUsedMemorySize
+                    .getPageReaderMaxUsedMemorySize()
                     .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
                 currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
               }
@@ -1019,7 +1019,7 @@ public class SeriesScanUtil implements Accountable {
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
     context
         .getQueryStatistics()
-        .pageReaderMaxUsedMemorySize
+        .getPageReaderMaxUsedMemorySize()
         .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
   }
 
@@ -1199,7 +1199,7 @@ public class SeriesScanUtil implements Accountable {
     VersionPageReader(
         QueryContext context, long version, long offset, IPageReader data, boolean isSeq) {
       this.context = context;
-      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
+      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
       this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
@@ -1233,19 +1233,19 @@ public class SeriesScanUtil implements Accountable {
         long time = System.nanoTime() - startTime;
         if (isAligned) {
           if (isMem) {
-            context.getQueryStatistics().pageReadersDecodeAlignedMemCount.getAndAdd(1);
-            context.getQueryStatistics().pageReadersDecodeAlignedMemTime.getAndAdd(time);
+            context.getQueryStatistics().getPageReadersDecodeAlignedMemCount().getAndAdd(1);
+            context.getQueryStatistics().getPageReadersDecodeAlignedMemTime().getAndAdd(time);
           } else {
-            context.getQueryStatistics().pageReadersDecodeAlignedDiskCount.getAndAdd(1);
-            context.getQueryStatistics().pageReadersDecodeAlignedDiskTime.getAndAdd(time);
+            context.getQueryStatistics().getPageReadersDecodeAlignedDiskCount().getAndAdd(1);
+            context.getQueryStatistics().getPageReadersDecodeAlignedDiskTime().getAndAdd(time);
           }
         } else {
           if (isMem) {
-            context.getQueryStatistics().pageReadersDecodeNonAlignedMemCount.getAndAdd(1);
-            context.getQueryStatistics().pageReadersDecodeNonAlignedMemTime.getAndAdd(time);
+            context.getQueryStatistics().getPageReadersDecodeNonAlignedMemCount().getAndAdd(1);
+            context.getQueryStatistics().getPageReadersDecodeNonAlignedMemTime().getAndAdd(time);
           } else {
-            context.getQueryStatistics().pageReadersDecodeNonAlignedDiskCount.getAndAdd(1);
-            context.getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.getAndAdd(time);
+            context.getQueryStatistics().getPageReadersDecodeNonAlignedDiskCount().getAndAdd(1);
+            context.getQueryStatistics().getPageReadersDecodeNonAlignedDiskTime().getAndAdd(time);
           }
         }
       }

@@ -60,6 +60,8 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
+
 /**
  * Export CSV file.
  *
@@ -517,14 +519,14 @@ public class ExportData extends AbstractDataTool {
           List<String> timeseries = new ArrayList<>();
           if (headers.contains("Device")) {
             deviceName = fields.get(0).toString();
-            if (deviceName.startsWith("root.__system")) {
+            if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
               continue;
             }
             for (String header : headersTemp) {
               timeseries.add(deviceName + "." + header);
             }
           } else {
-            if (headers.get(1).startsWith("root.__system")) {
+            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
               continue;
             }
             timeseries.addAll(headers);

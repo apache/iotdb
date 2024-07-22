@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
@@ -60,6 +61,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -84,7 +87,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createTimeseries(node, -1);
+      schemaRegion.createTimeSeries(node, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -119,7 +122,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       // todo implement batch creation of one device in SchemaRegion
       for (int i = 0; i < size; i++) {
         try {
-          schemaRegion.createTimeseries(
+          schemaRegion.createTimeSeries(
               transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
         } catch (MetadataException e) {
           logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -153,27 +156,37 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitInternalCreateTimeSeries(
-      InternalCreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
-    PartialPath devicePath = node.getDevicePath();
-    MeasurementGroup measurementGroup = node.getMeasurementGroup();
+      final InternalCreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    final PartialPath devicePath = node.getDevicePath();
+    final MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
-    List<TSStatus> alreadyExistingTimeseries = new ArrayList<>();
-    List<TSStatus> failingStatus = new ArrayList<>();
+    final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
+    final List<TSStatus> failingStatus = new ArrayList<>();
 
     if (node.isAligned()) {
-      executeInternalCreateAlignedTimeseries(
-          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+      executeInternalCreateAlignedTimeSeries(
+          devicePath,
+          measurementGroup,
+          schemaRegion,
+          alreadyExistingTimeSeries,
+          failingStatus,
+          false);
     } else {
-      executeInternalCreateTimeseries(
-          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+      executeInternalCreateTimeSeries(
+          devicePath,
+          measurementGroup,
+          schemaRegion,
+          alreadyExistingTimeSeries,
+          failingStatus,
+          false);
     }
 
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeseries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeseries);
+    if (!alreadyExistingTimeSeries.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeSeries);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -181,23 +194,33 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
-      InternalCreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
+      final InternalCreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
 
-    List<TSStatus> alreadyExistingTimeseries = new ArrayList<>();
-    List<TSStatus> failingStatus = new ArrayList<>();
+    final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
+    final List<TSStatus> failingStatus = new ArrayList<>();
 
-    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+    for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
         node.getDeviceMap().entrySet()) {
       devicePath = deviceEntry.getKey();
       measurementGroup = deviceEntry.getValue().right;
-      if (deviceEntry.getValue().left) {
-        executeInternalCreateAlignedTimeseries(
-            devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+      if (Boolean.TRUE.equals(deviceEntry.getValue().left)) {
+        executeInternalCreateAlignedTimeSeries(
+            devicePath,
+            measurementGroup,
+            schemaRegion,
+            alreadyExistingTimeSeries,
+            failingStatus,
+            node.isGeneratedByPipe());
       } else {
-        executeInternalCreateTimeseries(
-            devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+        executeInternalCreateTimeSeries(
+            devicePath,
+            measurementGroup,
+            schemaRegion,
+            alreadyExistingTimeSeries,
+            failingStatus,
+            node.isGeneratedByPipe());
       }
     }
 
@@ -205,49 +228,56 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeseries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeseries);
+    if (!alreadyExistingTimeSeries.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeSeries);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
-  private void executeInternalCreateTimeseries(
-      PartialPath devicePath,
-      MeasurementGroup measurementGroup,
-      ISchemaRegion schemaRegion,
-      List<TSStatus> alreadyExistingTimeseries,
-      List<TSStatus> failingStatus) {
-
-    int size = measurementGroup.getMeasurements().size();
+  private void executeInternalCreateTimeSeries(
+      final PartialPath devicePath,
+      final MeasurementGroup measurementGroup,
+      final ISchemaRegion schemaRegion,
+      final List<TSStatus> alreadyExistingTimeSeries,
+      final List<TSStatus> failingStatus,
+      final boolean withMerge) {
+    final int size = measurementGroup.getMeasurements().size();
     // todo implement batch creation of one device in SchemaRegion
     for (int i = 0; i < size; i++) {
       try {
-        schemaRegion.createTimeseries(
-            transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
-      } catch (MeasurementAlreadyExistException e) {
-        // There's no need to internal create timeseries.
-        alreadyExistingTimeseries.add(
+        final ICreateTimeSeriesPlan createTimeSeriesPlan =
+            transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i);
+        // With merge is only true for pipe to upsert the receiver alias/tags/attributes in
+        // historical transfer.
+        // For normal internal creation, the alias/tags/attributes are not set
+        // Thus the original ones are not altered
+        ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(withMerge);
+        schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+      } catch (final MeasurementAlreadyExistException e) {
+        // There's no need to internal create time series.
+        alreadyExistingTimeSeries.add(
             RpcUtils.getStatus(
                 e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
   }
 
-  private void executeInternalCreateAlignedTimeseries(
-      PartialPath devicePath,
-      MeasurementGroup measurementGroup,
-      ISchemaRegion schemaRegion,
-      List<TSStatus> alreadyExistingTimeseries,
-      List<TSStatus> failingStatus) {
-    List<String> measurementList = measurementGroup.getMeasurements();
-    List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
-    List<TSEncoding> encodingList = measurementGroup.getEncodings();
-    List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
-    ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+  private void executeInternalCreateAlignedTimeSeries(
+      final PartialPath devicePath,
+      final MeasurementGroup measurementGroup,
+      final ISchemaRegion schemaRegion,
+      final List<TSStatus> alreadyExistingTimeSeries,
+      final List<TSStatus> failingStatus,
+      final boolean withMerge) {
+    final List<String> measurementList = measurementGroup.getMeasurements();
+    final List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
+    final List<TSEncoding> encodingList = measurementGroup.getEncodings();
+    final List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
+    final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             devicePath,
             measurementList,
@@ -257,22 +287,27 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             null,
             null,
             null);
+    // With merge is only true for pipe to upsert the receiver alias/tags/attributes in historical
+    // transfer.
+    // For normal internal creation, the alias/tags/attributes are not set
+    // Thus the original ones are not altered
+    ((CreateAlignedTimeSeriesPlanImpl) createAlignedTimeSeriesPlan).setWithMerge(withMerge);
 
     boolean shouldRetry = true;
     while (shouldRetry) {
       try {
         schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
         shouldRetry = false;
-      } catch (MeasurementAlreadyExistException e) {
-        // the existence check will be executed before truly creation
-        // There's no need to internal create timeseries.
-        MeasurementPath measurementPath = e.getMeasurementPath();
-        alreadyExistingTimeseries.add(
+      } catch (final MeasurementAlreadyExistException e) {
+        // The existence check will be executed before truly creation
+        // There's no need to internal create time series.
+        final MeasurementPath measurementPath = e.getMeasurementPath();
+        alreadyExistingTimeSeries.add(
             RpcUtils.getStatus(
                 e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
 
-        // remove the existing timeseries from plan
-        int index = measurementList.indexOf(measurementPath.getMeasurement());
+        // remove the existing time series from plan
+        final int index = measurementList.indexOf(measurementPath.getMeasurement());
         measurementList.remove(index);
         dataTypeList.remove(index);
         encodingList.remove(index);
@@ -282,7 +317,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           shouldRetry = false;
         }
 
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         shouldRetry = false;
@@ -383,11 +418,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitConstructSchemaBlackList(
-      ConstructSchemaBlackListNode node, ISchemaRegion schemaRegion) {
+      final ConstructSchemaBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
-      long preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
-    } catch (MetadataException e) {
+      final Pair<Long, Boolean> preDeletedNumAndIsAllLogicalView =
+          schemaRegion.constructSchemaBlackList(node.getPatternTree());
+      return RpcUtils.getStatus(
+          Boolean.TRUE.equals(preDeletedNumAndIsAllLogicalView.getRight())
+              ? TSStatusCode.ONLY_LOGICAL_VIEW
+              : TSStatusCode.SUCCESS_STATUS,
+          String.valueOf(preDeletedNumAndIsAllLogicalView.getLeft()));
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -528,12 +568,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitPipeEnrichedWritePlanNode(
       final PipeEnrichedWritePlanNode node, final ISchemaRegion schemaRegion) {
-    return node.getWritePlanNode().accept(this, schemaRegion);
+    final WritePlanNode innerNode = node.getWritePlanNode();
+    innerNode.markAsGeneratedByPipe();
+    return innerNode.accept(this, schemaRegion);
   }
 
   @Override
   public TSStatus visitPipeEnrichedNonWritePlanNode(
       final PipeEnrichedNonWritePlanNode node, final ISchemaRegion schemaRegion) {
+    final PlanNode innerNode = node.getNonWritePlanNode();
+    innerNode.markAsGeneratedByPipe();
     return node.getNonWritePlanNode().accept(this, schemaRegion);
   }
 

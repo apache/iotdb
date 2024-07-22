@@ -182,6 +182,8 @@ public class CommonConfig {
 
   private boolean pipeHardLinkWALEnabled = false;
 
+  private int pipeRealTimeQueuePollHistoryThreshold = 100;
+
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -208,7 +210,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
-  private int pipeEndPointRateLimiterDropCheckIntervalMs = 1000;
+  private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
@@ -265,6 +267,7 @@ public class CommonConfig {
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
   private long subscriptionReadFileBufferSize = 8 * MB;
+  private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -845,6 +848,14 @@ public class CommonConfig {
         pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
   }
 
+  public int getPipeRealTimeQueuePollHistoryThreshold() {
+    return pipeRealTimeQueuePollHistoryThreshold;
+  }
+
+  public void setPipeRealTimeQueuePollHistoryThreshold(int pipeRealTimeQueuePollHistoryThreshold) {
+    this.pipeRealTimeQueuePollHistoryThreshold = pipeRealTimeQueuePollHistoryThreshold;
+  }
+
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
     this.pipeAirGapReceiverEnabled = pipeAirGapReceiverEnabled;
   }
@@ -1072,13 +1083,12 @@ public class CommonConfig {
     this.pipeAllSinksRateLimitBytesPerSecond = pipeAllSinksRateLimitBytesPerSecond;
   }
 
-  public int getPipeEndPointRateLimiterDropCheckIntervalMs() {
-    return pipeEndPointRateLimiterDropCheckIntervalMs;
+  public int getRateLimiterHotReloadCheckIntervalMs() {
+    return rateLimiterHotReloadCheckIntervalMs;
   }
 
-  public void setPipeEndPointRateLimiterDropCheckIntervalMs(
-      int pipeEndPointRateLimiterDropCheckIntervalMs) {
-    this.pipeEndPointRateLimiterDropCheckIntervalMs = pipeEndPointRateLimiterDropCheckIntervalMs;
+  public void setRateLimiterHotReloadCheckIntervalMs(int rateLimiterHotReloadCheckIntervalMs) {
+    this.rateLimiterHotReloadCheckIntervalMs = rateLimiterHotReloadCheckIntervalMs;
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -1209,6 +1219,16 @@ public class CommonConfig {
 
   public void setSubscriptionReadFileBufferSize(long subscriptionReadFileBufferSize) {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
+  }
+
+  public long getSubscriptionTsFileDeduplicationWindowSeconds() {
+    return subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public void setSubscriptionTsFileDeduplicationWindowSeconds(
+      long subscriptionTsFileDeduplicationWindowSeconds) {
+    this.subscriptionTsFileDeduplicationWindowSeconds =
+        subscriptionTsFileDeduplicationWindowSeconds;
   }
 
   public String getSchemaEngineMode() {

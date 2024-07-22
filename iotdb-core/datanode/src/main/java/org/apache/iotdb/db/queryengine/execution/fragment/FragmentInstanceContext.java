@@ -631,57 +631,64 @@ public class FragmentInstanceContext extends QueryContext {
 
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedTimeSeriesMetadataCount(
-            getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.get());
+            getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataMemSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqCount().get());
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedTimeSeriesMetadataTime(
-            getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.get());
+            getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataMemSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqTime().get());
     SeriesScanCostMetricSet.getInstance()
         .recordAlignedTimeSeriesMetadataCount(
-            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskUnSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemSeqCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqCount().get());
     SeriesScanCostMetricSet.getInstance()
         .recordAlignedTimeSeriesMetadataTime(
-            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.get(),
-            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskUnSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemSeqTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqTime().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersCount(
-            getQueryStatistics().constructAlignedChunkReadersMemCount.get(),
-            getQueryStatistics().constructAlignedChunkReadersDiskCount.get(),
-            getQueryStatistics().constructNonAlignedChunkReadersMemCount.get(),
-            getQueryStatistics().constructNonAlignedChunkReadersDiskCount.get());
+            getQueryStatistics().getConstructAlignedChunkReadersMemCount().get(),
+            getQueryStatistics().getConstructAlignedChunkReadersDiskCount().get(),
+            getQueryStatistics().getConstructNonAlignedChunkReadersMemCount().get(),
+            getQueryStatistics().getConstructNonAlignedChunkReadersDiskCount().get());
     SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersTime(
-            getQueryStatistics().constructAlignedChunkReadersMemTime.get(),
-            getQueryStatistics().constructAlignedChunkReadersDiskTime.get(),
-            getQueryStatistics().constructNonAlignedChunkReadersMemTime.get(),
-            getQueryStatistics().constructNonAlignedChunkReadersDiskTime.get());
+            getQueryStatistics().getConstructAlignedChunkReadersMemTime().get(),
+            getQueryStatistics().getConstructAlignedChunkReadersDiskTime().get(),
+            getQueryStatistics().getConstructNonAlignedChunkReadersMemTime().get(),
+            getQueryStatistics().getConstructNonAlignedChunkReadersDiskTime().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordPageReadersDecompressCount(
-            getQueryStatistics().pageReadersDecodeAlignedMemCount.get(),
-            getQueryStatistics().pageReadersDecodeAlignedDiskCount.get(),
-            getQueryStatistics().pageReadersDecodeNonAlignedMemCount.get(),
-            getQueryStatistics().pageReadersDecodeNonAlignedDiskCount.get());
+            getQueryStatistics().getPageReadersDecodeAlignedMemCount().get(),
+            getQueryStatistics().getPageReadersDecodeAlignedDiskCount().get(),
+            getQueryStatistics().getPageReadersDecodeNonAlignedMemCount().get(),
+            getQueryStatistics().getPageReadersDecodeNonAlignedDiskCount().get());
     SeriesScanCostMetricSet.getInstance()
         .recordPageReadersDecompressTime(
-            getQueryStatistics().pageReadersDecodeAlignedMemTime.get(),
-            getQueryStatistics().pageReadersDecodeAlignedDiskTime.get(),
-            getQueryStatistics().pageReadersDecodeNonAlignedMemTime.get(),
-            getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.get());
+            getQueryStatistics().getPageReadersDecodeAlignedMemTime().get(),
+            getQueryStatistics().getPageReadersDecodeAlignedDiskTime().get(),
+            getQueryStatistics().getPageReadersDecodeNonAlignedMemTime().get(),
+            getQueryStatistics().getPageReadersDecodeNonAlignedDiskTime().get());
 
     SeriesScanCostMetricSet.getInstance()
-        .updatePageReaderMemoryUsage(getQueryStatistics().pageReaderMaxUsedMemorySize.get());
+        .recordTimeSeriesMetadataModification(
+            getQueryStatistics().getAlignedTimeSeriesMetadataModificationCount().get(),
+            getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationCount().get(),
+            getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().get(),
+            getQueryStatistics().getNonAlignedTimeSeriesMetadataModificationTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .updatePageReaderMemoryUsage(getQueryStatistics().getPageReaderMaxUsedMemorySize().get());
   }
 
   private synchronized void releaseDataNodeQueryContext() {

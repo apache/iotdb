@@ -74,6 +74,7 @@ public enum ProcedureType {
   STOP_PIPE_PROCEDURE_V2((short) 1002),
   DROP_PIPE_PROCEDURE_V2((short) 1003),
   ALTER_PIPE_PROCEDURE_V2((short) 1004),
+  ALTER_PIPE_PROCEDURE_V3((short) 1005),
 
   /** Pipe Runtime */
   PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100),

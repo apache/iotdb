@@ -576,8 +576,16 @@ connectorAttributeClause
 
 alterPipe
     : ALTER PIPE pipeName=identifier
+        alterExtractorAttributesClause?
         alterProcessorAttributesClause?
         alterConnectorAttributesClause?
+    ;
+
+alterExtractorAttributesClause
+    : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
+        LR_BRACKET
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        RR_BRACKET
     ;
 
 alterProcessorAttributesClause

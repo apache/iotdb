@@ -68,13 +68,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.consensus.iot.IoTConsensus.getConsensusGroupIdsFromDir;
 
-// TODO: support syncLag
 public class PipeConsensus implements IConsensus {
   private static final String CONSENSUS_PIPE_GUARDIAN_TASK_ID = "consensus_pipe_guardian";
   private static final String CLASS_NAME = PipeConsensus.class.getSimpleName();
@@ -131,27 +131,40 @@ public class PipeConsensus implements IConsensus {
 
   private void initAndRecover() throws IOException {
     if (!storageDir.exists()) {
+      // init
       if (!storageDir.mkdirs()) {
         LOGGER.warn("Unable to create consensus dir at {}", storageDir);
         throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
       }
     } else {
-      try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-        for (Path path : stream) {
-          ConsensusGroupId consensusGroupId = parsePeerFileName(path.getFileName().toString());
-          PipeConsensusServerImpl consensus =
-              new PipeConsensusServerImpl(
-                  new Peer(consensusGroupId, thisNodeId, thisNode),
-                  registry.apply(consensusGroupId),
-                  path.toString(),
-                  new ArrayList<>(),
-                  config,
-                  consensusPipeManager,
-                  syncClientManager);
-          stateMachineMap.put(consensusGroupId, consensus);
-          consensus.start(true);
-        }
-      }
+      // asynchronously recover, retry logic is implemented at PipeConsensusImpl
+      CompletableFuture.runAsync(
+              () -> {
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+                  for (Path path : stream) {
+                    ConsensusGroupId consensusGroupId =
+                        parsePeerFileName(path.getFileName().toString());
+                    PipeConsensusServerImpl consensus =
+                        new PipeConsensusServerImpl(
+                            new Peer(consensusGroupId, thisNodeId, thisNode),
+                            registry.apply(consensusGroupId),
+                            path.toString(),
+                            new ArrayList<>(),
+                            config,
+                            consensusPipeManager,
+                            syncClientManager);
+                    stateMachineMap.put(consensusGroupId, consensus);
+                    consensus.start(true);
+                  }
+                } catch (Exception e) {
+                  LOGGER.error("Failed to recover consensus from {}", storageDir, e);
+                }
+              })
+          .exceptionally(
+              e -> {
+                LOGGER.error("Failed to recover consensus from {}", storageDir, e);
+                return null;
+              });
     }
   }
 

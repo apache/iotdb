@@ -258,6 +258,17 @@ public class MPPQueryContext {
     return queryPlanStatistics.getLogicalOptimizationCost();
   }
 
+  public void recordDispatchCost(long dispatchCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.recordDispatchCost(dispatchCost);
+  }
+
+  public long getDispatchCost() {
+    return queryPlanStatistics.getDispatchCost();
+  }
+
   public void setAnalyzeCost(long analyzeCost) {
     if (queryPlanStatistics == null) {
       queryPlanStatistics = new QueryPlanStatistics();

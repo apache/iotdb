@@ -717,6 +717,8 @@ struct TAlterPipeReq {
     3: required map<string, string> connectorAttributes
     4: required bool isReplaceAllProcessorAttributes
     5: required bool isReplaceAllConnectorAttributes
+    6: optional map<string, string> extractorAttributes
+    7: optional bool isReplaceAllExtractorAttributes
 }
 
 // Deprecated, restored for compatibility

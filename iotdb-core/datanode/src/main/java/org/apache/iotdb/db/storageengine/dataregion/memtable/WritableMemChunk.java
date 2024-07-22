@@ -20,9 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -61,30 +59,24 @@ public class WritableMemChunk implements IWritableMemChunk {
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     switch (schema.getType()) {
       case BOOLEAN:
-        putBoolean(insertTime, (boolean) objectValue);
-        break;
+        return putBooleanWithFlushCheck(insertTime, (boolean) objectValue);
       case INT32:
       case DATE:
-        putInt(insertTime, (int) objectValue);
-        break;
+        return putIntWithFlushCheck(insertTime, (int) objectValue);
       case INT64:
       case TIMESTAMP:
-        putLong(insertTime, (long) objectValue);
-        break;
+        return putLongWithFlushCheck(insertTime, (long) objectValue);
       case FLOAT:
-        putFloat(insertTime, (float) objectValue);
-        break;
+        return putFloatWithFlushCheck(insertTime, (float) objectValue);
       case DOUBLE:
-        putDouble(insertTime, (double) objectValue);
-        break;
+        return putDoubleWithFlushCheck(insertTime, (double) objectValue);
       case TEXT:
       case BLOB:
       case STRING:
         return putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
       default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
     }
-    return false;
   }
 
   @Override
@@ -99,35 +91,29 @@ public class WritableMemChunk implements IWritableMemChunk {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, bitMap, start, end);
-        break;
+        return putBooleansWithFlushCheck(times, boolValues, bitMap, start, end);
       case INT32:
       case DATE:
         int[] intValues = (int[]) valueList;
-        putInts(times, intValues, bitMap, start, end);
-        break;
+        return putIntsWithFlushCheck(times, intValues, bitMap, start, end);
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, bitMap, start, end);
-        break;
+        return putLongsWithFlushCheck(times, longValues, bitMap, start, end);
       case FLOAT:
         float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, bitMap, start, end);
-        break;
+        return putFloatsWithFlushCheck(times, floatValues, bitMap, start, end);
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, bitMap, start, end);
-        break;
+        return putDoublesWithFlushCheck(times, doubleValues, bitMap, start, end);
       case TEXT:
       case BLOB:
       case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         return putBinariesWithFlushCheck(times, binaryValues, bitMap, start, end);
       default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
     }
-    return false;
   }
 
   @Override
@@ -142,34 +128,39 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLong(long t, long v) {
+  public boolean putLongWithFlushCheck(long t, long v) {
     list.putLong(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putInt(long t, int v) {
+  public boolean putIntWithFlushCheck(long t, int v) {
     list.putInt(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putFloat(long t, float v) {
+  public boolean putFloatWithFlushCheck(long t, float v) {
     list.putFloat(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putDouble(long t, double v) {
+  public boolean putDoubleWithFlushCheck(long t, double v) {
     list.putDouble(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBinaryWithFlushCheck(long t, Binary v) {
     list.putBinary(t, v);
-    return list.reachMaxChunkSizeThreshold();
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putBoolean(long t, boolean v) {
+  public boolean putBooleanWithFlushCheck(long t, boolean v) {
     list.putBoolean(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -178,35 +169,41 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
+  public boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end) {
     list.putLongs(t, v, bitMap, start, end);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
+  public boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end) {
     list.putInts(t, v, bitMap, start, end);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
+  public boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end) {
     list.putFloats(t, v, bitMap, start, end);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
+  public boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end) {
     list.putDoubles(t, v, bitMap, start, end);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBinariesWithFlushCheck(
       long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     list.putBinaries(t, v, bitMap, start, end);
-    return list.reachMaxChunkSizeThreshold();
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+  public boolean putBooleansWithFlushCheck(
+      long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     list.putBooleans(t, v, bitMap, start, end);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -341,10 +338,6 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
-        long recordSize =
-            MemUtils.getRecordSize(
-                tsDataType, tsDataType.isBinary() ? list.getBinary(sortedRowIndex) : null, true);
-        CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }
 

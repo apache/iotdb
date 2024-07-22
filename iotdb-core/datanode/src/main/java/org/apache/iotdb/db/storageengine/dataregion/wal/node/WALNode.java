@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -167,6 +168,13 @@ public class WALNode implements IWALNode {
     return log(walEntry);
   }
 
+  @Override
+  public WALFlushListener log(
+      long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, separatorNode);
+    return log(walEntry);
+  }
+
   private WALFlushListener log(WALEntry walEntry) {
 
     buffer.write(walEntry);
@@ -296,7 +304,7 @@ public class WALNode implements IWALNode {
       long firstVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstVersionId == Long.MIN_VALUE) {
         // roll wal log writer to delete current wal file
-        if (buffer.getCurrentWALFileSize() > 0) {
+        if (buffer.getCurrentWALOriginalFileSize() > 0) {
           rollWALFile();
         }
       }
@@ -709,7 +717,8 @@ public class WALNode implements IWALNode {
             buffer.clear();
             if (currentIndex == targetIndex) {
               tmpNodes.add(new IoTConsensusRequest(buffer));
-            } else { // different search index, all slices found
+            } else {
+              // different search index, all slices found
               if (!tmpNodes.isEmpty()) {
                 insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
                 tmpNodes = new ArrayList<>();
@@ -720,8 +729,8 @@ public class WALNode implements IWALNode {
                 targetIndex = currentIndex;
               }
             }
-          } else if (!tmpNodes
-              .isEmpty()) { // next entry doesn't need to be searched, all slices found
+          } else if (!tmpNodes.isEmpty()) {
+            // next entry doesn't need to be searched, all slices found
             insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
             targetIndex++;
             tmpNodes = new ArrayList<>();
