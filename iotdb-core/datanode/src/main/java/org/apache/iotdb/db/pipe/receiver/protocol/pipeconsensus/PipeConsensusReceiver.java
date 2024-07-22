@@ -200,7 +200,10 @@ public class PipeConsensusReceiver {
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
 
     if (impl == null) {
-      String message = String.format("PipeConsensus: unexpected consensusGroupId %s", groupId);
+      String message =
+          String.format(
+              "PipeConsensus-PipeName-%s: unexpected consensusGroupId %s",
+              consensusPipeName, groupId);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
       }
@@ -210,7 +213,8 @@ public class PipeConsensusReceiver {
     if (impl.isReadOnly()) {
       String message =
           String.format(
-              "PipeConsensus-PipeName-%s: fail to receive because system is read-only.", groupId);
+              "PipeConsensus-PipeName-%s: fail to receive because system is read-only.",
+              consensusPipeName);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
       }
@@ -221,7 +225,7 @@ public class PipeConsensusReceiver {
       String message =
           String.format(
               "PipeConsensus-PipeName-%s: fail to receive because peer is inactive and not ready.",
-              groupId);
+              consensusPipeName);
       if (LOGGER.isWarnEnabled()) {
         LOGGER.warn(message);
       }
