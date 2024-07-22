@@ -198,13 +198,14 @@ public class SystemInfo {
 
   public boolean addDirectBufferMemoryCost(long size) {
     AtomicBoolean result = new AtomicBoolean(false);
-    directBufferMemoryCost.updateAndGet(memCost -> {
-      if (memCost + size > totalDirectBufferMemorySizeLimit) {
-        return memCost;
-      }
-      result.set(true);
-      return memCost + size;
-    });
+    directBufferMemoryCost.updateAndGet(
+        memCost -> {
+          if (memCost + size > totalDirectBufferMemorySizeLimit) {
+            return memCost;
+          }
+          result.set(true);
+          return memCost + size;
+        });
     return result.get();
   }
 
