@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATABASE;
@@ -41,7 +42,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.TIME_PARTITION_INTERVAL;
 
 public class ConfigTableMetaData {
-  public static final Map<String, Pair<TableSchema, Supplier<SettableFuture<ConfigTaskResult>>>>
+  private static final Map<String, Pair<TableSchema, Supplier<SettableFuture<ConfigTaskResult>>>>
       CONFIG_TABLE_MAP = new HashMap<>();
 
   static {
@@ -72,6 +73,10 @@ public class ConfigTableMetaData {
                         false,
                         TsTableColumnCategory.MEASUREMENT))),
             () -> ClusterConfigTaskExecutor.getInstance().showDatabases(new ShowDB())));
+  }
+
+  public static Optional<TableSchema> getTableSchema(final String tableName) {
+    return Optional.ofNullable(CONFIG_TABLE_MAP.get(tableName).getLeft());
   }
 
   public static TsBlock getTsBlock(final String tableName) throws Exception {

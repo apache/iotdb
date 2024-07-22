@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ConfigTableMetaData;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -1496,7 +1497,10 @@ public class StatementAnalyzer {
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      Optional<TableSchema> tableSchema =
+          analysis.isConfigQuery()
+              ? ConfigTableMetaData.getTableSchema(name.getObjectName())
+              : metadata.getTableSchema(sessionContext, name);
       // This can only be a table
       if (!tableSchema.isPresent()) {
         throw new SemanticException(String.format("Table '%s' does not exist", name));
