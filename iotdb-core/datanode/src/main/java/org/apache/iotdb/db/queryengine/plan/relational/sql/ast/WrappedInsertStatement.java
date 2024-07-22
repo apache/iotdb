@@ -74,16 +74,21 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     List<ColumnSchema> columnSchemas =
         new ArrayList<>(insertBaseStatement.getMeasurements().length);
     for (int i = 0; i < insertBaseStatement.getMeasurements().length; i++) {
-      columnSchemas.add(
-          new ColumnSchema(
-              insertBaseStatement.getMeasurements()[i],
-              insertBaseStatement.getDataTypes() != null
-                  ? TypeFactory.getType(insertBaseStatement.getDataTypes()[i])
-                  : null,
-              false,
-              insertBaseStatement.getColumnCategories() != null
-                  ? insertBaseStatement.getColumnCategories()[i]
-                  : null));
+      if (insertBaseStatement.getMeasurements()[i] != null) {
+        columnSchemas.add(
+            new ColumnSchema(
+                insertBaseStatement.getMeasurements()[i],
+                insertBaseStatement.getDataTypes() != null
+                        && insertBaseStatement.getDataTypes()[i] != null
+                    ? TypeFactory.getType(insertBaseStatement.getDataTypes()[i])
+                    : null,
+                false,
+                insertBaseStatement.getColumnCategories() != null
+                    ? insertBaseStatement.getColumnCategories()[i]
+                    : null));
+      } else {
+        columnSchemas.add(null);
+      }
     }
     return new TableSchema(tableName, columnSchemas);
   }
@@ -122,7 +127,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
    */
   public void adjustIdColumns(
       List<ColumnSchema> realIdColumnSchemas, final InsertBaseStatement baseStatement) {
-    List<ColumnSchema> incomingColumnSchemas = getTableSchema().getColumns();
+    List<ColumnSchema> incomingColumnSchemas = toTableSchema(baseStatement).getColumns();
     for (int realIdColPos = 0; realIdColPos < realIdColumnSchemas.size(); realIdColPos++) {
       ColumnSchema realColumn = realIdColumnSchemas.get(realIdColPos);
       int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
