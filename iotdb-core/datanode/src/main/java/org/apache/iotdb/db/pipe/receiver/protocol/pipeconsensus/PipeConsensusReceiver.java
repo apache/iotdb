@@ -1057,6 +1057,7 @@ public class PipeConsensusReceiver {
           diskBuffer.get().setUsed(true);
           diskBuffer.get().setCommitIdOfCorrespondingHolderEvent(commitId);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           LOGGER.warn(
               "PipeConsensus: receiver thread get interrupted when waiting for borrowing tsFileWriter.");
         } finally {
@@ -1078,6 +1079,7 @@ public class PipeConsensusReceiver {
               try {
                 Thread.sleep(RETRY_WAIT_TIME);
               } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 LOGGER.warn(
                     "PipeConsensus-PipeName-{}: receiver thread get interrupted when exiting.",
                     consensusPipeName.toString());
@@ -1377,6 +1379,7 @@ public class PipeConsensusReceiver {
                 return resp;
               }
             } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
               LOGGER.warn(
                   "PipeConsensus-PipeName-{}: current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
                   consensusPipeName,
