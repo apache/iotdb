@@ -59,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
@@ -448,13 +447,6 @@ public final class SqlFormatter {
       builder.append("\n");
 
       process(node.getStatement(), indent);
-
-      return null;
-    }
-
-    @Override
-    protected Void visitShowDB(ShowDB node, Integer indent) {
-      builder.append("SHOW DATABASE");
 
       return null;
     }

@@ -90,7 +90,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
@@ -278,11 +277,6 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDropDB(DropDB node, Optional<Scope> context) {
       throw new SemanticException("Drop Database statement is not supported yet.");
-    }
-
-    @Override
-    protected Scope visitShowDB(ShowDB node, Optional<Scope> context) {
-      throw new SemanticException("Show Database statement is not supported yet.");
     }
 
     @Override
