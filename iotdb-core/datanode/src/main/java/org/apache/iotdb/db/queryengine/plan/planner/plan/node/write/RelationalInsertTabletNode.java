@@ -103,7 +103,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       for (int i = 0; i < idColumnIndices.size(); i++) {
         final Integer columnIndex = idColumnIndices.get(i);
         Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
-        deviceIdSegments[i + 1] = idSeg != null ? idSeg.toString() : null;
+        boolean isNull =
+            bitMaps != null
+                && bitMaps[columnIndex] != null
+                && bitMaps[columnIndex].isMarked(rowIdx);
+        deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -144,23 +148,27 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
-    for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i].serialize(byteBuffer);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        columnCategories[i].serialize(byteBuffer);
+      }
     }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
-    for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i].serialize(stream);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        columnCategories[i].serialize(stream);
+      }
     }
   }
 
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
-    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
     }
     setColumnCategories(columnCategories);
@@ -168,16 +176,18 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
     super.subSerialize(buffer, start, end);
-    for (int i = 0; i < dataTypes.length; i++) {
-      buffer.put(columnCategories[i].getCategory());
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        buffer.put(columnCategories[i].getCategory());
+      }
     }
   }
 
   @Override
   protected void subDeserializeFromWAL(ByteBuffer buffer) {
     super.subDeserializeFromWAL(buffer);
-    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
     }
     setColumnCategories(columnCategories);
@@ -186,8 +196,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
     super.subDeserializeFromWAL(stream);
-    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       columnCategories[i] = TsTableColumnCategory.deserialize(stream);
     }
     setColumnCategories(columnCategories);

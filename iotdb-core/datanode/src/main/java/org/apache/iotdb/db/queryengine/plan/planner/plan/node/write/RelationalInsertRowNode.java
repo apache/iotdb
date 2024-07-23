@@ -181,31 +181,37 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   void subSerialize(ByteBuffer buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i].serialize(buffer);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        columnCategories[i].serialize(buffer);
+      }
     }
   }
 
   @Override
   void subSerialize(DataOutputStream stream) throws IOException {
     super.subSerialize(stream);
-    for (int i = 0; i < dataTypes.length; i++) {
-      columnCategories[i].serialize(stream);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        columnCategories[i].serialize(stream);
+      }
     }
   }
 
   @Override
   protected void subSerialize(IWALByteBufferView buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < dataTypes.length; i++) {
-      buffer.put(columnCategories[i].getCategory());
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        buffer.put(columnCategories[i].getCategory());
+      }
     }
   }
 
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
-    TsTableColumnCategory[] newColumnCategories = new TsTableColumnCategory[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
+    TsTableColumnCategory[] newColumnCategories = new TsTableColumnCategory[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       newColumnCategories[i] = TsTableColumnCategory.deserialize(buffer);
     }
     setColumnCategories(newColumnCategories);
