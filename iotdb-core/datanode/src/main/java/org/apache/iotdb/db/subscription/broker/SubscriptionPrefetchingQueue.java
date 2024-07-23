@@ -93,7 +93,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
-      tryPrefetch();
+      tryPrefetch(true);
     }
 
     final long size = prefetchingQueue.size();
@@ -140,14 +140,27 @@ public abstract class SubscriptionPrefetchingQueue {
   public abstract void executePrefetch();
 
   /**
-   * prefetch at most one {@link SubscriptionEvent} from {@link
+   * Prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   * SubscriptionPrefetchingQueue#prefetchingQueue}.
+   *
+   * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
+   * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
+   *
+   * @param trySealBatchIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#trySealBatch} is
+   *     called when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
+   *     otherwise
    */
-  protected void tryPrefetch() {
-    Event event;
-    while (Objects.nonNull(
-        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+  protected void tryPrefetch(final boolean trySealBatchIfEmpty) {
+    while (!inputPendingQueue.isEmpty()) {
+      final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+      if (Objects.isNull(event)) {
+        // The event will be null in two cases:
+        // 1. The inputPendingQueue is empty.
+        // 2. The tsfile event has been deduplicated.
+        continue;
+      }
+
       if (!(event instanceof EnrichedEvent)) {
         LOGGER.warn(
             "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
@@ -169,25 +182,34 @@ public abstract class SubscriptionPrefetchingQueue {
 
       if (event instanceof TabletInsertionEvent) {
         if (onEvent((TabletInsertionEvent) event)) {
-          break;
+          return;
         }
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        if (onEvent((PipeTsFileInsertionEvent) event)) {
-          break;
-        }
-      } else {
-        // TODO:
-        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-        //  - UserDefinedEnrichedEvent: ignored?
-        //  - Others: events related to meta sync, safe to ignore
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
-            this,
-            event);
-        if (trySealBatch()) {
-          break;
-        }
+        continue;
       }
+
+      if (event instanceof PipeTsFileInsertionEvent) {
+        if (onEvent((PipeTsFileInsertionEvent) event)) {
+          return;
+        }
+        continue;
+      }
+
+      // TODO:
+      //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+      //  - UserDefinedEnrichedEvent: ignored?
+      //  - Others: events related to meta sync, safe to ignore
+      LOGGER.info(
+          "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+          this,
+          event);
+      if (trySealBatch()) {
+        return;
+      }
+    }
+
+    // At this moment, the inputPendingQueue is empty.
+    if (trySealBatchIfEmpty) {
+      trySealBatch();
     }
   }
 
@@ -222,6 +244,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event.isCommitted()) {
+      event.cleanup();
       LOGGER.warn(
           "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
           event,

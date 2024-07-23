@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -62,13 +63,25 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private PipeRuntimeMeta currentPipeRuntimeMeta;
   private PipeRuntimeMeta updatedPipeRuntimeMeta;
 
-  public AlterPipeProcedureV2() {
+  private ProcedureType procedureType;
+
+  public AlterPipeProcedureV2(ProcedureType procedureType) {
     super();
+    this.procedureType = procedureType;
   }
 
   public AlterPipeProcedureV2(TAlterPipeReq alterPipeRequest) throws PipeException {
     super();
     this.alterPipeRequest = alterPipeRequest;
+    procedureType = ProcedureType.ALTER_PIPE_PROCEDURE_V3;
+  }
+
+  @TestOnly
+  public AlterPipeProcedureV2(TAlterPipeReq alterPipeRequest, ProcedureType procedureType)
+      throws PipeException {
+    super();
+    this.alterPipeRequest = alterPipeRequest;
+    this.procedureType = procedureType;
   }
 
   @Override
@@ -90,7 +103,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkPipePluginExistence(
-            new HashMap<>(), // no need to check pipe source plugin
+            alterPipeRequest.getExtractorAttributes(),
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
 
@@ -116,10 +129,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            new HashMap<>(
-                currentPipeStaticMeta
-                    .getExtractorParameters()
-                    .getAttribute()), // reuse pipe source plugin
+            new HashMap<>(alterPipeRequest.getExtractorAttributes()),
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
@@ -137,6 +147,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
               if (databaseName != null
                   && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                  && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                   && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                 // Pipe only collect user's data, filter metric database here.
                 updatedConsensusGroupIdToTaskMetaMap.put(
@@ -151,15 +162,16 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       // config region
       updatedConsensusGroupIdToTaskMetaMap.put(
           // 0 is the consensus group id of the config region, but data region id and schema region
-          // id
-          // also start from 0, so we use Integer.MIN_VALUE to represent the config region
+          // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
           Integer.MIN_VALUE,
           new PipeTaskMeta(
               configRegionTaskMeta.getProgressIndex(),
               // The leader of the config region is the config node itself
               ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     }
+
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
+
     // If the pipe's previous status was user stopped, then after the alter operation, the pipe's
     // status remains user stopped; otherwise, it becomes running.
     if (!pipeTaskInfo.get().isPipeStoppedByUser(alterPipeRequest.getPipeName())) {
@@ -259,7 +271,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ALTER_PIPE_PROCEDURE_V2.getTypeCode());
+    stream.writeShort(procedureType.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(alterPipeRequest.getPipeName(), stream);
     ReadWriteIOUtils.write(alterPipeRequest.getProcessorAttributesSize(), stream);
@@ -298,6 +310,15 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+
+    if (procedureType.getTypeCode() == ProcedureType.ALTER_PIPE_PROCEDURE_V3.getTypeCode()) {
+      ReadWriteIOUtils.write(alterPipeRequest.getExtractorAttributesSize(), stream);
+      for (Map.Entry<String, String> entry : alterPipeRequest.getExtractorAttributes().entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
+      ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllExtractorAttributes, stream);
+    }
   }
 
   @Override
@@ -306,8 +327,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     alterPipeRequest =
         new TAlterPipeReq()
             .setPipeName(ReadWriteIOUtils.readString(byteBuffer))
+            .setExtractorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
+
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       alterPipeRequest
@@ -334,6 +357,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       updatedPipeRuntimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     }
+    if (procedureType.getTypeCode() == ProcedureType.ALTER_PIPE_PROCEDURE_V3.getTypeCode()) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        alterPipeRequest
+            .getExtractorAttributes()
+            .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      }
+      alterPipeRequest.isReplaceAllExtractorAttributes = ReadWriteIOUtils.readBool((byteBuffer));
+    } else {
+      alterPipeRequest.setExtractorAttributes(new HashMap<>());
+      alterPipeRequest.isReplaceAllExtractorAttributes = false;
+    }
   }
 
   @Override
@@ -346,6 +381,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     AlterPipeProcedureV2 that = (AlterPipeProcedureV2) o;
     return this.alterPipeRequest.getPipeName().equals(that.alterPipeRequest.getPipeName())
+        && this.alterPipeRequest
+            .getExtractorAttributes()
+            .toString()
+            .equals(that.alterPipeRequest.getExtractorAttributes().toString())
         && this.alterPipeRequest
             .getProcessorAttributes()
             .toString()
@@ -360,6 +399,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public int hashCode() {
     return Objects.hash(
         alterPipeRequest.getPipeName(),
+        alterPipeRequest.getExtractorAttributes(),
         alterPipeRequest.getProcessorAttributes(),
         alterPipeRequest.getConnectorAttributes());
   }

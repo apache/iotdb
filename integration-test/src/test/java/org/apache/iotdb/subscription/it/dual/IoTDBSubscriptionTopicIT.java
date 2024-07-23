@@ -552,7 +552,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   private void testTopicWithSnapshotModeTemplate(final String topicFormat) throws Exception {
-    // Insert some historical data
+    // Insert some historical data before subscription
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
@@ -596,6 +596,19 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                       .buildPullConsumer()) {
                 consumer.open();
                 consumer.subscribe(topicName);
+
+                // Insert some data after subscription
+                try (final ISession session = senderEnv.getSessionConnection()) {
+                  for (int i = 100; i < 200; ++i) {
+                    session.executeNonQueryStatement(
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+                  }
+                  session.executeNonQueryStatement("flush");
+                } catch (final Exception e) {
+                  e.printStackTrace();
+                  fail(e.getMessage());
+                }
+
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =

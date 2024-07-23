@@ -311,7 +311,7 @@ public class ExportSchema extends AbstractSchemaTool {
           }
           RowRecord rowRecord = sessionDataSet.next();
           List<Field> fields = rowRecord.getFields();
-          if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE)
+          if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE + ".")
               || !fields.get(viewTypeIndex).getStringValue().equals(BASE_VIEW_TYPE)) {
             continue;
           }
