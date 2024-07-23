@@ -344,7 +344,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     tableResultSetEqualTest(
         "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY TIME DESC, device_id;",
+            + "ORDER BY time DESC, device_id;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -374,7 +374,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     tableResultSetEqualTest(
         "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY DEVICE DESC, Time asc",
+            + "ORDER BY DEVICE DESC, time asc",
         expectedHeader,
         retArray,
         DATABASE_NAME);

@@ -134,7 +134,7 @@ public class TableHeaderSchemaValidator {
       // TODO table metadata: authority check for table alter
       // check id or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
-      resultColumnList.addAll(missingColumnList);
+      table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     }
 
     table

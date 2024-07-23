@@ -568,15 +568,18 @@ public class TsFileProcessor {
       // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
       // For unsequence tsfile, we have to update the endTime for each insertion.
       tsFileResource.updateEndTime(
-          deviceEndOffsetPairs.get(0).left, deviceEndOffsetPairs.get(0).right);
+          deviceEndOffsetPairs.get(0).left,
+          insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
     }
     for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
       // the end offset of i - 1 is the start offset of i
       tsFileResource.updateStartTime(
-          deviceEndOffsetPairs.get(i).left, deviceEndOffsetPairs.get(i - 1).right);
+          deviceEndOffsetPairs.get(i).left,
+          insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
       if (!sequence) {
         tsFileResource.updateEndTime(
-            deviceEndOffsetPairs.get(i).left, deviceEndOffsetPairs.get(i).right);
+            deviceEndOffsetPairs.get(i).left,
+            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
       }
     }
 
