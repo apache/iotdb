@@ -407,6 +407,17 @@ public class IoTDBStatement implements Statement {
         message.append(execResp.getMessage());
       }
     }
+    if (execResp.isSetSubStatus() && execResp.getSubStatus() != null) {
+      for (TSStatus status : execResp.getSubStatus()) {
+        if (status.getCode() == TSStatusCode.USE_DB.getStatusCode()
+            && status.isSetMessage()
+            && status.getMessage() != null
+            && !status.getMessage().isEmpty()) {
+          connection.changeDefaultDatabase(status.getMessage());
+          break;
+        }
+      }
+    }
     if (!allSuccess) {
       throw new BatchUpdateException(message.toString(), result);
     }
