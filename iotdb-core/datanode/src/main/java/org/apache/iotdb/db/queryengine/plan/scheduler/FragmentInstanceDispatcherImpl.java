@@ -326,8 +326,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           if (!sendFragmentInstanceResp.accepted) {
             LOGGER.warn(sendFragmentInstanceResp.message);
             if (sendFragmentInstanceResp.isSetNeedRetry()
-                && sendFragmentInstanceResp.isNeedRetry()) {
-              if (sendFragmentInstanceResp.message.contains("read")) {
+                && sendFragmentInstanceResp.isNeedRetry()
+                && sendFragmentInstanceResp.status != null) {
+              if (sendFragmentInstanceResp.status.getCode()
+                  == TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()) {
                 throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
               } else {
                 throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
