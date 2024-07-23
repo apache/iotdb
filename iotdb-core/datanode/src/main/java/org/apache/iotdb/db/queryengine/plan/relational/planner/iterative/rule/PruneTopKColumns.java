@@ -39,11 +39,11 @@ public class PruneTopKColumns extends ProjectOffPushDownRule<TopKNode> {
   @Override
   protected Optional<PlanNode> pushDownProjectOff(
       Context context, TopKNode topKNode, Set<Symbol> referencedOutputs) {
-    Set<Symbol> prunedTopNInputs =
+    Set<Symbol> prunedTopKInputs =
         Streams.concat(
                 referencedOutputs.stream(), topKNode.getOrderingScheme().getOrderBy().stream())
             .collect(toImmutableSet());
 
-    return restrictChildOutputs(context.getIdAllocator(), topKNode, prunedTopNInputs);
+    return restrictChildOutputs(context.getIdAllocator(), topKNode, prunedTopKInputs);
   }
 }

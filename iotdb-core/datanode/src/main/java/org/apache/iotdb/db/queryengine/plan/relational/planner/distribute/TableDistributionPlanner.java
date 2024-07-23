@@ -83,20 +83,23 @@ public class TableDistributionPlanner {
 
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
-    for (PlanOptimizer optimizer : optimizers) {
-      distributedPlan =
-          optimizer.optimize(
-              distributedPlan,
-              new PlanOptimizer.Context(
-                  null,
-                  analysis,
-                  null,
-                  mppQueryContext,
-                  mppQueryContext.getTypeProvider(),
-                  new SymbolAllocator(),
-                  mppQueryContext.getQueryId(),
-                  NOOP,
-                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+
+    if (analysis.getStatement() instanceof Query) {
+      for (PlanOptimizer optimizer : optimizers) {
+        distributedPlan =
+            optimizer.optimize(
+                distributedPlan,
+                new PlanOptimizer.Context(
+                    null,
+                    analysis,
+                    null,
+                    mppQueryContext,
+                    mppQueryContext.getTypeProvider(),
+                    new SymbolAllocator(),
+                    mppQueryContext.getQueryId(),
+                    NOOP,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
     }
 
     // add exchange node for distributed plan
