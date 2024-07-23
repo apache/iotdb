@@ -165,6 +165,7 @@ public class Session implements ISession {
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
   // used to update datanodeList periodically
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile ScheduledExecutorService executorService;
 
   protected INodeSupplier availableNodes;

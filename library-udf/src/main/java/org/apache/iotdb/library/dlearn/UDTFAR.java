@@ -57,6 +57,7 @@ public class UDTFAR implements UDTF {
   }
 
   @Override
+  @SuppressWarnings("javabugs:S6466")
   public void terminate(PointCollector collector) throws Exception {
     int length = timeWindow.size();
     if (length <= this.p) {

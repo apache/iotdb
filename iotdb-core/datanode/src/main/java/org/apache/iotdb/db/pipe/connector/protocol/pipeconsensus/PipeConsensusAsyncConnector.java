@@ -474,6 +474,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    *
    * @param event event to retry
    */
+  @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
@@ -482,7 +483,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    boolean ignore = retryEventQueue.offer(event);
+    retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",

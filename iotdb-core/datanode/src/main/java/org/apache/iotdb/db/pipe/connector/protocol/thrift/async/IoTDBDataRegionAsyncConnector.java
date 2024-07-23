@@ -469,6 +469,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param event {@link Event} to retry
    */
+  @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event) {
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
       return;

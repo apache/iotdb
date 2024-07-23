@@ -132,6 +132,7 @@ public class ClientExampleRunner {
         Thread.sleep(1000);
         System.exit(0);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         e.printStackTrace();
       }
     }
@@ -139,6 +140,7 @@ public class ClientExampleRunner {
     try {
       Thread.sleep(999_999_999);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       e.printStackTrace();
     }
   }

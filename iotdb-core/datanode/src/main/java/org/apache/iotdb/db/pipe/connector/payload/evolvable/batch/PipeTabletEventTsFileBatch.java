@@ -77,6 +77,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
+  @SuppressWarnings("java:S3077")
   private volatile TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
