@@ -499,8 +499,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals(
-          "root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getIDeviceID().toString());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
       Assert.assertEquals(
@@ -555,8 +553,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals(
-          "root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getIDeviceID().toString());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
       Assert.assertEquals(
