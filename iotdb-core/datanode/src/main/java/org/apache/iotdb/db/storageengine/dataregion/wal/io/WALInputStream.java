@@ -67,7 +67,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void getEndOffset() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES + Integer.BYTES) {
+    if (channel.size() < WALFileVersion.V2.getVersionBytes().length + Integer.BYTES) {
       // An broken file
       endOffset = channel.size();
       return;
@@ -77,18 +77,18 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     try {
       if (version == WALFileVersion.V2) {
         // New Version
-        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
+        channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
         magicStringBuffer.flip();
         if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)
             || !new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
-                .equals(WALWriter.MAGIC_STRING_V2)) {
+                .equals(version.getVersionString())) {
           // This is a broken wal or checkpoint file
           endOffset = channel.size();
           return;
         } else {
           // This is a normal wal file or check point file
-          position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
+          position = channel.size() - version.getVersionBytes().length - Integer.BYTES;
         }
       } else {
         if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)) {
@@ -97,16 +97,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           return;
         }
         // Old version
-        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1_BYTES);
-        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V1_BYTES);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
+        channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
-            .equals(WALWriter.MAGIC_STRING_V1)) {
+            .equals(version.getVersionString())) {
           // this is a broken wal file
           endOffset = channel.size();
           return;
         } else {
-          position = channel.size() - WALWriter.MAGIC_STRING_V1_BYTES - Integer.BYTES;
+          position = channel.size() - version.getVersionBytes().length - Integer.BYTES;
         }
       }
       // Read the metadata size
@@ -115,11 +115,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       int metadataSize = metadataSizeBuf.getInt();
       // -1 is for the endmarker
       endOffset =
-          channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES - metadataSize - 1;
+          channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize - 1;
     } finally {
       if (version == WALFileVersion.V2) {
         // Set the position back to the end of head magic string
-        channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
+        channel.position(version.getVersionBytes().length);
       } else {
         // There is no head magic string in V1 version
         channel.position(0);
@@ -275,7 +275,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
     if (version == WALFileVersion.V2) {
-      channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
+      channel.position(version.getVersionBytes().length);
       long posRemain = pos;
       SegmentInfo segmentInfo;
       do {

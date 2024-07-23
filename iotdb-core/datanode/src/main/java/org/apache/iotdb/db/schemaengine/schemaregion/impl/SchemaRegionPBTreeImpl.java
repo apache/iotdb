@@ -194,8 +194,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
-      if (!SystemInfo.getInstance()
-          .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
+      if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
             "Total allocated memory for direct buffer will be "
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)

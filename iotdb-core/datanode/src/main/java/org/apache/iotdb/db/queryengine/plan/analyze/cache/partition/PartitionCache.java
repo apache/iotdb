@@ -75,6 +75,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PartitionCache {
+
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
@@ -238,7 +239,8 @@ public class PartitionCache {
         // Try to get database needed to be created from missed device
         Set<String> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : result.getMissedDevices()) {
-          if (devicePath.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+          if (devicePath.equals(SchemaConstant.SYSTEM_DATABASE)
+              || devicePath.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
             storageGroupNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else {
             PartialPath storageGroupNameNeedCreated =
@@ -430,6 +432,7 @@ public class PartitionCache {
   // endregion
 
   // region replicaSet cache
+
   /**
    * get regionReplicaSet from local and confignode
    *
