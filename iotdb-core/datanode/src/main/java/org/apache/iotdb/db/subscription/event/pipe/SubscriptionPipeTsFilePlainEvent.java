@@ -26,22 +26,14 @@ import java.io.File;
 public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 
   private final PipeTsFileInsertionEvent tsFileInsertionEvent;
-  private final String fileName;
 
   public SubscriptionPipeTsFilePlainEvent(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
     this.tsFileInsertionEvent = tsFileInsertionEvent;
-
-    this.fileName = tsFileInsertionEvent.getTsFile().getName();
   }
 
   @Override
   public File getTsFile() {
     return tsFileInsertionEvent.getTsFile();
-  }
-
-  @Override
-  public String getFileName() {
-    return fileName;
   }
 
   @Override

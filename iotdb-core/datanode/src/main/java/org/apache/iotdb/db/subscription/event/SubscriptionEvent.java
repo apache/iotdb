@@ -355,7 +355,7 @@ public class SubscriptionEvent {
   }
 
   public String getFileName() {
-    return pipeEvents.getFileName();
+    return pipeEvents.getTsFile().getName();
   }
 
   /////////////////////////////// object ///////////////////////////////
