@@ -490,6 +490,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
+    if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
+      throw new UnsupportedOperationException(
+          "Show devices with where/limit/offset is unsupported yet.");
+    }
     return new ShowDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 

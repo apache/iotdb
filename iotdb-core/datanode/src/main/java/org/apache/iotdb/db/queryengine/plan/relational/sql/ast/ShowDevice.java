@@ -52,14 +52,14 @@ public class ShowDevice extends Statement {
 
   private transient List<IDeviceID> partitionKeyList;
 
-  // for sql-input show device usage
+  // For sql-input show device usage
   public ShowDevice(final String tableName, final Expression rawExpression) {
     super(null);
     this.tableName = tableName;
     this.rawExpression = rawExpression;
   }
 
-  // for device fetch serving data query
+  // For device fetch serving data query
   public ShowDevice(
       final String database,
       final String tableName,
@@ -111,7 +111,7 @@ public class ShowDevice extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, C context) {
     return visitor.visitShowDevice(this, context);
   }
 
@@ -121,10 +121,10 @@ public class ShowDevice extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ShowDevice that = (ShowDevice) o;
+    final ShowDevice that = (ShowDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)
