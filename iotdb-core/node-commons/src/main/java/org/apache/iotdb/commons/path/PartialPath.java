@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -48,6 +49,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -763,16 +765,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     if (device != null) {
       return device;
     } else {
-      if (nodes.length == 1) {
-        device = Factory.DEFAULT_FACTORY.create("");
-        return device;
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length - 1; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
+      device = toDeviceID(nodes);
     }
     return device;
   }
@@ -1013,5 +1006,36 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   private static int estimateStringSize(String string) {
     // each char takes 2B in Java
     return string == null ? 0 : 32 + 2 * string.length();
+  }
+
+  protected IDeviceID toDeviceID(String[] nodes) {
+    String tableName;
+    int segmentCnt = nodes.length;
+    // assuming DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3
+    String[] segments;
+    if (segmentCnt == 1) {
+      // "root" -> {"root"}
+      segments = nodes;
+    } else if (segmentCnt < TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME + 1) {
+      // "root.a" -> {"root", "a"}
+      // "root.a.b" -> {"root.a", "b"}
+      tableName = String.join(PATH_SEPARATOR, Arrays.copyOfRange(nodes, 0, segmentCnt - 1));
+      segments = new String[2];
+      segments[0] = tableName;
+      segments[1] = nodes[segmentCnt - 1];
+    } else {
+      // "root.a.b.c" -> {"root.a.b", "c"}
+      // "root.a.b.c.d" -> {"root.a.b", "c", "d"}
+      tableName =
+          String.join(
+              PATH_SEPARATOR,
+              Arrays.copyOfRange(nodes, 0, TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME));
+      int newSegmentCnt = nodes.length - TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME + 1;
+      segments = new String[newSegmentCnt];
+      segments[0] = tableName;
+      System.arraycopy(
+          nodes, TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME, segments, 1, newSegmentCnt - 1);
+    }
+    return Factory.DEFAULT_FACTORY.create(segments);
   }
 }

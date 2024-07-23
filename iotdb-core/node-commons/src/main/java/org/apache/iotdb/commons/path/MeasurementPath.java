@@ -39,6 +39,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -309,6 +310,13 @@ public class MeasurementPath extends PartialPath {
     byte[] bytes = byteArrayOutputStream.toByteArray();
     // must use single-byte char sets
     return new String(bytes, StandardCharsets.ISO_8859_1);
+  }
+
+  @Override
+  protected IDeviceID toDeviceID(String[] nodes) {
+    // remove measurement
+    nodes = Arrays.copyOfRange(nodes, 0, nodes.length - 1);
+    return super.toDeviceID(nodes);
   }
 
   public static MeasurementPath parseDataFromString(String measurementPathData) {

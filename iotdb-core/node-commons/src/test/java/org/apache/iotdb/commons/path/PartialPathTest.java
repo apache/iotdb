@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PartialPathTest {
@@ -750,6 +752,120 @@ public class PartialPathTest {
             add(new PartialPath("root.db.d.s1"));
           }
         });
+  }
+
+  @Test
+  public void testToDeviceId() {
+    PartialPath partialPath = new PartialPath(new String[] {"root"});
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(1, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b", "c"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b", "c", "d"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testAlignedToDeviceId() throws IllegalPathException {
+    PartialPath partialPath = new AlignedPath("root", Collections.singletonList("s1"));
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(1, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b.c", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b.c.d", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testMeasurementPathToDeviceId() throws IllegalPathException {
+    PartialPath partialPath = new MeasurementPath("root.s1");
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(1, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.c.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.c.d.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
   }
 
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {
