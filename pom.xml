@@ -743,6 +743,8 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
+                        <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>
                 </plugin>
                 <!--

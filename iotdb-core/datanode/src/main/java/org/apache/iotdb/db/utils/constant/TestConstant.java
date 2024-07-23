@@ -25,7 +25,7 @@ import java.io.File;
 
 public class TestConstant {
 
-  public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+  public static final String BASE_OUTPUT_PATH = baseOutputDirectory();
   public static final String OUTPUT_DATA_DIR =
       BASE_OUTPUT_PATH.concat("data").concat(File.separator);
   public static final String PARTIAL_PATH_STRING =
@@ -108,5 +108,11 @@ public class TestConstant {
         logicalStorageGroupName,
         virtualStorageGroupId,
         timePartitionId);
+  }
+
+  private static String baseOutputDirectory() {
+    File dir = new File("target");
+    dir.mkdirs();
+    return dir.getPath().concat(File.separator);
   }
 }
