@@ -1624,6 +1624,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return getNotLoggedInStatus();
     }
 
+    boolean useDatabase = false;
     try {
       for (int i = 0; i < req.getStatements().size(); i++) {
         String statement = req.getStatements().get(i);
@@ -1631,37 +1632,72 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         String type = null;
         OperationQuota quota = null;
         try {
-          Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
-          if (s == null) {
-            return RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
-          }
-          // permission check
-          TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return status;
+          long queryId;
+          ExecutionResult result;
+          if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
+            Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+            if (s == null) {
+              return RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+            }
+            // permission check
+            TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              return status;
+            }
+
+            quota =
+                DataNodeThrottleQuotaManager.getInstance()
+                    .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+
+            if (ENABLE_AUDIT_LOG) {
+              AuditLogger.log(statement, s);
+            }
+
+            queryId = SESSION_MANAGER.requestQueryId();
+            type = s.getType() == null ? null : s.getType().name();
+            // create and cache dataset
+            result =
+                COORDINATOR.executeForTreeModel(
+                    s,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    partitionFetcher,
+                    schemaFetcher,
+                    config.getQueryTimeoutThreshold());
+          } else {
+
+            org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
+                relationSqlParser.createStatement(statement, clientSession.getZoneId());
+
+            if (s instanceof Use) {
+              useDatabase = true;
+            }
+
+            if (s == null) {
+              return RpcUtils.getStatus(
+                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+            }
+
+            // TODO: permission check
+
+            // TODO audit log, quota, StatementType
+
+            queryId = SESSION_MANAGER.requestQueryId();
+
+            result =
+                COORDINATOR.executeForTableModel(
+                    s,
+                    relationSqlParser,
+                    clientSession,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    metadata,
+                    config.getQueryTimeoutThreshold());
           }
 
-          quota =
-              DataNodeThrottleQuotaManager.getInstance()
-                  .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
-
-          if (ENABLE_AUDIT_LOG) {
-            AuditLogger.log(statement, s);
-          }
-
-          long queryId = SESSION_MANAGER.requestQueryId();
-          type = s.getType() == null ? null : s.getType().name();
-          // create and cache dataset
-          ExecutionResult result =
-              COORDINATOR.executeForTreeModel(
-                  s,
-                  queryId,
-                  SESSION_MANAGER.getSessionInfo(clientSession),
-                  statement,
-                  partitionFetcher,
-                  schemaFetcher,
-                  config.getQueryTimeoutThreshold());
           results.add(result.status);
         } catch (Exception e) {
           LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
@@ -1685,9 +1721,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.EXECUTE_BATCH_STATEMENT, StatementType.NULL.name(), System.nanoTime() - t1);
       SESSION_MANAGER.updateIdleTime();
     }
-    return isAllSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
-        : RpcUtils.getStatus(results);
+
+    if (isAllSuccessful) {
+      TSStatus res =
+          RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
+      if (useDatabase) {
+        TSStatus useDB = RpcUtils.getStatus(TSStatusCode.USE_DB, clientSession.getDatabaseName());
+        res.setSubStatus(Collections.singletonList(useDB));
+      }
+      return res;
+    } else {
+      return RpcUtils.getStatus(results);
+    }
   }
 
   @Override
