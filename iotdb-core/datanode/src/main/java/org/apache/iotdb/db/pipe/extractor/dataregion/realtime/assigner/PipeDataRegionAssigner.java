@@ -73,15 +73,16 @@ public class PipeDataRegionAssigner implements Closeable {
         .forEach(
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
-                extractor.extract(
-                    PipeRealtimeEventFactory.createRealtimeEvent(
-                        new ProgressReportEvent(
-                            extractor.getPipeName(),
-                            extractor.getCreationTime(),
-                            extractor.getPipeTaskMeta(),
-                            extractor.getPipePattern(),
-                            extractor.getRealtimeDataExtractionStartTime(),
-                            extractor.getRealtimeDataExtractionEndTime())));
+                final ProgressReportEvent reportEvent =
+                    new ProgressReportEvent(
+                        extractor.getPipeName(),
+                        extractor.getCreationTime(),
+                        extractor.getPipeTaskMeta(),
+                        extractor.getPipePattern(),
+                        extractor.getRealtimeDataExtractionStartTime(),
+                        extractor.getRealtimeDataExtractionEndTime());
+                reportEvent.bindProgressIndex(event.getProgressIndex());
+                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
                 return;
               }
 
