@@ -76,6 +76,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   @Override
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
 
+    // Log A
     LOGGER.info("[PipeLeaderChange] receive leader change event: {}", event);
 
     // If no pipe tasks, return
