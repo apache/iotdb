@@ -147,8 +147,10 @@ public class TestUtils {
       String userName,
       String password,
       TimeUnit currPrecision) {
-    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute(USE_DB);
       connection.setClientInfo("time_zone", "+00:00");
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df, currPrecision);

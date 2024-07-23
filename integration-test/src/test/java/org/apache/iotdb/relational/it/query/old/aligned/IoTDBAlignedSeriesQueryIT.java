@@ -71,7 +71,7 @@ public class IoTDBAlignedSeriesQueryIT {
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initClusterEnvironment();
-    TableWriteUtil.insertData();
+    TableUtils.insertData();
   }
 
   @AfterClass

@@ -19,11 +19,17 @@
 package org.apache.iotdb.relational.it.query.old.aligned;
 
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -33,7 +39,7 @@ import static org.junit.Assert.fail;
  *
  * <p>https://docs.google.com/spreadsheets/d/1kfrSR1_paSd9B1Z0jnPBD3WQIMDslDuNm4R0mpWx9Ms/edit?usp=sharing
  */
-public class TableWriteUtil {
+public class TableUtils {
 
   private static final String[] sqls =
       new String[] {
@@ -148,6 +154,59 @@ public class TableWriteUtil {
         session.executeNonQueryStatement(sql);
       }
     } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database);
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = 1; i <= expectedHeader.length; i++) {
+              if (i == 1) {
+                builder.append(resultSet.getLong(i)).append(",");
+              } else {
+                builder.append(resultSet.getString(i)).append(",");
+              }
+            }
+            assertEquals(expectedRetArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(expectedRetArray.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
