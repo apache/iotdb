@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -64,10 +65,10 @@ public class ExpressionRewriter<C> {
     return rewriteExpression(node, context, treeRewriter);
   }
 
-  //    public Expression rewriteArithmeticUnary(ArithmeticNegation node, C context,
-  // ExpressionTreeRewriter<C> treeRewriter) {
-  //        return rewriteExpression(node, context, treeRewriter);
-  //    }
+  public Expression rewriteArithmeticUnary(
+      ArithmeticUnaryExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
 
   public Expression rewriteArithmeticBinary(
       ArithmeticBinaryExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
