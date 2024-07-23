@@ -331,14 +331,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               if (sendFragmentInstanceResp.status.getCode()
                   == TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()) {
                 throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
-              } else {
+              } else if (sendFragmentInstanceResp.status.getCode()
+                  == TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()) {
                 throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
               }
-            } else {
-              throw new FragmentInstanceDispatchException(
-                  RpcUtils.getStatus(
-                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
             }
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
           }
           break;
         case WRITE:
