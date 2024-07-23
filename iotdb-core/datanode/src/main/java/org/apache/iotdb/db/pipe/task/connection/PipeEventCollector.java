@@ -105,11 +105,10 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParseTimeOrPattern()) {
-      collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
-    } else {
-      collectEvent(sourceEvent);
-    }
+    collectParsedRawTableEvent(
+        sourceEvent.shouldParseTimeOrPattern()
+            ? sourceEvent.parseEventWithPatternOrTime()
+            : sourceEvent);
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
