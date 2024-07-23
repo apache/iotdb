@@ -174,6 +174,71 @@ public class TestUtils {
     resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
   }
 
+  public static void tableResultSetEqualTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database);
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = 1; i <= expectedHeader.length; i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(expectedRetArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(expectedRetArray.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableAssertTestFail(String sql, String errMsg) {
+    tableAssertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  public static void tableAssertTestFail(
+      String sql, String errMsg, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertEquals(errMsg, e.getMessage());
+    }
+  }
+
   public static void resultSetEqualTest(
       String sql,
       String[] expectedHeader,
