@@ -31,16 +31,12 @@ import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeE
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeLeaderChangeHandler.class);
 
   private final ConfigManager configManager;
 
@@ -75,10 +71,6 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
 
   @Override
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
-
-    // Log A
-    LOGGER.info("[PipeLeaderChange] receive leader change event: {}", event);
-
     // If no pipe tasks, return
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
@@ -107,8 +99,6 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
                 }
               }
             });
-
-    LOGGER.info("[PipeLeaderChange] different leader map: {}", regionGroupToOldAndNewLeaderPairMap);
 
     // If no region leaders change, return
     if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
