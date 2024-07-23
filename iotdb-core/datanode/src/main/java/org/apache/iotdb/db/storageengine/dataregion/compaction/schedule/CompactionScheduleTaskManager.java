@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -42,7 +43,6 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,7 +55,7 @@ public class CompactionScheduleTaskManager implements IService {
 
   private final int ttlCheckerNum = IoTDBDescriptor.getInstance().getConfig().getTTlCheckerNum();
 
-  private ExecutorService compactionScheduleTaskThreadPool;
+  private WrappedThreadPoolExecutor compactionScheduleTaskThreadPool;
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final CompactionScheduleTaskManager INSTANCE = new CompactionScheduleTaskManager();
@@ -179,8 +179,10 @@ public class CompactionScheduleTaskManager implements IService {
 
   private void initThreadPool() {
     this.compactionScheduleTaskThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+    this.compactionScheduleTaskThreadPool.disableErrorLog();
     init = true;
   }
 
@@ -189,8 +191,10 @@ public class CompactionScheduleTaskManager implements IService {
     compactionScheduleTaskThreadPool.shutdownNow();
     waitForThreadPoolTerminated();
     compactionScheduleTaskThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+    compactionScheduleTaskThreadPool.disableErrorLog();
     startScheduleTasks();
   }
 
