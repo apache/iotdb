@@ -37,8 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
@@ -89,25 +88,21 @@ public class LogicalPlanner {
 
     if (analysis.getStatement() instanceof Query) {
       for (PlanOptimizer optimizer : planOptimizers) {
-        if (analysis.isConfigQuery()
-            && (optimizer instanceof PushPredicateIntoTableScan
-                || optimizer instanceof PushLimitOffsetIntoTableScan)) {
-          // Config query shall not be integrated with normal table scan
-          continue;
+        if (!analysis.isConfigQuery() || optimizer instanceof SimplifyExpressions) {
+          planNode =
+              optimizer.optimize(
+                  planNode,
+                  new PlanOptimizer.Context(
+                      sessionInfo,
+                      analysis,
+                      metadata,
+                      queryContext,
+                      queryContext.getTypeProvider(),
+                      symbolAllocator,
+                      queryContext.getQueryId(),
+                      warningCollector,
+                      PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
         }
-        planNode =
-            optimizer.optimize(
-                planNode,
-                new PlanOptimizer.Context(
-                    sessionInfo,
-                    analysis,
-                    metadata,
-                    queryContext,
-                    queryContext.getTypeProvider(),
-                    symbolAllocator,
-                    queryContext.getQueryId(),
-                    warningCollector,
-                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
     }
 
