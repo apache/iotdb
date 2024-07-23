@@ -89,6 +89,19 @@ public class TestUtils {
     }
   }
 
+  public static void prepareTableData(String[] sqls) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.addBatch(sql);
+      }
+      statement.executeBatch();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void resultSetEqualTest(String sql, double[][] retArray, String[] columnNames) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -236,6 +249,24 @@ public class TestUtils {
       fail("No exception!");
     } catch (SQLException e) {
       Assert.assertEquals(errMsg, e.getMessage());
+    }
+  }
+
+  public static void tableAssertTestFail(String sql, String errMsg, String database) {
+    tableAssertTestFail(
+        sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, database);
+  }
+
+  public static void tableAssertTestFail(
+      String sql, String errMsg, String userName, String password, String database) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + database);
+      statement.executeQuery(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains(errMsg));
     }
   }
 
