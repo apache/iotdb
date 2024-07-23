@@ -135,13 +135,13 @@ public class IoTDBArithmeticIT {
       String sql = String.format("select %s from table1", String.join(",", expressions));
       ResultSet resultSet = statement.executeQuery(sql);
 
-      assertEquals(1 + expressions.length, resultSet.getMetaData().getColumnCount());
+      assertEquals(expressions.length, resultSet.getMetaData().getColumnCount());
 
       for (int i = 1; i < 6; ++i) {
         resultSet.next();
         for (int j = 0; j < expressions.length; ++j) {
           double expected = -i;
-          double actual = Double.parseDouble(resultSet.getString(2 + j));
+          double actual = Double.parseDouble(resultSet.getString(j + 1));
           assertEquals(expected, actual, E);
         }
       }
