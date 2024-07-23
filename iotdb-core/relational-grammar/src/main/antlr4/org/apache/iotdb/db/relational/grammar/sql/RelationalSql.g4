@@ -252,14 +252,6 @@ showRegionsStatement
           // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
-showDataNodesStatement
-    : SHOW DATANODES
-    ;
-
-showConfigNodesStatement
-    : SHOW CONFIGNODES
-    ;
-
 showClusterIdStatement
     : SHOW CLUSTERID
     ;

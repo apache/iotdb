@@ -24,16 +24,11 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
 public class ShowDataNodes extends Statement {
 
   public ShowDataNodes() {
     super(null);
-  }
-
-  public ShowDataNodes(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
   }
 
   @Override

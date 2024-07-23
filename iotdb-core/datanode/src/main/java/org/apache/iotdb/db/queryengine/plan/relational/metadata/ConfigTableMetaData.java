@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
@@ -37,8 +39,17 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATABASE;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REGION_NUM;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REPLICATION_FACTOR;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.INTERNAL_ADDRESS;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.INTERNAL_PORT;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.NODE_ID;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ROLE;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.RPC_ADDRESS;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.RPC_PORT;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.SCHEMA_REGION_NUM;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.STATUS;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.TIME_PARTITION_INTERVAL;
 
 public class ConfigTableMetaData {
@@ -73,6 +84,75 @@ public class ConfigTableMetaData {
                         false,
                         TsTableColumnCategory.MEASUREMENT))),
             () -> ClusterConfigTaskExecutor.getInstance().showDatabases(new ShowDB())));
+    CONFIG_TABLE_MAP.put(
+        "datanodes",
+        new Pair<>(
+            new TableSchema(
+                "datanodes",
+                Arrays.asList(
+                    new ColumnSchema(
+                        NODE_ID,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.ID),
+                    new ColumnSchema(
+                        STATUS,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        RPC_ADDRESS,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        RPC_PORT,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        DATA_REGION_NUM,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        SCHEMA_REGION_NUM,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT))),
+            () -> ClusterConfigTaskExecutor.getInstance().showDataNodes(new ShowDataNodes())));
+    CONFIG_TABLE_MAP.put(
+        "confignodes",
+        new Pair<>(
+            new TableSchema(
+                "confignodes",
+                Arrays.asList(
+                    new ColumnSchema(
+                        NODE_ID,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.ID),
+                    new ColumnSchema(
+                        STATUS,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        INTERNAL_ADDRESS,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        INTERNAL_PORT,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT),
+                    new ColumnSchema(
+                        ROLE,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.MEASUREMENT))),
+            () -> ClusterConfigTaskExecutor.getInstance().showConfigNodes(new ShowConfigNodes())));
   }
 
   public static Optional<TableSchema> getTableSchema(final String tableName) {
