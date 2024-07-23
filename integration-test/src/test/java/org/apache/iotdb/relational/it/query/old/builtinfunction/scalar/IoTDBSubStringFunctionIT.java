@@ -49,11 +49,11 @@ public class IoTDBSubStringFunctionIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
         "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT);",
-        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', 'abcd')",
+        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'test')",
         "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'abcdefg')",
-        "INSERT INTO table1(Time,device_id,s9)) values(2, 'd1', 'test')",
-        "INSERT INTO table1(Time,device_id,s9)) values(3, 'd1', 'abcdefg')",
+        "INSERT INTO table1(Time,device_id,s9) values(2, 'd1', 'test')",
+        "INSERT INTO table1(Time,device_id,s9) values(3, 'd1', 'abcdefg')",
         "flush"
       };
 
@@ -130,76 +130,76 @@ public class IoTDBSubStringFunctionIT {
     tableAssertTestFail(
         "select s1,SUBSTRING(s1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s2 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type INT32 for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s3 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type INT64 for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s4 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type FLOAT for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s5 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type DOUBLE for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s6 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type BOOLEAN for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s7 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type DATE for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s8 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type TIMESTAMP for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s10 FROM 1 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Unsupported data type BLOB for function SUBSTRING.",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Using substring with float start position
     tableAssertTestFail(
         "select SUBSTRING(s1 FROM 1.0 FOR 1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Using substring with float start and length
     tableAssertTestFail(
         "select SUBSTRING(s1 FROM 1.0 FOR 1.1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer",
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
     // Negative characters length

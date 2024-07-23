@@ -176,15 +176,15 @@ public class TableMetadataImpl implements Metadata {
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
               && isCharType(argumentTypes.get(0))
-              && isNumericType(argumentTypes.get(1)))
+              && isIntegerNumber(argumentTypes.get(1)))
           && !(argumentTypes.size() == 3
               && isCharType(argumentTypes.get(0))
-              && isNumericType(argumentTypes.get(1))
-              && isNumericType(argumentTypes.get(2)))) {
+              && isIntegerNumber(argumentTypes.get(1))
+              && isIntegerNumber(argumentTypes.get(2)))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text or string data type.");
+                + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
       return argumentTypes.get(0);
     }
@@ -405,6 +405,10 @@ public class TableMetadataImpl implements Metadata {
         || INT32.equals(type)
         || INT64.equals(type)
         || TimestampType.TIMESTAMP.equals(type);
+  }
+
+  public static boolean isIntegerNumber(Type type) {
+    return INT32.equals(type) || INT64.equals(type);
   }
 
   public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
