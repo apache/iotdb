@@ -147,8 +147,9 @@ public class SnapshotTaker {
       pathBuilder.append(File.separator).append(dataRegion.getDatabaseName());
       pathBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR).append(dataRegion.getDataRegionId());
       try {
-        if (new File(pathBuilder.toString()).exists()) {
-          FileUtils.recursivelyDeleteFolder(pathBuilder.toString());
+        String path = pathBuilder.toString();
+        if (new File(path).exists()) {
+          FileUtils.recursivelyDeleteFolder(path);
         }
       } catch (IOException e) {
         allSuccess = false;
