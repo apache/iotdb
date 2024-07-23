@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
@@ -111,23 +112,44 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   .setMessage(
                       "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
         }
+        TPipeTransferResp resp;
+        long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
-            return handleTransferHandshakeV1(
-                PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            resp =
+                handleTransferHandshakeV1(
+                    PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
+            return resp;
           case HANDSHAKE_CONFIGNODE_V2:
-            return handleTransferHandshakeV2(
-                PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+            resp =
+                handleTransferHandshakeV2(
+                    PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_PLAN:
-            return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
+            resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            return handleTransferFilePiece(
-                PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest,
-                false);
+            resp =
+                handleTransferFilePiece(
+                    PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
+                    req instanceof AirGapPseudoTPipeTransferRequest,
+                    false);
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            return handleTransferFileSealV2(
-                PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
+            resp =
+                handleTransferFileSealV2(
+                    PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_COMPRESSED:
             return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
