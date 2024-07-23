@@ -343,6 +343,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               return new SubscriptionPipeTsFileEventBatch(
                   this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
             }
+            // If onEvent returns an empty list, one possibility is that the batch has already been
+            // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
+            // most recent batch.
             return batch;
           } catch (final Exception e) {
             LOGGER.warn(
