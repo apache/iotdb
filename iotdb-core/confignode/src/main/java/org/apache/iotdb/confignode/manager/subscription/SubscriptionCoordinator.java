@@ -158,17 +158,9 @@ public class SubscriptionCoordinator {
       LOGGER.warn("Failed to drop topic {}. Result status: {}.", req.getTopicName(), status);
     }
 
-    // After the deletion operation is completed, handle the situation where the topic does not
-    // exist
-    if (!isTopicExistedBeforeDrop) {
-      // If the IF EXISTS condition is set in the request, return the current status.
-      if (req.isIfExistsCondition()) {
-        return status;
-      }
-
+    if (!isTopicExistedBeforeDrop && req.isIfExistsCondition()) {
       // If the IF EXISTS condition is not set and the topic does not exist before the delete
-      // operation,
-      // return an error status indicating that the topic does not exist.
+      // operation,return an error status indicating that the topic does not exist.
       return RpcUtils.getStatus(
           TSStatusCode.TOPIC_NOT_EXIST_ERROR,
           String.format(
