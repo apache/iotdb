@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -98,7 +99,8 @@ public class RegionReadExecutor {
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException
-          || t instanceof ServerNotReadyException) {
+          || t instanceof ServerNotReadyException
+          || t instanceof ConsensusGroupNotExistException) {
         resp.setNeedRetry(true);
       }
       return resp;
