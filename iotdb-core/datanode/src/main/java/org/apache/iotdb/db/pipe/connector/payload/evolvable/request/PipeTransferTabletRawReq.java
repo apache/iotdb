@@ -61,7 +61,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
-      if (tablet.rowSize == 0) {
+      if (tablet == null || tablet.rowSize == 0) {
         // Empty statement, will be filtered after construction
         return new InsertTabletStatement();
       }
