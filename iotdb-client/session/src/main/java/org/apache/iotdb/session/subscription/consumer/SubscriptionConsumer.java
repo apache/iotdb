@@ -95,8 +95,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private static final long SLEEP_DELTA_MS = 50L;
   private static final long TIMER_DELTA_MS = 250L;
 
-  private static final int MAX_POLL_PARALLELISM = 4; // TODO: config
-
   private final String username;
   private final String password;
 
@@ -114,6 +112,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
+
+  private final int maxPollParallelism;
 
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -167,6 +167,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    this.maxPollParallelism = builder.maxPollParallelism;
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -208,7 +210,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (Boolean)
                     properties.getOrDefault(
                         ConsumerConstant.FILE_SAVE_FSYNC_KEY,
-                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE)));
+                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE))
+            .maxPollParallelism(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.MAX_POLL_PARALLELISM_KEY,
+                        ConsumerConstant.MAX_POLL_PARALLELISM_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -472,13 +479,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final int availableCount =
         SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
     if (availableCount == 0) {
+      // non-strict timeout
       return singlePoll(topicNames, timeoutMs);
     }
 
     // dividing topics
     final List<PollTask> tasks = new ArrayList<>();
     final List<Set<String>> partitionedTopicNames =
-        partition(topicNames, Math.min(MAX_POLL_PARALLELISM, availableCount));
+        partition(topicNames, Math.min(maxPollParallelism, availableCount));
     for (final Set<String> partition : partitionedTopicNames) {
       tasks.add(new PollTask(partition, timeoutMs));
     }
@@ -487,6 +495,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
     try {
+      // strict timeout
       for (final Future<List<SubscriptionMessage>> future :
           SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
         try {
@@ -632,6 +641,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         // TODO: associated with timeoutMs instead of hardcoding
         // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
         Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
+
+        // the use of TIMER_DELTA_MS here slightly reduces the timeout to avoid being interrupted as
+        // much as possible
       } while (timer.notExpired(TIMER_DELTA_MS));
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt(); // restore interrupted state
@@ -1170,6 +1182,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
+    protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_VALUE;
+
     public Builder host(final String host) {
       this.host = host;
       return this;
@@ -1224,6 +1238,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     public Builder fileSaveFsync(final boolean fileSaveFsync) {
       this.fileSaveFsync = fileSaveFsync;
+      return this;
+    }
+
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
+      // single thread to execute poll whenever there are idle resources available, thereby
+      // achieving strict timeout.
+      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
       return this;
     }
 

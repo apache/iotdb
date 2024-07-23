@@ -102,6 +102,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     this.ackStrategy = ackStrategy;
     this.consumeListener = consumeListener;
 
+    // avoid interval less than or equal to zero
     this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
     this.autoPollTimeoutMs =
         Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
@@ -286,6 +287,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
+      return this;
+    }
+
     public Builder ackStrategy(final AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;
@@ -297,6 +304,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     public Builder autoPollIntervalMs(final long autoPollIntervalMs) {
+      // avoid interval less than or equal to zero
       this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
       return this;
     }

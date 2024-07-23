@@ -355,6 +355,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
+      return this;
+    }
+
     public Builder autoCommit(final boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;
