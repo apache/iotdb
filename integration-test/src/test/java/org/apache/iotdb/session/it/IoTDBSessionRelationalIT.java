@@ -29,7 +29,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnType;
@@ -43,9 +42,7 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
@@ -75,7 +72,77 @@ public class IoTDBSessionRelationalIT {
   // for manual debugging
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    insertRelationalTabletPerformanceTest();
+    try (ISession session =
+        new Session.Builder().host("127.0.0.1").port(6667).sqlDialect(TABLE_SQL_DIALECT).build()) {
+      session.open();
+
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS \"db1\"");
+
+      session.executeNonQueryStatement("USE \"db1\"");
+      // only one column in this table, and others should be auto-created
+      session.executeNonQueryStatement("CREATE TABLE table1 (id1 string id)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id2", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id2", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        // id 1 should be null
+        assertNull(rowRecord.getFields().get(1).getDataType());
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(30, cnt);
+    }
+    //    insertRelationalTabletPerformanceTest();
   }
 
   private static void insertRelationalTabletPerformanceTest()
@@ -162,8 +229,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
-                "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO table1 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "id:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
@@ -171,18 +238,21 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table1 (id1, attr1, m1) VALUES ('%s', '%s', %f)",
-                "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO table1 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "id:" + row, "attr:" + row, row * 1.0));
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
       }
+      assertEquals(30, cnt);
 
       // sql cannot create column
       assertThrows(
@@ -193,14 +263,6 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
                       "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
     }
-    Map<String, ChunkMetadata> chunkMetadataMap = new HashMap<>();
-    List<ChunkMetadata> valueChunkMetadataList = new ArrayList<>();
-    chunkMetadataMap.computeIfPresent(
-        "",
-        (k, v) -> {
-          valueChunkMetadataList.add(v);
-          return v;
-        });
   }
 
   @Test
@@ -269,6 +331,7 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
@@ -277,9 +340,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         // "m2" should not be present
         assertEquals(4, rowRecord.getFields().size());
-        timestamp++;
-        //        System.out.println(rowRecord);
+        cnt++;
       }
+      assertEquals(30, cnt);
     } finally {
       EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     }
@@ -326,13 +389,16 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 
@@ -438,6 +504,7 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
@@ -446,9 +513,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         // "m2" should not be present
         assertEquals(4, rowRecord.getFields().size());
-        timestamp++;
-        //        System.out.println(rowRecord);
+        cnt++;
       }
+      assertEquals(30, cnt);
     } finally {
       EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     }
@@ -511,6 +578,7 @@ public class IoTDBSessionRelationalIT {
         tablet.reset();
       }
 
+      int cnt = 0;
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -518,7 +586,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 
@@ -558,6 +628,7 @@ public class IoTDBSessionRelationalIT {
             "table1", timestamp + row, measurementIds, dataTypes, columnTypes, values);
       }
 
+      int cnt = 0;
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -565,7 +636,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 
@@ -625,15 +698,16 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
         assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
-        timestamp++;
-        //        System.out.println(rowRecord);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 
@@ -693,6 +767,7 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
@@ -701,9 +776,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
-        timestamp++;
-        //        System.out.println(rowRecord);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 
@@ -752,6 +827,7 @@ public class IoTDBSessionRelationalIT {
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
+      int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
@@ -759,7 +835,9 @@ public class IoTDBSessionRelationalIT {
         assertEquals("id2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals("attr1:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
+        cnt++;
       }
+      assertEquals(30, cnt);
     }
   }
 }
