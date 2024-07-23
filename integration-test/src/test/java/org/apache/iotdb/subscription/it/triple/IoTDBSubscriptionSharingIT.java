@@ -538,11 +538,11 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
           Assert.assertTrue(400 <= topic3Total && topic3Total <= 800);
 
           // "c5,c6|topic4"
-          // TODO: ensure that the total consumption of tsfile format data equals the written data
           Assert.assertEquals(400, getCount(receiver1, sql4) + getCount(receiver2, sql4));
 
           // "c7,c9|topic0"
           final long topic0Group3Total = rowCount70.get() + rowCount90.get();
+          // TODO: ensure that the total consumption of tsfile format data equals the written data
           Assert.assertTrue(400 <= topic0Group3Total && topic0Group3Total <= 800);
 
           // "c8|topic6"
