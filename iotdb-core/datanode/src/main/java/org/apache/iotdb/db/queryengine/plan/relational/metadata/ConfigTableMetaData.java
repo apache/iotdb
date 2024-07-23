@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
@@ -38,6 +41,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BUILD_INFO;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.VERSION;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATABASE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REGION_NUM;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REPLICATION_FACTOR;
@@ -153,6 +158,32 @@ public class ConfigTableMetaData {
                         false,
                         TsTableColumnCategory.MEASUREMENT))),
             () -> ClusterConfigTaskExecutor.getInstance().showConfigNodes(new ShowConfigNodes())));
+    CONFIG_TABLE_MAP.put(
+        "version",
+        new Pair<>(
+            new TableSchema(
+                "version",
+                Arrays.asList(
+                    new ColumnSchema(
+                        VERSION,
+                        TypeFactory.getType(TSDataType.INT32),
+                        false,
+                        TsTableColumnCategory.ID),
+                    new ColumnSchema(
+                        BUILD_INFO,
+                        TypeFactory.getType(TSDataType.TEXT),
+                        false,
+                        TsTableColumnCategory.ATTRIBUTE))),
+            () -> {
+              // Return a formal future to keep consistent with the ClusterConfigTaskExecutor
+              final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+              future.set(
+                  new ConfigTaskResult(
+                      TSStatusCode.SUCCESS_STATUS,
+                      StatementMemorySourceVisitor.constructShowVersionTsBlock(),
+                      DatasetHeader.EMPTY_HEADER));
+              return future;
+            }));
   }
 
   public static Optional<TableSchema> getTableSchema(final String tableName) {

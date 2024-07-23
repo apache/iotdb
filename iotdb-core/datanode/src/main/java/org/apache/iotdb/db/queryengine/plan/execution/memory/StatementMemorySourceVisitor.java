@@ -191,7 +191,7 @@ public class StatementMemorySourceVisitor
         constructShowVersionTsBlock(), context.getAnalysis().getRespDatasetHeader());
   }
 
-  public TsBlock constructShowVersionTsBlock() {
+  public static TsBlock constructShowVersionTsBlock() {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showVersionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
