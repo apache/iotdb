@@ -490,7 +490,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return new ShowDevice(null, getQualifiedName(ctx.tableName).toString(), null);
+    return new ShowDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 
   @Override

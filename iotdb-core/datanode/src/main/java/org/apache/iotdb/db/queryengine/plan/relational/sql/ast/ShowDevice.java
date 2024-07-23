@@ -21,17 +21,18 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 // TODO table metadata: reuse query distinct logic
 public class ShowDevice extends Statement {
 
-  private final String database;
+  private String database;
 
   private final String tableName;
 
+  // Currently unused, shall be parsed into idDeterminedPredicateList and idFuzzyPredicate on demand
   private Expression rawExpression;
 
   /**
@@ -52,19 +53,18 @@ public class ShowDevice extends Statement {
   private transient List<IDeviceID> partitionKeyList;
 
   // for sql-input show device usage
-  public ShowDevice(String database, String tableName, Expression rawExpression) {
+  public ShowDevice(final String tableName, final Expression rawExpression) {
     super(null);
-    this.database = database;
     this.tableName = tableName;
     this.rawExpression = rawExpression;
   }
 
   // for device fetch serving data query
   public ShowDevice(
-      String database,
-      String tableName,
-      List<List<Expression>> idDeterminedPredicateList,
-      Expression idFuzzyFilterList) {
+      final String database,
+      final String tableName,
+      final List<List<Expression>> idDeterminedPredicateList,
+      final Expression idFuzzyFilterList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
@@ -86,7 +86,7 @@ public class ShowDevice extends Statement {
 
   public List<List<Expression>> getIdDeterminedPredicateList() {
     if (idDeterminedPredicateList == null) {
-      idDeterminedPredicateList = new ArrayList<>();
+      idDeterminedPredicateList = Collections.singletonList(Collections.emptyList());
     }
     return idDeterminedPredicateList;
   }
