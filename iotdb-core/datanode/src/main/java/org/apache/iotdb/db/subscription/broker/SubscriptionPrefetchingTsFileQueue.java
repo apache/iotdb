@@ -349,8 +349,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             return batch;
           } catch (final Exception e) {
             LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing tsFiles from batch",
+                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFiles from batch {}",
                 this,
+                batch,
                 e);
             return batch;
           }

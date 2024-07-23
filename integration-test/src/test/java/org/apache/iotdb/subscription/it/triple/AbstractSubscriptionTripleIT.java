@@ -38,7 +38,8 @@ abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionIT {
   public void setUp() {
     super.setUp();
 
-    // enlarge thread pools core size
+    // increase the number of threads to speed up testing
+    SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(4);
     SubscriptionExecutorServiceManager.setDownstreamDataFlowExecutorCorePoolSize(4);
 
     MultiEnvFactory.createEnv(3);
