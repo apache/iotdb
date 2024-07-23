@@ -99,7 +99,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public String getPluginsDirPath(String pluginName) {
-    return this.libRoot + File.separator + INSTALL_DIR + File.separator + pluginName;
+    return this.libRoot + File.separator + INSTALL_DIR + File.separator + pluginName.toUpperCase();
   }
 
   public void removePluginFileUnderLibRoot(String pluginName, String fileName) throws IOException {
@@ -114,7 +114,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
         + File.separator
         + INSTALL_DIR
         + File.separator
-        + pluginName
+        + pluginName.toUpperCase()
         + File.separator
         + fileName;
   }

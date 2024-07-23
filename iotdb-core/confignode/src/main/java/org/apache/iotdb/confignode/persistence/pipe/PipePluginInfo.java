@@ -48,6 +48,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -241,18 +243,19 @@ public class PipePluginInfo implements SnapshotProcessor {
 
         String jarPath = manager.getPluginInstallPathV2(pluginName, jarName);
 
-        boolean needFlush = !new File(jarPath).exists();
+        boolean needFlush = !Files.exists(Paths.get(jarPath));
         if (needFlush) {
           jarPath = manager.getPluginInstallPathV1(jarName);
         }
 
-        if (!new File(jarPath).exists()) {
+        if (!Files.exists(Paths.get(jarPath))) {
           throw new PipeException(String.format("%s does not exist", jarName));
         }
 
         ByteBuffer byteBuffer = ExecutableManager.transferToBytebuffer(jarPath);
         if (needFlush) {
-          pipePluginExecutableManager.savePluginToInstallDir(byteBuffer, pluginName, jarName);
+          pipePluginExecutableManager.savePluginToInstallDir(
+              byteBuffer.duplicate(), pluginName, jarName);
         }
 
         jarList.add(byteBuffer);
