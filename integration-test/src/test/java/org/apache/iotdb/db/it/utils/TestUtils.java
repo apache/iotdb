@@ -233,15 +233,17 @@ public class TestUtils {
     }
   }
 
-  public static void tableAssertTestFail(String sql, String errMsg) {
-    tableAssertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  public static void tableAssertTestFail(String sql, String errMsg, String databaseName) {
+    tableAssertTestFail(
+        sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, databaseName);
   }
 
   public static void tableAssertTestFail(
-      String sql, String errMsg, String userName, String password) {
+      String sql, String errMsg, String userName, String password, String databaseName) {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use " + databaseName);
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {

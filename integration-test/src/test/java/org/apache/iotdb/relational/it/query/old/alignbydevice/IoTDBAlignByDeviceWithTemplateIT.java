@@ -69,7 +69,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectWildcardNoFilterTest() {
     // 1. order by device_id
-    String[] expectedHeader = new String[] {"Time", "device_id", "s3", "s1", "s2"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1", "s2"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,1,1.1,false,",
@@ -82,12 +82,12 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.005Z,d4,5555,5555.5,false,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3, s1, s2 FROM table1 order by device_id;",
+        "SELECT time, device_id, s3, s1, s2 FROM table1 order by device_id;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3", "s1"};
+    expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3", "s1"};
     retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,1.1,false,1,1.1,",
@@ -102,7 +102,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     tableResultSetEqualTest(
         "SELECT *, s1 FROM table1 order by device_id;", expectedHeader, retArray, DATABASE_NAME);
 
-    expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3"};
+    expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,1.1,false,1,",
@@ -117,7 +117,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         DATABASE_NAME);
 
     // 2. order by device_id + limit/offset
-    expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3"};
+    expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     retArray =
         new String[] {
           "1997-01-01T08:00:00.002Z,d1,2.2,false,2,", "1997-01-01T08:00:00.001Z,d2,11.1,false,11,",
@@ -141,7 +141,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d4,1111.1,true,1111,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 ORDER BY Time DESC, device_id ASC;",
+        "SELECT * FROM table1 ORDER BY time DESC, device_id ASC;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -155,7 +155,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 ORDER BY TIME DESC, device_id LIMIT 4;",
+        "SELECT * FROM table1 ORDER BY time DESC, device_id LIMIT 4;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -164,7 +164,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectMeasurementNoFilterTest() {
     // 1. order by device_id
-    String[] expectedHeader = new String[] {"Time", "device_id", "s3", "s1"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,1,1.1,",
@@ -177,7 +177,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.005Z,d4,5555,5555.5,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3, s1 FROM table1 order by device_id;",
+        "SELECT time, device_id, s3, s1 FROM table1 order by device_id;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -203,7 +203,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.002Z,d1,2,2.2,", "1997-01-01T08:00:00.001Z,d2,11,11.1,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3,s1 FROM table1 order by device_id OFFSET 1 LIMIT 2;",
+        "SELECT time, device_id, s3,s1 FROM table1 order by device_id OFFSET 1 LIMIT 2;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -221,7 +221,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d4,1111,1111.1,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3,s1 FROM table1 ORDER BY TIME DESC, device_id;",
+        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY TIME DESC, device_id;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -235,7 +235,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.002Z,d2,22,22.2,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3,s1 FROM table1 ORDER BY TIME DESC, device_id LIMIT 4;",
+        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY time DESC, device_id LIMIT 4;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -244,7 +244,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectWildcardWithFilterOrderByTimeTest() {
     // 1. order by time + time filter
-    String[] expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
@@ -266,7 +266,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY TIME DESC, device_id",
+            + "ORDER BY time DESC, device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -291,7 +291,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectWildcardWithFilterOrderByDeviceTest() {
     // 1. order by device + time filter
-    String[] expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
 
     String[] retArray =
         new String[] {
@@ -323,7 +323,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectMeasurementWithFilterOrderByTimeTest() {
     // 1. order by time + time filter
-    String[] expectedHeader = new String[] {"Time", "device_id", "s3", "s2"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s3", "s2"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.004Z,d3,44,true,",
@@ -332,7 +332,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d1,1,false,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3, s2 FROM table1 WHERE time < 5 ORDER BY TIME DESC, device_id LIMIT 4;",
+        "SELECT time, device_id, s3, s2 FROM table1 WHERE time < 5 ORDER BY time DESC, device_id LIMIT 4;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -343,7 +343,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.004Z,d3,44,true,", "1997-01-01T08:00:00.002Z,d2,22,false,",
         };
     tableResultSetEqualTest(
-        "SELECT s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+        "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
             + "ORDER BY TIME DESC, device_id;",
         expectedHeader,
         retArray,
@@ -353,7 +353,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void selectMeasurementWithFilterOrderByDeviceTest() {
     // 1. order by device + time filter
-    String[] expectedHeader = new String[] {"Time", "device_id", "s3", "s2"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s3", "s2"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d4,1111,true,",
@@ -362,7 +362,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d2,11,false,",
         };
     tableResultSetEqualTest(
-        "SELECT s3,s2 FROM table1 WHERE time < 5 ORDER BY DEVICE DESC, Time LIMIT 4",
+        "SELECT time, device_id, s3,s2 FROM table1 WHERE time < 5 ORDER BY DEVICE DESC, time LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -373,7 +373,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.004Z,d3,44,true,", "1997-01-01T08:00:00.002Z,d2,22,false,",
         };
     tableResultSetEqualTest(
-        "SELECT s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+        "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
             + "ORDER BY DEVICE DESC, Time asc",
         expectedHeader,
         retArray,
@@ -382,7 +382,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
   @Test
   public void aliasTest() {
-    String[] expectedHeader = new String[] {"aa", "bb", "s3", "s2", "Time", "device_id"};
+    String[] expectedHeader = new String[] {"aa", "bb", "s3", "s2", "time", "device_id"};
 
     String[] retArray =
         new String[] {
@@ -396,12 +396,12 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "5555.5,false,5555,false,1997-01-01T08:00:00.005Z,d4,",
         };
     tableResultSetEqualTest(
-        "SELECT s1 as aa, s2 as bb, s3, s2, Time, device_id FROM table1;",
+        "SELECT s1 as aa, s2 as bb, s3, s2, time, device_id FROM table1;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = new String[] {"Time", "device_id", "a", "b"};
+    expectedHeader = new String[] {"time", "device_id", "a", "b"};
 
     retArray =
         new String[] {
@@ -415,7 +415,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.005Z,d4,5555.5,5555.5,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s1 as a, s1 as b  FROM table1",
+        "SELECT time, device_id, s1 as a, s1 as b  FROM table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -424,7 +424,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   @Test
   public void orderByExpressionTest() {
     // 1. order by basic measurement
-    String[] expectedHeader = new String[] {"Time", "device_id", "s3", "s1", "s2"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1", "s2"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.005Z,d4,5555,5555.5,false,",
@@ -437,13 +437,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d3,null,111.1,true,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3, s1, s2 FROM table1 order by s2 asc, s1 desc, device_id;",
+        "SELECT time, device_id, s3, s1, s2 FROM table1 order by s2 asc, s1 desc, device_id;",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     // 2. select measurement is different with order by measurement
-    expectedHeader = new String[] {"Time", "device_id", "s3"};
+    expectedHeader = new String[] {"time", "device_id", "s3"};
     retArray =
         new String[] {
           "1997-01-01T08:00:00.005Z,d4,5555,",
@@ -456,7 +456,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d3,null,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3 FROM table1 order by s2 asc, s1 desc",
+        "SELECT time, device_id, s3 FROM table1 order by s2 asc, s1 desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -474,7 +474,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1997-01-01T08:00:00.001Z,d3,null,",
         };
     tableResultSetEqualTest(
-        "SELECT Time, device_id, s3 FROM root.sg1.** order by s1+s3 desc",
+        "SELECT time, device_id, s3 FROM root.sg1.** order by s1+s3 desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -485,16 +485,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
     tableAssertTestFail(
         "select s1 from table1 where s1",
-        "701: WHERE clause must evaluate to a boolean: actual type FLOAT");
+        "701: WHERE clause must evaluate to a boolean: actual type FLOAT",
+        DATABASE_NAME);
   }
 
   @Test
   public void emptyResultTest() {
-    String[] expectedHeader = new String[] {"Time", "device_id", "s1", "s2", "s3"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
 
     String[] retArray = new String[] {};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 where time>=now()-1d and time<=now() " + "ORDER BY TIME DESC",
+        "SELECT * FROM table1 where time>=now()-1d and time<=now() " + "ORDER BY time DESC",
         expectedHeader,
         retArray,
         DATABASE_NAME);

@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -101,7 +102,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   protected static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
@@ -114,7 +115,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectTest() {
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d0,101,1101,null,null,null,",
@@ -144,7 +145,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectTestWithLimitOffset1() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,999,null,null,null,null,",
@@ -163,7 +164,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectTestWithLimitOffset2() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d1,999,null,null,null,null,",
@@ -181,7 +182,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectWithDuplicatedPathsTest() {
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s0", "s1"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s0", "s1"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d0,101,101,1101,",
@@ -200,7 +201,7 @@ public class IoTDBAlignByDeviceIT {
           "1997-01-01T08:00:01.000Z,d1,888,888,null,",
         };
     tableResultSetEqualTest(
-        "select s0,s0,s1 from vehicle where device_id = 'd0' or device_id = 'd1' order by device_id",
+        "select time, device_id, s0,s0,s1 from vehicle where device_id = 'd0' or device_id = 'd1' order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -208,7 +209,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectLimitTest() {
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s0", "s1"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s0", "s1"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.002Z,d0,101,10000,40000,",
@@ -223,7 +224,7 @@ public class IoTDBAlignByDeviceIT {
           "1997-01-01T08:00:01.000Z,d0,22222,22222,55555,",
         };
     tableResultSetEqualTest(
-        "select s0,s0,s1 from vehicle order by device_id offset 1 limit 10",
+        "select time, device_id, s0,s0,s1 from vehicle order by device_id offset 1 limit 10",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -232,7 +233,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectWithValueFilterTest() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.100Z,d0,99,199,null,null,true,",
@@ -252,7 +253,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectDifferentSeriesWithValueFilterWithoutCacheTest() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.100Z,d0,99,",
@@ -264,7 +265,7 @@ public class IoTDBAlignByDeviceIT {
           "2000-01-01T00:00:00.000Z,d0,null",
         };
     tableResultSetEqualTest(
-        "select s0 from root.vehicle.d0 where s1 < 200 order by device_id",
+        "select time, device_id, s0 from root.vehicle.d0 where s1 < 200 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -273,13 +274,13 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectDifferentSeriesWithBinaryValueFilterWithoutCacheTest() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.105Z,d0,99,",
         };
     tableResultSetEqualTest(
-        "select s0 from root.vehicle.d0 where s1 < 200 and s2 > 10  order by device_id",
+        "select time, device_id, s0 from root.vehicle.d0 where s1 < 200 and s2 > 10  order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -438,7 +439,7 @@ public class IoTDBAlignByDeviceIT {
   public void unusualCaseTest2() {
 
     String[] expectedHeader =
-        new String[] {"Time", "device_id", "s0", "s0", "s1", "s0", "s1", "s2", "s3", "s4"};
+        new String[] {"time", "device_id", "s0", "s0", "s1", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d0,101,101,1101,101,1101,null,null,null,",
@@ -456,7 +457,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectWithRegularExpressionTest() {
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d0,101,1101,null,null,null,",
@@ -487,7 +488,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void selectWithNonExistMeasurementInWhereClause() {
 
-    String[] expectedHeader = new String[] {"Time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
           "1997-01-01T08:00:00.001Z,d0,101,1101,null,null,null,",

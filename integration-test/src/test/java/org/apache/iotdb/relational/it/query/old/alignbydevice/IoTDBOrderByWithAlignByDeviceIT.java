@@ -212,7 +212,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   @Test
   public void overFlowTest() {
 
-    String[] expectedHeader = new String[] {"Time", "value"};
+    String[] expectedHeader = new String[] {"time", "value"};
     String[] retArray = new String[20];
 
     long startTime = 1;
@@ -228,14 +228,14 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
 
     tableResultSetEqualTest(
-        "SELECT Time, value FROM overflow", expectedHeader, retArray, DATABASE_NAME);
+        "SELECT time, value FROM overflow", expectedHeader, retArray, DATABASE_NAME);
   }
 
   // ORDER BY DEVICE
   @Test
   public void orderByDeviceTest1() {
 
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     String[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray(String[]::new);
 
@@ -282,7 +282,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   @Test
   public void orderByDeviceTest2() {
 
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     String[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray(String[]::new);
 
@@ -330,7 +330,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   @Test
   public void orderByDeviceTest3() {
 
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     String[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray(String[]::new);
@@ -380,58 +380,58 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest1() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeTest1(
-        "SELECT * FROM weather ORDER BY TIME, city",
+        "SELECT * FROM weather ORDER BY time, city",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
-    orderByTimeTest1("SELECT * FROM weather ORDER BY TIME, city LIMIT 100", 100, expectedHeader);
+    orderByTimeTest1("SELECT * FROM weather ORDER BY time, city LIMIT 100", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeTest2() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
     orderByTimeTest1(
         "SELECT * FROM weather ORDER BY TIME ASC, city",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeTest1(
-        "SELECT * FROM weather ORDER BY TIME ASC, city ASC LIMIT 100E", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time ASC, city ASC LIMIT 100E", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeTest3() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
     orderByTimeTest3(
-        "SELECT * FROM weather ORDER BY TIME DESC, city ASC",
+        "SELECT * FROM weather ORDER BY time DESC, city ASC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeTest3(
-        "SELECT * FROM weather ORDER BY TIME DESC, city LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time DESC, city LIMIT 100", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeExpressionTest1() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeExpressionTest1(
-        "SELECT * FROM weather ORDER BY TIME DESC, precipitation DESC, city",
+        "SELECT * FROM weather ORDER BY time DESC, precipitation DESC, city",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeExpressionTest1(
-        "SELECT * FROM weather ORDER BY TIME DESC, precipitation DESC, city asc LIMIT 100",
+        "SELECT * FROM weather ORDER BY time DESC, precipitation DESC, city asc LIMIT 100",
         100,
         expectedHeader);
   }
 
   @Test
   public void orderExpressionTest1() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByExpressionTest1(
         "SELECT * FROM weather ORDER BY precipitation DESC, time DESC, city asc",
@@ -444,19 +444,19 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest1() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
-    orderByDeviceTimeTest1("SELECT * FROM weather ORDER BY city ASC,Time DESC", 10, expectedHeader);
+    orderByDeviceTimeTest1("SELECT * FROM weather ORDER BY city ASC,time DESC", 10, expectedHeader);
 
     orderByDeviceTimeTest1(
-        "SELECT * FROM weather ORDER BY city ASC,Time DESC LIMIT 100", 5, expectedHeader);
+        "SELECT * FROM weather ORDER BY city ASC,time DESC LIMIT 100", 5, expectedHeader);
   }
 
   @Test
   public void orderByDeviceTimeTest2() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
-    orderByDeviceTimeTest2("SELECT * FROM weather ORDER BY city ASC,Time ASC", 10, expectedHeader);
+    orderByDeviceTimeTest2("SELECT * FROM weather ORDER BY city ASC,time ASC", 10, expectedHeader);
 
     orderByDeviceTimeTest2(
         "SELECT * FROM weather ORDER BY city ASC,Time ASC LIMIT 100", 5, expectedHeader);
@@ -464,75 +464,75 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest3() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByDeviceTimeTest3(
-        "SELECT * FROM weather ORDER BY city DESC,Time DESC", 10, expectedHeader);
+        "SELECT * FROM weather ORDER BY city DESC,time DESC", 10, expectedHeader);
 
     orderByDeviceTimeTest3(
-        "SELECT * FROM weather ORDER BY city DESC,Time DESC LIMIT 100", 5, expectedHeader);
+        "SELECT * FROM weather ORDER BY city DESC,time DESC LIMIT 100", 5, expectedHeader);
   }
 
   @Test
   public void orderByDeviceTimeTest4() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
-    orderByDeviceTimeTest4("SELECT * FROM weather ORDER BY city DESC,Time ASC", 10, expectedHeader);
+    orderByDeviceTimeTest4("SELECT * FROM weather ORDER BY city DESC,time ASC", 10, expectedHeader);
 
     orderByDeviceTimeTest4(
-        "SELECT * FROM weather ORDER BY city DESC,Time ASC LIMIT 100", 5, expectedHeader);
+        "SELECT * FROM weather ORDER BY city DESC,time ASC LIMIT 100", 5, expectedHeader);
   }
 
   @Test
   public void orderByTimeDeviceTest1() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeDeviceTest1(
-        "SELECT * FROM weather ORDER BY Time ASC,city DESC",
+        "SELECT * FROM weather ORDER BY time ASC,city DESC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeDeviceTest1(
-        "SELECT * FROM weather ORDER BY Time ASC,city DESC LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time ASC,city DESC LIMIT 100", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeDeviceTest2() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeDeviceTest2(
-        "SELECT * FROM weather ORDER BY Time ASC,city ASC",
+        "SELECT * FROM weather ORDER BY time ASC,city ASC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeDeviceTest2(
-        "SELECT * FROM weather ORDER BY Time ASC,city ASC LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time ASC,city ASC LIMIT 100", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeDeviceTest3() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeDeviceTest3(
-        "SELECT * FROM weather ORDER BY Time DESC,city DESC",
+        "SELECT * FROM weather ORDER BY time DESC,city DESC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeDeviceTest3(
-        "SELECT * FROM weather ORDER BY Time DESC,city DESC LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time DESC,city DESC LIMIT 100", 100, expectedHeader);
   }
 
   @Test
   public void orderByTimeDeviceTest4() {
-    String[] expectedHeader = new String[] {"Time", "city", "precipitation", "temperature"};
+    String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeDeviceTest4(
-        "SELECT * FROM weather ORDER BY Time DESC,DEVICE ASC",
+        "SELECT * FROM weather ORDER BY time DESC,DEVICE ASC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeDeviceTest4(
-        "SELECT * FROM weather ORDER BY Time DESC,DEVICE ASC LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time DESC,DEVICE ASC LIMIT 100", 100, expectedHeader);
   }
 
   public static void orderByTimeTest1(String sql, int count, String[] expectedHeader) {
@@ -1544,7 +1544,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   public void optimizedPlanTest() {
 
     String[] expectedHeader =
-        new String[] {"Time", "plant_id", "device_id", "temperature", "status", "hardware"};
+        new String[] {"time", "plant_id", "device_id", "temperature", "status", "hardware"};
     String[] retArray =
         new String[] {
           "2017-10-31T16:01:00.000Z,wf02,wt02,null,true,v2",

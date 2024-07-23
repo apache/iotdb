@@ -159,7 +159,7 @@ public class TableMetadataImpl implements Metadata {
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       }
@@ -168,7 +168,7 @@ public class TableMetadataImpl implements Metadata {
 
       if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function: "
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text or string data type.");
       }
@@ -182,7 +182,7 @@ public class TableMetadataImpl implements Metadata {
               && isNumericType(argumentTypes.get(1))
               && isNumericType(argumentTypes.get(2)))) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text or string data type.");
       }

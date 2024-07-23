@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -53,7 +54,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   @Test
   public void orderByCanNotPushLimitTest() {
     // 1. value filter, can not push down LIMIT
-    String[] expectedHeader = new String[] {"Time", "device_id", "s1"};
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray = new String[] {"1997-01-01T08:00:00.003Z,d1,111,"};
     tableResultSetEqualTest(
         "SELECT * FROM table1 WHERE s1>40 ORDER BY Time LIMIT 1",
@@ -134,7 +135,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
       };
 
   protected static void insertData3() {
-    try (Connection iotDBConnection = EnvFactory.getEnv().getConnection();
+    try (Connection iotDBConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = iotDBConnection.createStatement()) {
       for (String sql : SQL_LIST) {
         statement.execute(sql);
