@@ -47,6 +47,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -55,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -241,15 +244,27 @@ public class LogicalPlanner {
   private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
     queryContext.setQueryType(QueryType.READ);
 
-    List<ColumnHeader> columnHeaderList =
-        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+    final String database =
+        Objects.isNull(statement.getDatabase())
+            ? analysis.getDatabaseName()
+            : statement.getDatabase();
+
+    if (Objects.isNull(database)) {
+      analysis.setFinishQueryAfterAnalyze();
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.METADATA_ERROR.getStatusCode(),
+              "The database must be set before show devices."));
+    }
+
+    List<ColumnHeader> columnHeaderList = getColumnHeaderList(database, statement.getTableName());
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
     TableDeviceQueryNode queryNode =
         new TableDeviceQueryNode(
             queryContext.getQueryId().genPlanNodeId(),
-            statement.getDatabase(),
+            database,
             statement.getTableName(),
             statement.getIdDeterminedPredicateList(),
             statement.getIdFuzzyPredicate(),
@@ -258,8 +273,8 @@ public class LogicalPlanner {
 
     SchemaPartition schemaPartition =
         statement.isIdDetermined()
-            ? metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList())
-            : metadata.getSchemaPartition(statement.getDatabase());
+            ? metadata.getSchemaPartition(database, statement.getPartitionKeyList())
+            : metadata.getSchemaPartition(database);
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {

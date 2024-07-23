@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+// TODO table metadata: reuse query distinct logic
 public class ShowDevice extends Statement {
 
   private final String database;
@@ -84,15 +86,12 @@ public class ShowDevice extends Statement {
 
   public List<List<Expression>> getIdDeterminedPredicateList() {
     if (idDeterminedPredicateList == null) {
-      // TODO table metadata: process raw expression input by show device sql
+      idDeterminedPredicateList = new ArrayList<>();
     }
     return idDeterminedPredicateList;
   }
 
   public Expression getIdFuzzyPredicate() {
-    if (idFuzzyPredicate == null) {
-      // TODO table metadata: process raw expression input by show device sql
-    }
     return idFuzzyPredicate;
   }
 
