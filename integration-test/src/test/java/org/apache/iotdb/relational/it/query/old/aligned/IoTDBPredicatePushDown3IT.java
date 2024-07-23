@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.relational.it.query.old.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
@@ -33,7 +34,7 @@ import org.junit.runner.RunWith;
 @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedSeriesQuery4IT extends IoTDBAlignedSeriesQueryIT {
+public class IoTDBPredicatePushDown3IT extends IoTDBPredicatePushDownIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -44,13 +45,13 @@ public class IoTDBAlignedSeriesQuery4IT extends IoTDBAlignedSeriesQueryIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3)
-        .setDegreeOfParallelism(4);
+        .setMaxNumberOfPointsInPage(3);
     EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
