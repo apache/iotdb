@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -69,12 +68,8 @@ public abstract class LogWriter implements ILogWriter {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
-    if (!logFile.exists() || logFile.length() == 0) {
-      this.logChannel.write(
-          ByteBuffer.wrap(
-              version == WALFileVersion.V1
-                  ? WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8)
-                  : WALWriter.MAGIC_STRING_V2.getBytes(StandardCharsets.UTF_8)));
+    if ((!logFile.exists() || logFile.length() == 0) && version == WALFileVersion.V2) {
+      this.logChannel.write(ByteBuffer.wrap(version.getVersionBytes()));
     }
   }
 
