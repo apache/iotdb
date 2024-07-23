@@ -243,8 +243,8 @@ public class PipePluginInfo implements SnapshotProcessor {
 
         String jarPath = manager.getPluginInstallPathV2(pluginName, jarName);
 
-        boolean isJarExistedInV2Dir = !Files.exists(Paths.get(jarPath));
-        if (isJarExistedInV2Dir) {
+        boolean isJarExistedInV2Dir = Files.exists(Paths.get(jarPath));
+        if (!isJarExistedInV2Dir) {
           jarPath = manager.getPluginInstallPathV1(jarName);
         }
 
@@ -253,7 +253,7 @@ public class PipePluginInfo implements SnapshotProcessor {
         }
 
         ByteBuffer byteBuffer = ExecutableManager.transferToBytebuffer(jarPath);
-        if (isJarExistedInV2Dir) {
+        if (!isJarExistedInV2Dir) {
           pipePluginExecutableManager.savePluginToInstallDir(
               byteBuffer.duplicate(), pluginName, jarName);
         }
