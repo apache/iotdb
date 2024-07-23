@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,7 +42,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignedOffsetLimitPushDownIT {
@@ -53,19 +51,20 @@ public class IoTDBAlignedOffsetLimitPushDownIT {
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE IF NOT EXISTS db");
       statement.execute(USE_DB);
+      statement.execute(
+          "CREATE TABLE table0 (device string id, s1 double measurement, s2 double measurement)");
 
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',1,1,1)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',2,2,2)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',3,3,3)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',4,4,4)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',5,5,null)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',6,6,null)");
-      statement.addBatch("insert into table0(device,time,s1,s2) values('d1',7,7,7)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',1,1,1)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',2,2,2)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',3,3,3)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',4,4,4)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',5,5,null)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',6,6,null)");
+      statement.execute("insert into table0(device,time,s1,s2) values('d1',7,7,7)");
 
-      statement.addBatch("flush");
-
-      statement.executeBatch();
+      statement.execute("flush");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -84,12 +83,12 @@ public class IoTDBAlignedOffsetLimitPushDownIT {
 
     String[] columnNames = {"s1"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-
+      statement.execute(USE_DB);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1 from table0 where device='d1' and time >= 3 limit 2;")) {
+              "select Time,s1 from table0 where device='d1' and time >= 3 limit 2")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -99,7 +98,7 @@ public class IoTDBAlignedOffsetLimitPushDownIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          builder.append(resultSet.getString(1));
+          builder.append(resultSet.getLong(1));
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             builder.append(",").append(resultSet.getString(index));
@@ -123,12 +122,12 @@ public class IoTDBAlignedOffsetLimitPushDownIT {
 
     String[] columnNames = {"s1", "s2"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-
+      statement.execute(USE_DB);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from table0 where device='d1' and time >= 1 offset 5;")) {
+              "select Time,s1,s2 from table0 where device='d1' and time >= 1 offset 5")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -138,7 +137,7 @@ public class IoTDBAlignedOffsetLimitPushDownIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          builder.append(resultSet.getString(1));
+          builder.append(resultSet.getLong(1));
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             builder.append(",").append(resultSet.getString(index));

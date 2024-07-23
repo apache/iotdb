@@ -48,7 +48,7 @@ public class IoTDBPredicatePushDownIT {
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initClusterEnvironment();
-    AlignedWriteUtil.insertData();
+    TableWriteUtil.insertData();
   }
 
   @AfterClass
