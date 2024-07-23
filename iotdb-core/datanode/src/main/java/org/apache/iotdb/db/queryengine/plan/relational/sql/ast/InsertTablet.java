@@ -52,7 +52,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public String getDatabase() {
-    return context.getSession().getDatabaseName().get();
+    return context.getSession().getDatabaseName().orElse(null);
   }
 
   @Override

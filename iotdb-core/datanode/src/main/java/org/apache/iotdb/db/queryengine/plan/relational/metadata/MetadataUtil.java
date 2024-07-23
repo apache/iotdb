@@ -38,6 +38,8 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class MetadataUtil {
+  private static final String CONFIG_VIRTUAL_DATABASE = "__config_query";
+
   private MetadataUtil() {}
 
   public static void checkTableName(String databaseName, Optional<String> tableName) {
@@ -67,7 +69,10 @@ public class MetadataUtil {
   }
 
   public static QualifiedObjectName createQualifiedObjectName(
-      SessionInfo session, Node node, QualifiedName name) {
+      final SessionInfo session,
+      final Node node,
+      final QualifiedName name,
+      final boolean isConfigTable) {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 3) {
@@ -77,23 +82,29 @@ public class MetadataUtil {
     List<String> parts = Lists.reverse(name.getParts());
     String objectName = parts.get(0);
     String databaseName =
-        (parts.size() > 2)
-            ? parts.get(2)
-            : session
-                .getDatabaseName()
-                .orElseThrow(
-                    () ->
-                        new SemanticException(
-                            "Database must be specified when session database is not set"));
+        (parts.size() > 2) ? parts.get(2) : getSessionDatabaseName(session, isConfigTable);
 
     return new QualifiedObjectName(databaseName, objectName);
+  }
+
+  private static String getSessionDatabaseName(
+      final SessionInfo session, final boolean isConfigTable) {
+    final Optional<String> databaseName = session.getDatabaseName();
+    if (!databaseName.isPresent()) {
+      if (isConfigTable) {
+        return CONFIG_VIRTUAL_DATABASE;
+      }
+      throw new SemanticException("Database must be specified when session database is not set");
+    }
+    return databaseName.get();
   }
 
   public static boolean tableExists(Metadata metadata, SessionInfo session, String table) {
     if (!session.getDatabaseName().isPresent()) {
       return false;
     }
-    QualifiedObjectName name = new QualifiedObjectName(session.getDatabaseName().get(), table);
+    QualifiedObjectName name =
+        new QualifiedObjectName(session.getDatabaseName().orElse(null), table);
     return metadata.tableExists(name);
   }
 

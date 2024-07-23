@@ -1493,7 +1493,9 @@ public class StatementAnalyzer {
         }
       }
 
-      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table, table.getName());
+      QualifiedObjectName name =
+          createQualifiedObjectName(
+              sessionContext, table, table.getName(), analysis.isConfigQuery());
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
