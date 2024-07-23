@@ -97,7 +97,9 @@ public class SubscriptionPipeTsFileEventBatch {
     return events;
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + "}";
+    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + ", isSealed=" + isSealed + "}";
   }
 }

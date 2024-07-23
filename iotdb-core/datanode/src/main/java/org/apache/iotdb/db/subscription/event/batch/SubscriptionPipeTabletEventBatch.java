@@ -168,6 +168,8 @@ public class SubscriptionPipeTabletEventBatch {
     return Collections.emptyList();
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
   public String toString() {
     return "SubscriptionPipeTabletEventBatch{enrichedEvents="
         + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
@@ -181,6 +183,8 @@ public class SubscriptionPipeTabletEventBatch {
         + maxBatchSizeInBytes
         + ", totalBufferSize="
         + totalBufferSize
+        + ", isSealed="
+        + isSealed
         + "}";
   }
 }
