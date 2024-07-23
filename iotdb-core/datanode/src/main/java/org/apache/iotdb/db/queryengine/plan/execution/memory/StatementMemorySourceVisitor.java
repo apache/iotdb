@@ -187,11 +187,16 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowVersion(
       ShowVersionStatement showVersionStatement, StatementMemorySourceContext context) {
-    List<TSDataType> outputDataTypes =
+    return new StatementMemorySource(
+        constructShowVersionTsBlock(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  public TsBlock constructShowVersionTsBlock() {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showVersionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    final TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder
         .getColumnBuilder(0)
@@ -200,8 +205,7 @@ public class StatementMemorySourceVisitor
         .getColumnBuilder(1)
         .writeBinary(new Binary(IoTDBConstant.BUILD_INFO, TSFileConfig.STRING_CHARSET));
     tsBlockBuilder.declarePosition();
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+    return tsBlockBuilder.build();
   }
 
   @Override

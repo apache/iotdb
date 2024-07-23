@@ -299,10 +299,6 @@ setSystemStatusStatement
     : SET SYSTEM TO (READONLY | RUNNING) localOrClusterMode?
     ;
 
-showVersionStatement
-    : SHOW VERSION
-    ;
-
 showQueriesStatement
     : SHOW (QUERIES | QUERY PROCESSLIST)
         (WHERE where=booleanExpression)?
