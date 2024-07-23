@@ -40,11 +40,14 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +62,8 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2Subscription.class})
 public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionSharingIT.class);
 
   private final String topicNamePrefix = "topic_";
   private final String databasePrefix = "root.test.g_";
@@ -468,6 +473,37 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
   }
 
+  @Override
+  @After
+  public void tearDown() {
+    try {
+      LOGGER.info(databasePrefix + "1.d_0:[src]{}", getCount(sender, sql1));
+      LOGGER.info(databasePrefix + "1.d_0:[dest1]{}", getCount(receiver1, sql1));
+      LOGGER.info(databasePrefix + "1.d_0:[dest2]{}", getCount(receiver2, sql1));
+
+      LOGGER.info(databasePrefix + "2.d_0:[src]{}", getCount(sender, sql2));
+      LOGGER.info(databasePrefix + "2.d_0:[dest1]{}", getCount(receiver1, sql2));
+      LOGGER.info(databasePrefix + "2.d_0:[dest2]{}", getCount(receiver2, sql2));
+
+      LOGGER.info(databasePrefix + "3.d_0:[src]{}", getCount(sender, sql3));
+      LOGGER.info(databasePrefix + "3.d_0:[dest1]{}", getCount(receiver1, sql3));
+      LOGGER.info(databasePrefix + "3.d_0:[dest2]{}", getCount(receiver2, sql3));
+
+      LOGGER.info(databasePrefix + "4.d_0:[src]{}", getCount(sender, sql4));
+      LOGGER.info(databasePrefix + "4.d_0:[dest1]{}", getCount(receiver1, sql4));
+      LOGGER.info(databasePrefix + "4.d_0:[dest2]{}", getCount(receiver2, sql4));
+    } catch (final Exception ignored) {
+    }
+
+    LOGGER.info("rowCount00.get()={}", rowCount00.get());
+    LOGGER.info("rowCount10.get()={}", rowCount10.get());
+    LOGGER.info("rowCount70.get()={}", rowCount70.get());
+    LOGGER.info("rowCount90.get()={}", rowCount90.get());
+    LOGGER.info("rowCount6.get()={}", rowCount6.get());
+
+    super.tearDown();
+  }
+
   @Test
   public void testSubscriptionSharing() {
     createTopics();
@@ -491,6 +527,10 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
           Assert.assertEquals(400, rowCount70.get() + rowCount90.get());
           // "c8,topic6"
           Assert.assertEquals(5, rowCount6.get());
+
+          LOGGER.info(
+              "getCount(receiver1, sql3) + getCount(receiver2, sql3) = {}",
+              getCount(receiver1, sql3) + getCount(receiver2, sql3));
         });
   }
 
