@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ConfigTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 
 import com.google.common.util.concurrent.SettableFuture;
