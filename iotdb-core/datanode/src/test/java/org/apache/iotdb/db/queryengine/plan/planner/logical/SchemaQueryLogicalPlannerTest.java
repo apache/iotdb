@@ -480,8 +480,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals(
-          "root.ln.wf01.wt01", showTimeSeriesNode.getPath().getIDeviceID().toString());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertEquals(
           SchemaFilterType.TAGS_FILTER, showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
@@ -538,8 +536,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals(
-          "root.ln.wf01.wt01", showTimeSeriesNode.getPath().getIDeviceID().toString());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS,

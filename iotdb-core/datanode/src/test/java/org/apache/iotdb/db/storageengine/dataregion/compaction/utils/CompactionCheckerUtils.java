@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -322,7 +323,7 @@ public class CompactionCheckerUtils {
       throws IllegalPathException {
     Map<IDeviceID, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
-      PartialPath partialPath = new PartialPath(dataEntry.getKey());
+      PartialPath partialPath = new MeasurementPath(dataEntry.getKey());
       IDeviceID device = partialPath.getIDeviceID();
       long[] statistics =
           devicePointNumMap.computeIfAbsent(
