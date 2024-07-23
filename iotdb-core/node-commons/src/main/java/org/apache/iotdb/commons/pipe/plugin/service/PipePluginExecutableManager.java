@@ -60,7 +60,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       final String md5 =
           DigestUtils.md5Hex(
               Files.newInputStream(
-                  Paths.get(getPluginInstallPath(pluginName, pipePluginMeta.getJarName()))));
+                  Paths.get(getPluginInstallPathV2(pluginName, pipePluginMeta.getJarName()))));
       // Save the md5 in a txt under trigger temporary lib
       saveTextAsFileUnderTemporaryRoot(md5, md5FilePath);
       return md5.equals(pipePluginMeta.getJarMD5());
@@ -95,7 +95,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public boolean hasPluginFileUnderInstallDir(String pluginName, String fileName) {
-    return Files.exists(Paths.get(getPluginInstallPath(pluginName, fileName)));
+    return Files.exists(Paths.get(getPluginInstallPathV2(pluginName, fileName)));
   }
 
   public String getPluginsDirPath(String pluginName) {
@@ -103,13 +103,13 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public void removePluginFileUnderLibRoot(String pluginName, String fileName) throws IOException {
-    String pluginPath = getPluginInstallPath(pluginName, fileName);
+    String pluginPath = getPluginInstallPathV2(pluginName, fileName);
     Path path = Paths.get(pluginPath);
     Files.deleteIfExists(path);
     Files.deleteIfExists(path.getParent());
   }
 
-  public String getPluginInstallPath(String pluginName, String fileName) {
+  public String getPluginInstallPathV2(String pluginName, String fileName) {
     return this.libRoot
         + File.separator
         + INSTALL_DIR
@@ -117,6 +117,10 @@ public class PipePluginExecutableManager extends ExecutableManager {
         + pluginName
         + File.separator
         + fileName;
+  }
+
+  public String getPluginInstallPathV1(String fileName) {
+    return this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
   }
 
   /**
@@ -127,7 +131,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
    */
   public void savePluginToInstallDir(ByteBuffer byteBuffer, String pluginName, String fileName)
       throws IOException {
-    String destination = getPluginInstallPath(pluginName, fileName);
+    String destination = getPluginInstallPathV2(pluginName, fileName);
     saveToDir(byteBuffer, destination);
   }
 }

@@ -231,15 +231,31 @@ public class PipePluginInfo implements SnapshotProcessor {
   public JarResp getPipePluginJar(final GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       final List<ByteBuffer> jarList = new ArrayList<>();
+      final PipePluginExecutableManager manager = PipePluginExecutableManager.getInstance();
+
       for (final String jarName : getPipePluginJarPlan.getJarNames()) {
         String pluginName = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         if (pluginName == null) {
           throw new PipeException(String.format("%s does not exist", jarName));
         }
-        jarList.add(
-            ExecutableManager.transferToBytebuffer(
-                PipePluginExecutableManager.getInstance()
-                    .getPluginInstallPath(pluginName, jarName)));
+
+        String jarPath = manager.getPluginInstallPathV2(pluginName, jarName);
+
+        boolean needFlush = !new File(jarPath).exists();
+        if (needFlush) {
+          jarPath = manager.getPluginInstallPathV1(jarName);
+        }
+
+        if (!new File(jarPath).exists()) {
+          throw new PipeException(String.format("%s does not exist", jarName));
+        }
+
+        ByteBuffer byteBuffer = ExecutableManager.transferToBytebuffer(jarPath);
+        if (needFlush) {
+          pipePluginExecutableManager.savePluginToInstallDir(byteBuffer, pluginName, jarName);
+        }
+
+        jarList.add(byteBuffer);
       }
       return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
     } catch (final Exception e) {
