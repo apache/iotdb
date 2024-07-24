@@ -119,7 +119,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     this.root = root;
 
     boolean usingDFA = false;
-    // Use DFA if there are ** and no regex node in pathPattern
+    // Use DFA if there are ** and no other regex nodes in pathPattern
     for (String pathNode : pathPattern.getNodes()) {
       if (pathNode == null) {
         continue;
