@@ -23,58 +23,44 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DeviceIdFilter extends SchemaFilter {
+public class NotFilter extends SchemaFilter {
 
-  // id column index
-  // when used in partialPath, the index of node in path shall be [this.index + 3]
-  // since a partialPath start with {root, db, table}
-  private final int index;
+  private final SchemaFilter child;
 
-  private final String value;
-
-  public DeviceIdFilter(int index, String value) {
-    this.index = index;
-    this.value = value;
+  public NotFilter(final SchemaFilter child) {
+    // child should not be null
+    this.child = child;
   }
 
-  public DeviceIdFilter(ByteBuffer byteBuffer) {
-    this.index = ReadWriteIOUtils.readInt(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
+  public NotFilter(final ByteBuffer byteBuffer) {
+    this.child = SchemaFilter.deserialize(byteBuffer);
   }
 
-  public int getIndex() {
-    return index;
-  }
-
-  public String getValue() {
-    return value;
+  public SchemaFilter getChild() {
+    return child;
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceIdFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitNotFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ID;
+    return SchemaFilterType.NOT;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(index, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
+  public void serialize(final ByteBuffer byteBuffer) {
+    child.serialize(byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(index, stream);
-    ReadWriteIOUtils.write(value, stream);
+  public void serialize(final DataOutputStream stream) throws IOException {
+    child.serialize(stream);
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -29,7 +30,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
@@ -47,17 +50,27 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+
 public class ConvertSchemaPredicateToFilterVisitor
     extends PredicateVisitor<SchemaFilter, ConvertSchemaPredicateToFilterVisitor.Context> {
 
   @Override
-  protected SchemaFilter visitInPredicate(InPredicate node, Context context) {
-    return visitExpression(node, context);
+  protected SchemaFilter visitInPredicate(final InPredicate node, final Context context) {
+    final Expression valueList = node.getValueList();
+    checkArgument(valueList instanceof InListExpression);
+    final List<Expression> values = ((InListExpression) valueList).getValues();
+    for (final Expression value : values) {
+      checkArgument(value instanceof Literal);
+    }
+
+    return null;
   }
 
   @Override
-  protected SchemaFilter visitIsNullPredicate(IsNullPredicate node, Context context) {
-    String columnName = ((SymbolReference) node.getValue()).getName();
+  protected SchemaFilter visitIsNullPredicate(final IsNullPredicate node, final Context context) {
+    final String columnName = ((SymbolReference) node.getValue()).getName();
     if (context
         .table
         .getColumnSchema(columnName)
@@ -70,17 +83,19 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
+  protected SchemaFilter visitIsNotNullPredicate(
+      final IsNotNullPredicate node, final Context context) {
+    return new NotFilter(new IsNullPredicate(node.getValue()).accept(this, context));
+  }
+
+  @Override
+  protected SchemaFilter visitLikePredicate(final LikePredicate node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitLikePredicate(LikePredicate node, Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected SchemaFilter visitLogicalExpression(LogicalExpression node, Context context) {
+  protected SchemaFilter visitLogicalExpression(
+      final LogicalExpression node, final Context context) {
     if (node.getOperator() != LogicalExpression.Operator.OR || node.getTerms().size() != 2) {
       throw new IllegalStateException(
           "Operator is " + node.getOperator() + ", operand size is " + node.getTerms().size());
@@ -91,25 +106,22 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitNotExpression(NotExpression node, Context context) {
-    return visitExpression(node, context);
+  protected SchemaFilter visitNotExpression(final NotExpression node, final Context context) {
+    return new NotFilter(node.getValue().accept(this, context));
   }
 
   @Override
-  protected SchemaFilter visitComparisonExpression(ComparisonExpression node, Context context) {
-    String columnName;
-    String value;
+  protected SchemaFilter visitComparisonExpression(
+      final ComparisonExpression node, final Context context) {
+    final String columnName;
+    final String value;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      if (!(node.getRight() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
-      }
+      checkArgument(isSymbolReference(node.getRight()));
       columnName = ((SymbolReference) (node.getRight())).getName();
     } else {
       value = ((StringLiteral) (node.getRight())).getValue();
-      if (!(node.getLeft() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
-      }
+      checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
     }
     if (context

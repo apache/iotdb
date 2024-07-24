@@ -39,44 +39,34 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.SchemaPredicateUtil.getColumnName;
 
-// return whether input expression has attribute column predicate
+// Return whether input expression can not match a precise id node
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
   @Override
-  protected Boolean visitInPredicate(InPredicate node, Context context) {
-    return visitExpression(node, context);
+  protected Boolean visitInPredicate(final InPredicate node, final Context context) {
+    return processColumn(((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
-  protected Boolean visitIsNullPredicate(IsNullPredicate node, Context context) {
-    String columnName = ((SymbolReference) node.getValue()).getName();
-    return context
-        .table
-        .getColumnSchema(columnName)
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+  protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Context context) {
+    return processColumn(((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
-    String columnName = ((SymbolReference) node.getValue()).getName();
-    return context
-        .table
-        .getColumnSchema(columnName)
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+  protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Context context) {
+    return processColumn(((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
-  protected Boolean visitLikePredicate(LikePredicate node, Context context) {
-    return visitExpression(node, context);
+  protected Boolean visitLikePredicate(final LikePredicate node, final Context context) {
+    return processColumn(((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
-  protected Boolean visitLogicalExpression(LogicalExpression node, Context context) {
+  protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
     for (Expression expression : node.getTerms()) {
-      if (this.process(expression, context)) {
+      if (Boolean.TRUE.equals(this.process(expression, context))) {
         return true;
       }
     }
@@ -84,43 +74,49 @@ public class CheckSchemaPredicateVisitor
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression node, Context context) {
+  protected Boolean visitNotExpression(final NotExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected Boolean visitComparisonExpression(ComparisonExpression node, Context context) {
-    String columnName = getColumnName(node);
+  protected Boolean visitComparisonExpression(
+      final ComparisonExpression node, final Context context) {
+    return processColumn(getColumnName(node), context);
+  }
+
+  @Override
+  protected Boolean visitSimpleCaseExpression(
+      final SimpleCaseExpression node, final Context context) {
+    return visitExpression(node, context);
+  }
+
+  @Override
+  protected Boolean visitSearchedCaseExpression(
+      final SearchedCaseExpression node, final Context context) {
+    return visitExpression(node, context);
+  }
+
+  @Override
+  protected Boolean visitIfExpression(final IfExpression node, final Context context) {
+    return visitExpression(node, context);
+  }
+
+  @Override
+  protected Boolean visitNullIfExpression(final NullIfExpression node, final Context context) {
+    return visitExpression(node, context);
+  }
+
+  @Override
+  protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Context context) {
+    return visitExpression(node, context);
+  }
+
+  private boolean processColumn(final String columnName, final Context context) {
     return context
         .table
         .getColumnSchema(columnName)
         .getColumnCategory()
         .equals(TsTableColumnCategory.ATTRIBUTE);
-  }
-
-  @Override
-  protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitIfExpression(IfExpression node, Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitNullIfExpression(NullIfExpression node, Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate node, Context context) {
-    return visitExpression(node, context);
   }
 
   public static class Context {

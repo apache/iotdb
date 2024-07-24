@@ -54,7 +54,7 @@ public class SchemaPredicateUtil {
       if (expression == null) {
         continue;
       }
-      if (expression.accept(visitor, context)) {
+      if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
         idFuzzyList.add(expression);
       } else {
         idDeterminedList.add(expression);

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.MultiDeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
@@ -58,8 +60,8 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static SchemaFilter deserialize(ByteBuffer byteBuffer) {
-    SchemaFilterType type =
+  public static SchemaFilter deserialize(final ByteBuffer byteBuffer) {
+    final SchemaFilterType type =
         SchemaFilterType.getSchemaFilterType(ReadWriteIOUtils.readShort(byteBuffer));
     switch (type) {
       case NULL:
@@ -78,8 +80,12 @@ public abstract class SchemaFilter {
         return new TemplateFilter(byteBuffer);
       case OR:
         return new OrFilter(byteBuffer);
+      case NOT:
+        return new NotFilter(byteBuffer);
       case DEVICE_ID:
         return new DeviceIdFilter(byteBuffer);
+      case MULTI_DEVICE_ID:
+        return new MultiDeviceIdFilter(byteBuffer);
       case DEVICE_ATTRIBUTE:
         return new DeviceAttributeFilter(byteBuffer);
       default:

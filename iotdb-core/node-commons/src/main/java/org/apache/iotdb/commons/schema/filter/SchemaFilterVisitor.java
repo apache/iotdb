@@ -16,12 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.MultiDeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
@@ -69,15 +72,23 @@ public abstract class SchemaFilterVisitor<C> {
     return visitFilter(templateFilter, context);
   }
 
-  public boolean visitAndFilter(AndFilter andFilter, C context) {
+  public final boolean visitAndFilter(final AndFilter andFilter, final C context) {
     return andFilter.getLeft().accept(this, context) && andFilter.getRight().accept(this, context);
   }
 
-  public boolean visitOrFilter(OrFilter orFilter, C context) {
+  public final boolean visitOrFilter(final OrFilter orFilter, final C context) {
     return orFilter.getLeft().accept(this, context) || orFilter.getRight().accept(this, context);
   }
 
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, C context) {
+  public final boolean visitNotFilter(final NotFilter notFilter, final C context) {
+    return !notFilter.getChild().accept(this, context);
+  }
+
+  public boolean visitDeviceIdFilter(final DeviceIdFilter filter, final C context) {
+    return visitFilter(filter, context);
+  }
+
+  public boolean visitMultiDeviceIdFilter(final MultiDeviceIdFilter filter, final C context) {
     return visitFilter(filter, context);
   }
 

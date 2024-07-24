@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.MultiDeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -65,12 +66,23 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, IDeviceSchemaInfo info) {
-    String[] nodes = info.getPartialPath().getNodes();
+  public boolean visitDeviceIdFilter(final DeviceIdFilter filter, final IDeviceSchemaInfo info) {
+    final String[] nodes = info.getPartialPath().getNodes();
     if (nodes.length < filter.getIndex() + 3) {
       return false;
     } else {
       return Objects.equals(nodes[filter.getIndex() + 3], filter.getValue());
+    }
+  }
+
+  @Override
+  public boolean visitMultiDeviceIdFilter(
+      final MultiDeviceIdFilter filter, final IDeviceSchemaInfo info) {
+    final String[] nodes = info.getPartialPath().getNodes();
+    if (nodes.length < filter.getIndex() + 3) {
+      return false;
+    } else {
+      return filter.getValues().contains(nodes[filter.getIndex() + 3]);
     }
   }
 

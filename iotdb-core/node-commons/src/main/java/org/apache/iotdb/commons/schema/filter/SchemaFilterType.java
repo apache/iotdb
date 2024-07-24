@@ -30,6 +30,8 @@ public enum SchemaFilterType {
   DEVICE_ATTRIBUTE((short) 8),
 
   OR((short) 9),
+  NOT((short) 10),
+  MULTI_DEVICE_ID((short) 11),
   ;
 
   private final short code;
@@ -64,6 +66,10 @@ public enum SchemaFilterType {
         return DEVICE_ATTRIBUTE;
       case 9:
         return OR;
+      case 10:
+        return NOT;
+      case 11:
+        return MULTI_DEVICE_ID;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }

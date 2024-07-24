@@ -28,53 +28,67 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 
-public class DeviceIdFilter extends SchemaFilter {
+/**
+ * This class can be seen as a combination of {@link DeviceIdFilter} & {@link OrFilter}. Here we
+ * construct a new filter to avoid too deep stack and to ensure performance.
+ */
+public class MultiDeviceIdFilter extends SchemaFilter {
 
-  // id column index
-  // when used in partialPath, the index of node in path shall be [this.index + 3]
-  // since a partialPath start with {root, db, table}
   private final int index;
 
-  private final String value;
+  private final Set<String> values;
 
-  public DeviceIdFilter(int index, String value) {
+  public MultiDeviceIdFilter(int index, Set<String> values) {
     this.index = index;
-    this.value = value;
+    this.values = values;
   }
 
-  public DeviceIdFilter(ByteBuffer byteBuffer) {
+  public MultiDeviceIdFilter(final ByteBuffer byteBuffer) {
     this.index = ReadWriteIOUtils.readInt(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
+
+    final int length = ReadWriteIOUtils.readInt(byteBuffer);
+    this.values = new HashSet<>();
+    for (int i = 0; i < length; ++i) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
   }
 
   public int getIndex() {
     return index;
   }
 
-  public String getValue() {
-    return value;
+  public Set<String> getValues() {
+    return values;
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceIdFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitMultiDeviceIdFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ID;
+    return SchemaFilterType.MULTI_DEVICE_ID;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(index, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(index, stream);
-    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, stream);
+    }
   }
 }
