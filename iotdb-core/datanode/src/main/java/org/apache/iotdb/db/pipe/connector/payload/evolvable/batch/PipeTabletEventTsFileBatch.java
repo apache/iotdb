@@ -216,7 +216,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     // Sort the devices by device id
-    List<String> devices = new ArrayList<>(device2Tablets.keySet());
+    final List<String> devices = new ArrayList<>(device2Tablets.keySet());
     devices.sort(Comparator.naturalOrder());
 
     // Replace ArrayList with LinkedList to improve performance
@@ -311,8 +311,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
-      LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
-      Map<String, Boolean> device2Aligned)
+      final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
+      final Map<String, Boolean> device2Aligned)
       throws IOException, WriteProcessException {
     final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
         device2TabletsLinkedList.entrySet().iterator();
