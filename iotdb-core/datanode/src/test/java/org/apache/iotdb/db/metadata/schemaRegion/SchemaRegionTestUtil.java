@@ -430,8 +430,7 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(
-      ISchemaRegion schemaRegion, String table, List<String[]> deviceIdList)
-      throws MetadataException {
+      ISchemaRegion schemaRegion, String table, List<String[]> deviceIdList) {
     List<IDeviceSchemaInfo> result = new ArrayList<>();
     try (ISchemaReader<IDeviceSchemaInfo> reader =
         schemaRegion.getTableDeviceReader(table, new ArrayList<>(deviceIdList))) {

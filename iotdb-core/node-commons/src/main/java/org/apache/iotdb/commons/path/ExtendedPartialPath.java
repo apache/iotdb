@@ -42,4 +42,8 @@ public class ExtendedPartialPath extends PartialPath {
   public void addMatchFunction(final int index, final Function<String, Boolean> matchFunction) {
     matchFunctions.computeIfAbsent(index, k -> new ArrayList<>()).add(matchFunction);
   }
+
+  public void clearMatchFunction(final int index) {
+    matchFunctions.computeIfAbsent(index, k -> new ArrayList<>()).clear();
+  }
 }
