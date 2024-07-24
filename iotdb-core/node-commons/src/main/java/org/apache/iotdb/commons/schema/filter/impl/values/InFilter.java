@@ -38,27 +38,18 @@ import java.util.Set;
  */
 public class InFilter extends SchemaFilter {
 
-  private final String key;
-
   private final Set<String> values;
 
-  public InFilter(String key, Set<String> values) {
-    this.key = key;
+  public InFilter(Set<String> values) {
     this.values = values;
   }
 
   public InFilter(final ByteBuffer byteBuffer) {
-    this.key = ReadWriteIOUtils.readString(byteBuffer);
-
     final int length = ReadWriteIOUtils.readInt(byteBuffer);
     this.values = new HashSet<>();
     for (int i = 0; i < length; ++i) {
       values.add(ReadWriteIOUtils.readString(byteBuffer));
     }
-  }
-
-  public String getKey() {
-    return key;
   }
 
   public Set<String> getValues() {
@@ -77,7 +68,6 @@ public class InFilter extends SchemaFilter {
 
   @Override
   public void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(values.size(), byteBuffer);
     for (final String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);
@@ -86,7 +76,6 @@ public class InFilter extends SchemaFilter {
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(key, stream);
     ReadWriteIOUtils.write(values.size(), stream);
     for (final String value : values) {
       ReadWriteIOUtils.write(value, stream);

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.schema.filter.impl;
 
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import java.util.ArrayList;
@@ -53,10 +55,17 @@ public class DeviceFilterUtil {
       nodes[0] = PATH_ROOT;
       nodes[1] = database;
       nodes[2] = tableName;
+      final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
       for (SchemaFilter schemaFilter : idFilterList) {
         if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
-          PreciseFilter preciseFilter = (PreciseFilter) schemaFilter;
-          nodes[preciseFilter.getIndex() + 3] = preciseFilter.getValue();
+          final int index = ((IdFilter) schemaFilter).getIndex() + 3;
+          final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
+          if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+            nodes[index] = ((PreciseFilter) ((IdFilter) schemaFilter).getChild()).getValue();
+          } else {
+            partialPath.setMatchFunction(
+                index, node -> childFilter.accept(StringValueFilterVisitor.getInstance(), node));
+          }
         } else {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");
         }

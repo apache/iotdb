@@ -26,6 +26,10 @@ import java.util.function.Function;
 public class ExtendedPartialPath extends PartialPath {
   final Map<Integer, Function<String, Boolean>> matchFunctions = new HashMap<>();
 
+  public ExtendedPartialPath(final String[] nodes) {
+    super(nodes);
+  }
+
   public Function<String, Boolean> getMatchFunction(final int index) {
     if (!matchFunctions.containsKey(index)) {
       return node -> true;

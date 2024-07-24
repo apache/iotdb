@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -49,9 +52,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class ConvertSchemaPredicateToFilterVisitor
     extends PredicateVisitor<SchemaFilter, ConvertSchemaPredicateToFilterVisitor.Context> {
@@ -65,32 +70,36 @@ public class ConvertSchemaPredicateToFilterVisitor
       checkArgument(value instanceof Literal);
     }
 
-    return null;
+    return wrapIdOrAttributeFilter(
+        new InFilter(
+            values.stream()
+                .map(value -> ((StringLiteral) value).getValue())
+                .collect(Collectors.toSet())),
+        ((SymbolReference) node.getValue()).getName(),
+        context);
   }
 
   @Override
   protected SchemaFilter visitIsNullPredicate(final IsNullPredicate node, final Context context) {
-    final String columnName = ((SymbolReference) node.getValue()).getName();
-    if (context
-        .table
-        .getColumnSchema(columnName)
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ID)) {
-      return new PreciseFilter(context.idColumnIndexMap.get(columnName), null);
-    } else {
-      return new DeviceAttributeFilter(columnName, null);
-    }
+    return wrapIdOrAttributeFilter(
+        new PreciseFilter((String) null), ((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
   protected SchemaFilter visitIsNotNullPredicate(
       final IsNotNullPredicate node, final Context context) {
-    return new NotFilter(new IsNullPredicate(node.getValue()).accept(this, context));
+    return wrapIdOrAttributeFilter(
+        new NotFilter(new PreciseFilter((String) null)),
+        ((SymbolReference) node.getValue()).getName(),
+        context);
   }
 
   @Override
   protected SchemaFilter visitLikePredicate(final LikePredicate node, final Context context) {
-    return visitExpression(node, context);
+    return wrapIdOrAttributeFilter(
+        new LikeFilter(parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue())),
+        ((SymbolReference) node.getValue()).getName(),
+        context);
   }
 
   @Override
@@ -100,7 +109,7 @@ public class ConvertSchemaPredicateToFilterVisitor
       throw new IllegalStateException(
           "Operator is " + node.getOperator() + ", operand size is " + node.getTerms().size());
     }
-    // the operator of the logical expression shall be OR
+    // The operator of the logical expression shall be OR
     return new OrFilter(
         node.getTerms().get(0).accept(this, context), node.getTerms().get(1).accept(this, context));
   }
@@ -124,15 +133,7 @@ public class ConvertSchemaPredicateToFilterVisitor
       checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
     }
-    if (context
-        .table
-        .getColumnSchema(columnName)
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ID)) {
-      return new PreciseFilter(context.idColumnIndexMap.get(columnName), value);
-    } else {
-      return new DeviceAttributeFilter(columnName, value);
-    }
+    return wrapIdOrAttributeFilter(new PreciseFilter(value), columnName, context);
   }
 
   @Override
@@ -158,6 +159,19 @@ public class ConvertSchemaPredicateToFilterVisitor
   @Override
   protected SchemaFilter visitBetweenPredicate(BetweenPredicate node, Context context) {
     return visitExpression(node, context);
+  }
+
+  private SchemaFilter wrapIdOrAttributeFilter(
+      final SchemaFilter filter, final String columnName, final Context context) {
+    if (context
+        .table
+        .getColumnSchema(columnName)
+        .getColumnCategory()
+        .equals(TsTableColumnCategory.ID)) {
+      return new IdFilter(filter, context.idColumnIndexMap.get(columnName));
+    } else {
+      return new AttributeFilter(filter, columnName);
+    }
   }
 
   public static class Context {

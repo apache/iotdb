@@ -31,21 +31,14 @@ import java.nio.ByteBuffer;
 
 // Does not support escape now
 public class LikeFilter extends SchemaFilter {
-  private final String key;
   private final String regex;
 
-  public LikeFilter(final String key, final String regex) {
-    this.key = key;
+  public LikeFilter(final String regex) {
     this.regex = regex;
   }
 
   public LikeFilter(final ByteBuffer byteBuffer) {
-    this.key = ReadWriteIOUtils.readString(byteBuffer);
     this.regex = ReadWriteIOUtils.readString(byteBuffer);
-  }
-
-  public String getKey() {
-    return key;
   }
 
   public String getRegex() {
@@ -64,13 +57,11 @@ public class LikeFilter extends SchemaFilter {
 
   @Override
   public void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(regex, byteBuffer);
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(key, stream);
     ReadWriteIOUtils.write(regex, stream);
   }
 }

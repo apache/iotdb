@@ -23,6 +23,10 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -31,21 +35,41 @@ import java.nio.ByteBuffer;
  * id/attribute value from the device entry.
  */
 public class AttributeFilter extends AbstractSingleChildFilter {
-  public AttributeFilter(final SchemaFilter child) {
+  private final String key;
+
+  public AttributeFilter(final SchemaFilter child, final String key) {
     super(child);
+    this.key = key;
   }
 
   public AttributeFilter(final ByteBuffer byteBuffer) {
     super(byteBuffer);
+    key = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  public String getKey() {
+    return key;
   }
 
   @Override
   public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitFilter(this, node);
+    return visitor.visitAttributeFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
     return SchemaFilterType.ATTRIBUTE;
+  }
+
+  @Override
+  public void serialize(final ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(key, byteBuffer);
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(key, stream);
   }
 }

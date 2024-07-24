@@ -34,22 +34,15 @@ public class PreciseFilter extends SchemaFilter {
   // id column index
   // when used in partialPath, the index of node in path shall be [this.index + 3]
   // since a partialPath start with {root, db, table}
-  private final int index;
 
   private final String value;
 
-  public PreciseFilter(final int index, final String value) {
-    this.index = index;
+  public PreciseFilter(final String value) {
     this.value = value;
   }
 
   public PreciseFilter(final ByteBuffer byteBuffer) {
-    this.index = ReadWriteIOUtils.readInt(byteBuffer);
     this.value = ReadWriteIOUtils.readString(byteBuffer);
-  }
-
-  public int getIndex() {
-    return index;
   }
 
   public String getValue() {
@@ -68,13 +61,11 @@ public class PreciseFilter extends SchemaFilter {
 
   @Override
   public void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(index, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(index, stream);
     ReadWriteIOUtils.write(value, stream);
   }
 }
