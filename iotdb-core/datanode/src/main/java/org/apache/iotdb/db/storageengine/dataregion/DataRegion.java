@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import java.io.FileNotFoundException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -112,6 +113,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.writelog.PartitionLogReader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -243,8 +245,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** database name. */
   private final String databaseName;
 
-  /** database system directory. */
-  private File storageGroupSysDir;
+  /** data region system directory. */
+  private File dataRegionSysDir;
 
   /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
@@ -320,14 +322,13 @@ public class DataRegion implements IDataRegionForQuery {
     this.fileFlushPolicy = fileFlushPolicy;
     acquireDirectBufferMemory();
 
-    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
-    this.tsFileManager =
-        new TsFileManager(databaseName, dataRegionId, storageGroupSysDir.getPath());
-    if (storageGroupSysDir.mkdirs()) {
+    dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
+    this.tsFileManager = new TsFileManager(databaseName, dataRegionId, dataRegionSysDir.getPath());
+    if (dataRegionSysDir.mkdirs()) {
       logger.info(
-          "Database system Directory {} doesn't exist, create it", storageGroupSysDir.getPath());
-    } else if (!storageGroupSysDir.exists()) {
-      logger.error("create database system Directory {} failed", storageGroupSysDir.getPath());
+          "Database system Directory {} doesn't exist, create it", dataRegionSysDir.getPath());
+    } else if (!dataRegionSysDir.exists()) {
+      logger.error("create database system Directory {} failed", dataRegionSysDir.getPath());
     }
 
     lastFlushTimeMap = new HashLastFlushTimeMap();
@@ -382,15 +383,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void setReady(boolean ready) {
     isReady = ready;
-  }
-
-  private Map<Long, List<TsFileResource>> splitResourcesByPartition(
-      List<TsFileResource> resources) {
-    Map<Long, List<TsFileResource>> ret = new TreeMap<>();
-    for (TsFileResource resource : resources) {
-      ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
-    }
-    return ret;
   }
 
   /** this class is used to store recovering context. */
@@ -451,19 +443,16 @@ public class DataRegion implements IDataRegionForQuery {
 
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
-      List<TsFileResource> tmpSeqTsFiles =
-          getAllFiles(TierManager.getInstance().getAllLocalSequenceFileFolders());
-      List<TsFileResource> tmpUnseqTsFiles =
-          getAllFiles(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
-
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-      DataRegionRecoveryContext dataRegionRecoveryContext =
-          new DataRegionRecoveryContext((long) tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
-          splitResourcesByPartition(tmpSeqTsFiles);
+          getAllFiles(TierManager.getInstance().getAllLocalSequenceFileFolders());
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
-          splitResourcesByPartition(tmpUnseqTsFiles);
+          getAllFiles(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
+      DataRegionRecoveryContext dataRegionRecoveryContext =
+          new DataRegionRecoveryContext(
+              partitionTmpSeqTsFiles.values().stream().mapToLong(List::size).sum()
+                  + partitionTmpUnseqTsFiles.values().stream().mapToLong(List::size).sum());
       // submit unsealed TsFiles to recover
       List<WALRecoverListener> recoverListeners = new ArrayList<>();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
@@ -646,7 +635,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private List<TsFileResource> getAllFiles(List<String> folders)
+  private Map<Long, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException, DataRegionException {
     // "{partition id}/{tsfile name}" -> tsfile file, remove duplicate files in one time partition
     Map<String, File> tsFilePartitionPath2File = new HashMap<>();
@@ -684,10 +673,12 @@ public class DataRegion implements IDataRegionForQuery {
     sortedFiles.sort(this::compareFileName);
 
     long currentTime = System.currentTimeMillis();
-    List<TsFileResource> ret = new ArrayList<>();
+    Map<Long, List<TsFileResource>> ret = new TreeMap<>();
     for (File f : sortedFiles) {
       checkTsFileTime(f, currentTime);
-      ret.add(new TsFileResource(f));
+      TsFileResource resource = new TsFileResource(f);
+      ret.computeIfAbsent(resource.getTsFileID().timePartitionId, l -> new ArrayList<>())
+          .add(resource);
     }
     return ret;
   }
@@ -826,6 +817,19 @@ public class DataRegion implements IDataRegionForQuery {
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
       boolean isSeq) {
+
+    // TODO: read partition file
+    File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
+    if (logFile.exists()) {
+      try {
+        PartitionLogReader logReader = new PartitionLogReader(logFile);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+    }
+
+
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
@@ -3504,6 +3508,10 @@ public class DataRegion implements IDataRegionForQuery {
         countFolderDiskSize(f.getAbsolutePath(), diskSize);
       }
     }
+  }
+
+  public File getDataRegionSysDir() {
+    return dataRegionSysDir;
   }
 
   public void addSettleFilesToList(
