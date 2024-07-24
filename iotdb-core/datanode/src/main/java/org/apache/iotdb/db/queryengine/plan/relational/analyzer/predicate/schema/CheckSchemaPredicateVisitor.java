@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 
-// Return whether input expression can not match a precise id node
+// Return whether input expression has an attribute column predicate
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
