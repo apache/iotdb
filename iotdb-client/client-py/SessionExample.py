@@ -20,8 +20,6 @@
 import numpy as np
 
 from iotdb.Session import Session
-from iotdb.template.MeasurementNode import MeasurementNode
-from iotdb.template.Template import Template
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
@@ -364,32 +362,6 @@ with session.execute_last_data_query(
 
 # delete database
 session.delete_storage_group("root.sg_test_01")
-
-# create template
-template = Template(name="template_python", share_time=False)
-m_node_1 = MeasurementNode(
-    name="s1",
-    data_type=TSDataType.INT64,
-    encoding=TSEncoding.RLE,
-    compression_type=Compressor.SNAPPY,
-)
-m_node_2 = MeasurementNode(
-    name="s2",
-    data_type=TSDataType.INT64,
-    encoding=TSEncoding.RLE,
-    compression_type=Compressor.SNAPPY,
-)
-m_node_3 = MeasurementNode(
-    name="s3",
-    data_type=TSDataType.INT64,
-    encoding=TSEncoding.RLE,
-    compression_type=Compressor.SNAPPY,
-)
-template.add_template(m_node_1)
-template.add_template(m_node_2)
-template.add_template(m_node_3)
-session.create_schema_template(template)
-print("create template success template_python")
 
 # close session connection.
 session.close()
