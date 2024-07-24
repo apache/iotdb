@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -60,7 +61,7 @@ class NormalSchemaFetcher {
       PathPatternTree patternTree, List<String> fullPaths) {
     for (String fullPath : fullPaths) {
       try {
-        patternTree.appendFullPath(new PartialPath(fullPath));
+        patternTree.appendFullPath(new MeasurementPath(fullPath));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }
@@ -78,7 +79,7 @@ class NormalSchemaFetcher {
     }
     for (String fullPath : fullPaths) {
       try {
-        patternTree.appendFullPath(new PartialPath(fullPath));
+        patternTree.appendFullPath(new MeasurementPath(fullPath));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }

@@ -65,7 +65,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath() {}
 
   public PartialPath(IDeviceID device) throws IllegalPathException {
-    this(device.toString());
+    nodes = new String[device.segmentNum()];
+    for (int i = 0; i < nodes.length; i++) {
+      nodes[i] = device.segment(i).toString();
+    }
+    this.fullPath = getFullPath();
   }
 
   /**
@@ -87,11 +91,16 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.fullPath = getFullPath();
   }
 
-  public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(device.toString(), measurement);
+  protected PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
+    nodes = new String[device.segmentNum() + 1];
+    for (int i = 0; i < device.segmentNum(); i++) {
+      nodes[i] = device.segment(i).toString();
+    }
+    nodes[device.segmentNum()] = measurement;
+    this.fullPath = getFullPath();
   }
 
-  public PartialPath(String device, String measurement) throws IllegalPathException {
+  protected PartialPath(String device, String measurement) throws IllegalPathException {
     String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
     this.fullPath = getFullPath();
@@ -169,6 +178,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
     System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
     return new PartialPath(newNodes);
+  }
+
+  /**
+   * it will return a new partial path
+   *
+   * @param partialPath the path you want to concat
+   * @return new partial path
+   */
+  public MeasurementPath concatAsMeasurementPath(PartialPath partialPath) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
+    System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
+    return new MeasurementPath(newNodes);
+  }
+
+  public MeasurementPath concatAsMeasurementPath(String measurement) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + 1);
+    newNodes[len] = measurement;
+    return new MeasurementPath(newNodes);
   }
 
   /**

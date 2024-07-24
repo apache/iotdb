@@ -20,12 +20,11 @@
 package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
@@ -266,10 +265,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (final IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
           final Deletion deletion =
               new Deletion(
-                  new PartialPath(
-                      device
-                          + TsFileConstant.PATH_SEPARATOR
-                          + measurementSchema.getMeasurementId()),
+                  new MeasurementPath(device, measurementSchema.getMeasurementId()),
                   fileOffset,
                   startTime,
                   endTime);

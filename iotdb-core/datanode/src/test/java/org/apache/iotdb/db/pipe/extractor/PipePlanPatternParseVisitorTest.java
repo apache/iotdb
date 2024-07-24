@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -63,7 +64,7 @@ public class PipePlanPatternParseVisitorTest {
     final CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new PartialPath("root.db.device.s1"),
+            new MeasurementPath("root.db.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -74,7 +75,7 @@ public class PipePlanPatternParseVisitorTest {
     final CreateTimeSeriesNode createTimeSeriesNodeToFilter =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-2"),
-            new PartialPath("root.db1.device.s1"),
+            new MeasurementPath("root.db1.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.parser;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -544,7 +545,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
-    statement.setPath(new PartialPath(req.path));
+    statement.setPath(new MeasurementPath(req.path));
     statement.setDataType(TSDataType.deserialize((byte) req.dataType));
     statement.setEncoding(TSEncoding.deserialize((byte) req.encoding));
     statement.setCompressor(CompressionType.deserialize((byte) req.compressor));

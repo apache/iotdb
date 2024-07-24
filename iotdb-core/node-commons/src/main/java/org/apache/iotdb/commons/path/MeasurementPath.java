@@ -84,9 +84,18 @@ public class MeasurementPath extends PartialPath {
     this.isUnderAlignedEntity = isUnderAlignedEntity;
   }
 
+  public MeasurementPath(IDeviceID device, String measurement) throws IllegalPathException {
+    this(device.toString(), measurement);
+  }
+
   public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)
       throws IllegalPathException {
-    this(device.toString(), measurement, measurementSchema);
+    super(device, measurement);
+    this.measurementSchema = measurementSchema;
+  }
+
+  public MeasurementPath(String device, String measurement) throws IllegalPathException {
+    super(device, measurement);
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)

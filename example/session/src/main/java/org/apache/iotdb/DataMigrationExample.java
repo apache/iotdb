@@ -19,6 +19,7 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -133,7 +134,7 @@ public class DataMigrationExample {
         List<String> columnTypeList = dataIter.getColumnTypeList();
         List<IMeasurementSchema> schemaList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
-          PartialPath currentPath = new PartialPath(columnNameList.get(j));
+          PartialPath currentPath = new MeasurementPath(columnNameList.get(j));
           schemaList.add(
               new MeasurementSchema(
                   currentPath.getMeasurement(), TSDataType.valueOf(columnTypeList.get(j))));

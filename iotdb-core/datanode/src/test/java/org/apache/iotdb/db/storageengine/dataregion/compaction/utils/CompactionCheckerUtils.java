@@ -214,7 +214,7 @@ public class CompactionCheckerUtils {
               ChunkHeader header = reader.readChunkHeader(marker);
               // read the next measurement and pack data of last measurement
               if (currTimeValuePairs.size() > 0) {
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 List<TimeValuePair> timeValuePairs =
                     mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
                 timeValuePairs.addAll(currTimeValuePairs);
@@ -234,7 +234,7 @@ public class CompactionCheckerUtils {
                 PageHeader pageHeader =
                     reader.readPageHeader(
                         header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
                 PageReader reader1 =
                     new PageReader(
@@ -263,7 +263,7 @@ public class CompactionCheckerUtils {
               ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
               // read the next measurement and pack data of last device
               if (currTimeValuePairs.size() > 0) {
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 List<TimeValuePair> timeValuePairs =
                     mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
                 timeValuePairs.addAll(currTimeValuePairs);
@@ -280,7 +280,7 @@ public class CompactionCheckerUtils {
         }
         // pack data of last measurement
         if (currTimeValuePairs.size() > 0) {
-          PartialPath path = new PartialPath(device, measurementID);
+          PartialPath path = new MeasurementPath(device, measurementID);
           List<TimeValuePair> timeValuePairs =
               mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
           timeValuePairs.addAll(currTimeValuePairs);
@@ -411,7 +411,7 @@ public class CompactionCheckerUtils {
             ChunkHeader header = reader.readChunkHeader(marker);
             // read the next measurement and pack data of last measurement
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(entity, measurement).getFullPath();
+              String fullPath = new MeasurementPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
@@ -450,7 +450,7 @@ public class CompactionCheckerUtils {
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             // read the next measurement and pack data of last device
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(entity, measurement).getFullPath();
+              String fullPath = new MeasurementPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
@@ -467,7 +467,7 @@ public class CompactionCheckerUtils {
       }
       // pack data of last measurement
       if (pagePointsNum.size() > 0) {
-        String fullPath = new PartialPath(entity, measurement).getFullPath();
+        String fullPath = new MeasurementPath(entity, measurement).getFullPath();
         List<List<Long>> currChunkPagePointsNum =
             mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
         currChunkPagePointsNum.add(pagePointsNum);

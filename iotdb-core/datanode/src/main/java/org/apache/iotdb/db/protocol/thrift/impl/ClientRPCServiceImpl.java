@@ -927,9 +927,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         for (String sensor : req.sensors) {
           PartialPath fullPath;
           if (req.isLegalPathNodes()) {
-            fullPath = devicePath.concatNode(sensor);
+            fullPath = devicePath.concatAsMeasurementPath(sensor);
           } else {
-            fullPath = devicePath.concatNode((new PartialPath(sensor)).getFullPath());
+            fullPath = devicePath.concatAsMeasurementPath((new PartialPath(sensor)).getFullPath());
           }
           TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
           if (timeValuePair == null) {

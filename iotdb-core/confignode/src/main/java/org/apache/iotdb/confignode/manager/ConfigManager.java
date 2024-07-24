@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -681,7 +682,8 @@ public class ConfigManager implements IManager {
     }
   }
 
-  private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
+  private List<TSeriesPartitionSlot> calculateRelatedSlot(
+      MeasurementPath path, PartialPath database) {
     // The path contains `**`
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
@@ -711,7 +713,7 @@ public class ConfigManager implements IManager {
 
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
+    List<MeasurementPath> relatedPaths = patternTree.getAllPathPatterns(true);
     List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (String database : allDatabases) {
@@ -722,7 +724,7 @@ public class ConfigManager implements IManager {
       }
     }
     Map<String, Boolean> scanAllRegions = new HashMap<>();
-    for (PartialPath path : relatedPaths) {
+    for (MeasurementPath path : relatedPaths) {
       for (int i = 0; i < allDatabases.size(); i++) {
         String database = allDatabases.get(i);
         PartialPath databasePath = allDatabasePaths.get(i);

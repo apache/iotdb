@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -102,7 +103,7 @@ public class MLogParserTest {
                 .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
                 .createTimeSeries(
                     SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                        new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
+                        new MeasurementPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
                         TSDataType.INT32,
                         TSEncoding.PLAIN,
                         CompressionType.GZIP,
