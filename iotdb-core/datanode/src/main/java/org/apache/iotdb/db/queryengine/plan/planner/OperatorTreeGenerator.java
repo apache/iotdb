@@ -3653,7 +3653,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (Map.Entry<PartialPath, DeviceContext> entry :
         node.getDevicePathToContextMap().entrySet()) {
       PartialPath devicePath = entry.getKey();
-      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
+      IDeviceID deviceID =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              new String[] {devicePath.getFullPath(), devicePath.getTailNode()});
       deviceIDToContext.put(deviceID, entry.getValue());
       ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
     }
@@ -3692,7 +3694,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap :
         node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
       PartialPath devicePath = entryMap.getKey();
-      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
+      IDeviceID deviceID =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              new String[] {devicePath.getFullPath(), devicePath.getTailNode()});
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
