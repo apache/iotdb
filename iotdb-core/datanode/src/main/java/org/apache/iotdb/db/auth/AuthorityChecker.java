@@ -146,7 +146,7 @@ public class AuthorityChecker {
 
   public static TSStatus getTSStatus(
       List<Integer> noPermissionIndexList,
-      List<PartialPath> pathList,
+      List<? extends PartialPath> pathList,
       PrivilegeType neededPrivilege) {
     if (noPermissionIndexList == null || noPermissionIndexList.isEmpty()) {
       return SUCCEED;
@@ -178,7 +178,7 @@ public class AuthorityChecker {
   }
 
   public static List<Integer> checkPatternPermission(
-      String userName, List<PartialPath> pathPatterns, int permission) {
+      String userName, List<? extends PartialPath> pathPatterns, int permission) {
     return authorityFetcher.get().checkUserPathPrivileges(userName, pathPatterns, permission);
   }
 

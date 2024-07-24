@@ -412,7 +412,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new DeleteDataNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Long.MIN_VALUE,
             Long.MAX_VALUE),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
@@ -420,7 +420,8 @@ public class PipePlanPatternParseVisitorTest {
                 new DeleteDataNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.*.device.s1"), new PartialPath("root.db.*.s1")),
+                        new MeasurementPath("root.*.device.s1"),
+                        new MeasurementPath("root.db.*.s1")),
                     Long.MIN_VALUE,
                     Long.MAX_VALUE),
                 prefixPathPattern)

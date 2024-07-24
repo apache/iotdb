@@ -635,9 +635,9 @@ public class StatementGenerator {
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     DeleteDataStatement statement = new DeleteDataStatement();
-    List<PartialPath> pathList = new ArrayList<>();
+    List<MeasurementPath> pathList = new ArrayList<>();
     for (String path : req.getPaths()) {
-      pathList.add(new PartialPath(path));
+      pathList.add(new MeasurementPath(path));
     }
     statement.setPathList(pathList);
     statement.setDeleteStartTime(req.getStartTime());

@@ -89,7 +89,7 @@ public class MeasurementPath extends PartialPath {
   }
 
   public MeasurementPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(device.toString(), measurement);
+    super(device, measurement);
   }
 
   public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)

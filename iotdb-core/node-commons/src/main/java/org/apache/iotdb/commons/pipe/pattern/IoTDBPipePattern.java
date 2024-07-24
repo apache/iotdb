@@ -162,7 +162,7 @@ public class IoTDBPipePattern extends PipePattern {
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
-          ? Collections.singletonList(patternPartialPath)
+          ? Collections.singletonList(partialPath)
           : Collections.emptyList();
     }
     return partialPath.intersectWithPrefixPattern(patternPartialPath);

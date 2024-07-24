@@ -2634,9 +2634,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitDeleteStatement(IoTDBSqlParser.DeleteStatementContext ctx) {
     DeleteDataStatement statement = new DeleteDataStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPaths = ctx.prefixPath();
-    List<PartialPath> pathList = new ArrayList<>();
+    List<MeasurementPath> pathList = new ArrayList<>();
     for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPaths) {
-      pathList.add(parsePrefixPath(prefixPath));
+      pathList.add(new MeasurementPath(parsePrefixPath(prefixPath).getNodes()));
     }
     statement.setPathList(pathList);
     if (ctx.whereClause() != null) {

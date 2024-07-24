@@ -3289,7 +3289,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (schemaTree.hasLogicalViewMeasurement()) {
       updateSchemaTreeByViews(analysis, schemaTree, context);
 
-      Set<PartialPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
+      Set<MeasurementPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
       IMeasurementSchema measurementSchema;
       LogicalViewSchema logicalViewSchema;
       PartialPath sourcePathOfAliasSeries;
@@ -3300,7 +3300,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
-            deletePatternSet.add(sourcePathOfAliasSeries);
+            deletePatternSet.add(new MeasurementPath(sourcePathOfAliasSeries.getNodes()));
             deduplicatedDeviceIDs.add(sourcePathOfAliasSeries.getIDeviceID());
           }
           deletePatternSet.remove(measurementPath);
