@@ -1387,13 +1387,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new CurrentTime(getLocation(ctx), function);
   }
 
-  @Override
-  public Node visitDateTimeExpression(RelationalSqlParser.DateTimeExpressionContext ctx) {
-    return new LongLiteral(
-        getLocation(ctx),
-        String.valueOf(
-            parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
-  }
 
   @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
