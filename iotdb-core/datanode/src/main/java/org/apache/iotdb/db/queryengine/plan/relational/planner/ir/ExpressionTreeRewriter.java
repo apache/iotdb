@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
@@ -136,6 +138,23 @@ public final class ExpressionTreeRewriter<C> {
     //
     //            return node;
     //        }
+    @Override
+    protected Expression visitArithmeticUnary(ArithmeticUnaryExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteArithmeticUnary(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression child = rewrite(node.getValue(), context.get());
+      if (child != node.getValue()) {
+        return new ArithmeticUnaryExpression(node.getLocation().get(), node.getSign(), child);
+      }
+
+      return node;
+    }
 
     @Override
     public Expression visitArithmeticBinary(ArithmeticBinaryExpression node, Context<C> context) {
@@ -433,13 +452,10 @@ public final class ExpressionTreeRewriter<C> {
       }
 
       Expression value = rewrite(node.getValue(), context.get());
-      //            List<Expression> values = node.getValueList().stream()
-      //                    .map(entry -> rewrite(entry, context.get()))
-      //                    .collect(toImmutableList());
+      Expression list = rewrite(node.getValueList(), context.get());
 
-      if (node.getValue() != value
-          || !sameElements(Optional.of(value), Optional.of(node.getValue()))) {
-        return new InPredicate(value, value);
+      if (node.getValue() != value || node.getValueList() != list) {
+        return new InPredicate(value, list);
       }
 
       return node;
@@ -458,6 +474,25 @@ public final class ExpressionTreeRewriter<C> {
     //
     //            return node;
     //        }
+
+    @Override
+    protected Expression visitInListExpression(InListExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteInListExpression(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      List<Expression> values = rewrite(node.getValues(), context);
+
+      if (!sameElements(node.getValues(), values)) {
+        return new InListExpression(values);
+      }
+
+      return node;
+    }
 
     @Override
     public Expression visitCast(Cast node, Context<C> context) {
