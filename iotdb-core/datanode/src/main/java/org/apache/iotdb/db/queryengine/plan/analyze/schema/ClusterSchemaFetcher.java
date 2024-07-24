@@ -133,7 +133,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
-          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
+          cachedSchema =
+              schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;

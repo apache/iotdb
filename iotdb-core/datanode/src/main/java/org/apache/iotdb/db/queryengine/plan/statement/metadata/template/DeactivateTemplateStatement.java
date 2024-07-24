@@ -72,7 +72,8 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
     }
 
     return pathPatternList.stream()
-        .flatMap(path -> template.getSchemaMap().keySet().stream().map(path::concatAsMeasurementPath))
+        .flatMap(
+            path -> template.getSchemaMap().keySet().stream().map(path::concatAsMeasurementPath))
         .collect(Collectors.toList());
   }
 

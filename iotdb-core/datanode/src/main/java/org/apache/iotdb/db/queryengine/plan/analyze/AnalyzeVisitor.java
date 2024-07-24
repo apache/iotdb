@@ -2177,7 +2177,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (sourceColumn instanceof TimeSeriesOperand) {
           targetMeasurement =
               constructTargetMeasurement(
-                  sourceDevice.concatAsMeasurementPath(sourceColumn.getExpressionString()), measurementTemplate);
+                  sourceDevice.concatAsMeasurementPath(sourceColumn.getExpressionString()),
+                  measurementTemplate);
         } else {
           targetMeasurement = measurementTemplate;
         }

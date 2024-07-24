@@ -55,7 +55,8 @@ public class InternalCreateMultiTimeSeriesStatement extends Statement {
     return deviceMap.entrySet().stream()
         .flatMap(
             entry ->
-                entry.getValue().right.getMeasurements().stream().map(entry.getKey()::concatAsMeasurementPath))
+                entry.getValue().right.getMeasurements().stream()
+                    .map(entry.getKey()::concatAsMeasurementPath))
         .collect(Collectors.toList());
   }
 
