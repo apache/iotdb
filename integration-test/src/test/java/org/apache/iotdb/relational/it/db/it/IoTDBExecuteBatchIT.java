@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.relational.it.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -28,6 +26,7 @@ import org.apache.iotdb.itbase.category.RemoteIT;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,46 +42,48 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
+@Ignore // 'Drop Table' and 'Alter table' is not supported
 public class IoTDBExecuteBatchIT {
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("CREATE DATABASE ln");
-    }
   }
 
   @After
   public void tearDown() throws Exception {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-      session.executeNonQueryStatement("DROP DATABASE ln");
-    }
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
   public void testJDBCExecuteBatch() {
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
+      statement.addBatch("create database ln");
+      statement.addBatch("USE \"ln\"");
+      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,1.2)");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
-      statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
+
+      statement.addBatch("drop table wf01");
+      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
       statement.executeBatch();
-      ResultSet resultSet = statement.executeQuery("select * from root.ln.wf01.wt01");
+      statement.clearBatch();
+      ResultSet resultSet = statement.executeQuery("select * from wf01");
       int count = 0;
 
       String[] timestamps = {"1509465600002"};
       String[] values = {"3.4"};
 
       while (resultSet.next()) {
-        assertEquals(timestamps[count], resultSet.getString(ColumnHeaderConstant.TIME));
-        assertEquals(values[count], resultSet.getString("root.ln.wf01.wt01.temperature"));
+        assertEquals(timestamps[count], resultSet.getString("time"));
+        assertEquals(values[count], resultSet.getString("temperature"));
         count++;
       }
     } catch (SQLException e) {
@@ -92,111 +93,53 @@ public class IoTDBExecuteBatchIT {
 
   @Test
   public void testJDBCExecuteBatchForCreateMultiTimeSeriesPlan() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(100);
+      statement.execute("create database ln");
+      statement.execute("USE \"ln\"");
+      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,1.2)");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
-      statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
+      statement.addBatch("drop table wf01");
+
       statement.addBatch(
-          "create timeseries root.turbine.d1.s1(s1) with datatype=boolean, encoding=plain , compression=snappy "
-              + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v3', 'attr2'='v4')");
+          "create table turbine (id1 string id, attr1 string attribute, attr2 string attribute, s1 boolean measurement, s2 float measurement)");
+
+      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
       statement.addBatch(
-          "create timeseries root.turbine.d1.s2(s2) with datatype=float, encoding=rle, compression=uncompressed "
-              + "tags('tag1'='v5', 'tag2'='v6') attributes('attr1'='v7', 'attr2'='v8') ");
-      statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
-      statement.addBatch(
-          "create timeseries root.turbine.d1.s3 with datatype=boolean, encoding=rle");
+          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
+      statement.addBatch("alter table turbine add column s3 boolean measurement");
       statement.executeBatch();
       statement.clearBatch();
-      ResultSet resultSet = statement.executeQuery("select * from root.ln.wf01.wt01");
+      ResultSet resultSet = statement.executeQuery("select * from wf01");
       String[] timestamps = {"1509465600002"};
       String[] values = {"3.4"};
       int count = 0;
       while (resultSet.next()) {
-        assertEquals(timestamps[count], resultSet.getString(ColumnHeaderConstant.TIME));
-        assertEquals(values[count], resultSet.getString("root.ln.wf01.wt01.temperature"));
+        assertEquals(timestamps[count], resultSet.getString("time"));
+        assertEquals(values[count], resultSet.getString("temperature"));
         count++;
       }
-      ResultSet timeSeriesResultSetForS1 =
-          statement.executeQuery("SHOW TIMESERIES root.turbine.d1.s1");
+      ResultSet timeSeriesResultSetForS1 = statement.executeQuery("describe turbine");
       count = 0;
-      String[] key_s1 = {
-        ColumnHeaderConstant.TIMESERIES,
-        ColumnHeaderConstant.ALIAS,
-        ColumnHeaderConstant.DATABASE,
-        ColumnHeaderConstant.DATATYPE,
-        ColumnHeaderConstant.ENCODING,
-        ColumnHeaderConstant.COMPRESSION,
-        ColumnHeaderConstant.TAGS,
-        ColumnHeaderConstant.ATTRIBUTES
-      };
-      String[] value_s1 = {
-        "root.turbine.d1.s1",
-        "s1",
-        "root.turbine",
-        "BOOLEAN",
-        "PLAIN",
-        "SNAPPY",
-        "{\"tag1\":\"v1\",\"tag2\":\"v2\"}",
-        "{\"attr2\":\"v3\",\"attr1\":\"v4\"}"
+      String[] keys = {"ColumnName", "DataType", "Category"};
+      String[][] value_columns = {
+        new String[] {"Time", "TIMESTAMP", "TIME"},
+        new String[] {"id1", "STRING", "ID"},
+        new String[] {"attr1", "STRING", "ATTRIBUTE"},
+        new String[] {"attr2", "STRING", "ATTRIBUTE"},
+        new String[] {"s1", "BOOLEAN", "MEASUREMENT"},
+        new String[] {"s2", "FLOAT", "MEASUREMENT"},
       };
 
       while (timeSeriesResultSetForS1.next()) {
-        assertEquals(value_s1[count], timeSeriesResultSetForS1.getString(key_s1[count]));
-        count++;
-      }
-
-      ResultSet timeSeriesResultSetForS2 =
-          statement.executeQuery("SHOW TIMESERIES root.turbine.d1.s2");
-      count = 0;
-      String[] key_s2 = {
-        ColumnHeaderConstant.TIMESERIES,
-        ColumnHeaderConstant.ALIAS,
-        ColumnHeaderConstant.DATABASE,
-        ColumnHeaderConstant.DATATYPE,
-        ColumnHeaderConstant.ENCODING,
-        ColumnHeaderConstant.COMPRESSION,
-        ColumnHeaderConstant.TAGS,
-        ColumnHeaderConstant.ATTRIBUTES
-      };
-      String[] value_s2 = {
-        "root.turbine.d1.s2",
-        "s2",
-        "root.turbine",
-        "FLOAT",
-        "RLE",
-        "UNCOMPRESSED",
-        "{\"tag1\":\"v5\",\"tag2\":\"v6\"}",
-        "{\"attr2\":\"v7\",\"attr1\":\"v8\"}"
-      };
-      while (timeSeriesResultSetForS2.next()) {
-        assertEquals(value_s2[count], timeSeriesResultSetForS2.getString(key_s2[count]));
-        count++;
-      }
-
-      count = 0;
-      String[] key_s3 = {
-        ColumnHeaderConstant.TIMESERIES,
-        ColumnHeaderConstant.ALIAS,
-        ColumnHeaderConstant.DATABASE,
-        ColumnHeaderConstant.DATATYPE,
-        ColumnHeaderConstant.ENCODING,
-        ColumnHeaderConstant.COMPRESSION,
-        ColumnHeaderConstant.TAGS,
-        ColumnHeaderConstant.ATTRIBUTES
-      };
-      String[] value_s3 = {
-        "root.turbine.d1.s3", "null", "root.turbine", "BOOLEAN", "RLE", "SNAPPY", "null", "null"
-      };
-      ResultSet timeSeriesResultSetForS3 =
-          statement.executeQuery("SHOW TIMESERIES root.turbine.d1.s3");
-
-      while (timeSeriesResultSetForS3.next()) {
-        assertEquals(value_s3[count], timeSeriesResultSetForS3.getString(key_s3[count]));
+        for (int i = 0; i < keys.length; i++) {
+          assertEquals(value_columns[count][i], timeSeriesResultSetForS1.getString(keys[i]));
+        }
         count++;
       }
     } catch (SQLException e) {

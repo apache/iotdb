@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -47,21 +48,22 @@ public class IoTDBFlushQueryIT {
 
   private static String[] sqls =
       new String[] {
-        "CREATE DATABASE root.vehicle.d0",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-        "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
-        "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
-        "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
-        "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
-        "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
-        "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
-        "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
-        "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
-        "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+        "CREATE DATABASE test",
+        "USE \"test\"",
+        "CREATE TABLE vehicle (id1 string id, s0 int32 measurement)",
+        "insert into vehicle(id1,time,s0) values('d0',1,101)",
+        "insert into vehicle(id1,time,s0) values('d0',2,198)",
+        "insert into vehicle(id1,time,s0) values('d0',100,99)",
+        "insert into vehicle(id1,time,s0) values('d0',101,99)",
+        "insert into vehicle(id1,time,s0) values('d0',102,80)",
+        "insert into vehicle(id1,time,s0) values('d0',103,99)",
+        "insert into vehicle(id1,time,s0) values('d0',104,90)",
+        "insert into vehicle(id1,time,s0) values('d0',105,99)",
+        "insert into vehicle(id1,time,s0) values('d0',106,99)",
         "flush",
-        "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
-        "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
-        "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+        "insert into vehicle(id1,time,s0) values('d0',2,10000)",
+        "insert into vehicle(id1,time,s0) values('d0',50,10000)",
+        "insert into vehicle(id1,time,s0) values('d0',1000,22222)",
       };
 
   @BeforeClass
@@ -76,9 +78,10 @@ public class IoTDBFlushQueryIT {
   }
 
   private static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
+        System.out.println(sql);
         statement.execute(sql);
       }
     } catch (Exception e) {
@@ -89,9 +92,10 @@ public class IoTDBFlushQueryIT {
   @Test
   public void selectAllSQLTest() {
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**"); ) {
+      statement.execute("USE \"test\"");
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM vehicle"); ) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -105,14 +109,18 @@ public class IoTDBFlushQueryIT {
   @Test
   public void testFlushGivenGroup() {
     String insertTemplate =
-        "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+        "INSERT INTO vehicle(id1, time, s1, s2, s3) VALUES (%s, %d, %d, %f, %s)";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.group1");
-      statement.execute("CREATE DATABASE root.group2");
-      statement.execute("CREATE DATABASE root.group3");
+
+      statement.execute("CREATE DATABASE group1");
+      statement.execute("CREATE DATABASE group2");
+      statement.execute("CREATE DATABASE group3");
 
       for (int i = 1; i <= 3; i++) {
+        statement.execute(String.format("USE \"group%d\"", i));
+        statement.execute(
+            "CREATE TABLE vehicle (id1 string id, s1 int32 measurement, s2 float measurement, s3 string measurement)");
         for (int j = 10; j < 20; j++) {
           statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
@@ -120,46 +128,51 @@ public class IoTDBFlushQueryIT {
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
+        statement.execute(String.format("USE \"group%d\"", i));
         for (int j = 0; j < 10; j++) {
           statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
       }
-      statement.execute("FLUSH root.group1");
-      statement.execute("FLUSH root.group2,root.group3");
+      statement.execute("FLUSH group1");
+      statement.execute("FLUSH group2,group3");
 
       for (int i = 1; i <= 3; i++) {
+        statement.execute(String.format("USE \"group%d\"", i));
         for (int j = 0; j < 30; j++) {
           statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
       }
-      statement.execute("FLUSH root.group1 TRUE");
-      statement.execute("FLUSH root.group2,root.group3 FALSE");
+      statement.execute("FLUSH group1 TRUE");
+      statement.execute("FLUSH group2,group3 FALSE");
 
-      int i = 0;
-      try (ResultSet resultSet =
-          statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
-        while (resultSet.next()) {
-          i++;
+      for (int i = 1; i <= 3; i++) {
+        statement.execute(String.format("USE \"group%d\"", i));
+        int count = 0;
+        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM vehicle")) {
+          while (resultSet.next()) {
+            count++;
+          }
         }
+        assertEquals(30, count);
       }
-      assertEquals(30, i);
 
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   @Test
   public void testFlushGivenGroupNoData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.nodatagroup1");
-      statement.execute("CREATE DATABASE root.nodatagroup2");
-      statement.execute("CREATE DATABASE root.nodatagroup3");
-      statement.execute("FLUSH root.nodatagroup1");
-      statement.execute("FLUSH root.nodatagroup2");
-      statement.execute("FLUSH root.nodatagroup3");
-      statement.execute("FLUSH root.nodatagroup1, root.nodatagroup2");
+      statement.execute("CREATE DATABASE nodatagroup1");
+      statement.execute("CREATE DATABASE nodatagroup2");
+      statement.execute("CREATE DATABASE nodatagroup3");
+      statement.execute("FLUSH nodatagroup1");
+      statement.execute("FLUSH nodatagroup2");
+      statement.execute("FLUSH nodatagroup3");
+      statement.execute("FLUSH nodatagroup1, nodatagroup2");
     } catch (Exception e) {
       fail(e.getMessage());
     }
