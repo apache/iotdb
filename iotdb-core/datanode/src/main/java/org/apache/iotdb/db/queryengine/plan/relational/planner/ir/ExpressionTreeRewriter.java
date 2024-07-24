@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -136,6 +137,23 @@ public final class ExpressionTreeRewriter<C> {
     //
     //            return node;
     //        }
+    @Override
+    protected Expression visitArithmeticUnary(ArithmeticUnaryExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteArithmeticUnary(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression child = rewrite(node.getValue(), context.get());
+      if (child != node.getValue()) {
+        return new ArithmeticUnaryExpression(node.getLocation().get(), node.getSign(), child);
+      }
+
+      return node;
+    }
 
     @Override
     public Expression visitArithmeticBinary(ArithmeticBinaryExpression node, Context<C> context) {
