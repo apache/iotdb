@@ -1387,7 +1387,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new CurrentTime(getLocation(ctx), function);
   }
 
-
   @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
