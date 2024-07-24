@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.relational.it.query.old.aligned;
 
-import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -44,7 +43,7 @@ public class IoTDBAlignedSeriesQuery2IT extends IoTDBAlignedSeriesQueryIT {
         .setMaxTsBlockLineNumber(3)
         .setMaxNumberOfPointsInPage(2);
     EnvFactory.getEnv().initClusterEnvironment();
-    AlignedWriteUtil.insertData();
+    TableUtils.insertData();
   }
 
   @AfterClass

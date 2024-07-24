@@ -607,7 +607,7 @@ public class IoTDBPredicatePushDownIT {
           "30,d2,null,31.0,",
         };
     tableResultSetEqualTest(
-        "select Time,Device,s2, s3 + 1 from table0 where s3 + 1 > 16",
+        "select Time,Device,s2, s3 + 1 from table0 where s3 + 1 > 16 order by device",
         expectedHeader,
         retArray,
         database);
