@@ -64,7 +64,7 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitInPredicate(InPredicate node, Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
@@ -74,12 +74,12 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
   protected Boolean visitLikePredicate(LikePredicate node, Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
@@ -103,7 +103,7 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitNotExpression(NotExpression node, Void context) {
-    return Boolean.FALSE;
+    return node.getValue().accept(this, context);
   }
 
   @Override
