@@ -40,7 +40,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
-public class IoTDBPipeCreateAndDropIT extends AbstractPipeDualAutoIT {
+public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testBasicCreatePipeIfNotExists() throws Exception {
