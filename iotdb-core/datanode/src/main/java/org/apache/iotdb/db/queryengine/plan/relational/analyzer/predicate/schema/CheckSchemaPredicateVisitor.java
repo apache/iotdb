@@ -35,9 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.SchemaPredicateUtil.getColumnName;
 
 // Return whether input expression can not match a precise id node
 public class CheckSchemaPredicateVisitor
@@ -45,22 +42,22 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitInPredicate(final InPredicate node, final Context context) {
-    return processColumn(((SymbolReference) node.getValue()).getName(), context);
+    return processColumn(node, context);
   }
 
   @Override
   protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Context context) {
-    return processColumn(((SymbolReference) node.getValue()).getName(), context);
+    return processColumn(node, context);
   }
 
   @Override
   protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Context context) {
-    return processColumn(((SymbolReference) node.getValue()).getName(), context);
+    return processColumn(node, context);
   }
 
   @Override
   protected Boolean visitLikePredicate(final LikePredicate node, final Context context) {
-    return processColumn(((SymbolReference) node.getValue()).getName(), context);
+    return processColumn(node, context);
   }
 
   @Override
@@ -81,7 +78,7 @@ public class CheckSchemaPredicateVisitor
   @Override
   protected Boolean visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
-    return processColumn(getColumnName(node), context);
+    return processColumn(node, context);
   }
 
   @Override
@@ -111,10 +108,10 @@ public class CheckSchemaPredicateVisitor
     return visitExpression(node, context);
   }
 
-  private boolean processColumn(final String columnName, final Context context) {
+  private boolean processColumn(final Expression node, final Context context) {
     return context
         .table
-        .getColumnSchema(columnName)
+        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
         .getColumnCategory()
         .equals(TsTableColumnCategory.ATTRIBUTE);
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ExtractPredicateColumnNameVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -90,7 +91,8 @@ public class SchemaPredicateUtil {
       List<Expression> oneCase = new ArrayList<>(orConcatList.size());
       for (int j = 0; j < orSize; j++) {
         currentExpression = orConcatList.get(j).get(indexes[j]);
-        currentColumnName = getColumnName(currentExpression);
+        currentColumnName =
+            currentExpression.accept(ExtractPredicateColumnNameVisitor.getInstance(), null);
         if (checkedColumnNames.contains(currentColumnName)) {
           hasConflictFilter = true;
           break;
