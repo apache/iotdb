@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.memory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
@@ -75,7 +74,7 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
                 context.getQueryContext().getSession(),
-                WarningCollector.NOOP)
+                NOOP)
             .plan(context.getAnalysis());
     if (context.getAnalysis().isEmptyDataSource()) {
       return new StatementMemorySource(new TsBlock(0), header);
