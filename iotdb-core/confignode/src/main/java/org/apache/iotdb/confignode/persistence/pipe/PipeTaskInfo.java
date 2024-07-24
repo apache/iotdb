@@ -169,7 +169,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return true;
-    } else if (createPipeRequest.ifNotExistsCondition) {
+    } else if (createPipeRequest.isIfNotExistsCondition()) {
       return false;
     }
 

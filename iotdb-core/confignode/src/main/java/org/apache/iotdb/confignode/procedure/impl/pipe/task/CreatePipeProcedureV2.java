@@ -112,11 +112,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   /**
-   * Check the {@link PipePlugin} configuration in the Pipe, if there is an error then throw a
-   * {@link PipeException}, if there is the same Pipe name and there is no IfNotExists condition in
-   * the {@link #createPipeRequest} then throw a {@link PipeException}, if there is an IfNotExists
-   * condition then end normally. {@link CreatePipeProcedureV2} process, if there is no Pipe with
-   * the same name then continue the {@link CreatePipeProcedureV2} process.
+   * Check the {@link PipePlugin} configuration in Pipe. If there is an error, throw {@link
+   * PipeException}. If there is a Pipe with the same name and there is no IfNotExists condition in
+   * {@link #createPipeRequest}, throw {@link PipeException}. If there is an IfNotExists condition,
+   * return false. If there is no Pipe with the same name, return true.
    *
    * @param env
    * @return
@@ -136,7 +135,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    return !pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+    return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override

@@ -97,7 +97,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
     if (!pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest)) {
-      return true;
+      return false;
     }
 
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
@@ -109,7 +109,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
 
-    return false;
+    return true;
   }
 
   @Override

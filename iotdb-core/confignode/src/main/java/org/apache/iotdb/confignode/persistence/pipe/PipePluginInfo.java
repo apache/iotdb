@@ -112,7 +112,9 @@ public class PipePluginInfo implements SnapshotProcessor {
   public boolean validateBeforeDroppingPipePlugin(
       final String pluginName, boolean ifExistsCondition) {
     if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      if (ifExistsCondition) return false;
+      if (ifExistsCondition) {
+        return false;
+      }
       throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], this PipePlugin has not been created", pluginName));
