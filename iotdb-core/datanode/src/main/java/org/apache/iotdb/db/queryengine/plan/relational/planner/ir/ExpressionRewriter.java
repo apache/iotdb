@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
@@ -64,10 +66,10 @@ public class ExpressionRewriter<C> {
     return rewriteExpression(node, context, treeRewriter);
   }
 
-  //    public Expression rewriteArithmeticUnary(ArithmeticNegation node, C context,
-  // ExpressionTreeRewriter<C> treeRewriter) {
-  //        return rewriteExpression(node, context, treeRewriter);
-  //    }
+  public Expression rewriteArithmeticUnary(
+      ArithmeticUnaryExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
 
   public Expression rewriteArithmeticBinary(
       ArithmeticBinaryExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
@@ -121,6 +123,11 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteCoalesceExpression(
       CoalesceExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteInListExpression(
+      InListExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 

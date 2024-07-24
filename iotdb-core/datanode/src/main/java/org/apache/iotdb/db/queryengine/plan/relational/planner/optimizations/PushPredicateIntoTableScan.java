@@ -169,7 +169,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           tableScanNode.setTimePredicate(resultPair.left);
         }
         if (Boolean.TRUE.equals(resultPair.right)) {
-          tableScanNode.setPushDownPredicate(pushDownPredicate);
+          if (pushDownPredicate instanceof LogicalExpression
+              && ((LogicalExpression) pushDownPredicate).getTerms().size() == 1) {
+            tableScanNode.setPushDownPredicate(
+                ((LogicalExpression) pushDownPredicate).getTerms().get(0));
+          } else {
+            tableScanNode.setPushDownPredicate(pushDownPredicate);
+          }
         }
       } else {
         tableScanNode.setPushDownPredicate(null);

@@ -38,7 +38,6 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDiffFunctionIT {
-  // 2 devices 4 regions
   protected static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.db",
