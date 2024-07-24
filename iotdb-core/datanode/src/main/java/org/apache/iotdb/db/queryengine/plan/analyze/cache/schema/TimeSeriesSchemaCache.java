@@ -427,7 +427,7 @@ public class TimeSeriesSchemaCache {
     dualKeyCache.invalidateDataRegionLastCache(database);
   }
 
-  public void invalidate(List<PartialPath> partialPathList) {
+  public void invalidate(List<? extends PartialPath> partialPathList) {
     dualKeyCache.invalidate(partialPathList);
   }
 

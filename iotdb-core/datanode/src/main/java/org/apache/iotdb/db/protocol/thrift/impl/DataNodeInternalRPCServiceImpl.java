@@ -593,7 +593,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     cache.takeWriteLock();
     try {
-      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
+      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns(true));
     } finally {
       cache.releaseWriteLock();
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
