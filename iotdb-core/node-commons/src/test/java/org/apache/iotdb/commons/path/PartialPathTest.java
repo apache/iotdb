@@ -376,7 +376,7 @@ public class PartialPathTest {
     PartialPath b = new PartialPath(arr2);
     Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
     Assert.assertEquals("s1", b.getTailNode());
-    Assert.assertEquals("root.sg1.d1", a.concatPath(b).getDevicePath().getFullPath());
+    Assert.assertEquals("root.sg1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
     Assert.assertEquals("root.sg1", a.toString());
   }
 
