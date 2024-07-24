@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
@@ -68,9 +69,8 @@ public final class NormalizeOrExpressionRewriter {
           .forEach(
               (expression, values) -> {
                 if (values.size() > 1) {
-                  // TODO mergeToInListExpression may have more than one value
                   inPredicateBuilder.add(
-                      new InPredicate(expression, mergeToInListExpression(values).get(0)));
+                      new InPredicate(expression, mergeToInListExpression(values)));
                   expressionToSkipBuilder.add(expression);
                 }
               });
@@ -99,21 +99,22 @@ public final class NormalizeOrExpressionRewriter {
               .build());
     }
 
-    private List<Expression> mergeToInListExpression(Collection<Expression> expressions) {
+    private InListExpression mergeToInListExpression(Collection<Expression> expressions) {
       LinkedHashSet<Expression> expressionValues = new LinkedHashSet<>();
       for (Expression expression : expressions) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
           expressionValues.add(((ComparisonExpression) expression).getRight());
-        } else if (expression instanceof InPredicate) {
-          // TODO inPredicate has getValues method
-          expressionValues.add(((InPredicate) expression).getValue());
+        } else if (expression instanceof InPredicate
+            && ((InPredicate) expression).getValueList() instanceof InListExpression) {
+          expressionValues.addAll(
+              ((InListExpression) ((InPredicate) expression).getValueList()).getValues());
         } else {
           throw new IllegalStateException("Unexpected expression: " + expression);
         }
       }
 
-      return ImmutableList.copyOf(expressionValues);
+      return new InListExpression(ImmutableList.copyOf(expressionValues));
     }
 
     private Map<Expression, Collection<Expression>> groupComparisonAndInPredicate(

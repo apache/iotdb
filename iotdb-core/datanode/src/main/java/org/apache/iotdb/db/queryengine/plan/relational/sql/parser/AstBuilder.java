@@ -1386,6 +1386,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDateTimeExpression(RelationalSqlParser.DateTimeExpressionContext ctx) {
+    return new LongLiteral(
+        getLocation(ctx),
+        String.valueOf(
+            parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
+  }
+
+  @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
       throw parseError(
@@ -1587,6 +1595,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitBooleanLiteral(RelationalSqlParser.BooleanLiteralContext ctx) {
     return new BooleanLiteral(getLocation(ctx), ctx.getText());
+  }
+
+  @Override
+  public Node visitDatetimeLiteral(RelationalSqlParser.DatetimeLiteralContext ctx) {
+    return new LongLiteral(
+        getLocation(ctx),
+        String.valueOf(
+            parseDateTimeFormat(
+                ctx.getChild(0).getText(), CommonDateTimeUtils.currentTime(), zoneId)));
   }
 
   @Override

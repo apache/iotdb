@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
@@ -326,7 +327,13 @@ public class ConvertPredicateToFilterVisitor
   }
 
   public static double getDoubleValue(Expression expression) {
-    return ((DoubleLiteral) expression).getValue();
+    if (expression instanceof DoubleLiteral) {
+      return ((DoubleLiteral) expression).getValue();
+    } else if (expression instanceof LongLiteral) {
+      return ((LongLiteral) expression).getParsedValue();
+    } else {
+      throw new IllegalArgumentException("expression should be numeric, actual is " + expression);
+    }
   }
 
   public static boolean getBooleanValue(Expression expression) {
