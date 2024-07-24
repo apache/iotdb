@@ -51,6 +51,7 @@ import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.filter.operator.ValueFilterOperators;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -157,7 +158,10 @@ public class ConvertPredicateToFilterVisitor
       switch (dataType.getTypeEnum()) {
         case INT32:
           return (T) Integer.valueOf(Long.valueOf(getLongValue(value)).intValue());
+        case DATE:
+          return (T) DateUtils.parseDateExpressionToInt(getStringValue(value));
         case INT64:
+        case TIMESTAMP:
           return (T) Long.valueOf(getLongValue(value));
         case FLOAT:
           return (T) Float.valueOf((float) getDoubleValue(value));

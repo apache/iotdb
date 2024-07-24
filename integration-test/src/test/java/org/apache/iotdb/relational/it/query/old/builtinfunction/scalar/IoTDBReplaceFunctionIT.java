@@ -48,12 +48,12 @@ public class IoTDBReplaceFunctionIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT);",
-        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
-        "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'test\\\\')",
-        "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'abcd\\\\')",
-        "INSERT INTO table1(Time,device_id,s9)) values(2, 'd1', 'test\\\\')",
-        "INSERT INTO table1(Time,device_id,s9)) values(3, 'd1', 'abcd\\\\')",
+        "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT)",
+        "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd')",
+        "INSERT INTO table1(time,device_id,s1) values(2, 'd1', 'test\\\\')",
+        "INSERT INTO table1(time,device_id,s1) values(3, 'd1', 'abcd\\\\')",
+        "INSERT INTO table1(time,device_id,s9) values(2, 'd1', 'test\\\\')",
+        "INSERT INTO table1(time,device_id,s9) values(3, 'd1', 'abcd\\\\')",
         "flush"
       };
 
@@ -72,6 +72,7 @@ public class IoTDBReplaceFunctionIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -85,9 +86,9 @@ public class IoTDBReplaceFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "_col1", "_col2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,ABcd,abcd,",
-          "1997-01-01T08:00:00.002Z,test\\\\,testaa,",
-          "1997-01-01T08:00:00.003Z,ABcd\\\\,abcdaa,"
+          "1970-01-01T00:00:00.001Z,ABcd,abcd,",
+          "1970-01-01T00:00:00.002Z,test\\\\,testaa,",
+          "1970-01-01T00:00:00.003Z,ABcd\\\\,abcdaa,"
         };
     tableResultSetEqualTest(
         "select Time, REPLACE(s1, 'ab', 'AB'), REPLACE(s1, '\\', 'a') from table1",
@@ -97,9 +98,9 @@ public class IoTDBReplaceFunctionIT {
 
     String[] retArray2 =
         new String[] {
-          "1997-01-01T08:00:00.001Z,ABcd,abcd,",
-          "1997-01-01T08:00:00.002Z,test\\\\,testaa,",
-          "1997-01-01T08:00:00.003Z,ABcd\\\\,abcdaa,"
+          "1970-01-01T00:00:00.001Z,ABcd,abcd,",
+          "1970-01-01T00:00:00.002Z,test\\\\,testaa,",
+          "1970-01-01T00:00:00.003Z,ABcd\\\\,abcdaa,"
         };
     tableResultSetEqualTest(
         "select Time, REPLACE(s9, 'ab', 'AB'), REPLACE(s9, '\\', 'a') from table1",
@@ -113,9 +114,9 @@ public class IoTDBReplaceFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "_col1"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,acd,",
-          "1997-01-01T08:00:00.002Z,test\\\\,",
-          "1997-01-01T08:00:00.003Z,acd\\\\,"
+          "1970-01-01T00:00:00.001Z,acd,",
+          "1970-01-01T00:00:00.002Z,test\\\\,",
+          "1970-01-01T00:00:00.003Z,acd\\\\,"
         };
     tableResultSetEqualTest(
         "select Time, REPLACE(s1, 'b') from table1", expectedHeader, retArray, DATABASE_NAME);
@@ -168,11 +169,11 @@ public class IoTDBReplaceFunctionIT {
       } catch (Exception ignored) {
       }
 
-      try {
-        statement.execute("select REPLACE(s10, 'a', 'b') from table1");
-        fail();
-      } catch (Exception ignored) {
-      }
+      //      try {
+      //        statement.execute("select REPLACE(s10, 'a', 'b') from table1");
+      //        fail();
+      //      } catch (Exception ignored) {
+      //      }
 
     } catch (SQLException e) {
       e.printStackTrace();

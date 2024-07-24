@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -47,7 +47,7 @@ public class IoTDBDiffFunctionIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT);",
+        "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT)",
         "INSERT INTO table1(time,device_id,s1,s2) values(1, 'd1', 1, 1)",
         "INSERT INTO table1(time,device_id,s1) values(2, 'd1', 2)",
         "INSERT INTO table1(time,device_id,s2) values(3, 'd1', 3)",
@@ -92,62 +92,65 @@ public class IoTDBDiffFunctionIT {
     String[] expectedHeader = new String[] {"time", "_col1", "_col2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,null,null,",
-          "1997-01-01T08:00:00.002Z,1.0,null,",
-          "1997-01-01T08:00:00.003Z,null,2.0,",
-          "1997-01-01T08:00:00.004Z,2.0,null,",
-          "1997-01-01T08:00:00.005Z,1.0,2.0,",
-          "1997-01-01T08:00:00.006Z,null,1.0,",
+          "1970-01-01T00:00:00.001Z,null,null,",
+          "1970-01-01T00:00:00.002Z,1.0,null,",
+          "1970-01-01T00:00:00.003Z,null,2.0,",
+          "1970-01-01T00:00:00.004Z,2.0,null,",
+          "1970-01-01T00:00:00.005Z,1.0,2.0,",
+          "1970-01-01T00:00:00.006Z,null,1.0,",
           "1970-02-27T20:53:20.000Z,null,1.0,",
           "1970-02-27T20:53:20.001Z,3.0,null,"
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time,diff(s1), diff(s2) from table1 where device_id='d1'",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
 
     // align by device
     expectedHeader = new String[] {"time", "device_id", "_col1", "_col2"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,null,null,",
-          "1997-01-01T08:00:00.002Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.003Z,d1,null,2.0,",
-          "1997-01-01T08:00:00.004Z,d1,2.0,null,",
-          "1997-01-01T08:00:00.005Z,d1,1.0,2.0,",
-          "1997-01-01T08:00:00.006Z,d1,null,1.0,",
+          "1970-01-01T00:00:00.001Z,d1,null,null,",
+          "1970-01-01T00:00:00.002Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,2.0,",
+          "1970-01-01T00:00:00.004Z,d1,2.0,null,",
+          "1970-01-01T00:00:00.005Z,d1,1.0,2.0,",
+          "1970-01-01T00:00:00.006Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d1,null,1.0,",
           "1970-02-27T20:53:20.001Z,d1,3.0,null,",
-          "1997-01-01T08:00:00.001Z,d2,-7.0,-6.0",
-          "1997-01-01T08:00:00.002Z,d2,1.0,1.0,",
+          "1970-01-01T00:00:00.001Z,d2,-7.0,-6.0",
+          "1970-01-01T00:00:00.002Z,d2,1.0,1.0,",
           "1970-02-27T20:53:20.000Z,d2,null,1.0,",
           "1970-02-27T20:53:20.001Z,d2,2.0,null,",
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, device_id, Diff(s1), diff(s2) from table1 where device_id='d1' or device_id='d2' order by device_id",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
 
     // align by device + order by time
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,null,null,",
-          "1997-01-01T08:00:00.001Z,d2,null,null",
-          "1997-01-01T08:00:00.002Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.002Z,d2,1.0,1.0,",
-          "1997-01-01T08:00:00.003Z,d1,null,2.0,",
-          "1997-01-01T08:00:00.004Z,d1,2.0,null,",
-          "1997-01-01T08:00:00.005Z,d1,1.0,2.0,",
-          "1997-01-01T08:00:00.006Z,d1,null,1.0,",
+          "1970-01-01T00:00:00.001Z,d1,null,null,",
+          "1970-01-01T00:00:00.001Z,d2,null,null",
+          "1970-01-01T00:00:00.002Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.002Z,d2,1.0,1.0,",
+          "1970-01-01T00:00:00.003Z,d1,null,2.0,",
+          "1970-01-01T00:00:00.004Z,d1,2.0,null,",
+          "1970-01-01T00:00:00.005Z,d1,1.0,2.0,",
+          "1970-01-01T00:00:00.006Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d2,null,1.0,",
           "1970-02-27T20:53:20.001Z,d1,3.0,null,",
           "1970-02-27T20:53:20.001Z,d2,2.0,null,",
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, device_id, Diff(s1), diff(s2) from table1 where device_id='d1' or device_id='d2' order by time,device_id",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -155,62 +158,65 @@ public class IoTDBDiffFunctionIT {
     String[] expectedHeader = new String[] {"time", "_col1", "_col2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,null,null,",
-          "1997-01-01T08:00:00.002Z,1.0,null,",
-          "1997-01-01T08:00:00.003Z,null,null,",
-          "1997-01-01T08:00:00.004Z,null,null,",
-          "1997-01-01T08:00:00.005Z,1.0,null,",
-          "1997-01-01T08:00:00.006Z,null,1.0,",
+          "1970-01-01T00:00:00.001Z,null,null,",
+          "1970-01-01T00:00:00.002Z,1.0,null,",
+          "1970-01-01T00:00:00.003Z,null,null,",
+          "1970-01-01T00:00:00.004Z,null,null,",
+          "1970-01-01T00:00:00.005Z,1.0,null,",
+          "1970-01-01T00:00:00.006Z,null,1.0,",
           "1970-02-27T20:53:20.000Z,null,1.0,",
           "1970-02-27T20:53:20.001Z,null,null,"
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, Diff(s1, false), diff(s2, false) from table1 where device_id='d1'",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
 
     // align by device
     expectedHeader = new String[] {"time", "device_id", "_col1", "_col2"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,null,null,",
-          "1997-01-01T08:00:00.002Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.003Z,d1,null,null,",
-          "1997-01-01T08:00:00.004Z,d1,null,null,",
-          "1997-01-01T08:00:00.005Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.006Z,d1,null,1.0,",
+          "1970-01-01T00:00:00.001Z,d1,null,null,",
+          "1970-01-01T00:00:00.002Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,null,null,",
+          "1970-01-01T00:00:00.005Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d1,null,1.0,",
           "1970-02-27T20:53:20.001Z,d1,null,null,",
-          "1997-01-01T08:00:00.001Z,d2,null,null",
-          "1997-01-01T08:00:00.002Z,d2,1.0,1.0,",
+          "1970-01-01T00:00:00.001Z,d2,null,null",
+          "1970-01-01T00:00:00.002Z,d2,1.0,1.0,",
           "1970-02-27T20:53:20.000Z,d2,null,1.0,",
           "1970-02-27T20:53:20.001Z,d2,null,null,",
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, device_id, Diff(s1, false), diff(s2, false) from table1 where device_id='d1' or device_id='d2' order by device_id",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
 
     // align by device + order by time
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,null,null,",
-          "1997-01-01T08:00:00.001Z,d2,null,null",
-          "1997-01-01T08:00:00.002Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.002Z,d2,1.0,1.0,",
-          "1997-01-01T08:00:00.003Z,d1,null,null,",
-          "1997-01-01T08:00:00.004Z,d1,null,null,",
-          "1997-01-01T08:00:00.005Z,d1,1.0,null,",
-          "1997-01-01T08:00:00.006Z,d1,null,1.0,",
+          "1970-01-01T00:00:00.001Z,d1,null,null,",
+          "1970-01-01T00:00:00.001Z,d2,null,null",
+          "1970-01-01T00:00:00.002Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.002Z,d2,1.0,1.0,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,null,null,",
+          "1970-01-01T00:00:00.005Z,d1,1.0,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d1,null,1.0,",
           "1970-02-27T20:53:20.000Z,d2,null,1.0,",
           "1970-02-27T20:53:20.001Z,d1,null,null,",
           "1970-02-27T20:53:20.001Z,d2,null,null,",
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, device_id, Diff(s1, false), diff(s2, false) where device_id='d1' or device_id='d2' order by time,device_id",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -218,13 +224,14 @@ public class IoTDBDiffFunctionIT {
     String[] expectedHeader = new String[] {"time", "s1", "s2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.002Z,2,null,",
-          "1997-01-01T08:00:00.004Z,4,null,",
-          "1997-01-01T08:00:00.005Z,5,5.0,"
+          "1970-01-01T00:00:00.002Z,2,null,",
+          "1970-01-01T00:00:00.004Z,4,null,",
+          "1970-01-01T00:00:00.005Z,5,5.0,"
         };
-    resultSetEqualTest(
+    tableResultSetEqualTest(
         "select time, s1, s2 from table1 where device_id='d1' and diff(s1) between 1 and 2",
         expectedHeader,
-        retArray);
+        retArray,
+        DATABASE_NAME);
   }
 }

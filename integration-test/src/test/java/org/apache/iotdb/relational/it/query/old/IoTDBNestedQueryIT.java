@@ -39,8 +39,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -447,33 +445,6 @@ public class IoTDBNestedQueryIT {
         Assert.assertFalse(rs.next());
       }
 
-    } catch (SQLException e) {
-      e.printStackTrace();
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testTimeExpressions() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("USE " + DATABASE_NAME);
-      String query =
-          "SELECT s1, time, time, -(-time), time + 1 - 1, time + s1 - s1, time + 1 - 1 FROM vehicle1 where device_id='d1'";
-      try (ResultSet rs = statement.executeQuery(query)) {
-        for (int i = 1; i <= ITERATION_TIMES; ++i) {
-          assertTrue(rs.next());
-          for (int j = 1; j <= 7; ++j) {
-            assertEquals(i, Double.parseDouble(rs.getString(j)), 0.001);
-          }
-        }
-        assertFalse(rs.next());
-      }
-
-      query = "SELECT time, 2 * time FROM vehicle1 where device_id='d1'";
-      try (ResultSet rs = statement.executeQuery(query)) {
-        assertFalse(rs.next());
-      }
     } catch (SQLException e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,7 +40,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignByDeviceWithTemplateIT {
@@ -51,7 +49,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
       new String[] {
         "CREATE database " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT32 MEASUREMENT);",
+        "create table table1(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT32 MEASUREMENT)",
         "INSERT INTO table1(Time, device_id, s1, s2, s3) VALUES (1,'d1', 1.1, false, 1), (2, 'd1', 2.2, false, 2), (1,'d2', 11.1, false, 11), (2,'d2', 22.2, false, 22), (1,'d3', 111.1, true, null), (4,'d3', 444.4, true, 44), (1,'d4', 1111.1, true, 1111), (5,'d4', 5555.5, false, 5555)",
       };
 
@@ -72,17 +70,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1", "s2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,1,1.1,false,",
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,false,",
-          "1997-01-01T08:00:00.001Z,d2,11,11.1,false,",
-          "1997-01-01T08:00:00.002Z,d2,22,22.2,false,",
-          "1997-01-01T08:00:00.001Z,d3,null,111.1,true,",
-          "1997-01-01T08:00:00.004Z,d3,44,444.4,true,",
-          "1997-01-01T08:00:00.001Z,d4,1111,1111.1,true,",
-          "1997-01-01T08:00:00.005Z,d4,5555,5555.5,false,",
+          "1970-01-01T00:00:00.001Z,d1,1,1.1,false,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,false,",
+          "1970-01-01T00:00:00.001Z,d2,11,11.1,false,",
+          "1970-01-01T00:00:00.002Z,d2,22,22.2,false,",
+          "1970-01-01T00:00:00.001Z,d3,null,111.1,true,",
+          "1970-01-01T00:00:00.004Z,d3,44,444.4,true,",
+          "1970-01-01T00:00:00.001Z,d4,1111,1111.1,true,",
+          "1970-01-01T00:00:00.005Z,d4,5555,5555.5,false,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3, s1, s2 FROM table1 order by device_id;",
+        "SELECT time, device_id, s3, s1, s2 FROM table1 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -90,28 +88,28 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3", "s1"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,1.1,false,1,1.1,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,2.2,",
-          "1997-01-01T08:00:00.001Z,d2,11.1,false,11,11.1,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,22.2,",
-          "1997-01-01T08:00:00.001Z,d3,111.1,true,null,111.1,",
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,444.4,",
-          "1997-01-01T08:00:00.001Z,d4,1111.1,true,1111,1111.1,",
-          "1997-01-01T08:00:00.005Z,d4,5555.5,false,5555,5555.5,",
+          "1970-01-01T00:00:00.001Z,d1,1.1,false,1,1.1,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,2.2,",
+          "1970-01-01T00:00:00.001Z,d2,11.1,false,11,11.1,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,22.2,",
+          "1970-01-01T00:00:00.001Z,d3,111.1,true,null,111.1,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,444.4,",
+          "1970-01-01T00:00:00.001Z,d4,1111.1,true,1111,1111.1,",
+          "1970-01-01T00:00:00.005Z,d4,5555.5,false,5555,5555.5,",
         };
     tableResultSetEqualTest(
-        "SELECT *, s1 FROM table1 order by device_id;", expectedHeader, retArray, DATABASE_NAME);
+        "SELECT *, s1 FROM table1 order by device_id", expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,1.1,false,1,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,",
-          "1997-01-01T08:00:00.001Z,d2,11.1,false,11,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.001Z,d1,1.1,false,1,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,",
+          "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 where device_id = 'd1' or device_id = 'd2' or device_id = 'd3' order by device_id;",
+        "SELECT * FROM table1 where device_id = 'd1' or device_id = 'd2' or device_id = 'd6' order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -120,10 +118,10 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,", "1997-01-01T08:00:00.001Z,d2,11.1,false,11,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,", "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 order by device_id OFFSET 1 LIMIT 2;",
+        "SELECT * FROM table1 order by device_id OFFSET 1 LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -131,17 +129,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 3. order by time
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555.5,false,5555,",
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
-          "1997-01-01T08:00:00.001Z,d1,1.1,false,1,",
-          "1997-01-01T08:00:00.001Z,d2,11.1,false,11,",
-          "1997-01-01T08:00:00.001Z,d3,111.1,true,null,",
-          "1997-01-01T08:00:00.001Z,d4,1111.1,true,1111,",
+          "1970-01-01T00:00:00.005Z,d4,5555.5,false,5555,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.001Z,d1,1.1,false,1,",
+          "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
+          "1970-01-01T00:00:00.001Z,d3,111.1,true,null,",
+          "1970-01-01T00:00:00.001Z,d4,1111.1,true,1111,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 ORDER BY time DESC, device_id ASC;",
+        "SELECT * FROM table1 ORDER BY time DESC, device_id ASC",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -149,13 +147,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 4. order by time + limit/offset
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555.5,false,5555,",
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.005Z,d4,5555.5,false,5555,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 ORDER BY time DESC, device_id LIMIT 4;",
+        "SELECT * FROM table1 ORDER BY time DESC, device_id LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -167,17 +165,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,1,1.1,",
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,",
-          "1997-01-01T08:00:00.001Z,d2,11,11.1,",
-          "1997-01-01T08:00:00.002Z,d2,22,22.2,",
-          "1997-01-01T08:00:00.001Z,d3,null,111.1,",
-          "1997-01-01T08:00:00.004Z,d3,44,444.4,",
-          "1997-01-01T08:00:00.001Z,d4,1111,1111.1,",
-          "1997-01-01T08:00:00.005Z,d4,5555,5555.5,",
+          "1970-01-01T00:00:00.001Z,d1,1,1.1,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,",
+          "1970-01-01T00:00:00.001Z,d2,11,11.1,",
+          "1970-01-01T00:00:00.002Z,d2,22,22.2,",
+          "1970-01-01T00:00:00.001Z,d3,null,111.1,",
+          "1970-01-01T00:00:00.004Z,d3,44,444.4,",
+          "1970-01-01T00:00:00.001Z,d4,1111,1111.1,",
+          "1970-01-01T00:00:00.005Z,d4,5555,5555.5,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3, s1 FROM table1 order by device_id;",
+        "SELECT time, device_id, s3, s1 FROM table1 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -186,7 +184,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + DATABASE_NAME);
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT s3,s1,s_null FROM table1 order by device_id;")) {
+            statement.executeQuery("SELECT s3,s1,s_null FROM table1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
           assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
@@ -200,10 +198,10 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 2. order by device + limit/offset
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,", "1997-01-01T08:00:00.001Z,d2,11,11.1,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,", "1970-01-01T00:00:00.001Z,d2,11,11.1,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3,s1 FROM table1 order by device_id OFFSET 1 LIMIT 2;",
+        "SELECT time, device_id, s3,s1 FROM table1 order by device_id OFFSET 1 LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -211,17 +209,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 3. order by time
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555,5555.5,",
-          "1997-01-01T08:00:00.004Z,d3,44,444.4,",
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,",
-          "1997-01-01T08:00:00.002Z,d2,22,22.2,",
-          "1997-01-01T08:00:00.001Z,d1,1,1.1,",
-          "1997-01-01T08:00:00.001Z,d2,11,11.1,",
-          "1997-01-01T08:00:00.001Z,d3,null,111.1,",
-          "1997-01-01T08:00:00.001Z,d4,1111,1111.1,",
+          "1970-01-01T00:00:00.005Z,d4,5555,5555.5,",
+          "1970-01-01T00:00:00.004Z,d3,44,444.4,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,",
+          "1970-01-01T00:00:00.002Z,d2,22,22.2,",
+          "1970-01-01T00:00:00.001Z,d1,1,1.1,",
+          "1970-01-01T00:00:00.001Z,d2,11,11.1,",
+          "1970-01-01T00:00:00.001Z,d3,null,111.1,",
+          "1970-01-01T00:00:00.001Z,d4,1111,1111.1,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY TIME DESC, device_id;",
+        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY TIME DESC, device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -229,13 +227,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 4. order by time + limit/offset
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555,5555.5,",
-          "1997-01-01T08:00:00.004Z,d3,44,444.4,",
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,",
-          "1997-01-01T08:00:00.002Z,d2,22,22.2,",
+          "1970-01-01T00:00:00.005Z,d4,5555,5555.5,",
+          "1970-01-01T00:00:00.004Z,d3,44,444.4,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,",
+          "1970-01-01T00:00:00.002Z,d2,22,22.2,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY time DESC, device_id LIMIT 4;",
+        "SELECT time, device_id, s3,s1 FROM table1 ORDER BY time DESC, device_id LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -247,13 +245,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,false,2,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
-          "1997-01-01T08:00:00.001Z,d1,1.1,false,1,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,false,2,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.001Z,d1,1.1,false,1,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE time < 5 ORDER BY TIME DESC LIMIT 4;",
+        "SELECT * FROM table1 WHERE time < 5 ORDER BY TIME desc, device_id LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -261,8 +259,8 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 2. order by time + time filter + value filter
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
@@ -276,7 +274,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + DATABASE_NAME);
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT * FROM table1 WHERE s_null > 1 order by device_id;")) {
+            statement.executeQuery("SELECT * FROM table1 WHERE s_null > 1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
           assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
@@ -295,10 +293,10 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d4,1111.1,true,1111,",
-          "1997-01-01T08:00:00.001Z,d3,111.1,true,null,",
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.001Z,d2,11.1,false,11,",
+          "1970-01-01T00:00:00.001Z,d4,1111.1,true,1111,",
+          "1970-01-01T00:00:00.001Z,d3,111.1,true,null,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 WHERE time < 5 ORDER BY device_id DESC LIMIT 4",
@@ -309,12 +307,12 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 2. order by device + time filter + value filter
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,444.4,true,44,",
-          "1997-01-01T08:00:00.001Z,d2,22.2,false,22,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,true,44,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,false,22,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY device_id DESC;",
+            + "ORDER BY device_id DESC",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -326,13 +324,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s3", "s2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,44,true,",
-          "1997-01-01T08:00:00.002Z,d1,2,false,",
-          "1997-01-01T08:00:00.002Z,d2,22,false,",
-          "1997-01-01T08:00:00.001Z,d1,1,false,",
+          "1970-01-01T00:00:00.004Z,d3,44,true,",
+          "1970-01-01T00:00:00.002Z,d1,2,false,",
+          "1970-01-01T00:00:00.002Z,d2,22,false,",
+          "1970-01-01T00:00:00.001Z,d1,1,false,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3, s2 FROM table1 WHERE time < 5 ORDER BY time DESC, device_id LIMIT 4;",
+        "SELECT time, device_id, s3, s2 FROM table1 WHERE time < 5 ORDER BY time DESC, device_id LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -340,11 +338,11 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 2. order by time + time filter + value filter
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,44,true,", "1997-01-01T08:00:00.002Z,d2,22,false,",
+          "1970-01-01T00:00:00.004Z,d3,44,true,", "1970-01-01T00:00:00.002Z,d2,22,false,",
         };
     tableResultSetEqualTest(
         "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY time DESC, device_id;",
+            + "ORDER BY time DESC, device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -356,13 +354,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s3", "s2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d4,1111,true,",
-          "1997-01-01T08:00:00.001Z,d3,null,true,",
-          "1997-01-01T08:00:00.004Z,d3,44,true,",
-          "1997-01-01T08:00:00.001Z,d2,11,false,",
+          "1970-01-01T00:00:00.001Z,d4,1111,true,",
+          "1970-01-01T00:00:00.001Z,d3,null,true,",
+          "1970-01-01T00:00:00.004Z,d3,44,true,",
+          "1970-01-01T00:00:00.001Z,d2,11,false,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3,s2 FROM table1 WHERE time < 5 ORDER BY DEVICE DESC, time LIMIT 4",
+        "SELECT time, device_id, s3,s2 FROM table1 WHERE time < 5 ORDER BY device_id DESC, time LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -370,11 +368,11 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 2. order by device + time filter + value filter
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.004Z,d3,44,true,", "1997-01-01T08:00:00.002Z,d2,22,false,",
+          "1970-01-01T00:00:00.004Z,d3,44,true,", "1970-01-01T00:00:00.002Z,d2,22,false,",
         };
     tableResultSetEqualTest(
         "SELECT time, device_id, s3,s2 FROM table1 where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
-            + "ORDER BY DEVICE DESC, time asc",
+            + "ORDER BY device_id DESC, time asc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -386,17 +384,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
     String[] retArray =
         new String[] {
-          "1.1,false,1,false,1997-01-01T08:00:00.001Z,d1,",
-          "2.2,false,2,false,1997-01-01T08:00:00.002Z,d1,",
-          "11.1,false,11,false,1997-01-01T08:00:00.001Z,d2,",
-          "22.2,false,22,false,1997-01-01T08:00:00.002Z,d2,",
-          "111.1,true,null,true,1997-01-01T08:00:00.001Z,d3,",
-          "444.4,true,44,true,1997-01-01T08:00:00.004Z,d3,",
-          "1111.1,true,1111,true,1997-01-01T08:00:00.001Z,d4,",
-          "5555.5,false,5555,false,1997-01-01T08:00:00.005Z,d4,",
+          "1.1,false,1,false,1970-01-01T00:00:00.001Z,d1,",
+          "2.2,false,2,false,1970-01-01T00:00:00.002Z,d1,",
+          "11.1,false,11,false,1970-01-01T00:00:00.001Z,d2,",
+          "22.2,false,22,false,1970-01-01T00:00:00.002Z,d2,",
+          "111.1,true,null,true,1970-01-01T00:00:00.001Z,d3,",
+          "444.4,true,44,true,1970-01-01T00:00:00.004Z,d3,",
+          "1111.1,true,1111,true,1970-01-01T00:00:00.001Z,d4,",
+          "5555.5,false,5555,false,1970-01-01T00:00:00.005Z,d4,",
         };
     tableResultSetEqualTest(
-        "SELECT s1 as aa, s2 as bb, s3, s2, time, device_id FROM table1;",
+        "SELECT s1 as aa, s2 as bb, s3, s2, time, device_id FROM table1 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -405,17 +403,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.001Z,d1,1.1,1.1,",
-          "1997-01-01T08:00:00.002Z,d1,2.2,2.2,",
-          "1997-01-01T08:00:00.001Z,d2,11.1,11.1,",
-          "1997-01-01T08:00:00.002Z,d2,22.2,22.2,",
-          "1997-01-01T08:00:00.001Z,d3,111.1,111.1,",
-          "1997-01-01T08:00:00.004Z,d3,444.4,444.4,",
-          "1997-01-01T08:00:00.001Z,d4,1111.1,1111.1,",
-          "1997-01-01T08:00:00.005Z,d4,5555.5,5555.5,",
+          "1970-01-01T00:00:00.001Z,d1,1.1,1.1,",
+          "1970-01-01T00:00:00.002Z,d1,2.2,2.2,",
+          "1970-01-01T00:00:00.001Z,d2,11.1,11.1,",
+          "1970-01-01T00:00:00.002Z,d2,22.2,22.2,",
+          "1970-01-01T00:00:00.001Z,d3,111.1,111.1,",
+          "1970-01-01T00:00:00.004Z,d3,444.4,444.4,",
+          "1970-01-01T00:00:00.001Z,d4,1111.1,1111.1,",
+          "1970-01-01T00:00:00.005Z,d4,5555.5,5555.5,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s1 as a, s1 as b  FROM table1",
+        "SELECT time, device_id, s1 as a, s1 as b  FROM table1 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -427,17 +425,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s3", "s1", "s2"};
     String[] retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555,5555.5,false,",
-          "1997-01-01T08:00:00.002Z,d2,22,22.2,false,",
-          "1997-01-01T08:00:00.001Z,d2,11,11.1,false,",
-          "1997-01-01T08:00:00.002Z,d1,2,2.2,false,",
-          "1997-01-01T08:00:00.001Z,d1,1,1.1,false,",
-          "1997-01-01T08:00:00.001Z,d4,1111,1111.1,true,",
-          "1997-01-01T08:00:00.004Z,d3,44,444.4,true,",
-          "1997-01-01T08:00:00.001Z,d3,null,111.1,true,",
+          "1970-01-01T00:00:00.005Z,d4,5555,5555.5,false,",
+          "1970-01-01T00:00:00.002Z,d2,22,22.2,false,",
+          "1970-01-01T00:00:00.001Z,d2,11,11.1,false,",
+          "1970-01-01T00:00:00.002Z,d1,2,2.2,false,",
+          "1970-01-01T00:00:00.001Z,d1,1,1.1,false,",
+          "1970-01-01T00:00:00.001Z,d4,1111,1111.1,true,",
+          "1970-01-01T00:00:00.004Z,d3,44,444.4,true,",
+          "1970-01-01T00:00:00.001Z,d3,null,111.1,true,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3, s1, s2 FROM table1 order by s2 asc, s1 desc, device_id;",
+        "SELECT time, device_id, s3, s1, s2 FROM table1 order by s2 asc, s1 desc, device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -446,14 +444,14 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     expectedHeader = new String[] {"time", "device_id", "s3"};
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555,",
-          "1997-01-01T08:00:00.002Z,d2,22,",
-          "1997-01-01T08:00:00.001Z,d2,11,",
-          "1997-01-01T08:00:00.002Z,d1,2,",
-          "1997-01-01T08:00:00.001Z,d1,1,",
-          "1997-01-01T08:00:00.001Z,d4,1111,",
-          "1997-01-01T08:00:00.004Z,d3,44,",
-          "1997-01-01T08:00:00.001Z,d3,null,",
+          "1970-01-01T00:00:00.005Z,d4,5555,",
+          "1970-01-01T00:00:00.002Z,d2,22,",
+          "1970-01-01T00:00:00.001Z,d2,11,",
+          "1970-01-01T00:00:00.002Z,d1,2,",
+          "1970-01-01T00:00:00.001Z,d1,1,",
+          "1970-01-01T00:00:00.001Z,d4,1111,",
+          "1970-01-01T00:00:00.004Z,d3,44,",
+          "1970-01-01T00:00:00.001Z,d3,null,",
         };
     tableResultSetEqualTest(
         "SELECT time, device_id, s3 FROM table1 order by s2 asc, s1 desc",
@@ -464,17 +462,17 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 3. order by expression
     retArray =
         new String[] {
-          "1997-01-01T08:00:00.005Z,d4,5555,",
-          "1997-01-01T08:00:00.001Z,d4,1111,",
-          "1997-01-01T08:00:00.004Z,d3,44,",
-          "1997-01-01T08:00:00.002Z,d2,22,",
-          "1997-01-01T08:00:00.001Z,d2,11,",
-          "1997-01-01T08:00:00.002Z,d1,2,",
-          "1997-01-01T08:00:00.001Z,d1,1,",
-          "1997-01-01T08:00:00.001Z,d3,null,",
+          "1970-01-01T00:00:00.005Z,d4,5555,",
+          "1970-01-01T00:00:00.001Z,d4,1111,",
+          "1970-01-01T00:00:00.004Z,d3,44,",
+          "1970-01-01T00:00:00.002Z,d2,22,",
+          "1970-01-01T00:00:00.001Z,d2,11,",
+          "1970-01-01T00:00:00.002Z,d1,2,",
+          "1970-01-01T00:00:00.001Z,d1,1,",
+          "1970-01-01T00:00:00.001Z,d3,null,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3 FROM root.sg1.** order by s1+s3 desc",
+        "SELECT time, device_id, s3 FROM table1 order by s1+s3 desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);

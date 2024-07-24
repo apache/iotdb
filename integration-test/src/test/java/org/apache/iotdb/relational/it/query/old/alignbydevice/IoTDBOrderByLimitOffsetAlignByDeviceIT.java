@@ -55,7 +55,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   public void orderByCanNotPushLimitTest() {
     // 1. value filter, can not push down LIMIT
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
-    String[] retArray = new String[] {"1997-01-01T08:00:00.003Z,d1,111,"};
+    String[] retArray = new String[] {"1970-01-01T00:00:00.003Z,d1,111,"};
     tableResultSetEqualTest(
         "SELECT * FROM table1 WHERE s1>40 ORDER BY Time LIMIT 1",
         expectedHeader,
@@ -63,20 +63,20 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
         DATABASE_NAME);
 
     // 2. order by expression, can not push down LIMIT
-    retArray = new String[] {"1997-01-01T08:00:00.003Z,d3,333,"};
+    retArray = new String[] {"1970-01-01T00:00:00.003Z,d3,333,"};
     tableResultSetEqualTest(
         "SELECT * FROM table1 ORDER BY s1 DESC LIMIT 1", expectedHeader, retArray, DATABASE_NAME);
 
     // 3. time filter, can push down LIMIT
-    retArray = new String[] {"1997-01-01T08:00:00.002Z,d3,33,", "1997-01-01T08:00:00.002Z,d2,22,"};
+    retArray = new String[] {"1970-01-01T00:00:00.002Z,d3,33,", "1970-01-01T00:00:00.002Z,d2,22,"};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE time>1 and time<3 ORDER BY device_id DESC LIMIT 2;",
+        "SELECT * FROM table1 WHERE time>1 and time<3 ORDER BY device_id DESC LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     // 4. both exist OFFSET and LIMIT, can push down LIMIT as OFFSET+LIMIT
-    retArray = new String[] {"1997-01-01T08:00:00.003Z,d2,222,"};
+    retArray = new String[] {"1970-01-01T00:00:00.003Z,d2,222,"};
     tableResultSetEqualTest(
         "SELECT * FROM table1 ORDER BY Time DESC OFFSET 1 LIMIT 1",
         expectedHeader,
@@ -92,7 +92,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   //    String[] retArray = new String[] {"3,root.db.d2,222.0,", "3,root.db.d3,333.0,"};
   //    resultSetEqualTest(
   //        "select sum(s1) from root.db.** group by ((1,5],1ms) having(sum(s1)>111) order by time
-  // limit 2 align by device;",
+  // limit 2 align by device",
   //        expectedHeader,
   //        retArray);
   //  }
@@ -109,7 +109,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   //          "2,root.fill.d1,22,11.0,",
   //        };
   //    resultSetEqualTest(
-  //        "select * from root.fill.** order by time fill(linear) limit 4 align by device;",
+  //        "select * from root.fill.** order by time fill(linear) limit 4 align by device",
   //        expectedHeader,
   //        retArray);
   //  }
@@ -123,15 +123,15 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT)",
-        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd1', 1), (2, 'd1', 11), (3, 'd1', 111);",
-        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd2', 2), (2, 'd2', 22), (3, 'd2', 222);",
-        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd3', 3), (2, 'd3', 33), (3, 'd3', 333);",
+        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd1', 1), (2, 'd1', 11), (3, 'd1', 111)",
+        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd2', 2), (2, 'd2', 22), (3, 'd2', 222)",
+        "INSERT INTO table1(Time, device_id, s1) VALUES(1, 'd3', 3), (2, 'd3', 33), (3, 'd3', 333)",
         "CREATE DATABASE " + DATABASE_FILL_NAME,
         "USE " + DATABASE_FILL_NAME,
         "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 FLOAT MEASUREMENT)",
-        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd1', 1, null), (2, 'd1', null, 11), (3, 'd1', 111, 111.1);",
-        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd2', 2, null), (2, 'd2', 22, 22.2), (3, 'd2', 222, null);",
-        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd3', 3, null), (2, 'd3', 33, null), (3, 'd3', 333, 333.3);",
+        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd1', 1, null), (2, 'd1', null, 11), (3, 'd1', 111, 111.1)",
+        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd2', 2, null), (2, 'd2', 22, 22.2), (3, 'd2', 222, null)",
+        "INSERT INTO table1(Time,device_id,s1,s2) VALUES(1, 'd3', 3, null), (2, 'd3', 33, null), (3, 'd3', 333, 333.3)",
       };
 
   protected static void insertData3() {

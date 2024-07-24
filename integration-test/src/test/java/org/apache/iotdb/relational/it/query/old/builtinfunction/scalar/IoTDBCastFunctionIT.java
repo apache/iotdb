@@ -50,49 +50,49 @@ public class IoTDBCastFunctionIT {
         // normal cases
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table normal(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT);",
+        "create table normal(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT)",
         // data for int series
-        "INSERT INTO normal(Time, device_id ,s1) values(0, 'd1', 0)",
-        "INSERT INTO normal(Time, device_id ,s1) values(1, 'd1', 1)",
-        "INSERT INTO normal(Time, device_id ,s1) values(2, 'd1', 2)",
-        "INSERT INTO normal(Time, device_id ,s1) values(3, 'd1', 3)",
+        "INSERT INTO normal(time, device_id ,s1) values(0, 'd1', 0)",
+        "INSERT INTO normal(time, device_id ,s1) values(1, 'd1', 1)",
+        "INSERT INTO normal(time, device_id ,s1) values(2, 'd1', 2)",
+        "INSERT INTO normal(time, device_id ,s1) values(3, 'd1', 3)",
         // data for long series
-        "INSERT INTO normal(Time, device_id ,s2) values(0, 'd1', 0)",
-        "INSERT INTO normal(Time, device_id ,s2) values(1, 'd1', 1)",
-        "INSERT INTO normal(Time, device_id ,s2) values(2, 'd1', 2)",
-        "INSERT INTO normal(Time, device_id ,s2) values(3, 'd1', 3)",
+        "INSERT INTO normal(time, device_id ,s2) values(0, 'd1', 0)",
+        "INSERT INTO normal(time, device_id ,s2) values(1, 'd1', 1)",
+        "INSERT INTO normal(time, device_id ,s2) values(2, 'd1', 2)",
+        "INSERT INTO normal(time, device_id ,s2) values(3, 'd1', 3)",
         // data for float series
-        "INSERT INTO normal(Time, device_id ,s3) values(0, 'd1', 0)",
-        "INSERT INTO normal(Time, device_id ,s3) values(1, 'd1', 1)",
-        "INSERT INTO normal(Time, device_id ,s3) values(2, 'd1', 2.7)",
-        "INSERT INTO normal(Time, device_id ,s3) values(3, 'd1', 3.33)",
+        "INSERT INTO normal(time, device_id ,s3) values(0, 'd1', 0)",
+        "INSERT INTO normal(time, device_id ,s3) values(1, 'd1', 1)",
+        "INSERT INTO normal(time, device_id ,s3) values(2, 'd1', 2.7)",
+        "INSERT INTO normal(time, device_id ,s3) values(3, 'd1', 3.33)",
         // data for double series
-        "INSERT INTO normal(Time, device_id ,s3) values(0, 'd1', 0)",
-        "INSERT INTO normal(Time, device_id ,s3) values(1, 'd1', 1.0)",
-        "INSERT INTO normal(Time, device_id ,s3) values(2, 'd1', 2.7)",
-        "INSERT INTO normal(Time, device_id ,s3) values(3, 'd1', 3.33)",
+        "INSERT INTO normal(time, device_id ,s4) values(0, 'd1', 0)",
+        "INSERT INTO normal(time, device_id ,s4) values(1, 'd1', 1.0)",
+        "INSERT INTO normal(time, device_id ,s4) values(2, 'd1', 2.7)",
+        "INSERT INTO normal(time, device_id ,s4) values(3, 'd1', 3.33)",
         // data for boolean series
-        "INSERT INTO normal(Time, device_id ,s3) values(0, 'd1', false)",
-        "INSERT INTO normal(Time, device_id ,s3) values(1, 'd1', false)",
-        "INSERT INTO normal(Time, device_id ,s3) values(2, 'd1', true)",
-        "INSERT INTO normal(Time, device_id ,s3) values(3, 'd1', true)",
+        "INSERT INTO normal(time, device_id ,s5) values(0, 'd1', false)",
+        "INSERT INTO normal(time, device_id ,s5) values(1, 'd1', false)",
+        "INSERT INTO normal(time, device_id ,s5) values(2, 'd1', true)",
+        "INSERT INTO normal(time, device_id ,s5) values(3, 'd1', true)",
         // data for text series
-        "INSERT INTO normal(Time, device_id ,s3) values(0, 'd1', '10000')",
-        "INSERT INTO normal(Time, device_id ,s3) values(1, 'd1', 3)",
-        "INSERT INTO normal(Time, device_id ,s3) values(2, 'd1', 'TRue')",
-        "INSERT INTO normal(Time, device_id ,s3) values(3, 'd1', 'faLse')",
+        "INSERT INTO normal(time, device_id ,s6) values(0, 'd1', '10000')",
+        "INSERT INTO normal(time, device_id ,s6) values(1, 'd1', 3)",
+        "INSERT INTO normal(time, device_id ,s6) values(2, 'd1', 'TRue')",
+        "INSERT INTO normal(time, device_id ,s6) values(3, 'd1', 'faLse')",
         "flush",
 
         // special cases
-        "create table special(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT);",
-        "INSERT INTO normal(Time, device_id ,s2) values(1, 'd1', 2147483648)",
-        "INSERT INTO normal(Time, device_id ,s3) values(1, 'd1', 2147483648.0)",
-        "INSERT INTO normal(Time, device_id ,s3) values(2, 'd1', 2e38)",
-        "INSERT INTO normal(Time, device_id ,s4) values(1, 'd1', 4e50)",
-        "INSERT INTO normal(Time, device_id ,s6) values(1, 'd1', 'test')",
-        "INSERT INTO normal(Time, device_id ,s6) values(2, 'd1', '1.1')",
-        "INSERT INTO normal(Time, device_id ,s6) values(3, 'd1', '4e60')",
-        "INSERT INTO normal(Time, device_id ,s6) values(4, 'd1', '4e60000')",
+        "create table special(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT)",
+        "INSERT INTO special(Time, device_id ,s2) values(1, 'd1', 2147483648)",
+        "INSERT INTO special(Time, device_id ,s3) values(1, 'd1', 2147483648.0)",
+        "INSERT INTO special(Time, device_id ,s3) values(2, 'd1', 2e38)",
+        "INSERT INTO special(Time, device_id ,s4) values(1, 'd1', 4e50)",
+        "INSERT INTO special(Time, device_id ,s6) values(1, 'd1', 'test')",
+        "INSERT INTO special(Time, device_id ,s6) values(2, 'd1', '1.1')",
+        "INSERT INTO special(Time, device_id ,s6) values(3, 'd1', '4e60')",
+        "INSERT INTO special(Time, device_id ,s6) values(4, 'd1', '4e60000')",
       };
 
   @BeforeClass
@@ -125,10 +125,10 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s1"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS INT32) as cast_s1 from normal where device_id='d1'",
@@ -139,10 +139,10 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS INT64) as cast_s1 from normal where device_id='d1'",
@@ -153,10 +153,10 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.0,",
-          "1997-01-01T08:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS FLOAT) as cast_s1 from normal where device_id='d1'",
@@ -167,10 +167,10 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.0,",
-          "1997-01-01T08:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS DOUBLE) as cast_s1 from normal where device_id='d1'",
@@ -181,10 +181,10 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,true,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS BOOLEAN) as cast_s1 from normal where device_id='d1'",
@@ -195,10 +195,10 @@ public class IoTDBCastFunctionIT {
     // cast to string
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s1 AS STRING) as cast_s1 from normal where device_id='d1'",
@@ -213,10 +213,10 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s2"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
 
     tableResultSetEqualTest(
@@ -228,10 +228,10 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s2 AS INT64) as cast_s2 from normal where device_id='d1'",
@@ -242,10 +242,10 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.0,",
-          "1997-01-01T08:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s2 AS FLOAT) as cast_s2 from normal where device_id='d1'",
@@ -256,10 +256,10 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.0,",
-          "1997-01-01T08:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s2 AS DOUBLE) as cast_s2 from normal where device_id='d1'",
@@ -270,10 +270,10 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,true,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s2 AS BOOLEAN) as cast_s2 from normal where device_id='d1'",
@@ -284,10 +284,10 @@ public class IoTDBCastFunctionIT {
     // cast to text
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s2 AS STRING) as cast_s2 from normal where device_id='d1'",
@@ -302,10 +302,10 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s3"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS INT32) as cast_s3 from normal where device_id='d1'",
@@ -316,10 +316,10 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS INT64) as cast_s3 from normal where device_id='d1'",
@@ -330,10 +330,10 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.7,",
-          "1997-01-01T08:00:00.003Z,3.33,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS FLOAT) as cast_s3 from normal where device_id='d1'",
@@ -344,10 +344,10 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.700000047683716,",
-          "1997-01-01T08:00:00.003Z,3.3299999237060547,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.700000047683716,",
+          "1970-01-01T00:00:00.003Z,3.3299999237060547,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS DOUBLE) as cast_s3 from normal where device_id='d1'",
@@ -358,10 +358,10 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,true,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS BOOLEAN) as cast_s3 from normal where device_id='d1'",
@@ -372,10 +372,10 @@ public class IoTDBCastFunctionIT {
     // cast to text
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.7,",
-          "1997-01-01T08:00:00.003Z,3.33,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s3 AS STRING) as cast_s3 from normal where device_id='d1'",
@@ -390,10 +390,10 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s4"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS INT32) as cast_s4 from normal where device_id='d1'",
@@ -404,10 +404,10 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,1,",
-          "1997-01-01T08:00:00.002Z,2,",
-          "1997-01-01T08:00:00.003Z,3,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS INT64) as cast_s4 from normal where device_id='d1'",
@@ -418,10 +418,10 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0。0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.7,",
-          "1997-01-01T08:00:00.003Z,3.33,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS FLOAT) as cast_s4 from normal where device_id='d1'",
@@ -432,10 +432,10 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0。0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.7,",
-          "1997-01-01T08:00:00.003Z,3.33,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS DOUBLE) as cast_s4 from normal where device_id='d1'",
@@ -446,10 +446,10 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,true,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS BOOLEAN) as cast_s4 from normal where device_id='d1'",
@@ -460,10 +460,10 @@ public class IoTDBCastFunctionIT {
     // cast to string
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0。0,",
-          "1997-01-01T08:00:00.001Z,1.0,",
-          "1997-01-01T08:00:00.002Z,2.7,",
-          "1997-01-01T08:00:00.003Z,3.33,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s4 AS STRING) as cast_s4 from normal where device_id='d1'",
@@ -478,10 +478,10 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s5"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,0,",
-          "1997-01-01T08:00:00.002Z,1,",
-          "1997-01-01T08:00:00.003Z,1,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,0,",
+          "1970-01-01T00:00:00.002Z,1,",
+          "1970-01-01T00:00:00.003Z,1,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS INT32) as cast_s5 from normal where device_id='d1'",
@@ -492,10 +492,10 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0,",
-          "1997-01-01T08:00:00.001Z,0,",
-          "1997-01-01T08:00:00.002Z,1,",
-          "1997-01-01T08:00:00.003Z,1,",
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,0,",
+          "1970-01-01T00:00:00.002Z,1,",
+          "1970-01-01T00:00:00.003Z,1,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS INT64) as cast_s5 from normal where device_id='d1'",
@@ -506,10 +506,10 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,0.0,",
-          "1997-01-01T08:00:00.002Z,1.0,",
-          "1997-01-01T08:00:00.003Z,1.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,0.0,",
+          "1970-01-01T00:00:00.002Z,1.0,",
+          "1970-01-01T00:00:00.003Z,1.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS FLOAT) as cast_s5 from normal where device_id='d1'",
@@ -520,10 +520,10 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,0.0,",
-          "1997-01-01T08:00:00.001Z,0.0,",
-          "1997-01-01T08:00:00.002Z,1.0,",
-          "1997-01-01T08:00:00.003Z,1.0,",
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,0.0,",
+          "1970-01-01T00:00:00.002Z,1.0,",
+          "1970-01-01T00:00:00.003Z,1.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS DOUBLE) as cast_s5 from normal where device_id='d1'",
@@ -534,10 +534,10 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,false,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS BOOLEAN) as cast_s5 from normal where device_id='d1'",
@@ -548,10 +548,10 @@ public class IoTDBCastFunctionIT {
     // cast to text
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,false,",
-          "1997-01-01T08:00:00.001Z,false,",
-          "1997-01-01T08:00:00.002Z,true,",
-          "1997-01-01T08:00:00.003Z,true,",
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s5 AS STRING) as cast_s5 from normal where device_id='d1'",
@@ -566,7 +566,7 @@ public class IoTDBCastFunctionIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s6"};
     String[] intRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,10000,", "1997-01-01T08:00:00.001Z,3,",
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS INT32) as cast_s6 from normal where device_id='d1' and Time < 2",
@@ -577,7 +577,7 @@ public class IoTDBCastFunctionIT {
     // cast to long
     String[] longRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,10000,", "1997-01-01T08:00:00.001Z,3,",
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS INT64) as cast_s6 from normal where device_id='d1' and Time < 2",
@@ -588,7 +588,7 @@ public class IoTDBCastFunctionIT {
     // cast to float
     String[] floatRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,10000.0,", "1997-01-01T08:00:00.001Z,3.0,",
+          "1970-01-01T00:00:00.000Z,10000.0,", "1970-01-01T00:00:00.001Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS FLOAT) as cast_s6 from normal where device_id='d1' and Time < 2",
@@ -599,7 +599,7 @@ public class IoTDBCastFunctionIT {
     // cast to double
     String[] doubleRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,10000.0,", "1997-01-01T08:00:00.001Z,3.0,",
+          "1970-01-01T00:00:00.000Z,10000.0,", "1970-01-01T00:00:00.001Z,3.0,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS DOUBLE) as cast_s6 from normal where device_id='d1' and Time < 2",
@@ -610,7 +610,7 @@ public class IoTDBCastFunctionIT {
     // cast to boolean
     String[] booleanRetArray =
         new String[] {
-          "1997-01-01T08:00:00.002Z,true,", "1997-01-01T08:00:00.003Z,false,",
+          "1970-01-01T00:00:00.002Z,true,", "1970-01-01T00:00:00.003Z,false,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS BOOLEAN) as cast_s6 from normal where device_id='d1' and Time >= 2",
@@ -621,8 +621,8 @@ public class IoTDBCastFunctionIT {
     // cast to text
     String[] stringRetArray =
         new String[] {
-          "1997-01-01T08:00:00.000Z,10000,", "1997-01-01T08:00:00.001Z,3,",
-          "1997-01-01T08:00:00.002Z,TRue,", "1997-01-01T08:00:00.003Z,faLse,",
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
+          "1970-01-01T00:00:00.002Z,TRue,", "1970-01-01T00:00:00.003Z,faLse,",
         };
     tableResultSetEqualTest(
         "select Time, CAST(s6 AS STRING) as cast_s6 from normal where device_id='d1'",
@@ -653,7 +653,7 @@ public class IoTDBCastFunctionIT {
 
   @Test
   public void testCastWithFloatSource() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("USE " + DATABASE_NAME);
@@ -676,7 +676,7 @@ public class IoTDBCastFunctionIT {
 
   @Test
   public void testCastWithDoubleSource() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("USE " + DATABASE_NAME);
@@ -706,7 +706,7 @@ public class IoTDBCastFunctionIT {
 
   @Test
   public void testCastWithTextSource() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       try {
