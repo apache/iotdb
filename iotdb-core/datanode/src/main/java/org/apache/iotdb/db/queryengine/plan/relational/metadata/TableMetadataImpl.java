@@ -149,7 +149,7 @@ public class TableMetadataImpl implements Metadata {
       if (!isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
               && isNumericType(argumentTypes.get(0))
-              && BOOLEAN.equals(argumentTypes.get(0)))) {
+              && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
