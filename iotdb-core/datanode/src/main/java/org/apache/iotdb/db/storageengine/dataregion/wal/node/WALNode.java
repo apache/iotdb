@@ -80,7 +80,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -646,6 +645,8 @@ public class WALNode implements IWALNode {
   }
 
   private class PlanNodeIterator implements ReqIterator {
+    private static final int MOST_COLLECT_NUM_IN_ONE_ROUND = 100;
+
     /** search index of next element */
     private long nextSearchIndex;
 
@@ -706,15 +707,21 @@ public class WALNode implements IWALNode {
 
       // find all nodes from all wal file
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
-      Consumer<Long> collectTmpNodes =
-          index -> {
+      // try to collect current tmpNodes to insertNodes, return true if successfully collect an
+      // insert node
+      Runnable tryToCollectInsertNodeAndBumpIndex =
+          () -> {
             if (!tmpNodes.get().isEmpty()) {
-              insertNodes.add(new IndexedConsensusRequest(index, tmpNodes.get()));
+              insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
               tmpNodes.set(new ArrayList<>());
+              nextSearchIndex++;
             }
           };
-      long targetIndex = nextSearchIndex;
-      for (; currentFileIndex < filesToSearch.length - 1; currentFileIndex++) {
+
+      for (;
+          currentFileIndex < filesToSearch.length - 1
+              && insertNodes.size() < MOST_COLLECT_NUM_IN_ONE_ROUND;
+          currentFileIndex++) {
         try (WALByteBufReader walByteBufReader =
             new WALByteBufReader(filesToSearch[currentFileIndex])) {
           while (walByteBufReader.hasNext()) {
@@ -727,30 +734,26 @@ public class WALNode implements IWALNode {
               buffer.clear();
               if (currentWalEntryIndex == -1) {
                 // WAL entry of targetIndex has been fully collected, so put them into insertNodes
-                collectTmpNodes.accept(targetIndex);
-                targetIndex++;
-              } else if (currentWalEntryIndex < targetIndex) {
+                tryToCollectInsertNodeAndBumpIndex.run();
+              } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
-              } else if (currentWalEntryIndex == targetIndex) {
+              } else if (currentWalEntryIndex == nextSearchIndex) {
                 tmpNodes.get().add(new IoTConsensusRequest(buffer));
               } else {
                 // currentWalEntryIndex > targetIndex
                 // WAL entry of targetIndex has been fully collected, put them into insertNodes
-                collectTmpNodes.accept(targetIndex);
-                // then bump the targetIndex for next round of collection, and collect the current
-                // WAL entry
-                if (currentWalEntryIndex != targetIndex + 1) {
+                tryToCollectInsertNodeAndBumpIndex.run();
+                if (currentWalEntryIndex != nextSearchIndex) {
                   logger.warn(
-                      "WAL entry's search index bump from {} to {}, which is unexpected",
-                      targetIndex,
+                      "The search index of next WAL entry should be {}, but actually it's {}",
+                      nextSearchIndex,
                       currentWalEntryIndex);
                 }
-                targetIndex = currentWalEntryIndex;
+                nextSearchIndex = currentWalEntryIndex;
                 tmpNodes.get().add(new IoTConsensusRequest(buffer));
               }
             } else {
-              collectTmpNodes.accept(targetIndex);
-              targetIndex++;
+              tryToCollectInsertNodeAndBumpIndex.run();
             }
           }
         } catch (Exception e) {
