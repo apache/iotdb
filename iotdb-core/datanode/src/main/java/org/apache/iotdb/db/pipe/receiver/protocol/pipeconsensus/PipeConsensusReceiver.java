@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -1033,6 +1034,7 @@ public class PipeConsensusReceiver {
       }
     }
 
+    @SuppressWarnings("java:S3655")
     public PipeConsensusTsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
       Optional<PipeConsensusTsFileWriter> diskBuffer =
           pipeConsensusTsFileWriterPool.stream()
@@ -1211,8 +1213,8 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
-    private volatile int WALEventCount = 0;
-    private volatile int tsFileEventCount = 0;
+    private AtomicInteger WALEventCount = new AtomicInteger(0);
+    private AtomicInteger tsFileEventCount = new AtomicInteger(0);
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
@@ -1235,10 +1237,10 @@ public class PipeConsensusReceiver {
       onSyncedCommitIndex = nextSyncedCommitIndex;
       // update metric, notice that curMeta is never null.
       if (isTransferTsFileSeal) {
-        tsFileEventCount--;
+        tsFileEventCount.decrementAndGet();
         metric.recordReceiveTsFileTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       } else {
-        WALEventCount--;
+        WALEventCount.decrementAndGet();
         metric.recordReceiveWALTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       }
     }
@@ -1287,10 +1289,10 @@ public class PipeConsensusReceiver {
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
           // only update tsFileEventCount when tsFileEvent is first enqueue.
-          tsFileEventCount++;
+          tsFileEventCount.incrementAndGet();
         }
         if (!isTransferTsFileSeal && !isTransferTsFilePiece) {
-          WALEventCount++;
+          WALEventCount.incrementAndGet();
         }
         reqExecutionOrderBuffer.add(requestMeta);
 
@@ -1471,11 +1473,11 @@ public class PipeConsensusReceiver {
   }
 
   public int getWALEventCount() {
-    return this.requestExecutor.WALEventCount;
+    return this.requestExecutor.WALEventCount.get();
   }
 
   public int getTsFileEventCount() {
-    return this.requestExecutor.tsFileEventCount;
+    return this.requestExecutor.tsFileEventCount.get();
   }
 
   public String getConsensusGroupIdStr() {
