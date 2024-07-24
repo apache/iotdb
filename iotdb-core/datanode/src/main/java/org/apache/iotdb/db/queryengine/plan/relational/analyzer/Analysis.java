@@ -183,6 +183,9 @@ public class Analysis implements IAnalysis {
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
 
+  // Whether the query is to config node
+  private boolean isConfigQuery = false;
+
   public DataPartition getDataPartition() {
     return dataPartition;
   }
@@ -615,6 +618,14 @@ public class Analysis implements IAnalysis {
 
   public void setEmptyDataSource(boolean emptyDataSource) {
     this.emptyDataSource = emptyDataSource;
+  }
+
+  public boolean isConfigQuery() {
+    return isConfigQuery;
+  }
+
+  public void setConfigQuery(final boolean isConfigQuery) {
+    this.isConfigQuery = isConfigQuery;
   }
 
   @Override

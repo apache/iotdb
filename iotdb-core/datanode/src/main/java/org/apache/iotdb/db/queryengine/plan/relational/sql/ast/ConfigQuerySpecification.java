@@ -19,40 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
+import java.util.Optional;
 
-import java.util.List;
-
-public class ShowDB extends Statement {
-  public ShowDB() {
-    super(null);
-  }
-
-  @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowDB(this, context);
-  }
-
-  @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public int hashCode() {
-    return getClass().hashCode();
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    return (obj != null) && (getClass() == obj.getClass());
-  }
-
-  @Override
-  public String toString() {
-    return "SHOW DATABASES";
+public class ConfigQuerySpecification extends QuerySpecification {
+  public ConfigQuerySpecification(
+      final NodeLocation location,
+      final Select select,
+      final Optional<Relation> from,
+      final Optional<Expression> where,
+      final Optional<GroupBy> groupBy,
+      final Optional<Expression> having,
+      final Optional<OrderBy> orderBy,
+      final Optional<Offset> offset,
+      final Optional<Node> limit) {
+    super(location, select, from, where, groupBy, having, orderBy, offset, limit);
   }
 }

@@ -282,20 +282,33 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTableScan(TableScanNode node, PlanContext context) {
+  public List<PlanNode> visitTableScan(final TableScanNode node, final PlanContext context) {
+    final List<PlanNode> resultTableScanNodeList =
+        analysis.isConfigQuery()
+            ? Collections.singletonList(node)
+            : bindRegionAndSetResultForNonConfigTable(node, context);
+    if (!context.hasSortNode) {
+      return resultTableScanNodeList;
+    }
 
-    Map<TRegionReplicaSet, TableScanNode> tableScanNodeMap = new HashMap<>();
+    processSortProperty(node, resultTableScanNodeList, context);
+    return resultTableScanNodeList;
+  }
 
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      List<TRegionReplicaSet> regionReplicaSets =
+  private List<PlanNode> bindRegionAndSetResultForNonConfigTable(
+      final TableScanNode node, final PlanContext context) {
+    final Map<TRegionReplicaSet, TableScanNode> tableScanNodeMap = new HashMap<>();
+
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      final List<TRegionReplicaSet> regionReplicaSets =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetWithTimeFilter(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
                   node.getTimeFilter());
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        TableScanNode tableScanNode =
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        final TableScanNode tableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
                 k -> {
@@ -317,12 +330,12 @@ public class DistributedPlanGenerator
       }
     }
 
-    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
+    final List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
-      TRegionReplicaSet regionReplicaSet = entry.getKey();
-      TableScanNode subTableScanNode = entry.getValue();
+    for (final Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
+      final TRegionReplicaSet regionReplicaSet = entry.getKey();
+      final TableScanNode subTableScanNode = entry.getValue();
       subTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
       subTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subTableScanNode);
@@ -333,13 +346,7 @@ public class DistributedPlanGenerator
         maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
       }
     }
-    context.mostUsedDataRegion = mostUsedDataRegion;
-
-    if (!context.hasSortNode) {
-      return resultTableScanNodeList;
-    }
-
-    processSortProperty(node, resultTableScanNodeList, context);
+    context.mostUsedRegion = mostUsedDataRegion;
     return resultTableScanNodeList;
   }
 
@@ -455,7 +462,7 @@ public class DistributedPlanGenerator
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
-    context.mostUsedDataRegion = schemaRegionSet.iterator().next();
+    context.mostUsedRegion = schemaRegionSet.iterator().next();
     if (schemaRegionSet.size() == 1) {
       node.setRegionReplicaSet(schemaRegionSet.iterator().next());
       return Collections.singletonList(node);
@@ -483,8 +490,8 @@ public class DistributedPlanGenerator
         (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
     if (schemaRegionSet.size() == 1) {
-      context.mostUsedDataRegion = schemaRegionSet.iterator().next();
-      node.setRegionReplicaSet(context.mostUsedDataRegion);
+      context.mostUsedRegion = schemaRegionSet.iterator().next();
+      node.setRegionReplicaSet(context.mostUsedRegion);
       return Collections.singletonList(node);
     } else {
       Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
@@ -522,7 +529,7 @@ public class DistributedPlanGenerator
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedDataRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedDataRegion;
       return res;
     }
   }
@@ -532,7 +539,7 @@ public class DistributedPlanGenerator
     boolean hasExchangeNode = false;
     boolean hasSortNode = false;
     OrderingScheme expectedOrderingScheme;
-    TRegionReplicaSet mostUsedDataRegion;
+    TRegionReplicaSet mostUsedRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

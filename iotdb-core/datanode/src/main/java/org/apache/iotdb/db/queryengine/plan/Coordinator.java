@@ -55,9 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
@@ -322,7 +319,6 @@ public class Coordinator {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
-        || statement instanceof ShowDB
         || statement instanceof CreateDB
         || statement instanceof Use
         || statement instanceof CreateTable
@@ -331,8 +327,6 @@ public class Coordinator {
         || statement instanceof DropTable
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
-        || statement instanceof ShowDataNodes
-        || statement instanceof ShowConfigNodes
         || statement instanceof Flush) {
       return new ConfigExecution(
           queryContext,

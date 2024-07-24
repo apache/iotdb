@@ -44,7 +44,6 @@ statement
 
     // Database Statement
     | useDatabaseStatement
-    | showDatabasesStatement
     | createDbStatement
     | dropDbStatement
 
@@ -110,10 +109,6 @@ statement
 // ---------------------------------------- DataBase Statement ---------------------------------------------------------
 useDatabaseStatement
     : USE database=identifier
-    ;
-
-showDatabasesStatement
-    : SHOW DATABASES
     ;
 
 createDbStatement
@@ -257,14 +252,6 @@ showRegionsStatement
           // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
-showDataNodesStatement
-    : SHOW DATANODES
-    ;
-
-showConfigNodesStatement
-    : SHOW CONFIGNODES
-    ;
-
 showClusterIdStatement
     : SHOW CLUSTERID
     ;
@@ -310,10 +297,6 @@ repairDataStatement
 
 setSystemStatusStatement
     : SET SYSTEM TO (READONLY | RUNNING) localOrClusterMode?
-    ;
-
-showVersionStatement
-    : SHOW VERSION
     ;
 
 showQueriesStatement
@@ -397,6 +380,7 @@ queryTerm
 
 queryPrimary
     : querySpecification                   #queryPrimaryDefault
+    | configQuerySpecification             #forConfigQuery
     | TABLE qualifiedName                  #table
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
@@ -409,7 +393,17 @@ sortItem
 querySpecification
     : SELECT setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
-      (WHERE where=booleanExpression)?
+      queryWithoutSelect
+    ;
+
+configQuerySpecification
+    : SHOW (setQuantifier? selectItem (',' selectItem)* (FROM | IN))?
+      (relation (',' relation)*)?
+      queryWithoutSelect
+    ;
+
+queryWithoutSelect
+    : (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
     ;

@@ -57,7 +57,7 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     Analysis analysis = new Analysis(statement, parameterLookup);
-    analysis.setDatabaseName(session.getDatabaseName().get());
+    analysis.setDatabaseName(session.getDatabaseName().orElse(null));
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis, session, warningCollector, CorrelationSupport.ALLOWED);

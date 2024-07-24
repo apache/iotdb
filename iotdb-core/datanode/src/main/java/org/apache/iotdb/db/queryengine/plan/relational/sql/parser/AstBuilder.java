@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ConfigQuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -108,9 +109,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -208,11 +206,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitUseDatabaseStatement(RelationalSqlParser.UseDatabaseStatementContext ctx) {
     return new Use(getLocation(ctx), (Identifier) visit(ctx.database));
-  }
-
-  @Override
-  public Node visitShowDatabasesStatement(RelationalSqlParser.ShowDatabasesStatementContext ctx) {
-    return new ShowDB(getLocation(ctx));
   }
 
   @Override
@@ -529,17 +522,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDataNodesStatement(RelationalSqlParser.ShowDataNodesStatementContext ctx) {
-    return new ShowDataNodes();
-  }
-
-  @Override
-  public Node visitShowConfigNodesStatement(
-      RelationalSqlParser.ShowConfigNodesStatementContext ctx) {
-    return new ShowConfigNodes();
-  }
-
-  @Override
   public Node visitShowClusterIdStatement(RelationalSqlParser.ShowClusterIdStatementContext ctx) {
     return super.visitShowClusterIdStatement(ctx);
   }
@@ -744,16 +726,27 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       return new Query(
           getLocation(ctx),
           Optional.empty(),
-          new QuerySpecification(
-              getLocation(ctx),
-              query.getSelect(),
-              query.getFrom(),
-              query.getWhere(),
-              query.getGroupBy(),
-              query.getHaving(),
-              orderBy,
-              offset,
-              limit),
+          term instanceof ConfigQuerySpecification
+              ? new ConfigQuerySpecification(
+                  getLocation(ctx),
+                  query.getSelect(),
+                  query.getFrom(),
+                  query.getWhere(),
+                  query.getGroupBy(),
+                  query.getHaving(),
+                  orderBy,
+                  offset,
+                  limit)
+              : new QuerySpecification(
+                  getLocation(ctx),
+                  query.getSelect(),
+                  query.getFrom(),
+                  query.getWhere(),
+                  query.getGroupBy(),
+                  query.getHaving(),
+                  orderBy,
+                  offset,
+                  limit),
           Optional.empty(),
           Optional.empty(),
           Optional.empty());
@@ -784,9 +777,43 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
         from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().where, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().groupBy(), GroupBy.class),
+        visitIfPresent(ctx.queryWithoutSelect().having, Expression.class),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
+  public Node visitConfigQuerySpecification(
+      final RelationalSqlParser.ConfigQuerySpecificationContext ctx) {
+    Optional<Relation> from = Optional.empty();
+    final List<SelectItem> selectItems =
+        !ctx.selectItem().isEmpty()
+            ? visit(ctx.selectItem(), SelectItem.class)
+            : Collections.singletonList(new AllColumns());
+
+    final List<Relation> relations = visit(ctx.relation(), Relation.class);
+    if (!relations.isEmpty()) {
+      // synthesize implicit join nodes
+      Iterator<Relation> iterator = relations.iterator();
+      Relation relation = iterator.next();
+
+      while (iterator.hasNext()) {
+        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
+      }
+
+      from = Optional.of(relation);
+    }
+
+    return new ConfigQuerySpecification(
+        getLocation(ctx),
+        new Select(getLocation(ctx.SHOW()), isDistinct(ctx.setQuantifier()), selectItems),
+        from,
+        visitIfPresent(ctx.queryWithoutSelect().where, Expression.class),
+        visitIfPresent(ctx.queryWithoutSelect().groupBy(), GroupBy.class),
+        visitIfPresent(ctx.queryWithoutSelect().having, Expression.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());

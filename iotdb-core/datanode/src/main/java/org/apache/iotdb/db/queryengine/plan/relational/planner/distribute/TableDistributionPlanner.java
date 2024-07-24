@@ -67,38 +67,40 @@ public class TableDistributionPlanner {
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 
-    // distribute plan optimize rule
-    PlanNode distributedPlan = distributedPlanResult.get(0);
-    for (PlanOptimizer optimizer : optimizers) {
-      distributedPlan =
-          optimizer.optimize(
-              distributedPlan,
-              new PlanOptimizer.Context(
-                  null,
-                  analysis,
-                  null,
-                  mppQueryContext,
-                  mppQueryContext.getTypeProvider(),
-                  new SymbolAllocator(),
-                  mppQueryContext.getQueryId(),
-                  NOOP,
-                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+    PlanNode outputNode = distributedPlanResult.get(0);
+
+    // Config query does not need optimization / exchange nodes
+    if (!analysis.isConfigQuery()) {
+      // distribute plan optimize rule
+      for (PlanOptimizer optimizer : optimizers) {
+        outputNode =
+            optimizer.optimize(
+                outputNode,
+                new PlanOptimizer.Context(
+                    null,
+                    analysis,
+                    null,
+                    mppQueryContext,
+                    mppQueryContext.getTypeProvider(),
+                    new SymbolAllocator(),
+                    mppQueryContext.getQueryId(),
+                    NOOP,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
+
+      // add exchange node for distributed plan
+      outputNode = new AddExchangeNodes(mppQueryContext).addExchangeNodes(outputNode, planContext);
+      adjustUpStream(outputNode, planContext);
     }
 
-    // add exchange node for distributed plan
-    PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
     if (analysis.getStatement() instanceof Query) {
-      analysis
-          .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(outputNodeWithExchange.getOutputColumnNames());
+      analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(outputNode.getOutputColumnNames());
     }
-    adjustUpStream(outputNodeWithExchange, planContext);
 
     // generate subPlan
     SubPlan subPlan =
         new SubPlanGenerator()
-            .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
+            .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNode);
     subPlan.getPlanFragment().setRoot(true);
 
     // generate fragment instances

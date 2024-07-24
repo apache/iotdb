@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ConfigTableMetaData;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ConfigQuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -88,7 +90,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
@@ -276,11 +277,6 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDropDB(DropDB node, Optional<Scope> context) {
       throw new SemanticException("Drop Database statement is not supported yet.");
-    }
-
-    @Override
-    protected Scope visitShowDB(ShowDB node, Optional<Scope> context) {
-      throw new SemanticException("Show Database statement is not supported yet.");
     }
 
     @Override
@@ -701,6 +697,8 @@ public class StatementAnalyzer {
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
+
+      analysis.setConfigQuery(node instanceof ConfigQuerySpecification);
 
       Scope sourceScope = analyzeFrom(node, scope);
 
@@ -1489,11 +1487,16 @@ public class StatementAnalyzer {
         }
       }
 
-      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table, table.getName());
+      QualifiedObjectName name =
+          createQualifiedObjectName(
+              sessionContext, table, table.getName(), analysis.isConfigQuery());
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      Optional<TableSchema> tableSchema =
+          analysis.isConfigQuery()
+              ? ConfigTableMetaData.getTableSchema(name.getObjectName())
+              : metadata.getTableSchema(sessionContext, name);
       // This can only be a table
       if (!tableSchema.isPresent()) {
         throw new SemanticException(String.format("Table '%s' does not exist", name));
