@@ -187,7 +187,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
 
     Assert.assertEquals(1, deviceSchemaInfoList.size());
 
-    // Test multi fuzzy filters on one id
+    // Test multi filters on one id
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
             schemaRegion,
@@ -199,80 +199,6 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             null);
 
     Assert.assertEquals(2, deviceSchemaInfoList.size());
-
-    // Test multi precise filters on one id
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new PreciseFilter("d_1"), 2),
-                new IdFilter(new PreciseFilter("d_0"), 2)),
-            null);
-
-    Assert.assertEquals(0, deviceSchemaInfoList.size());
-
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new PreciseFilter("d_1"), 2),
-                new IdFilter(new PreciseFilter("d_1"), 2)),
-            null);
-
-    Assert.assertEquals(2, deviceSchemaInfoList.size());
-
-    // Test mixed fuzzy and precise filters on one id
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_0", "d_1"))), 2),
-                new IdFilter(new PreciseFilter("d_1"), 2)),
-            null);
-
-    Assert.assertEquals(2, deviceSchemaInfoList.size());
-
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_1", "d_2"))), 2),
-                new IdFilter(new PreciseFilter("d_0"), 2)),
-            null);
-
-    Assert.assertEquals(0, deviceSchemaInfoList.size());
-
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new PreciseFilter("d_1"), 2),
-                new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_0", "d_1"))), 2)),
-            null);
-
-    Assert.assertEquals(2, deviceSchemaInfoList.size());
-
-    deviceSchemaInfoList =
-        SchemaRegionTestUtil.getTableDevice(
-            schemaRegion,
-            tableName,
-            3,
-            Arrays.asList(
-                new IdFilter(new PreciseFilter("d_0"), 2),
-                new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_1", "d_2"))), 2)),
-            null);
-
-    Assert.assertEquals(0, deviceSchemaInfoList.size());
   }
 
   @Test

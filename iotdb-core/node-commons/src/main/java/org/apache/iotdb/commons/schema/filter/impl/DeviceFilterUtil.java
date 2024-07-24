@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.schema.filter.impl;
 
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
@@ -30,7 +29,6 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -57,35 +55,16 @@ public class DeviceFilterUtil {
       nodes[0] = PATH_ROOT;
       nodes[1] = database;
       nodes[2] = tableName;
-      ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
+      final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
       for (final SchemaFilter schemaFilter : idFilterList) {
         if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
           final int index = ((IdFilter) schemaFilter).getIndex() + 3;
           final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
           if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
-            final PreciseFilter preciseFilter = (PreciseFilter) childFilter;
-            if (partialPath.getMatchFunctions(index).stream()
-                    .anyMatch(function -> !function.apply(preciseFilter.getValue()))
-                || !PathPatternUtil.isNodeMatch(nodes[index], preciseFilter.getValue())) {
-              // This precise filter is conflicted with the existing filters, skip this partial path
-              partialPath = null;
-              break;
-            } else {
-              partialPath.clearMatchFunction(index);
-              nodes[index] = preciseFilter.getValue();
-            }
+            // If there is a precise filter, other filters on the same id are processed and thus
+            // not exist here
+            nodes[index] = ((PreciseFilter) childFilter).getValue();
           } else {
-            if (!nodes[index].equals(ONE_LEVEL_PATH_WILDCARD)) {
-              if (childFilter.accept(StringValueFilterVisitor.getInstance(), nodes[index])) {
-                // This filter is not conflicted with the previous precise filter, skip this filter
-                continue;
-              } else {
-                // This filter is conflicted with the previous precise filter, skip this partial
-                // path
-                partialPath = null;
-                break;
-              }
-            }
             partialPath.addMatchFunction(
                 index, node -> childFilter.accept(StringValueFilterVisitor.getInstance(), node));
           }
@@ -93,9 +72,7 @@ public class DeviceFilterUtil {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");
         }
       }
-      if (Objects.nonNull(partialPath)) {
-        pathList.add(partialPath);
-      }
+      pathList.add(partialPath);
     }
     return pathList;
   }

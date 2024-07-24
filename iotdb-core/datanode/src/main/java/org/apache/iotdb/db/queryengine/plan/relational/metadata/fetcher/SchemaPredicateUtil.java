@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ExtractPredicateColumnNameVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -31,7 +32,9 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
@@ -78,12 +81,33 @@ public class SchemaPredicateUtil {
     }
     final List<List<Expression>> result = new ArrayList<>(finalResultSize);
     final int[] indexes = new int[orSize]; // index count, each case represents one possible result
+    final Set<String> checkedColumnNames = new HashSet<>();
+    boolean hasConflictFilter;
+    Expression currentExpression;
+    String currentColumnName;
     while (finalResultSize > 0) {
+      checkedColumnNames.clear();
+      hasConflictFilter = false;
       List<Expression> oneCase = new ArrayList<>(orConcatList.size());
       for (int j = 0; j < orSize; j++) {
-        oneCase.add(orConcatList.get(j).get(indexes[j]));
+        currentExpression = orConcatList.get(j).get(indexes[j]);
+        currentColumnName =
+            currentExpression.accept(ExtractPredicateColumnNameVisitor.getInstance(), null);
+        if (checkedColumnNames.contains(currentColumnName)) {
+          hasConflictFilter = true;
+          break;
+        }
+        checkedColumnNames.add(currentColumnName);
+        oneCase.add(currentExpression);
       }
-      result.add(oneCase);
+
+      if (!hasConflictFilter) {
+        result.add(oneCase);
+      } else {
+        // TODO table metadata
+        throw new IllegalStateException("have conflict filter!");
+      }
+
       for (int k = orSize - 1; k >= 0; k--) {
         indexes[k]++;
         if (indexes[k] < orConcatList.get(k).size()) {
