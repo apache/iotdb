@@ -410,7 +410,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyDeletion(final PipeRealtimeEvent event) {
+  protected Event supplyDirectly(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
@@ -419,7 +419,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "TsFile Event %s can not be supplied because "
+              "Event %s can not be supplied because "
                   + "the reference count can not be increased, "
                   + "the data represented by this event is lost",
               event.getEvent());
