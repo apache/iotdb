@@ -22,10 +22,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.MultiDeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
@@ -66,7 +66,7 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitDeviceIdFilter(final DeviceIdFilter filter, final IDeviceSchemaInfo info) {
+  public boolean visitPreciseFilter(final PreciseFilter filter, final IDeviceSchemaInfo info) {
     final String[] nodes = info.getPartialPath().getNodes();
     if (nodes.length < filter.getIndex() + 3) {
       return false;
@@ -76,8 +76,7 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitMultiDeviceIdFilter(
-      final MultiDeviceIdFilter filter, final IDeviceSchemaInfo info) {
+  public boolean visitInFilter(final InFilter filter, final IDeviceSchemaInfo info) {
     final String[] nodes = info.getPartialPath().getNodes();
     if (nodes.length < filter.getIndex() + 3) {
       return false;

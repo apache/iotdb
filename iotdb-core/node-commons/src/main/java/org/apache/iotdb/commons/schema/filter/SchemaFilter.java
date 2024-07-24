@@ -21,15 +21,17 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.MultiDeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -82,12 +84,16 @@ public abstract class SchemaFilter {
         return new OrFilter(byteBuffer);
       case NOT:
         return new NotFilter(byteBuffer);
-      case DEVICE_ID:
-        return new DeviceIdFilter(byteBuffer);
-      case MULTI_DEVICE_ID:
-        return new MultiDeviceIdFilter(byteBuffer);
-      case DEVICE_ATTRIBUTE:
-        return new DeviceAttributeFilter(byteBuffer);
+      case ID:
+        return new IdFilter(byteBuffer);
+      case ATTRIBUTE:
+        return new AttributeFilter(byteBuffer);
+      case PRECISE:
+        return new PreciseFilter(byteBuffer);
+      case IN:
+        return new InFilter(byteBuffer);
+      case LIKE:
+        return new LikeFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }

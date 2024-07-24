@@ -17,41 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class NotFilter extends SchemaFilter {
+public abstract class AbstractSingleChildFilter extends SchemaFilter {
 
   private final SchemaFilter child;
 
-  public NotFilter(final SchemaFilter child) {
+  protected AbstractSingleChildFilter(final SchemaFilter child) {
     // child should not be null
     this.child = child;
   }
 
-  public NotFilter(final ByteBuffer byteBuffer) {
+  protected AbstractSingleChildFilter(final ByteBuffer byteBuffer) {
     this.child = SchemaFilter.deserialize(byteBuffer);
   }
 
   public SchemaFilter getChild() {
     return child;
-  }
-
-  @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitNotFilter(this, node);
-  }
-
-  @Override
-  public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.NOT;
   }
 
   @Override

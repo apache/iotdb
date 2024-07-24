@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -29,7 +29,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DeviceIdFilter extends SchemaFilter {
+public class PreciseFilter extends SchemaFilter {
 
   // id column index
   // when used in partialPath, the index of node in path shall be [this.index + 3]
@@ -38,12 +38,12 @@ public class DeviceIdFilter extends SchemaFilter {
 
   private final String value;
 
-  public DeviceIdFilter(int index, String value) {
+  public PreciseFilter(final int index, final String value) {
     this.index = index;
     this.value = value;
   }
 
-  public DeviceIdFilter(ByteBuffer byteBuffer) {
+  public PreciseFilter(final ByteBuffer byteBuffer) {
     this.index = ReadWriteIOUtils.readInt(byteBuffer);
     this.value = ReadWriteIOUtils.readString(byteBuffer);
   }
@@ -57,23 +57,23 @@ public class DeviceIdFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceIdFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitPreciseFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ID;
+    return SchemaFilterType.PRECISE;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(index, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(index, stream);
     ReadWriteIOUtils.write(value, stream);
   }

@@ -17,61 +17,79 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 
-public class DeviceAttributeFilter extends SchemaFilter {
+/**
+ * This class can be seen as a combination of {@link PreciseFilter} & {@link OrFilter}. Here we
+ * construct a new filter to avoid too deep stack and to ensure performance.
+ */
+public class InFilter extends SchemaFilter {
 
   private final String key;
 
-  private final String value;
+  private final Set<String> values;
 
-  public DeviceAttributeFilter(String key, String value) {
+  public InFilter(String key, Set<String> values) {
     this.key = key;
-    this.value = value;
+    this.values = values;
   }
 
-  public DeviceAttributeFilter(ByteBuffer byteBuffer) {
+  public InFilter(final ByteBuffer byteBuffer) {
     this.key = ReadWriteIOUtils.readString(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
+
+    final int length = ReadWriteIOUtils.readInt(byteBuffer);
+    this.values = new HashSet<>();
+    for (int i = 0; i < length; ++i) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
   }
 
   public String getKey() {
     return key;
   }
 
-  public String getValue() {
-    return value;
+  public Set<String> getValues() {
+    return values;
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceAttributeFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitInFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ATTRIBUTE;
+    return SchemaFilterType.IN;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, stream);
+    }
   }
 }

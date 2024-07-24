@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -76,7 +76,7 @@ public class ConvertSchemaPredicateToFilterVisitor
         .getColumnSchema(columnName)
         .getColumnCategory()
         .equals(TsTableColumnCategory.ID)) {
-      return new DeviceIdFilter(context.idColumnIndexMap.get(columnName), null);
+      return new PreciseFilter(context.idColumnIndexMap.get(columnName), null);
     } else {
       return new DeviceAttributeFilter(columnName, null);
     }
@@ -129,7 +129,7 @@ public class ConvertSchemaPredicateToFilterVisitor
         .getColumnSchema(columnName)
         .getColumnCategory()
         .equals(TsTableColumnCategory.ID)) {
-      return new DeviceIdFilter(context.idColumnIndexMap.get(columnName), value);
+      return new PreciseFilter(context.idColumnIndexMap.get(columnName), value);
     } else {
       return new DeviceAttributeFilter(columnName, value);
     }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -28,67 +28,49 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
 
-/**
- * This class can be seen as a combination of {@link DeviceIdFilter} & {@link OrFilter}. Here we
- * construct a new filter to avoid too deep stack and to ensure performance.
- */
-public class MultiDeviceIdFilter extends SchemaFilter {
+// Does not support escape now
+public class LikeFilter extends SchemaFilter {
+  private final String key;
+  private final String regex;
 
-  private final int index;
-
-  private final Set<String> values;
-
-  public MultiDeviceIdFilter(int index, Set<String> values) {
-    this.index = index;
-    this.values = values;
+  public LikeFilter(final String key, final String regex) {
+    this.key = key;
+    this.regex = regex;
   }
 
-  public MultiDeviceIdFilter(final ByteBuffer byteBuffer) {
-    this.index = ReadWriteIOUtils.readInt(byteBuffer);
-
-    final int length = ReadWriteIOUtils.readInt(byteBuffer);
-    this.values = new HashSet<>();
-    for (int i = 0; i < length; ++i) {
-      values.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
+  public LikeFilter(final ByteBuffer byteBuffer) {
+    this.key = ReadWriteIOUtils.readString(byteBuffer);
+    this.regex = ReadWriteIOUtils.readString(byteBuffer);
   }
 
-  public int getIndex() {
-    return index;
+  public String getKey() {
+    return key;
   }
 
-  public Set<String> getValues() {
-    return values;
+  public String getRegex() {
+    return regex;
   }
 
   @Override
   public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitMultiDeviceIdFilter(this, node);
+    return visitor.visitLikeFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.MULTI_DEVICE_ID;
+    return SchemaFilterType.LIKE;
   }
 
   @Override
   public void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(index, byteBuffer);
-    ReadWriteIOUtils.write(values.size(), byteBuffer);
-    for (final String value : values) {
-      ReadWriteIOUtils.write(value, byteBuffer);
-    }
+    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(regex, byteBuffer);
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(index, stream);
-    ReadWriteIOUtils.write(values.size(), stream);
-    for (final String value : values) {
-      ReadWriteIOUtils.write(value, stream);
-    }
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(regex, stream);
   }
 }

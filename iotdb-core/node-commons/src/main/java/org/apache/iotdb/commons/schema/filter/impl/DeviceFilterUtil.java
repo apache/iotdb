@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.schema.filter.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,9 +54,9 @@ public class DeviceFilterUtil {
       nodes[1] = database;
       nodes[2] = tableName;
       for (SchemaFilter schemaFilter : idFilterList) {
-        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-          DeviceIdFilter deviceIdFilter = (DeviceIdFilter) schemaFilter;
-          nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
+        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
+          PreciseFilter preciseFilter = (PreciseFilter) schemaFilter;
+          nodes[preciseFilter.getIndex() + 3] = preciseFilter.getValue();
         } else {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");
         }

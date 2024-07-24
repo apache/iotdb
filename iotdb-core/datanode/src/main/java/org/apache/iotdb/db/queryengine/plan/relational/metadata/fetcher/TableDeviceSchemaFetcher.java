@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -263,7 +263,7 @@ public class TableDeviceSchemaFetcher {
       List<String> attributeColumns) {
     String[] idValues = new String[tableInstance.getIdNums()];
     for (SchemaFilter schemaFilter : idFilters) {
-      DeviceIdFilter idFilter = (DeviceIdFilter) schemaFilter;
+      PreciseFilter idFilter = (PreciseFilter) schemaFilter;
       idValues[idFilter.getIndex()] = idFilter.getValue();
     }
 

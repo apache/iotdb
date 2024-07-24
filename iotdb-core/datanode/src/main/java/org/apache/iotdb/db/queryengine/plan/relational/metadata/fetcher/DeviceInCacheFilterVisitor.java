@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -48,7 +48,7 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
   }
 
   @Override
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, DeviceEntry deviceEntry) {
+  public boolean visitPreciseFilter(PreciseFilter filter, DeviceEntry deviceEntry) {
     IDeviceID deviceID = deviceEntry.getDeviceID();
     // the first segment is "tableName", skip it
     int index = filter.getIndex() + 1;
