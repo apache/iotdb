@@ -403,7 +403,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterExpressionColumnTransformerMap,
             commonTransformerList,
             filterOutputDataTypes,
-            inputLocations.size(),
+            inputLocations.size() - 1,
             context.getTypeProvider(),
             metadata);
 
