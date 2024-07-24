@@ -79,6 +79,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -645,8 +646,6 @@ public class WALNode implements IWALNode {
   }
 
   private class PlanNodeIterator implements ReqIterator {
-    private static final int MOST_COLLECT_NUM_IN_ONE_ROUND = 100;
-
     /** search index of next element */
     private long nextSearchIndex;
 
@@ -705,8 +704,12 @@ public class WALNode implements IWALNode {
         }
       }
 
-      // find all nodes from all wal file
+      /* ------ find all nodes from all wal file ------ */
+
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
+      AtomicBoolean notFirstFile = new AtomicBoolean(false);
+      AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
+
       // try to collect current tmpNodes to insertNodes, return true if successfully collect an
       // insert node
       Runnable tryToCollectInsertNodeAndBumpIndex =
@@ -715,13 +718,14 @@ public class WALNode implements IWALNode {
               insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
               tmpNodes.set(new ArrayList<>());
               nextSearchIndex++;
+              if (notFirstFile.get()) {
+                hasCollectedSufficientData.set(true);
+              }
             }
           };
 
-      for (;
-          currentFileIndex < filesToSearch.length - 1
-              && insertNodes.size() < MOST_COLLECT_NUM_IN_ONE_ROUND;
-          currentFileIndex++) {
+      COLLECT_FILE_LOOP:
+      for (; currentFileIndex < filesToSearch.length - 1; currentFileIndex++) {
         // cannot find any in this file, so all slices of last plan node are found
         if (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
             == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
@@ -754,12 +758,15 @@ public class WALNode implements IWALNode {
                       "The search index of next WAL entry should be {}, but actually it's {}",
                       nextSearchIndex,
                       currentWalEntryIndex);
+                  nextSearchIndex = currentWalEntryIndex;
                 }
-                nextSearchIndex = currentWalEntryIndex;
                 tmpNodes.get().add(new IoTConsensusRequest(buffer));
               }
             } else {
               tryToCollectInsertNodeAndBumpIndex.run();
+            }
+            if (hasCollectedSufficientData.get()) {
+              break COLLECT_FILE_LOOP;
             }
           }
         } catch (Exception e) {
@@ -769,6 +776,7 @@ public class WALNode implements IWALNode {
               filesToSearch[currentFileIndex],
               e);
         }
+        notFirstFile.set(true);
       }
 
       // update file index and version id
