@@ -65,7 +65,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   public List<PartialPath> getPaths() {
     List<PartialPath> paths = new ArrayList<>();
     for (String measurement : measurements) {
-      paths.add(devicePath.concatNode(measurement));
+      paths.add(devicePath.concatAsMeasurementPath(measurement));
     }
     return paths;
   }

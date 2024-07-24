@@ -182,9 +182,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @return new partial path
    */
   public PartialPath concatPath(PartialPath partialPath) {
+    return concatPath(partialPath, 0);
+  }
+
+  /**
+   * it will return a new partial path
+   *
+   * @param partialPath the path you want to concat
+   * @return new partial path
+   */
+  public PartialPath concatPath(PartialPath partialPath, int offset) {
     int len = nodes.length;
-    String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
-    System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length - offset);
+    System.arraycopy(partialPath.nodes, offset, newNodes, len, partialPath.nodes.length - offset);
     return createPartialPath(newNodes);
   }
 
@@ -375,7 +385,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
-    return matchPath(devicePath.concatNode(measurement).getNodes(), 0, 0, false, false);
+    return matchPath(
+        devicePath.concatAsMeasurementPath(measurement).getNodes(), 0, 0, false, false);
   }
 
   /**

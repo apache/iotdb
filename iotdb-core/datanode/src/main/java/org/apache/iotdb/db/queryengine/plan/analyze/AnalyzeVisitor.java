@@ -2177,7 +2177,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (sourceColumn instanceof TimeSeriesOperand) {
           targetMeasurement =
               constructTargetMeasurement(
-                  sourceDevice.concatNode(sourceColumn.getExpressionString()), measurementTemplate);
+                  sourceDevice.concatAsMeasurementPath(sourceColumn.getExpressionString()), measurementTemplate);
         } else {
           targetMeasurement = measurementTemplate;
         }
@@ -2250,7 +2250,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         targetPath = constructTargetPath(sourcePath, deviceTemplate, measurementTemplate);
       } else {
-        targetPath = deviceTemplate.concatNode(measurementTemplate);
+        targetPath = deviceTemplate.concatAsMeasurementPath(measurementTemplate);
       }
       intoPathDescriptor.specifyTargetPath(sourceColumn, viewPath, targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
@@ -2440,7 +2440,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (int i = 0; i < measurements.size(); i++) {
       Pair<Template, PartialPath> templateInfo =
           schemaFetcher.checkTemplateSetAndPreSetInfo(
-              devicePath.concatNode(measurements.get(i)),
+              devicePath.concatAsMeasurementPath(measurements.get(i)),
               aliasList == null ? null : aliasList.get(i));
       if (templateInfo != null) {
         throw new SemanticException(
@@ -3007,6 +3007,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.generateGlobalTimeFilter(analysis);
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pattern);
+    patternTree.constructTree();
     ISchemaTree schemaTree =
         schemaFetcher.fetchRawSchemaInDeviceLevel(patternTree, authorityScope, context);
     if (schemaTree.isEmpty()) {
@@ -3446,7 +3447,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
       // the devicePath is a path without wildcard
-      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+      patternTree.appendFullPath(devicePath.concatAsMeasurementPath(ONE_LEVEL_PATH_WILDCARD));
     }
     SchemaPartition partition =
         partitionFetcher.getOrCreateSchemaPartition(

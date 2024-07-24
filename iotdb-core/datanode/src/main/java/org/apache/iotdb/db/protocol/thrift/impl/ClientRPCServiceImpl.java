@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -925,7 +926,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
         for (String sensor : req.sensors) {
-          PartialPath fullPath;
+          MeasurementPath fullPath;
           if (req.isLegalPathNodes()) {
             fullPath = devicePath.concatAsMeasurementPath(sensor);
           } else {

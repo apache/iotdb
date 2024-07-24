@@ -172,7 +172,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
               : new ArrayList<>());
       if (Objects.nonNull(group.getMeasurements())) {
         for (int i = 0; i < group.getMeasurements().size(); ++i) {
-          paths.add(path2Group.getKey().concatNode(group.getMeasurements().get(i)));
+          paths.add(path2Group.getKey().concatAsMeasurementPath(group.getMeasurements().get(i)));
         }
       }
     }

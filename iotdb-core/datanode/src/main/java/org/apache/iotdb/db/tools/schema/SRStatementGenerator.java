@@ -140,7 +140,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         if (node.isDevice() && node.getAsDeviceMNode().isAligned()) {
           final Statement stmt =
               genAlignedTimeseriesStatement(
-                  node, databaseFullPath.getDevicePath().concatPath(node.getPartialPath()));
+                  // skip common database
+                  node, databaseFullPath.concatPath(node.getPartialPath(), 1));
           statements.push(stmt);
         }
         cleanMtreeNode(node);
@@ -166,7 +167,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         final List<Statement> stmts =
             curNode.accept(
                 translater,
-                databaseFullPath.getDevicePath().concatAsMeasurementPath(curNode.getPartialPath()));
+                // skip common database
+                databaseFullPath.concatPath(curNode.getPartialPath(), 1));
         if (stmts != null) {
           statements.addAll(stmts);
         }
@@ -314,7 +316,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
-        stmt.setPath(((MeasurementPath) path));
+        stmt.setPath(new MeasurementPath(path.getNodes()));
         stmt.setAlias(node.getAlias());
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());

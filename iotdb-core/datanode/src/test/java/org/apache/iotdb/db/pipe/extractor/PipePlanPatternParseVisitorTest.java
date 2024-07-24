@@ -129,7 +129,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new CreateMultiTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Collections.singletonList(TSDataType.FLOAT),
             Collections.singletonList(TSEncoding.RLE),
             Collections.singletonList(CompressionType.SNAPPY),
@@ -142,8 +142,8 @@ public class PipePlanPatternParseVisitorTest {
                 new CreateMultiTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.db.device.s1"),
-                        new PartialPath("root.db1.device.s1")),
+                        new MeasurementPath("root.db.device.s1"),
+                        new MeasurementPath("root.db1.device.s1")),
                     Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN),
                     Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
                     Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),

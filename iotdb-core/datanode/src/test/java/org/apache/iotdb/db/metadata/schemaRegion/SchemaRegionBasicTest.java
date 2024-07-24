@@ -540,7 +540,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt01.temperature"),
                 new PartialPath("root.sg.wf01.wt02.status"),
                 new PartialPath("root.sg.wf01.wt01.status"),
                 new PartialPath("root.sg.wf02.wt01.temperature"))),
@@ -552,7 +552,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt01.temperature"),
                 new PartialPath("root.sg.wf01.wt02.status"),
                 new PartialPath("root.sg.wf01.wt01.status"))),
         schemaRegion.fetchSchemaBlackList(patternTree));

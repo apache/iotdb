@@ -163,7 +163,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
                 AlignedPath alignedPath = (AlignedPath) path;
                 return alignedPath.getMeasurementList().stream()
                     .map(
-                        measurementName -> alignedPath.getDevicePath().concatNode(measurementName));
+                        measurementName -> alignedPath.getDevicePath().concatAsMeasurementPath(measurementName));
               } else {
                 return Stream.of(path);
               }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
@@ -132,7 +133,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
-          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(fullPath);
+          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
