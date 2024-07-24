@@ -53,8 +53,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           choco install winflexbison3
-          choco install boost-msvc-14.3 --version=1.84.0.1
-          echo C:\\local\\boost_1_84_0 >> $env:GITHUB_PATH
+          choco install boost-msvc-14.3 --version=1.85.0
+          echo C:\\local\\boost_1_85_0 >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
