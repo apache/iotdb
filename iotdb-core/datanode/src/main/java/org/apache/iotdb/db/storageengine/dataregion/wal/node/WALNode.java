@@ -79,6 +79,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -702,125 +704,61 @@ public class WALNode implements IWALNode {
         }
       }
 
-      // find all nodes of current wal file
-      List<IConsensusRequest> tmpNodes = new ArrayList<>();
+      // find all nodes from all wal file
+      AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
+      Consumer<Long> collectTmpNodes =
+          index -> {
+            if (!tmpNodes.get().isEmpty()) {
+              insertNodes.add(new IndexedConsensusRequest(index, tmpNodes.get()));
+              tmpNodes.set(new ArrayList<>());
+            }
+          };
       long targetIndex = nextSearchIndex;
-      try (WALByteBufReader walByteBufReader =
-          new WALByteBufReader(filesToSearch[currentFileIndex])) {
-        while (walByteBufReader.hasNext()) {
-          ByteBuffer buffer = walByteBufReader.next();
-          WALEntryType type = WALEntryType.valueOf(buffer.get());
-          if (type.needSearch()) {
-            // see WALInfoEntry#serialize, entry type + memtable id + plan node type
-            buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
-            long currentIndex = buffer.getLong();
-            buffer.clear();
-            if (currentIndex == targetIndex) {
-              tmpNodes.add(new IoTConsensusRequest(buffer));
-            } else {
-              // different search index, all slices found
-              if (!tmpNodes.isEmpty()) {
-                insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-                tmpNodes = new ArrayList<>();
-              }
-              // remember to add current plan node
-              if (currentIndex > targetIndex) {
-                tmpNodes.add(new IoTConsensusRequest(buffer));
-                targetIndex = currentIndex;
-              }
-            }
-          } else if (!tmpNodes.isEmpty()) {
-            // next entry doesn't need to be searched, all slices found
-            insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-            targetIndex++;
-            tmpNodes = new ArrayList<>();
-          }
-        }
-      } catch (FileNotFoundException e) {
-        logger.debug(
-            "WAL file {} has been deleted, try to find next {} again.",
-            identifier,
-            nextSearchIndex);
-        reset();
-        return hasNext();
-      } catch (Exception e) {
-        brokenFileId = WALFileUtils.parseVersionId(filesToSearch[currentFileIndex].getName());
-        logger.error(
-            "Fail to read wal from wal file {}, skip this file.",
-            filesToSearch[currentFileIndex],
-            e);
-        // skip this file when it's broken from the beginning
-        if (insertNodes.isEmpty() && tmpNodes.isEmpty()) {
-          currentFileIndex++;
-          return hasNext();
-        }
-      }
-
-      // find remaining slices of last plan node of targetIndex
-      if (tmpNodes.isEmpty()) { // all plan nodes scanned
-        currentFileIndex++;
-      } else {
-        int fileIndex = currentFileIndex + 1;
-        while (!tmpNodes.isEmpty() && fileIndex < filesToSearch.length - 1) {
-          // cannot find any in this file, so all slices of last plan node are found
-          if (WALFileUtils.parseStatusCode(filesToSearch[fileIndex].getName())
-              == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
-            insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-            tmpNodes = Collections.emptyList();
-            break;
-          }
-          // read until find all plan nodes whose search index equals target index
-          try (WALByteBufReader walByteBufReader = new WALByteBufReader(filesToSearch[fileIndex])) {
-            // first search index are different, so all slices of last plan node are found
-            if (walByteBufReader.getFirstSearchIndex() != targetIndex) {
-              insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-              tmpNodes = Collections.emptyList();
-              break;
-            } else {
-              // read until one node has different search index
-              while (walByteBufReader.hasNext()) {
-                ByteBuffer buffer = walByteBufReader.next();
-                WALEntryType type = WALEntryType.valueOf(buffer.get());
-                if (type.needSearch()) {
-                  // see WALInfoEntry#serialize, entry type + memtable id + plan node type
-                  buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
-                  long currentIndex = buffer.getLong();
-                  buffer.clear();
-                  if (currentIndex == targetIndex) {
-                    tmpNodes.add(new IoTConsensusRequest(buffer));
-                  } else { // find all slices of plan node
-                    insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-                    tmpNodes = Collections.emptyList();
-                    break;
-                  }
-                } else { // find all slices of plan node
-                  insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
-                  tmpNodes = Collections.emptyList();
-                  break;
+      for (; currentFileIndex < filesToSearch.length - 1; currentFileIndex++) {
+        try (WALByteBufReader walByteBufReader =
+            new WALByteBufReader(filesToSearch[currentFileIndex])) {
+          while (walByteBufReader.hasNext()) {
+            ByteBuffer buffer = walByteBufReader.next();
+            WALEntryType type = WALEntryType.valueOf(buffer.get());
+            if (type.needSearch()) {
+              // see WALInfoEntry#serialize, entry type + memtable id + plan node type
+              buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
+              final long currentWalEntryIndex = buffer.getLong();
+              buffer.clear();
+              if (currentWalEntryIndex == -1) {
+                // WAL entry of targetIndex has been fully collected, so put them into insertNodes
+                collectTmpNodes.accept(targetIndex);
+                targetIndex++;
+              } else if (currentWalEntryIndex < targetIndex) {
+                // WAL entry is outdated, do nothing, continue to see next WAL entry
+              } else if (currentWalEntryIndex == targetIndex) {
+                tmpNodes.get().add(new IoTConsensusRequest(buffer));
+              } else {
+                // currentWalEntryIndex > targetIndex
+                // WAL entry of targetIndex has been fully collected, put them into insertNodes
+                collectTmpNodes.accept(targetIndex);
+                // then bump the targetIndex for next round of collection, and collect the current
+                // WAL entry
+                if (currentWalEntryIndex != targetIndex + 1) {
+                  logger.warn(
+                      "WAL entry's search index bump from {} to {}, which is unexpected",
+                      targetIndex,
+                      currentWalEntryIndex);
                 }
+                targetIndex = currentWalEntryIndex;
+                tmpNodes.get().add(new IoTConsensusRequest(buffer));
               }
+            } else {
+              collectTmpNodes.accept(targetIndex);
+              targetIndex++;
             }
-          } catch (FileNotFoundException e) {
-            logger.debug(
-                "WAL file {} has been deleted, try to find next {} again.",
-                identifier,
-                nextSearchIndex);
-            reset();
-            return hasNext();
-          } catch (Exception e) {
-            brokenFileId = WALFileUtils.parseVersionId(filesToSearch[fileIndex].getName());
-            logger.error(
-                "Fail to read wal from wal file {}, skip this file.", filesToSearch[fileIndex], e);
           }
-          if (!tmpNodes.isEmpty()) {
-            fileIndex++;
-          }
-        }
-
-        if (tmpNodes.isEmpty()) { // all insert plans scanned
-          currentFileIndex = fileIndex;
-        } else {
-          needUpdatingFilesToSearch = true;
+        } catch (Exception e) {
+          brokenFileId = WALFileUtils.parseVersionId(filesToSearch[currentFileIndex].getName());
+          logger.error(
+              "Fail to read wal from wal file {}, skip this file.",
+              filesToSearch[currentFileIndex],
+              e);
         }
       }
 
