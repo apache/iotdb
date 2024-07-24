@@ -176,6 +176,7 @@ import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTi
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -208,7 +209,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   // ******************* statements **********************
   @Override
   public Node visitUseDatabaseStatement(RelationalSqlParser.UseDatabaseStatementContext ctx) {
-    return new Use(getLocation(ctx), (Identifier) visit(ctx.database));
+    return new Use(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
+  }
+
+  private static Identifier lowerIdentifier(Identifier identifier) {
+    if (identifier.getLocation().isPresent()) {
+      return new Identifier(
+          identifier.getLocation().get(), mapIdentifier(identifier), identifier.isDelimited());
+    } else {
+      return new Identifier(mapIdentifier(identifier), identifier.isDelimited());
+    }
   }
 
   @Override
@@ -232,7 +242,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDropDbStatement(RelationalSqlParser.DropDbStatementContext ctx) {
-    return new DropDB(getLocation(ctx), (Identifier) visit(ctx.database), ctx.EXISTS() != null);
+    return new DropDB(
+        getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)), ctx.EXISTS() != null);
   }
 
   @Override
@@ -256,7 +267,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitColumnDefinition(RelationalSqlParser.ColumnDefinitionContext ctx) {
     return new ColumnDefinition(
         getLocation(ctx),
-        (Identifier) visit(ctx.identifier()),
+        lowerIdentifier((Identifier) visit(ctx.identifier())),
         (DataType) visit(ctx.type()),
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
@@ -275,7 +286,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.database == null) {
       return new ShowTables(getLocation(ctx));
     } else {
-      return new ShowTables(getLocation(ctx), (Identifier) visit(ctx.database));
+      return new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
     }
   }
 
@@ -287,7 +298,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRenameTable(RelationalSqlParser.RenameTableContext ctx) {
     return new RenameTable(
-        getLocation(ctx), getQualifiedName(ctx.from), (Identifier) visit(ctx.to));
+        getLocation(ctx), getQualifiedName(ctx.from), lowerIdentifier((Identifier) visit(ctx.to)));
   }
 
   @Override
@@ -307,7 +318,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDropColumn(RelationalSqlParser.DropColumnContext ctx) {
     return new DropColumn(
-        getLocation(ctx), getQualifiedName(ctx.tableName), (Identifier) visit(ctx.column));
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        lowerIdentifier((Identifier) visit(ctx.column)));
   }
 
   @Override
@@ -328,14 +341,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new CreateIndex(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
-        (Identifier) visit(ctx.indexName),
+        lowerIdentifier((Identifier) visit(ctx.indexName)),
         visit(ctx.identifierList().identifier(), Identifier.class));
   }
 
   @Override
   public Node visitDropIndexStatement(RelationalSqlParser.DropIndexStatementContext ctx) {
     return new DropIndex(
-        getLocation(ctx), getQualifiedName(ctx.tableName), (Identifier) visit(ctx.indexName));
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        lowerIdentifier((Identifier) visit(ctx.indexName)));
   }
 
   @Override
@@ -1376,6 +1391,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDateTimeExpression(RelationalSqlParser.DateTimeExpressionContext ctx) {
+    return new LongLiteral(
+        getLocation(ctx),
+        String.valueOf(
+            parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
+  }
+
+  @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
       throw parseError(
@@ -1415,7 +1438,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitSubstring(RelationalSqlParser.SubstringContext ctx) {
     return new FunctionCall(
         getLocation(ctx),
-        QualifiedName.of("substr"),
+        QualifiedName.of("substring"),
         visit(ctx.valueExpression(), Expression.class));
   }
 
@@ -1577,6 +1600,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitBooleanLiteral(RelationalSqlParser.BooleanLiteralContext ctx) {
     return new BooleanLiteral(getLocation(ctx), ctx.getText());
+  }
+
+  @Override
+  public Node visitDatetimeLiteral(RelationalSqlParser.DatetimeLiteralContext ctx) {
+    return new LongLiteral(
+        getLocation(ctx),
+        String.valueOf(
+            parseDateTimeFormat(
+                ctx.getChild(0).getText(), CommonDateTimeUtils.currentTime(), zoneId)));
   }
 
   @Override
