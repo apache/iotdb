@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -29,9 +30,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
+import java.util.Optional;
+
 public class PipeRealtimeEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
+  private static final DeletionResourceManager DELETION_RESOURCE_MANAGER =
+      DeletionResourceManager.getInstance();
 
   public static PipeRealtimeEvent createRealtimeEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
@@ -59,8 +64,11 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(DeleteDataNode node) {
-    return new PipeRealtimeEvent(
-        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
+    PipeSchemaRegionWritePlanEvent deletionEvent =
+        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
+    Optional.ofNullable(DELETION_RESOURCE_MANAGER)
+        .ifPresent(mgr -> mgr.registerDeletionResource(deletionEvent));
+    return new PipeRealtimeEvent(deletionEvent, null, null, null);
   }
 
   private PipeRealtimeEventFactory() {
