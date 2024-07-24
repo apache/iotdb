@@ -38,7 +38,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.USE_DB;
+import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

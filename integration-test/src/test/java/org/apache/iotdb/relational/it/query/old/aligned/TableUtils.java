@@ -41,6 +41,8 @@ import static org.junit.Assert.fail;
  */
 public class TableUtils {
 
+  public static final String USE_DB = "use db";
+
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE db",

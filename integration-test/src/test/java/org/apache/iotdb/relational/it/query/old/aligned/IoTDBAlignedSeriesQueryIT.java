@@ -40,7 +40,6 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.USE_DB;
 import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
 import static org.apache.iotdb.db.utils.constant.TestConstant.count;
 import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
@@ -51,6 +50,7 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;

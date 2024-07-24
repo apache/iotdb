@@ -24,7 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -45,7 +44,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-@Ignore
 public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   // Data can be viewed in
   // https://docs.google.com/spreadsheets/d/11tNRIaHmNdFWc0RC4yAloO6JJbmo9S5qxwAqWxeVY6c/edit#gid=0

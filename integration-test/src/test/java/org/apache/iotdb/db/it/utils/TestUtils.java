@@ -65,8 +65,6 @@ public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
 
-  public static final String USE_DB = "use db";
-
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
   public static final String TIME_PRECISION_IN_MS = "ms";
@@ -157,10 +155,8 @@ public class TestUtils {
       String userName,
       String password,
       TimeUnit currPrecision) {
-    try (Connection connection =
-            EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      statement.execute(USE_DB);
       connection.setClientInfo("time_zone", "+00:00");
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df, currPrecision);
