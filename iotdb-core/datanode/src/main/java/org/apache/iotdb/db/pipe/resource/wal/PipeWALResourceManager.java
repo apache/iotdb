@@ -61,6 +61,7 @@ public abstract class PipeWALResourceManager {
             Math.max(PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
   }
 
+  @SuppressWarnings("java:S2222")
   private void ttlCheck() {
     final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
         memtableIdToPipeWALResourceMap.entrySet().iterator();

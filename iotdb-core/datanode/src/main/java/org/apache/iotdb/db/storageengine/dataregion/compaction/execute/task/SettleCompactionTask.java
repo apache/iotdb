@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This settle task contains fully_dirty files and partially_dirty files. This task will do the
@@ -256,7 +257,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         dataRegionId);
     try {
       if (needRecoverTaskInfoFromLogFile) {
-        recoverTaskInfoFromLogFile();
+        recoverSettleTaskInfoFromLogFile();
       }
       recoverFullyDirtyFiles();
       recoverPartiallyDirtyFiles();
@@ -286,7 +287,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  public void recoverTaskInfoFromLogFile() throws IOException {
+  public void recoverSettleTaskInfoFromLogFile() throws IOException {
     LOGGER.info(
         "{}-{} [Compaction][Recover] compaction log is {}",
         storageGroupName,
@@ -383,5 +384,10 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         && this.selectedTsFileResourceList.equals(
             otherSettleCompactionTask.selectedTsFileResourceList)
         && this.performer.getClass().isInstance(otherSettleCompactionTask.performer);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fullyDirtyFiles, selectedTsFileResourceList, performer);
   }
 }

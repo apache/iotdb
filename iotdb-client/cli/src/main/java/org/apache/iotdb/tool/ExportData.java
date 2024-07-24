@@ -507,83 +507,83 @@ public class ExportData extends AbstractDataTool {
     while (hasNext) {
       int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
-      FileWriter writer = new FileWriter(finalFilePath);
-      if (writeNull) {
-        break;
-      }
-      while (i++ < linesPerFile) {
-        if (sessionDataSet.hasNext()) {
-          RowRecord rowRecord = sessionDataSet.next();
-          List<Field> fields = rowRecord.getFields();
-          List<String> headersTemp = new ArrayList<>(seriesList);
-          List<String> timeseries = new ArrayList<>();
-          if (headers.contains("Device")) {
-            deviceName = fields.get(0).toString();
-            if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
-              continue;
+      try (FileWriter writer = new FileWriter(finalFilePath)) {
+        if (writeNull) {
+          break;
+        }
+        while (i++ < linesPerFile) {
+          if (sessionDataSet.hasNext()) {
+            RowRecord rowRecord = sessionDataSet.next();
+            List<Field> fields = rowRecord.getFields();
+            List<String> headersTemp = new ArrayList<>(seriesList);
+            List<String> timeseries = new ArrayList<>();
+            if (headers.contains("Device")) {
+              deviceName = fields.get(0).toString();
+              if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
+                continue;
+              }
+              for (String header : headersTemp) {
+                timeseries.add(deviceName + "." + header);
+              }
+            } else {
+              if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
+                continue;
+              }
+              timeseries.addAll(headers);
+              timeseries.remove(0);
             }
-            for (String header : headersTemp) {
-              timeseries.add(deviceName + "." + header);
+            String sqlMiddle = null;
+            if (Boolean.TRUE.equals(aligned)) {
+              sqlMiddle = " ALIGNED VALUES (" + rowRecord.getTimestamp() + ",";
+            } else {
+              sqlMiddle = " VALUES (" + rowRecord.getTimestamp() + ",";
             }
-          } else {
-            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
-              continue;
+            List<String> values = new ArrayList<>();
+            if (headers.contains("Device")) {
+              fields.remove(0);
             }
-            timeseries.addAll(headers);
-            timeseries.remove(0);
-          }
-          String sqlMiddle = null;
-          if (Boolean.TRUE.equals(aligned)) {
-            sqlMiddle = " ALIGNED VALUES (" + rowRecord.getTimestamp() + ",";
-          } else {
-            sqlMiddle = " VALUES (" + rowRecord.getTimestamp() + ",";
-          }
-          List<String> values = new ArrayList<>();
-          if (headers.contains("Device")) {
-            fields.remove(0);
-          }
-          for (int index = 0; index < fields.size(); index++) {
-            RowRecord next =
-                session
-                    .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
-                    .next();
-            if (ObjectUtils.isNotEmpty(next)) {
-              List<Field> timeseriesList = next.getFields();
-              String value = fields.get(index).toString();
-              if (value.equals("null")) {
+            for (int index = 0; index < fields.size(); index++) {
+              RowRecord next =
+                  session
+                      .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
+                      .next();
+              if (ObjectUtils.isNotEmpty(next)) {
+                List<Field> timeseriesList = next.getFields();
+                String value = fields.get(index).toString();
+                if (value.equals("null")) {
+                  headersTemp.remove(seriesList.get(index));
+                  continue;
+                }
+                if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
+                  values.add("\"" + value + "\"");
+                } else {
+                  values.add(value);
+                }
+              } else {
                 headersTemp.remove(seriesList.get(index));
                 continue;
               }
-              if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
-                values.add("\"" + value + "\"");
-              } else {
-                values.add(value);
-              }
-            } else {
-              headersTemp.remove(seriesList.get(index));
-              continue;
             }
-          }
-          if (CollectionUtils.isNotEmpty(headersTemp)) {
-            writer.write(
-                "INSERT INTO "
-                    + deviceName
-                    + "(TIMESTAMP,"
-                    + String.join(",", headersTemp)
-                    + ")"
-                    + sqlMiddle
-                    + String.join(",", values)
-                    + ");\n");
-          }
+            if (CollectionUtils.isNotEmpty(headersTemp)) {
+              writer.write(
+                  "INSERT INTO "
+                      + deviceName
+                      + "(TIMESTAMP,"
+                      + String.join(",", headersTemp)
+                      + ")"
+                      + sqlMiddle
+                      + String.join(",", values)
+                      + ");\n");
+            }
 
-        } else {
-          hasNext = false;
-          break;
+          } else {
+            hasNext = false;
+            break;
+          }
         }
+        fileIndex++;
+        writer.flush();
       }
-      fileIndex++;
-      writer.flush();
-      writer.close();
     }
   }
 }

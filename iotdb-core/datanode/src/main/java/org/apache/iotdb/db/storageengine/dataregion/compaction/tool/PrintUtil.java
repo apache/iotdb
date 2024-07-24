@@ -23,7 +23,7 @@ class PrintUtil {
   static String[] header_1 = {"", "Total", "Overlap", "Overlap/Total"};
   static String[] header_2 = {"", "Total", "Sequence", "UnSequence", "UnSequence/Total"};
 
-  static long MSize = 1024 * 1024;
+  static long MSize = 1024 * 1024L;
 
   public static void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
     System.out.println();

@@ -147,11 +147,11 @@ public abstract class SubscriptionPrefetchingQueue {
    * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    *
-   * @param trySealBatchIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#trySealBatch} is
-   *     called when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
+   * @param onEventIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#onEvent()} is called
+   *     when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
    *     otherwise
    */
-  protected void tryPrefetch(final boolean trySealBatchIfEmpty) {
+  protected void tryPrefetch(final boolean onEventIfEmpty) {
     while (!inputPendingQueue.isEmpty()) {
       final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {
@@ -202,14 +202,14 @@ public abstract class SubscriptionPrefetchingQueue {
           "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
           this,
           event);
-      if (trySealBatch()) {
+      if (onEvent()) {
         return;
       }
     }
 
     // At this moment, the inputPendingQueue is empty.
-    if (trySealBatchIfEmpty) {
-      trySealBatch();
+    if (onEventIfEmpty) {
+      onEvent();
     }
   }
 
@@ -226,7 +226,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if a new event has been prefetched.
    */
-  protected abstract boolean trySealBatch();
+  protected abstract boolean onEvent();
 
   /////////////////////////////// commit ///////////////////////////////
 
@@ -312,7 +312,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return event;
   }
 
-  protected SubscriptionCommitContext generateSubscriptionCommitContext() {
+  public SubscriptionCommitContext generateSubscriptionCommitContext() {
     // Recording data node ID and reboot times to address potential stale commit IDs caused by
     // leader transfers or restarts.
     return new SubscriptionCommitContext(
@@ -391,30 +391,26 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    final Map<String, String> result = new HashMap<>(6);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
-        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
-        put("uncommittedEvents", uncommittedEvents.toString());
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    final Map<String, String> result = new HashMap<>(8);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+    result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+    result.put("uncommittedEvents", uncommittedEvents.toString());
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 }

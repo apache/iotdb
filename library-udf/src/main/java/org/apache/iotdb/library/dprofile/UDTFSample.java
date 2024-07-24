@@ -122,6 +122,7 @@ public class UDTFSample implements UDTF {
   }
 
   @Override
+  @SuppressWarnings("javabugs:S6320")
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     // equal-distance sampling
     int n = rowWindow.windowSize();

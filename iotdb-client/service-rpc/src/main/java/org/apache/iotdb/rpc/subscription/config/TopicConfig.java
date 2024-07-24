@@ -56,14 +56,14 @@ public class TopicConfig extends PipeParameters {
   private static final Map<String, String> LIVE_MODE_CONFIG =
       Collections.singletonMap("mode", MODE_LIVE_VALUE);
 
-  private static final Set<String> LOOSE_RANGE_KEY_SET =
-      Collections.unmodifiableSet(
-          new HashSet<String>() {
-            {
-              add("history.loose-range");
-              add("realtime.loose-range");
-            }
-          });
+  private static final Set<String> LOOSE_RANGE_KEY_SET;
+
+  static {
+    Set<String> set = new HashSet<>(2);
+    set.add("history.loose-range");
+    set.add("realtime.loose-range");
+    LOOSE_RANGE_KEY_SET = Collections.unmodifiableSet(set);
+  }
 
   /////////////////////////////// de/ser ///////////////////////////////
 
@@ -113,10 +113,7 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithRealtimeMode() {
-    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? REALTIME_BATCH_MODE_CONFIG
-        : REALTIME_STREAM_MODE_CONFIG;
+    return REALTIME_STREAM_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceMode() {

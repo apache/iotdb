@@ -50,6 +50,7 @@ public class DirectoryChecker {
     return DirectoryCheckerHolder.INSTANCE;
   }
 
+  @SuppressWarnings("java:S2095") // will be closed by randomAccessFileList
   public void registerDirectory(File dir) throws ConfigurationException, IOException {
     if (dir.exists() && !dir.isDirectory()) {
       throw new ConfigurationException(
@@ -77,6 +78,7 @@ public class DirectoryChecker {
     }
     // File is already locked other virtual machine
     if (lock == null) {
+      randomAccessFile.close();
       throw new ConfigurationException(
           String.format(
               "Conflict is detected in directory %s, which may be being used by another IoTDB (ProcessId=%s). Please check configuration and restart.",

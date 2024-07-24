@@ -48,6 +48,7 @@ public class TTLScheduleTask implements Callable<Void> {
   }
 
   @Override
+  @SuppressWarnings("java:S2142")
   public Void call() throws Exception {
     while (true) {
       try {

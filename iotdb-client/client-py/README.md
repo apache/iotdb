@@ -312,91 +312,6 @@ session.execute_non_query_statement(sql)
 session.execute_statement(sql)
 ```
 
-### Device Template
-#### Create Device Template
-The step for creating a metadata template is as follows
-1. Create the template class
-2. Adding child Node，InternalNode and MeasurementNode can be chose
-3. Execute create device template function
-
-```python
-template = Template(name=template_name, share_time=True)
-
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
-m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
-
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
-template.add_template(m_node_x)
-
-session.create_schema_template(template)
-```
-#### Modify Device Template nodes
-Modify nodes in a template, the template must be already created. These are functions that add or delete some measurement nodes.
-* add node in template
-```python
-session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
-```
-
-* delete node in template
-```python
-session.delete_node_in_template(template_name, path)
-```
-
-#### Set Device Template
-```python
-session.set_schema_template(template_name, prefix_path)
-```
-
-#### Uset Device Template
-```python
-session.unset_schema_template(template_name, prefix_path)
-```
-
-#### Show Device Template
-* Show all device templates
-```python
-session.show_all_templates()
-```
-* Count all nodes in templates
-```python
-session.count_measurements_in_template(template_name)
-```
-
-* Judge whether the path is measurement or not in templates, This measurement must be in the template
-```python
-session.count_measurements_in_template(template_name, path)
-```
-
-* Judge whether the path is exist or not in templates, This path may not belong to the template
-```python
-session.is_path_exist_in_template(template_name, path)
-```
-
-* Show nodes under in device template
-```python
-session.show_measurements_in_template(template_name)
-```
-
-* Show the path prefix where a device template is set
-```python
-session.show_paths_template_set_on(template_name)
-```
-
-* Show the path prefix where a device template is used (i.e. the time series has been created)
-```python
-session.show_paths_template_using_on(template_name)
-```
-
-#### Drop Device Template
-Delete an existing metadata template，dropping an already set template is not supported
-```python
-session.drop_schema_template("template_python")
-```
 
 
 ### Pandas Support
@@ -601,9 +516,9 @@ This is an example of how to connect to IoTDB with python, using the thrift rpc 
 
 ### Prerequisites
 
-Python3.7 or later is preferred.
+Python3.6 or later is preferred.
 
-You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official tutorial of installation, eventually, you should have a thrift executable.
+You have to install Thrift (0.14.1 or later) to compile our thrift file into python code. Below is the official tutorial of installation, eventually, you should have a thrift executable.
 
 ```
 http://thrift.apache.org/docs/install/

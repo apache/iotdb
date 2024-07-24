@@ -20,30 +20,54 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionPipeTsFileEventBatch {
 
+  private final SubscriptionPrefetchingTsFileQueue prefetchingQueue;
+
   private final PipeTabletEventTsFileBatch batch;
 
+  private boolean isSealed = false;
+
   public SubscriptionPipeTsFileEventBatch(
-      final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+      final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes) {
+    this.prefetchingQueue = prefetchingQueue;
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
-  public synchronized List<File> sealTsFiles() throws Exception {
-    return batch.sealTsFiles();
-  }
-
-  public synchronized boolean shouldEmit() {
-    return batch.shouldEmit();
-  }
-
-  public synchronized boolean onEvent(final TabletInsertionEvent event) throws Exception {
-    return batch.onEvent(event);
+  public synchronized List<SubscriptionEvent> onEvent(@Nullable final TabletInsertionEvent event)
+      throws Exception {
+    if (isSealed) {
+      return Collections.emptyList();
+    }
+    if (Objects.nonNull(event)) {
+      batch.onEvent(event);
+    }
+    if (batch.shouldEmit()) {
+      final List<SubscriptionEvent> events = generateSubscriptionEvents();
+      isSealed = true;
+      return events;
+    }
+    return Collections.emptyList();
   }
 
   public synchronized void ack() {
@@ -55,7 +79,27 @@ public class SubscriptionPipeTsFileEventBatch {
     batch.close();
   }
 
+  private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    final List<File> tsFiles = batch.sealTsFiles();
+    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
+    for (final File tsFile : tsFiles) {
+      final SubscriptionCommitContext commitContext =
+          prefetchingQueue.generateSubscriptionCommitContext();
+      events.add(
+          new SubscriptionEvent(
+              new SubscriptionPipeTsFileBatchEvents(this, tsFile, referenceCount),
+              new SubscriptionPollResponse(
+                  SubscriptionPollResponseType.FILE_INIT.getType(),
+                  new FileInitPayload(tsFile.getName()),
+                  commitContext)));
+    }
+    return events;
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + "}";
+    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + ", isSealed=" + isSealed + "}";
   }
 }
