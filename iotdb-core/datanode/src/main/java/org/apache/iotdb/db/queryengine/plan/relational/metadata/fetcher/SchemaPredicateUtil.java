@@ -69,19 +69,19 @@ public class SchemaPredicateUtil {
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
   static List<List<Expression>> convertDeviceIdPredicateToOrConcatList(
-      List<Expression> schemaFilterList) {
-    List<List<Expression>> orConcatList =
+      final List<Expression> schemaFilterList) {
+    final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
             .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
             .collect(Collectors.toList());
-    int orSize = orConcatList.size();
+    final int orSize = orConcatList.size();
     int finalResultSize = 1;
-    for (List<Expression> filterList : orConcatList) {
+    for (final List<Expression> filterList : orConcatList) {
       finalResultSize *= filterList.size();
     }
-    List<List<Expression>> result = new ArrayList<>(finalResultSize);
-    int[] indexes = new int[orSize]; // index count, each case represents one possible result
-    Set<String> checkedColumnNames = new HashSet<>();
+    final List<List<Expression>> result = new ArrayList<>(finalResultSize);
+    final int[] indexes = new int[orSize]; // index count, each case represents one possible result
+    final Set<String> checkedColumnNames = new HashSet<>();
     boolean hasConflictFilter;
     Expression currentExpression;
     String currentColumnName;

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -137,8 +138,8 @@ public class SimpleNFA implements IPatternFA {
                 nextIndex,
                 currentNode.getTracebackNode(),
                 pathPattern instanceof ExtendedPartialPath
-                    ? ((ExtendedPartialPath) pathPattern).getMatchFunction(nextIndex)
-                    : node -> true);
+                    ? ((ExtendedPartialPath) pathPattern).getMatchFunctions(nextIndex)
+                    : Collections.emptyList());
       } else if (PathPatternUtil.hasWildcard(rawNodes[nextIndex])) {
         patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
       } else {
@@ -355,20 +356,20 @@ public class SimpleNFA implements IPatternFA {
   /** The patternNode of the rawNode *. */
   private class OneLevelWildcardMatchNode extends SinglePathPatternNode {
 
-    private final Function<String, Boolean> matchFunction;
+    private final List<Function<String, Boolean>> matchFunctions;
 
     // Currently one level wildcard match supports an extra matchFunction
     private OneLevelWildcardMatchNode(
-        int patternIndex,
-        SinglePathPatternNode tracebackNode,
-        final Function<String, Boolean> matchFunction) {
+        final int patternIndex,
+        final SinglePathPatternNode tracebackNode,
+        final List<Function<String, Boolean>> matchFunctions) {
       super(patternIndex, tracebackNode);
-      this.matchFunction = matchFunction;
+      this.matchFunctions = matchFunctions;
     }
 
     @Override
-    public boolean isMatch(String event) {
-      return matchFunction.apply(event);
+    public boolean isMatch(final String event) {
+      return matchFunctions.stream().allMatch(function -> function.apply(event));
     }
 
     @Override

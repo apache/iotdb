@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -185,6 +186,19 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             new AttributeFilter(new LikeFilter(parseLikePatternToRegex("_____")), "cycle"));
 
     Assert.assertEquals(1, deviceSchemaInfoList.size());
+
+    // Test multi filters on one id
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Arrays.asList(
+                new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_0", "d_1"))), 2),
+                new IdFilter(new LikeFilter(parseLikePatternToRegex("__1")), 2)),
+            null);
+
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
   }
 
   @Test

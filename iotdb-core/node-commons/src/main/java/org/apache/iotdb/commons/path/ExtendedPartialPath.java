@@ -19,25 +19,27 @@
 
 package org.apache.iotdb.commons.path;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
 public class ExtendedPartialPath extends PartialPath {
-  final Map<Integer, Function<String, Boolean>> matchFunctions = new HashMap<>();
+  final Map<Integer, List<Function<String, Boolean>>> matchFunctions = new HashMap<>();
 
   public ExtendedPartialPath(final String[] nodes) {
     super(nodes);
   }
 
-  public Function<String, Boolean> getMatchFunction(final int index) {
+  public List<Function<String, Boolean>> getMatchFunctions(final int index) {
     if (!matchFunctions.containsKey(index)) {
-      return node -> true;
+      return new ArrayList<>();
     }
     return matchFunctions.get(index);
   }
 
-  public void setMatchFunction(final int index, final Function<String, Boolean> matchFunction) {
-    matchFunctions.put(index, matchFunction);
+  public void addMatchFunction(final int index, final Function<String, Boolean> matchFunction) {
+    matchFunctions.computeIfAbsent(index, k -> new ArrayList<>()).add(matchFunction);
   }
 }

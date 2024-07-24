@@ -61,9 +61,11 @@ public class DeviceFilterUtil {
           final int index = ((IdFilter) schemaFilter).getIndex() + 3;
           final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
           if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+            // If there is a precise filter, other filters on the same id are processed and thus
+            // not exist here
             nodes[index] = ((PreciseFilter) childFilter).getValue();
           } else {
-            partialPath.setMatchFunction(
+            partialPath.addMatchFunction(
                 index, node -> childFilter.accept(StringValueFilterVisitor.getInstance(), node));
           }
         } else {
