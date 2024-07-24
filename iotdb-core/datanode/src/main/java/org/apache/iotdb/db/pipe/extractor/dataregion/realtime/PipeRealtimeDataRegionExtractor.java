@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -287,6 +288,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
    * @param event the {@link Event} from the {@link StorageEngine}
    */
   public final void extract(final PipeRealtimeEvent event) {
+    // The progress report event shall be directly extracted
+    if (event.getEvent() instanceof ProgressReportEvent) {
+      extractDirectly(event);
+      return;
+    }
+
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -369,7 +376,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected void extractDeletion(final PipeRealtimeEvent event) {
+  protected void extractDirectly(final PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // This would not happen, but just in case.
       // Pending is unbounded, so it should never reach capacity.

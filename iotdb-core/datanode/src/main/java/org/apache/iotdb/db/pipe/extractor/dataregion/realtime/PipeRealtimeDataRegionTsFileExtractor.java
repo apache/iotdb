@@ -44,7 +44,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     }
 
     if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
-      extractDeletion(event);
+      extractDirectly(event);
       return;
     }
 
