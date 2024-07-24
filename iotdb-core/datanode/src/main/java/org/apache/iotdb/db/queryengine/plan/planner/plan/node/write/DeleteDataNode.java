@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -63,6 +64,7 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
   private final long deleteEndTime;
 
   private TRegionReplicaSet regionReplicaSet;
+  private ProgressIndex progressIndex;
 
   public DeleteDataNode(
       PlanNodeId id, List<PartialPath> pathList, long deleteStartTime, long deleteEndTime) {
@@ -95,6 +97,16 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
 
   public long getDeleteEndTime() {
     return deleteEndTime;
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
   @Override

@@ -60,6 +60,10 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
     return planNode;
   }
 
+  public DeletionResource getDeletionResource() {
+    return deletionResource;
+  }
+
   public void setDeletionResource(DeletionResource deletionResource) {
     this.deletionResource = deletionResource;
   }

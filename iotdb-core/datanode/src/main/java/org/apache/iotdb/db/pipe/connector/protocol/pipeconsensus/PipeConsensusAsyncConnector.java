@@ -47,6 +47,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -392,13 +393,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    // Transfer deletion
+    if (event instanceof PipeSchemaRegionWritePlanEvent) {
+      retryConnector.transfer(event);
       return;
     }
 
-    retryConnector.transfer(event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    }
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */

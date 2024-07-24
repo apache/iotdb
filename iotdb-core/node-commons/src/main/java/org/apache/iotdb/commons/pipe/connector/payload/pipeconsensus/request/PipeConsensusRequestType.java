@@ -34,6 +34,7 @@ public enum PipeConsensusRequestType {
   TRANSFER_TABLET_BINARY((short) 104),
   TRANSFER_TS_FILE_PIECE_WITH_MOD((short) 105),
   TRANSFER_TS_FILE_SEAL_WITH_MOD((short) 106),
+  TRANSFER_DELETION((short) 107),
 
 // Note: temporarily PipeConsensus only support data region. But we put this class in `node-common`
 // to reserve the scalability

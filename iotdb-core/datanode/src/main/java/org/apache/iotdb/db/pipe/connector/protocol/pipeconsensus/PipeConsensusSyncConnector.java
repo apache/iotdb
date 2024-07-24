@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
@@ -41,7 +42,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -177,10 +178,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       doTransfer();
     }
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusSyncConnector does not support transferring generic event: {}.", event);
-    }
+    // Only deletion event will be passed here.
+    doTransferWrapper((PipeSchemaRegionWritePlanEvent) event);
   }
 
   private void doTransfer() {
@@ -218,6 +217,73 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
               TABLET_BATCH_SCENARIO,
               e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException {
+    final ProgressIndex progressIndex;
+    final TPipeConsensusTransferResp resp;
+    TCommitId tCommitId =
+        new TCommitId(
+            pipeSchemaRegionWritePlanEvent.getCommitId(),
+            pipeSchemaRegionWritePlanEvent.getRebootTimes());
+    TConsensusGroupId tConsensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
+
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryClientManager.borrowClient(getFollowerUrl())) {
+      progressIndex = pipeSchemaRegionWritePlanEvent.getProgressIndex();
+      resp =
+          syncPipeConsensusServiceClient.pipeConsensusTransfer(
+              PipeConsensusPlanNodeReq.toTPipeConsensusTransferReq(
+                  pipeSchemaRegionWritePlanEvent.getPlanNode(),
+                  tCommitId,
+                  tConsensusGroupId,
+                  progressIndex,
+                  thisDataNodeId));
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              TABLET_INSERTION_NODE_SCENARIO,
+              e.getMessage()),
+          e);
+    }
+
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "PipeConsensus transfer DeletionEvent %s error, result status %s.",
+              pipeSchemaRegionWritePlanEvent.getDeletionResource(), status),
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Successfully transferred deletion event {}.",
+          pipeSchemaRegionWritePlanEvent.getDeletionResource());
     }
   }
 
