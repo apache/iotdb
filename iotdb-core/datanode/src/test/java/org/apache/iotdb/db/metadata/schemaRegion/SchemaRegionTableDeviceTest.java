@@ -22,6 +22,9 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -35,6 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
 
@@ -170,6 +175,16 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
                 new IdFilter(new PreciseFilter("p_1"), 1),
                 new AttributeFilter(new PreciseFilter("daily"), "cycle")));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(new IdFilter(new InFilter(Collections.singleton("d_1")), 2)),
+            new AttributeFilter(new LikeFilter(parseLikePatternToRegex("_____")), "cycle"));
+
+    Assert.assertEquals(1, deviceSchemaInfoList.size());
   }
 
   @Test
@@ -227,6 +242,17 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
                 new IdFilter(new PreciseFilter((String) null), 2),
                 new AttributeFilter(new PreciseFilter((String) null), "cycle")));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(
+                new IdFilter(new NotFilter(new PreciseFilter((String) null)), 2)),
+            null);
+
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
   }
 
   @Test

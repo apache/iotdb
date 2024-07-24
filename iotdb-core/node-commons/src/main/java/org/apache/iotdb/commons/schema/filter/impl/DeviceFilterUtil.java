@@ -70,9 +70,8 @@ public class DeviceFilterUtil {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");
         }
       }
-      pathList.add(new PartialPath(nodes));
+      pathList.add(partialPath);
     }
-
     return pathList;
   }
 }
