@@ -105,6 +105,8 @@ import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isThreeCharType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isThreeNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
@@ -853,7 +855,8 @@ public class ExpressionAnalyzer {
       Type minType = process(node.getMin(), context);
       Type maxType = process(node.getMax(), context);
 
-      if (valueType.equals(minType) || valueType.equals(maxType)) {
+      List<Type> types = Arrays.asList(valueType, minType, maxType);
+      if (!(isThreeNumericType(types) || isThreeCharType(types))) {
         throw new SemanticException(
             String.format("Cannot check if %s is BETWEEN %s and %s", valueType, minType, maxType));
       }
