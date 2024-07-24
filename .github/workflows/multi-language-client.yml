@@ -53,7 +53,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           choco install winflexbison3
-          choco install boost-msvc-14.3 --version=1.85.0
+          choco install boost-msvc-14.3
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
       - name: Cache Maven packages
