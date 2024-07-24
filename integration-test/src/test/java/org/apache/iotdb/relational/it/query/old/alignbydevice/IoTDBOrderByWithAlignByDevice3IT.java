@@ -37,6 +37,7 @@ public class IoTDBOrderByWithAlignByDevice3IT extends IoTDBOrderByWithAlignByDev
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertData2();
   }
 
   @AfterClass

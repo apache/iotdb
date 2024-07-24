@@ -276,10 +276,10 @@ public class IoTDBSessionRelationalIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
       session.executeNonQueryStatement("USE \"db1\"");
-      // the table is missing column "m1"
+      // the table is missing column "m2"
       session.executeNonQueryStatement(
           "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
-              + "m0 double "
+              + "m1 double "
               + "measurement)");
 
       // the insertion contains "m2"
