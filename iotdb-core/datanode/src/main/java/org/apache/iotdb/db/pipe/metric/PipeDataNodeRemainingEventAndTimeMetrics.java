@@ -45,6 +45,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>

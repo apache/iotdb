@@ -48,6 +48,11 @@ public class PipeRuntimeOutOfMemoryCriticalException extends PipeRuntimeCritical
   }
 
   @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.OUT_OF_MEMORY_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);

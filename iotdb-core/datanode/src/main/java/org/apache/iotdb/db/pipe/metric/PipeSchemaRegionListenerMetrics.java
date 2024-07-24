@@ -41,6 +41,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeSchemaRegionListenerMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final ConcurrentMap<Integer, SchemaRegionListeningQueue> listeningQueueMap =

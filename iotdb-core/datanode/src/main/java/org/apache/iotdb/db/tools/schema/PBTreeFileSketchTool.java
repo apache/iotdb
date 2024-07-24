@@ -147,14 +147,15 @@ public class PBTreeFileSketchTool {
   @SuppressWarnings("squid:S106")
   public static void sketchFile(String inputFile, String outputFile)
       throws IOException, MetadataException {
-    PrintWriter pw = new PrintWriter(new FileWriter(outputFile, false));
-    ISchemaFile sf = SchemaFile.loadSchemaFile(SystemFileFactory.INSTANCE.getFile(inputFile));
-    try {
+    ISchemaFile sf = null;
+    try (PrintWriter pw = new PrintWriter(new FileWriter(outputFile, false))) {
+      sf = SchemaFile.loadSchemaFile(SystemFileFactory.INSTANCE.getFile(inputFile));
       String res = ((SchemaFile) sf).inspect(pw);
       System.out.println(res);
     } finally {
-      sf.close();
-      pw.close();
+      if (sf != null) {
+        sf.close();
+      }
     }
   }
 }

@@ -136,38 +136,38 @@ public class SubscriptionSessionExample {
     final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    final SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
-    consumer1.open();
-    consumer1.subscribe(TOPIC_1);
-    while (true) {
-      final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
-      if (messages.isEmpty()) {
-        retryCount++;
-        if (retryCount >= MAX_RETRY_TIMES) {
-          break;
-        }
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
-          System.out.println(dataSet.getColumnNames());
-          System.out.println(dataSet.getColumnTypes());
-          while (dataSet.hasNext()) {
-            System.out.println(dataSet.next());
+    try (SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config)) {
+      consumer1.open();
+      consumer1.subscribe(TOPIC_1);
+      while (true) {
+        final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
+        if (messages.isEmpty()) {
+          retryCount++;
+          if (retryCount >= MAX_RETRY_TIMES) {
+            break;
           }
         }
+        for (final SubscriptionMessage message : messages) {
+          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+            System.out.println(dataSet.getColumnNames());
+            System.out.println(dataSet.getColumnTypes());
+            while (dataSet.hasNext()) {
+              System.out.println(dataSet.next());
+            }
+          }
+        }
+        // Auto commit
       }
-      // Auto commit
-    }
 
-    // Show topics and subscriptions
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
-      subscriptionSession.open();
-      subscriptionSession.getTopics().forEach((System.out::println));
-      subscriptionSession.getSubscriptions().forEach((System.out::println));
-    }
+      // Show topics and subscriptions
+      try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+        subscriptionSession.open();
+        subscriptionSession.getTopics().forEach((System.out::println));
+        subscriptionSession.getSubscriptions().forEach((System.out::println));
+      }
 
-    consumer1.unsubscribe(TOPIC_1);
-    consumer1.close();
+      consumer1.unsubscribe(TOPIC_1);
+    }
   }
 
   /** multi pull consumer subscribe topic with tsfile format */

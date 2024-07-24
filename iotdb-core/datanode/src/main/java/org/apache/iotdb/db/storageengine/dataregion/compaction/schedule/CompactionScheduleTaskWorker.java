@@ -48,6 +48,7 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
   }
 
   @Override
+  @SuppressWarnings("java:S2142")
   public Void call() {
     while (true) {
       try {

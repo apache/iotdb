@@ -34,6 +34,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.io.IOException;
 
+@SuppressWarnings("java:S2177")
 public class UDTFAbs extends UDTFMath {
 
   @Override

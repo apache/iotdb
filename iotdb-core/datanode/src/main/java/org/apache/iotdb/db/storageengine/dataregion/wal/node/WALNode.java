@@ -554,6 +554,7 @@ public class WALNode implements IWALNode {
     }
 
     // synchronize memTable to make sure snapshot is made before memTable flush operation
+    @SuppressWarnings("java:S2445")
     private void snapshotMemTable(DataRegion dataRegion, File tsFile, MemTableInfo memTableInfo) {
       IMemTable memTable = memTableInfo.getMemTable();
 
