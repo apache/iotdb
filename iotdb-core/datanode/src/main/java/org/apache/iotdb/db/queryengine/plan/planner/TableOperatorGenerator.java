@@ -95,10 +95,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -235,6 +237,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
+      }
+    }
+
+    Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (!outputSet.contains(entry.getKey())
+          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+        measurementColumnCount++;
+        measurementColumnNames.add(entry.getKey().getName());
+        measurementSchemas.add(
+            new MeasurementSchema(
+                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
       }
     }
 

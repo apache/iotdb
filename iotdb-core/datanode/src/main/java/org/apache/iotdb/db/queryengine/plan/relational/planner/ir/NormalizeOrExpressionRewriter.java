@@ -108,6 +108,7 @@ public final class NormalizeOrExpressionRewriter {
           throw new IllegalStateException("Unexpected expression: " + expression);
         }
       }
+
       return new InListExpression(ImmutableList.copyOf(expressionValues));
     }
 

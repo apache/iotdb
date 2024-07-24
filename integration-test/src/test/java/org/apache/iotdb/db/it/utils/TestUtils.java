@@ -40,6 +40,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +66,14 @@ public class TestUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
 
   public static final String USE_DB = "use db";
+
+  public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
+
+  public static final String TIME_PRECISION_IN_MS = "ms";
+
+  public static final String TIME_PRECISION_IN_US = "us";
+
+  public static final String TIME_PRECISION_IN_NS = "ns";
 
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -227,15 +237,17 @@ public class TestUtils {
     }
   }
 
-  public static void tableAssertTestFail(String sql, String errMsg) {
-    tableAssertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  public static void tableAssertTestFail(String sql, String errMsg, String databaseName) {
+    tableAssertTestFail(
+        sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, databaseName);
   }
 
   public static void tableAssertTestFail(
-      String sql, String errMsg, String userName, String password) {
+      String sql, String errMsg, String userName, String password, String databaseName) {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use " + databaseName);
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {

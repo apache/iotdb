@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -57,6 +58,9 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     Analysis analysis = new Analysis(statement, parameterLookup);
+    if (!session.getDatabaseName().isPresent()) {
+      throw new SemanticException("database is not specified");
+    }
     analysis.setDatabaseName(session.getDatabaseName().get());
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
