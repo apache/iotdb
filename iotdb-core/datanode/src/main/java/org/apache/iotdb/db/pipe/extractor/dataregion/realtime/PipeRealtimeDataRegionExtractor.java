@@ -382,8 +382,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       // Pending is unbounded, so it should never reach capacity.
       final String errorMessage =
           String.format(
-              "extract: pending queue of %s %s "
-                  + "has reached capacity, discard deletion event %s",
+              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
               this.getClass().getSimpleName(), this, event);
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
