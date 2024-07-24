@@ -77,10 +77,10 @@ public class IoTDBNestedQueryIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "create table vehicle1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 TEXT MEASUREMENT, s4 STRING MEASUREMENT, s5 DATE MEASUREMENT, s6 TIMESTAMP MEASUREMENT);");
+          "create table vehicle1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 TEXT MEASUREMENT, s4 STRING MEASUREMENT, s5 DATE MEASUREMENT, s6 TIMESTAMP MEASUREMENT)");
 
       statement.execute(
-          "create table vehicle2(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 DOUBLE MEASUREMENT, empty DOUBLE MEASUREMENT");
+          "create table vehicle2(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 DOUBLE MEASUREMENT, empty DOUBLE MEASUREMENT)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -93,15 +93,16 @@ public class IoTDBNestedQueryIT {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
-                "insert into vehicle1(time,device_id,s1,s2,s3,s4,s6) values(%d,%s%d,%d,%s,%s,%d)",
-                i, "d1", i, i, i, i, i));
+                "insert into vehicle1(time,device_id,s1,s2,s3,s4,s6) values(%d,%s,%d,%d,%s,%s,%d)",
+                i, "'d1'", i, i, i, i, i));
         statement.execute(
             (String.format(
-                "insert into vehicle2(time,device_id,s1,s2) values(%d,%s,%d,%d)", i, "d2", i, i)));
+                "insert into vehicle2(time,device_id,s1,s2) values(%d,%s,%d,%d)",
+                i, "'d2'", i, i)));
       }
-      statement.execute("insert into vehicle1(timestamp,s5) values(1, 'd1', '2024-01-01')");
-      statement.execute("insert into vehicle1(timestamp,s5) values(2, 'd1','2024-01-02')");
-      statement.execute("insert into vehicle1(timestamp,s5) values(3, 'd1','2024-01-03')");
+      statement.execute("insert into vehicle1(time,device_id,s5) values(1, 'd1', '2024-01-01')");
+      statement.execute("insert into vehicle1(time,device_id,s5) values(2, 'd1','2024-01-02')");
+      statement.execute("insert into vehicle1(time,device_id,s5) values(3, 'd1','2024-01-03')");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -113,8 +114,10 @@ public class IoTDBNestedQueryIT {
     String sqlStr =
         "select time, s1, s2, sin(sin(s1) * sin(s2) + cos(s1) * cos(s1)) + sin(sin(s1 - s1 + s2) * sin(s2) + cos(s1) * cos(s1)), asin(sin(asin(sin(s1 - s2 / (-s1))))) from vehicle2";
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 4, resultSet.getMetaData().getColumnCount());
@@ -143,6 +146,7 @@ public class IoTDBNestedQueryIT {
   public void testRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query = "SELECT time, 1 + s1 FROM vehicle1 where device_id='d1'";
       try (ResultSet rs = statement.executeQuery(query)) {
@@ -173,6 +177,7 @@ public class IoTDBNestedQueryIT {
   public void testDuplicatedRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query = "SELECT time, 1 + s1, 1 + s1 FROM vehicle1 where device_id='d1'";
       try (ResultSet rs = statement.executeQuery(query)) {
@@ -194,6 +199,7 @@ public class IoTDBNestedQueryIT {
   public void testCommutativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query =
           "SELECT time, s1, s1 + 1, 1 + s1, s1 * 2, 2 * s1 FROM vehicle1 where device_id='d1'";
@@ -219,6 +225,7 @@ public class IoTDBNestedQueryIT {
   public void testAssociativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query =
           "SELECT time, s1, s1 + 1 + 2, (s1 + 1) + 2, s1 + (1 + 2), s1 * 2 * 3, s1 * (2 * 3), (s1 * 2) * 3 FROM vehicle1 where device_id='d1'";
@@ -246,6 +253,7 @@ public class IoTDBNestedQueryIT {
   public void testDistributiveLaw() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query =
           "SELECT time, s1, (s1 + 1) * 2, s1 * 2 + 1 * 2, (s1 + 1) / 2, s1 / 2 + 1 / 2 FROM vehicle1 where device_id='d1'";
@@ -275,6 +283,7 @@ public class IoTDBNestedQueryIT {
     //   3. addition and subtraction
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       String query =
           "SELECT time, 1 + s1 * 2 + 1, (1 + s1) * 2 + 1, (1 + s1) * (2 + 1)  FROM vehicle1 where device_id='d1'";
@@ -312,12 +321,17 @@ public class IoTDBNestedQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       int start = 2, end = 8;
+      statement.execute("USE " + DATABASE_NAME);
       String query =
-          "SELECT * FROM vehicle1 where device_id='d1' WHERE s1 BETWEEN " + start + " AND " + end;
+          "SELECT * FROM vehicle1 where device_id='d1' and (s1 BETWEEN "
+              + start
+              + " AND "
+              + end
+              + ")";
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("time"));
+          Assert.assertEquals(i, rs.getLong("time"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s3"));
@@ -325,19 +339,20 @@ public class IoTDBNestedQueryIT {
       }
 
       query =
-          "SELECT * FROM vehicle1 where device_id='d1' WHERE s1 NOT BETWEEN " // test not between
+          "SELECT * FROM vehicle1 where device_id='d1' and (s1 NOT BETWEEN " // test not between
               + (end + 1)
               + " AND "
-              + ITERATION_TIMES;
+              + ITERATION_TIMES
+              + ")";
       try (ResultSet rs = statement.executeQuery(query)) {
         Assert.assertTrue(rs.next());
-        Assert.assertEquals("1", rs.getString("time"));
+        Assert.assertEquals(1, rs.getLong("time"));
         Assert.assertEquals("1", rs.getString("s1"));
         Assert.assertEquals("1", rs.getString("s2"));
         Assert.assertEquals("1", rs.getString("s3"));
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("time"));
+          Assert.assertEquals(i, rs.getLong("time"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s3"));
@@ -345,11 +360,15 @@ public class IoTDBNestedQueryIT {
       }
 
       query =
-          "SELECT * FROM vehicle1 where device_id='d1' WHERE time BETWEEN " + start + " AND " + end;
+          "SELECT * FROM vehicle1 where device_id='d1' and (time BETWEEN "
+              + start
+              + " AND "
+              + end
+              + ")";
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("time"));
+          Assert.assertEquals(i, rs.getLong("time"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s3"));
@@ -357,19 +376,20 @@ public class IoTDBNestedQueryIT {
       }
 
       query =
-          "SELECT * FROM vehicle1 where device_id='d1' WHERE time NOT BETWEEN " // test not between
+          "SELECT * FROM vehicle1 where device_id='d1' and (time NOT BETWEEN " // test not between
               + (end + 1)
               + " AND "
-              + ITERATION_TIMES;
+              + ITERATION_TIMES
+              + ")";
       try (ResultSet rs = statement.executeQuery(query)) {
         Assert.assertTrue(rs.next());
-        Assert.assertEquals("1", rs.getString("time"));
+        Assert.assertEquals(1, rs.getLong("time"));
         Assert.assertEquals("1", rs.getString("s1"));
         Assert.assertEquals("1", rs.getString("s2"));
         Assert.assertEquals("1", rs.getString("s3"));
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("time"));
+          Assert.assertEquals(i, rs.getLong("time"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("s3"));
@@ -406,9 +426,10 @@ public class IoTDBNestedQueryIT {
       //        }
       //        Assert.assertFalse(rs.next());
       //      }
+      statement.execute("USE " + DATABASE_NAME);
 
       String query3 =
-          "SELECT time,s1 FROM vehicle1 where device_id='d1' WHERE s5 IN ('2024-01-01', '2024-01-02', '2024-01-03')";
+          "SELECT time,s1 FROM vehicle1 where device_id='d1' and s5 IN ('2024-01-01', '2024-01-02', '2024-01-03')";
       try (ResultSet rs = statement.executeQuery(query3)) {
         for (int i = 1; i <= 3; i++) {
           Assert.assertTrue(rs.next());
@@ -417,7 +438,7 @@ public class IoTDBNestedQueryIT {
         Assert.assertFalse(rs.next());
       }
 
-      String query4 = "SELECT time,s1 FROM vehicle1 where device_id='d1' WHERE s6 IN (1, 2, 3)";
+      String query4 = "SELECT time,s1 FROM vehicle1 where device_id='d1' and s6 IN (1, 2, 3)";
       try (ResultSet rs = statement.executeQuery(query4)) {
         for (int i = 1; i <= 3; i++) {
           Assert.assertTrue(rs.next());
@@ -436,6 +457,7 @@ public class IoTDBNestedQueryIT {
   public void testTimeExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
       String query =
           "SELECT s1, time, time, -(-time), time + 1 - 1, time + s1 - s1, time + 1 - 1 FROM vehicle1 where device_id='d1'";
       try (ResultSet rs = statement.executeQuery(query)) {

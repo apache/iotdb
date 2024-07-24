@@ -44,6 +44,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -422,6 +423,9 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
+    return (isNumericType(left) && isNumericType(right))
+        || (isCharType(left) && isCharType(right))
+        || (isCharType(left) && DateType.DATE.equals(right))
+        || (DateType.DATE.equals(left) && isCharType(right));
   }
 }
