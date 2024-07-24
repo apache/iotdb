@@ -1049,7 +1049,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     int segmentCnt = nodes.length;
     // assuming DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3
     String[] segments;
-    if (segmentCnt == 1) {
+    if (segmentCnt <= 1) {
       // "root" -> {"root"}
       segments = nodes;
     } else if (segmentCnt < TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME + 1) {
