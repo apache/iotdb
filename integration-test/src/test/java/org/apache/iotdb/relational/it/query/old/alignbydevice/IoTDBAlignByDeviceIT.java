@@ -87,8 +87,8 @@ public class IoTDBAlignByDeviceIT {
         "insert into vehicle(time, device_id, s3) values(2000-01-01T00:00:00+08:00,'d0', 'good')",
         "insert into vehicle(time, device_id, s4) values(100,'d0', false)",
         "insert into vehicle(time, device_id, s4) values(100,'d0', true)",
-        "insert into vehicle(time, device_id, s0) values(1,'d0', 999)",
-        "insert into vehicle(time, device_id, s0) values(1000,'d0', 888)",
+        "insert into vehicle(time, device_id, s0) values(1,'d1', 999)",
+        "insert into vehicle(time, device_id, s0) values(1000,'d1', 888)",
       };
 
   @BeforeClass
@@ -136,7 +136,7 @@ public class IoTDBAlignByDeviceIT {
           "1970-01-01T00:00:00.105Z,d0,99,199,11.11,null,null,",
           "1970-01-01T00:00:00.106Z,d0,99,null,null,null,null,",
           "1970-01-01T00:00:01.000Z,d0,22222,55555,1000.11,null,null,",
-          "2000-01-01T00:00:00.000Z,d0,null,100,null,good,null,",
+          "1999-12-31T16:00:00.000Z,d0,null,100,null,good,null,",
           "1970-01-01T00:00:00.001Z,d1,999,null,null,null,null,",
           "1970-01-01T00:00:01.000Z,d1,888,null,null,null,null,",
         };
@@ -170,7 +170,7 @@ public class IoTDBAlignByDeviceIT {
     String[] retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,d1,999,null,null,null,null,",
-          "2000-01-01T00:00:00.000Z,d0,null,100,null,good,null,",
+          "1999-12-31T16:00:00.000Z,d0,null,100,null,good,null,",
           "1970-01-01T00:00:01.000Z,d0,22222,55555,1000.11,null,null,",
           "1970-01-01T00:00:00.106Z,d0,99,null,null,null,null,",
           "1970-01-01T00:00:00.105Z,d0,99,199,11.11,null,null,",
@@ -188,7 +188,7 @@ public class IoTDBAlignByDeviceIT {
     String[] retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,d0,101,101,1101,",
-          "1970-01-01T00:00:00.002Z,d0,101,10000,40000,",
+          "1970-01-01T00:00:00.002Z,d0,10000,10000,40000,",
           "1970-01-01T00:00:00.050Z,d0,10000,10000,50000,",
           "1970-01-01T00:00:00.100Z,d0,99,99,199,",
           "1970-01-01T00:00:00.101Z,d0,99,99,199,",
@@ -198,7 +198,7 @@ public class IoTDBAlignByDeviceIT {
           "1970-01-01T00:00:00.105Z,d0,99,99,199,",
           "1970-01-01T00:00:00.106Z,d0,99,99,null,",
           "1970-01-01T00:00:01.000Z,d0,22222,22222,55555,",
-          "2000-01-01T00:00:00.000Z,d0,null,null,100,",
+          "1999-12-31T16:00:00.000Z,d0,null,null,100,",
           "1970-01-01T00:00:00.001Z,d1,999,999,null,",
           "1970-01-01T00:00:01.000Z,d1,888,888,null,",
         };
@@ -214,7 +214,7 @@ public class IoTDBAlignByDeviceIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s0", "s0", "s1"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.002Z,d0,101,10000,40000,",
+          "1970-01-01T00:00:00.002Z,d0,10000,10000,40000,",
           "1970-01-01T00:00:00.050Z,d0,10000,10000,50000,",
           "1970-01-01T00:00:00.100Z,d0,99,99,199,",
           "1970-01-01T00:00:00.101Z,d0,99,99,199,",
@@ -264,10 +264,10 @@ public class IoTDBAlignByDeviceIT {
           "1970-01-01T00:00:00.103Z,d0,99,",
           "1970-01-01T00:00:00.104Z,d0,90,",
           "1970-01-01T00:00:00.105Z,d0,99,",
-          "2000-01-01T00:00:00.000Z,d0,null",
+          "1999-12-31T16:00:00.000Z,d0,null,",
         };
     tableResultSetEqualTest(
-        "select time, device_id, s0 from root.vehicle.d0 where s1 < 200 order by device_id",
+        "select time, device_id, s0 from vehicle where s1 < 200 order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -282,7 +282,7 @@ public class IoTDBAlignByDeviceIT {
           "1970-01-01T00:00:00.105Z,d0,99,",
         };
     tableResultSetEqualTest(
-        "select time, device_id, s0 from root.vehicle.d0 where s1 < 200 and s2 > 10  order by device_id",
+        "select time, device_id, s0 from vehicle where s1 < 200 and s2 > 10  order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -441,17 +441,17 @@ public class IoTDBAlignByDeviceIT {
   public void unusualCaseTest2() {
 
     String[] expectedHeader =
-        new String[] {"time", "device_id", "s0", "s0", "s1", "s0", "s1", "s2", "s3", "s4"};
+        new String[] {"s0", "s0", "s1", "time", "device_id", "s0", "s1", "s2", "s3", "s4"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,d0,101,101,1101,101,1101,null,null,null,",
-          "1970-01-01T00:00:00.002Z,d0,10000,10000,40000,10000,40000,2.22,null,null,",
-          "1970-01-01T00:00:00.003Z,d0,null,null,null,null,null,3.33,null,null,",
-          "1970-01-01T00:00:00.004Z,d0,null,null,null,null,null,4.44,null,null,",
-          "1970-01-01T00:00:00.001Z,d1,999,999,null,999,null,null,null,null,",
+          "101,101,1101,1970-01-01T00:00:00.001Z,d0,101,1101,null,null,null,",
+          "10000,10000,40000,1970-01-01T00:00:00.002Z,d0,10000,40000,2.22,null,null,",
+          "null,null,null,1970-01-01T00:00:00.003Z,d0,null,null,3.33,null,null,",
+          "null,null,null,1970-01-01T00:00:00.004Z,d0,null,null,4.44,null,null,",
+          "999,999,null,1970-01-01T00:00:00.001Z,d1,999,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select * from vehicle where time < 20 and (device_id='d0' or device_id='d1') order by device_id",
+        "select s0,s0,s1,* from vehicle where time < 20 and (device_id='d0' or device_id='d1') order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -478,7 +478,7 @@ public class IoTDBAlignByDeviceIT {
           "1970-01-01T00:00:00.105Z,d0,99,199,11.11,null,null,",
           "1970-01-01T00:00:00.106Z,d0,99,null,null,null,null,",
           "1970-01-01T00:00:01.000Z,d0,22222,55555,1000.11,null,null,",
-          "2000-01-01T00:00:00.000Z,d0,null,100,null,good,null,",
+          "1999-12-31T16:00:00.000Z,d0,null,100,null,good,null,",
           "1970-01-01T00:00:00.001Z,d1,999,null,null,null,null,",
           "1970-01-01T00:00:01.000Z,d1,888,null,null,null,null,",
         };

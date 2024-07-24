@@ -46,7 +46,7 @@ public class IoTDBDatetimeFormatIT {
   private static final String DATABASE_NAME = "db";
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
 
@@ -55,12 +55,12 @@ public class IoTDBDatetimeFormatIT {
       statement.execute("create database " + DATABASE_NAME);
       statement.execute("use " + DATABASE_NAME);
       statement.execute(
-          "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 DOUBLE MEASUREMENT);");
+          "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 DOUBLE MEASUREMENT)");
     }
   }
 
   @AfterClass
-  public void tearDown() throws Exception {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -106,7 +106,7 @@ public class IoTDBDatetimeFormatIT {
         String insertSql =
             String.format(
                 "INSERT INTO table1(time, device_id, s1) values (%s, %s, %d)",
-                datetimeStrings[i], "d1", i);
+                datetimeStrings[i], "'d1'", i);
         statement.execute(insertSql);
       }
 
@@ -135,7 +135,7 @@ public class IoTDBDatetimeFormatIT {
       statement.execute("use " + DATABASE_NAME);
 
       statement.execute(
-          "insert into table1(time,device_id,s2) values (1618283005586000, 'd1',8.76);");
+          "insert into table1(time,device_id,s2) values (1618283005586000, 'd1',8.76)");
 
       try (ResultSet resultSet =
           statement.executeQuery(

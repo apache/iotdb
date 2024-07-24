@@ -104,7 +104,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
       statement.execute("use " + DATABASE_NAME);
 
       statement.execute(
-          "create table weather(city STRING ID, precipitation INT64 MEASUREMENT, temperature DOUBLE MEASUREMENT);");
+          "create table weather(city STRING ID, precipitation INT64 MEASUREMENT, temperature DOUBLE MEASUREMENT)");
 
       // insert data
       long start = startTime;
@@ -186,7 +186,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     try (Connection iotDBConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = iotDBConnection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
-      statement.execute("create table overflow(device_id STRING ID, value INT32 MEASUREMENT);");
+      statement.execute("create table overflow(device_id STRING ID, value INT32 MEASUREMENT)");
       long startTime = 1;
       for (int i = 0; i < 20; i++) {
         String insertTime =
@@ -242,7 +242,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-
+      statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM weather order by city")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -289,6 +289,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       try (ResultSet resultSet =
           statement.executeQuery("SELECT * FROM weather order by city asc")) {
@@ -338,6 +339,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
 
       try (ResultSet resultSet =
           statement.executeQuery("SELECT * FROM weather order by city desc")) {
@@ -399,7 +401,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         expectedHeader);
 
     orderByTimeTest1(
-        "SELECT * FROM weather ORDER BY time ASC, city ASC LIMIT 100E", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time ASC, city ASC LIMIT 100", 100, expectedHeader);
   }
 
   @Test
@@ -439,7 +441,9 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         expectedHeader);
 
     orderByExpressionTest1(
-        "SELECT * FROM weather ORDER BY precipitation DESC, time DESC, city", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY precipitation DESC, time DESC, city limit 100",
+        100,
+        expectedHeader);
   }
 
   @Test
@@ -527,12 +531,12 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     String[] expectedHeader = new String[] {"time", "city", "precipitation", "temperature"};
 
     orderByTimeDeviceTest4(
-        "SELECT * FROM weather ORDER BY time DESC,DEVICE ASC",
+        "SELECT * FROM weather ORDER BY time DESC,city ASC",
         numOfPointsInDevice * places.length,
         expectedHeader);
 
     orderByTimeDeviceTest4(
-        "SELECT * FROM weather ORDER BY time DESC,DEVICE ASC LIMIT 100", 100, expectedHeader);
+        "SELECT * FROM weather ORDER BY time DESC,city ASC LIMIT 100", 100, expectedHeader);
   }
 
   public static void orderByTimeTest1(String sql, int count, String[] expectedHeader) {
@@ -1531,7 +1535,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   // test the optimized plan
   public static String[] optimizedSQL =
       new String[] {
-        "create table optimize(plant_id STRING ID, device_id STRING ID, temperature DOUBLE MEASUREMENT, status BOOLEAN MEASUREMENT, hardware STRING MEASUREMENT);",
+        "create table optimize(plant_id STRING ID, device_id STRING ID, temperature DOUBLE MEASUREMENT, status BOOLEAN MEASUREMENT, hardware STRING MEASUREMENT)",
         "insert into optimize(Time, plant_id, device_id, temperature, status) values(2017-11-01T00:00:00.000+08:00, 'wf01', 'wt01', 25.96, true)",
         "insert into optimize(Time, plant_id, device_id, temperature, status) values(2017-11-01T00:01:00.000+08:00, 'wf01', 'wt01', 24.36, true)",
         "insert into optimize(Time, plant_id, device_id, status, hardware) values(1970-01-01T08:00:00.001+08:00, 'wf02', 'wt02', true, 'v1')",
@@ -1547,12 +1551,12 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         new String[] {"time", "plant_id", "device_id", "temperature", "status", "hardware"};
     String[] retArray =
         new String[] {
-          "2017-10-31T16:01:00.000Z,wf02,wt02,null,true,v2",
-          "2017-10-31T16:01:00.000Z,wf01,wt01,24.36,true,null",
-          "2017-10-31T16:00:00.000Z,wf02,wt02,null,false,v2",
-          "2017-10-31T16:00:00.000Z,wf01,wt01,25.96,true,null",
-          "1970-01-01T00:00:00.002Z,wf02,wt02,null,false,v2",
-          "1970-01-01T00:00:00.001Z,wf02,wt02,null,true,v1",
+          "2017-10-31T16:01:00.000Z,wf02,wt02,null,true,v2,",
+          "2017-10-31T16:01:00.000Z,wf01,wt01,24.36,true,null,",
+          "2017-10-31T16:00:00.000Z,wf02,wt02,null,false,v2,",
+          "2017-10-31T16:00:00.000Z,wf01,wt01,25.96,true,null,",
+          "1970-01-01T00:00:00.002Z,wf02,wt02,null,false,v2,",
+          "1970-01-01T00:00:00.001Z,wf02,wt02,null,true,v1,",
         };
 
     tableResultSetEqualTest(
