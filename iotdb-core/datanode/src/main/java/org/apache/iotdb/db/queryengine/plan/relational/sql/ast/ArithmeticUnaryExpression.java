@@ -42,7 +42,7 @@ public class ArithmeticUnaryExpression extends Expression {
   private final Expression value;
   private final Sign sign;
 
-  private ArithmeticUnaryExpression(NodeLocation location, Sign sign, Expression value) {
+  public ArithmeticUnaryExpression(NodeLocation location, Sign sign, Expression value) {
     super(location);
     requireNonNull(value, "value is null");
     requireNonNull(sign, "sign is null");
