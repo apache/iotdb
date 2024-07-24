@@ -185,7 +185,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     int len = nodes.length;
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
     System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
-    return new PartialPath(newNodes);
+    return createPartialPath(newNodes);
   }
 
   /**
@@ -227,6 +227,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;
+    return createPartialPath(newPathNodes);
+  }
+
+  protected PartialPath createPartialPath(String[] newPathNodes) {
     return new PartialPath(newPathNodes);
   }
 
@@ -277,7 +281,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     alterPrefixPathInternal(
         Arrays.asList(prefix.getNodes()), Arrays.asList(nodes), new ArrayList<>(), results);
     return results.stream()
-        .map(r -> new PartialPath(r.toArray(new String[0])))
+        .map(r -> createPartialPath(r.toArray(new String[0])))
         .collect(Collectors.toList());
   }
 
@@ -314,7 +318,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @param results The final results.
    * @return True if the search should be stopped, else false.
    */
-  private boolean alterPrefixPathInternal(
+  boolean alterPrefixPathInternal(
       List<String> prefix, List<String> path, List<String> current, List<List<String>> results) {
     if (prefix.isEmpty()) {
       current.addAll(path);
@@ -714,19 +718,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     // It can be pruned if the remaining nodes start with **.
     List<PartialPath> res = new ArrayList<>();
     if (matchIndex[thisLength - 1] && nodes[thisLength - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      res.add(new PartialPath(ArrayUtils.addAll(prefixFullPath, nodes[thisLength - 1])));
+      res.add(createPartialPath(ArrayUtils.addAll(prefixFullPath, nodes[thisLength - 1])));
     } else {
       for (int j = thisLength - 2; j > 0; j--) {
         if (matchIndex[j]) {
           res.add(
-              new PartialPath(
+              createPartialPath(
                   ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j + 1, thisLength))));
           if (nodes[j + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
             break;
           }
           if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
             res.add(
-                new PartialPath(
+                createPartialPath(
                     ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j, thisLength))));
             break;
           }
@@ -885,16 +889,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath getDevicePath() {
-    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+    return this;
   }
 
   public List<PartialPath> getDevicePathPattern() {
-    List<PartialPath> result = new ArrayList<>();
-    result.add(getDevicePath());
-    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      result.add(new PartialPath(nodes));
-    }
-    return result;
+    return Collections.singletonList(this);
   }
 
   @TestOnly

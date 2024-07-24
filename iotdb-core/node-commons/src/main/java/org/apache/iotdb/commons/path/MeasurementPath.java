@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,9 +40,15 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class MeasurementPath extends PartialPath {
 
@@ -332,5 +339,24 @@ public class MeasurementPath extends PartialPath {
     return (MeasurementPath)
         PathDeserializeUtil.deserialize(
             ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
+  }
+
+  @Override
+  protected PartialPath createPartialPath(String[] newPathNodes) {
+    return new MeasurementPath(newPathNodes);
+  }
+
+  @Override
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+  }
+
+  public List<PartialPath> getDevicePathPattern() {
+    List<PartialPath> result = new ArrayList<>();
+    result.add(getDevicePath());
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      result.add(new PartialPath(nodes));
+    }
+    return result;
   }
 }

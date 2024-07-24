@@ -143,6 +143,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -412,6 +413,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 zoneId);
       }
     }
+    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
     insertRowStatement.setTime(timestamp);
     insertRowStatement.setMeasurements(columnNames);
 
