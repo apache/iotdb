@@ -389,30 +389,26 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    Map<String, String> result = new HashMap<>(6);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
-        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
-        put("uncommittedEvents", uncommittedEvents.toString());
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    Map<String, String> result = new HashMap<>(8);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+    result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+    result.put("uncommittedEvents", uncommittedEvents.toString());
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 }

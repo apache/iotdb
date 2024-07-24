@@ -50,6 +50,7 @@ public class CompactionLastTimeCheckFailedException extends RuntimeException {
   }
 
   @Override
+  @SuppressWarnings("java:S3551")
   public Throwable fillInStackTrace() {
     return this;
   }

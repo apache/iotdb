@@ -41,7 +41,8 @@ public class TimePartitionProcessTask {
     this.timePartitionFiles = timePartitionFiles;
   }
 
-  public OverlapStatistic processTimePartition(SequenceFileSubTaskThreadExecutor fileTaskExecutor) {
+  public OverlapStatistic processTimePartition(SequenceFileSubTaskThreadExecutor fileTaskExecutor)
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(timePartitionFiles.right);
 
@@ -120,7 +121,8 @@ public class TimePartitionProcessTask {
   public OverlapStatistic processSequenceSpaceAsync(
       SequenceFileSubTaskThreadExecutor executor,
       UnseqSpaceStatistics unseqSpaceStatistics,
-      List<String> seqFiles) {
+      List<String> seqFiles)
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     OverlapStatistic overlapStatistic = new OverlapStatistic();
     List<Future<SequenceFileTaskSummary>> futures = new ArrayList<>();
@@ -131,6 +133,8 @@ public class TimePartitionProcessTask {
       try {
         SequenceFileTaskSummary sequenceFileTaskSummary = future.get();
         overlapStatistic.mergeSingleSequenceFileTaskResult(sequenceFileTaskSummary);
+      } catch (InterruptedException e) {
+        throw e;
       } catch (Exception e) {
         e.printStackTrace();
       }

@@ -76,7 +76,7 @@ public class CompactionScheduleTaskManager implements IService {
     logger.info("Compaction schedule task manager started.");
   }
 
-  public void stopCompactionScheduleTasks() {
+  public void stopCompactionScheduleTasks() throws InterruptedException {
     lock.lock();
     try {
       for (Future<Void> task : submitCompactionScheduleTaskFutures) {
@@ -88,6 +88,8 @@ public class CompactionScheduleTaskManager implements IService {
         }
         try {
           task.get();
+        } catch (InterruptedException e) {
+          throw e;
         } catch (Exception ignored) {
         }
       }
@@ -98,7 +100,7 @@ public class CompactionScheduleTaskManager implements IService {
     }
   }
 
-  public void checkAndMayApplyConfigurationChange() {
+  public void checkAndMayApplyConfigurationChange() throws InterruptedException {
     lock.lock();
     try {
       // ignored the change if executing repair data task
@@ -186,7 +188,7 @@ public class CompactionScheduleTaskManager implements IService {
     init = true;
   }
 
-  private void restartThreadPool() {
+  private void restartThreadPool() throws InterruptedException {
     stopCompactionScheduleTasks();
     compactionScheduleTaskThreadPool.shutdownNow();
     waitForThreadPoolTerminated();
@@ -286,7 +288,7 @@ public class CompactionScheduleTaskManager implements IService {
       repairTaskStatus.compareAndSet(RepairTaskStatus.RUNNING, RepairTaskStatus.STOPPING);
     }
 
-    public void abortRepairTask() {
+    public void abortRepairTask() throws InterruptedException {
       if (repairTaskStatus.get() == RepairTaskStatus.STOPPED) {
         return;
       }
@@ -299,6 +301,8 @@ public class CompactionScheduleTaskManager implements IService {
         }
         try {
           task.get();
+        } catch (InterruptedException e) {
+          throw e;
         } catch (Exception ignored) {
         }
       }

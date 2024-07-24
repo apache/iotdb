@@ -39,4 +39,9 @@ public class SubscriptionIdentifierSemanticException extends SubscriptionExcepti
         && Objects.equals(
             getTimeStamp(), ((SubscriptionIdentifierSemanticException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

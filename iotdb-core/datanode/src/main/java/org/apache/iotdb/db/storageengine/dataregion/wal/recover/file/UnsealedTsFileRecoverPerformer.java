@@ -220,7 +220,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
     } catch (Exception e) {
-      logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      if (tsFileResource != null) {
+        logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      }
     }
   }
 

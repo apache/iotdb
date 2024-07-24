@@ -41,6 +41,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigRegionConnectorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final ConcurrentMap<String, PipeConfigNodeSubtask> subtaskMap = new ConcurrentHashMap<>();
