@@ -722,6 +722,12 @@ public class WALNode implements IWALNode {
           currentFileIndex < filesToSearch.length - 1
               && insertNodes.size() < MOST_COLLECT_NUM_IN_ONE_ROUND;
           currentFileIndex++) {
+        // cannot find any in this file, so all slices of last plan node are found
+        if (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
+            == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+          tryToCollectInsertNodeAndBumpIndex.run();
+          continue;
+        }
         try (WALByteBufReader walByteBufReader =
             new WALByteBufReader(filesToSearch[currentFileIndex])) {
           while (walByteBufReader.hasNext()) {
