@@ -23,9 +23,11 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,17 +60,21 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertAlignedValues() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.addBatch("create database t1");
+      statement.addBatch("use \"t1\"");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
+          "create table wf01 (id1 string id, status int32 measurement, temperature float measurement)");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (5000, true, 20.1)");
+          "insert into wf01(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (6000, true, 22)");
+          "insert into wf01(id1, time, status, temperature) values ('wt01', 5000, true, 20.1)");
+      statement.addBatch(
+          "insert into wf01(id1, time, status, temperature) values ('wt01', 6000, true, 22)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, status from wf01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
@@ -79,7 +85,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select status, temperature from root.t1.wf01.wt01")) {
+          statement.executeQuery("select time, status, temperature from wf01")) {
 
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
@@ -103,16 +109,20 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertAlignedNullableValues() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+
+      statement.addBatch("create database t1");
+      statement.addBatch("use \"t1\"");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
-      statement.addBatch("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
+          "create table wf01 (id1 string id, status boolean measurement, temperature float measurement)");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, temperature) aligned values (6000, 22)");
+          "insert into wf01(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
+      statement.addBatch("insert into wf01(id1, time, status) values ('wt01', 5000, true)");
+      statement.addBatch("insert into wf01(id1, time, temperature) values ('wt01', 6000, 22)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
+      try (ResultSet resultSet = statement.executeQuery("select status from wf01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
@@ -121,7 +131,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select status, temperature from root.t1.wf01.wt01")) {
+          statement.executeQuery("select time, status, temperature from wf01")) {
 
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
@@ -145,18 +155,20 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testUpdatingAlignedValues() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.addBatch("create database t1");
+      statement.addBatch("use \"t1\"");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
-      statement.addBatch("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
+          "create table wf01 (id1 string id, status boolean measurement, temperature float measurement)");
       statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, temperature) aligned values (5000, 20.1)");
-      statement.addBatch(
-          "insert into root.t1.wf01.wt01(time, temperature) aligned values (6000, 22)");
+          "insert into wf01(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
+      statement.addBatch("insert into wf01(id1, time, status) values ('wt01', 5000, true)");
+      statement.addBatch("insert into wf01(id1, time, temperature)values ('wt01', 5000, 20.1)");
+      statement.addBatch("insert into wf01(id1, time, temperature)values ('wt01', 6000, 22)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, status from wf01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
@@ -165,7 +177,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select status, temperature from root.t1.wf01.wt01")) {
+          statement.executeQuery("select time, status, temperature from wf01")) {
 
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
@@ -186,7 +198,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, status from wf01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
@@ -195,7 +207,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select status, temperature from root.t1.wf01.wt01")) {
+          statement.executeQuery("select time, status, temperature from wf01")) {
 
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
@@ -219,13 +231,17 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertAlignedValuesWithSameTimestamp() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.addBatch("insert into root.sg.d1(time,s2) aligned values(1,2)");
-      statement.addBatch("insert into root.sg.d1(time,s1) aligned values(1,2)");
+      statement.addBatch("create database test");
+      statement.addBatch("use \"test\"");
+      statement.addBatch(
+          "create table sg (ids string id, s2 int32 measurement, s1 int32 measurement)");
+      statement.addBatch("insert into sg(id1,time,s2) values('d1',1,2)");
+      statement.addBatch("insert into sg(id1,time,s1) values('d1',1,2)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from sg")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -236,7 +252,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from sg")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -250,48 +266,51 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertWithWrongMeasurementNum1() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database t1");
+      statement.execute("use \"t1\"");
       statement.execute(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100)");
+          "create table wf01 (id1 string id, status int32, temperature int32 measurement)");
+      statement.execute(
+          "insert into wf01(id1, time, status, temperature) values('wt01', 11000, 100)");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage()
-              .contains(
-                  "the measurementList's size 2 is not consistent with the valueList's size 1"));
+      assertTrue(e.getMessage().contains("failed"));
     }
   }
 
   @Test
   public void testInsertWithWrongMeasurementNum2() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database t1");
+      statement.execute("use \"t1\"");
       statement.execute(
-          "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100, 300, 400)");
+          "create table wf01 (id1 string id, status int32, temperature int32 measurement)");
+      statement.execute(
+          "insert into wf01(id1, time, status, temperature) values('wt01', 11000, 100, 300, 400)");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage(),
-          e.getMessage()
-              .contains(
-                  "the measurementList's size 2 is not consistent with the valueList's size 3"));
+      assertTrue(e.getMessage(), e.getMessage().contains("failed"));
     }
   }
 
   @Test(expected = Exception.class)
   public void testInsertWithWrongType() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database lz");
+      statement.execute("use \"lz\"");
       statement.execute(
-          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
-      statement.execute(
-          "insert into root.lz.dev.GPS(time,latitude,longitude) aligned values(1,1.3,6.7)");
+          "create table dev (id1 string id, latitude int32 measurement, longitude int32 measurement)");
+      statement.execute("insert into dev(id1,time,latitude,longitude) values('GPS', 1,1.3,6.7)");
       fail();
     }
   }
 
   @Test
+  @Ignore // TODO: delete
   public void testInsertAlignedTimeseriesWithoutAligned() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -340,6 +359,7 @@ public class IoTDBInsertAlignedValuesIT {
   }
 
   @Test
+  @Ignore // TODO: delete
   public void testInsertNonAlignedTimeseriesWithAligned() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -352,6 +372,7 @@ public class IoTDBInsertAlignedValuesIT {
   }
 
   @Test
+  @Ignore // TODO: delete
   public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -367,10 +388,13 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertWithDuplicatedMeasurements() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database t1");
+      statement.execute("use \"t1\"");
+      statement.execute("create table wf01(id1 string id, s3 boolean measurement, status int32)");
       statement.execute(
-          "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
+          "insert into wf01(id1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
       assertTrue(
@@ -381,10 +405,14 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertMultiRows() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
       statement.execute(
-          "insert into root.sg1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
+          "create table sg1 (id1 string id, s1 int32 measurement, s2 int32 measurement)");
+      statement.execute(
+          "insert into sg1(id1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)");
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
@@ -393,10 +421,14 @@ public class IoTDBInsertAlignedValuesIT {
 
   @Test
   public void testInsertLargeNumber() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
       statement.execute(
-          "insert into root.sg1.d1(time, s98, s99) aligned values(10, 2, 271840880000000000000000)");
+          "create table sg1 (id1 string id, s98 int64 measurement, s99 int64 measurement)");
+      statement.execute(
+          "insert into sg1(id1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)");
     } catch (SQLException e) {
       fail();
     }

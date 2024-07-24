@@ -22,6 +22,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
@@ -57,18 +58,22 @@ public class IoTDBInsertAlignedValues4IT {
   @Test
   public void testExtendTextColumn() {
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(1,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(2,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(3,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(4,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(5,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(6,'test','test')");
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table sg (id1 string id, s1 string measurement, s2 string measurement)");
+      statement.execute("insert into sg(id1,time,s1,s2) values('d1',1,'test','test')");
+      statement.execute("insert into sg(id1,time,s1,s2) values('d1',2,'test','test')");
+      statement.execute("insert into sg(id1,time,s1,s2) values('d1',3,'test','test')");
+      statement.execute("insert into sg(id1,time,s1,s2) values('d1',4,'test','test')");
+      statement.execute("insert into sg(id1,time,s1,s3) values('d1',5,'test','test')");
+      statement.execute("insert into sg(id1,time,s1,s2) values('d1',6,'test','test')");
       statement.execute("flush");
-      statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(7,'test','test')");
-    } catch (SQLException e) {
+      statement.execute("insert into sg(id1,time,s1,s3) values('d1',7,'test','test')");
       fail();
+    } catch (SQLException ignored) {
     }
   }
 }

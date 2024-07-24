@@ -23,6 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -76,15 +77,14 @@ public class IoTDBInsertNullIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("CREATE DATABASE root.sg");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=BOOLEAN");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=INT32");
-    sqls.add("CREATE ALIGNED TIMESERIES root.sg.d2(s1 BOOLEAN,s2 FLOAT,s3 INT32)");
+    sqls.add("CREATE DATABASE test");
+    sqls.add("USE \"test\"");
+    sqls.add(
+        "CREATE TABLE sg (id1 string id, s1 boolean measurement, s2 float measurement, s3 int32 measurement)");
   }
 
   private static void insertData() throws SQLException {
-    connection = EnvFactory.getEnv().getConnection();
+    connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
     Statement statement = connection.createStatement();
 
     for (String sql : sqls) {
@@ -98,24 +98,25 @@ public class IoTDBInsertNullIT {
   public void testInsertNull() {
     String[] retArray =
         new String[] {
-          "1,null,1.0,1,", "2,true,null,2,", "3,true,3.0,null,",
+          "1,d2,null,1.0,1,", "2,d2,true,null,2,", "3,d2,true,3.0,null,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(1,null,1.0,1)");
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(2,true,null,2)");
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(3,true,3.0,null)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into sg(id1,time,s1,s2,s3) values('d2',1,null,1.0,1)");
+      statement.execute("insert into sg(id1,time,s1,s2,s3) values('d2',2,true,null,2)");
+      statement.execute("insert into sg(id1,time,s1,s2,s3) values('d2',3,true,3.0,null)");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from sg")) {
         assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.sg.d1.s1,root.sg.d1.s2,root.sg.d1.s3",
+                "time,id1,s1,s2,s3",
                 new int[] {
-                  Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.INTEGER,
+                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN, Types.FLOAT, Types.INTEGER,
                 });
 
         int cnt = 0;
@@ -124,53 +125,11 @@ public class IoTDBInsertNullIT {
           StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        assertEquals(3, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testInsertAlignedNull() {
-    String[] retArray =
-        new String[] {
-          "1,null,1.0,1,", "2,true,null,2,", "3,true,3.0,null,",
-        };
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(1,null,1.0,1)");
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(2,true,null,2)");
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(3,true,3.0,null)");
-
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d2")) {
-        assertNotNull(resultSet);
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.sg.d2.s1,root.sg.d2.s2,root.sg.d2.s3",
-                new int[] {
-                  Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.INTEGER,
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+            if (i == 1) {
+              actualBuilder.append(resultSet.getTimestamp(i).getTime()).append(",");
+            } else {
+              actualBuilder.append(resultSet.getString(i)).append(",");
+            }
             expectedBuilder
                 .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
                 .append(",");

@@ -59,12 +59,16 @@ public class IOTDBInsertWithTimeAtAnyIndexIT {
   public void testInsertTimeAtAnyIndex() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.addBatch("insert into root.db.d1(s1, s2, time) aligned values (2, 3, 1)");
-      statement.addBatch("insert into root.db.d1(s1, time, s2) aligned values (20, 10, 30)");
-      statement.addBatch("insert into root.db.d1(`time`, s1, s2) aligned values (100, 200, 300)");
+      statement.addBatch("create database test");
+      statement.addBatch("use \"test\"");
+      statement.addBatch(
+          "create table (id1 string id, s1 int32 measurement, s2 int32 measurement)");
+      statement.addBatch("insert into db(id, s1, s2, time) ('d1', 2, 3, 1)");
+      statement.addBatch("insert into db(id, s1, time, s2) values ('d1', 20, 10, 30)");
+      statement.addBatch("insert into db(id, `time`, s1, s2) values ('d1', 100, 200, 300)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from root.db.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, s1 from db")) {
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
         assertEquals(2, resultSet.getDouble(2), 0.00001);
@@ -84,8 +88,11 @@ public class IOTDBInsertWithTimeAtAnyIndexIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
+        statement.addBatch("create database test");
+        statement.addBatch("use \"test\"");
         statement.addBatch(
-            "insert into root.db.d1(s1, s2, time, time) aligned values (2, 3, 1, 1)");
+            "create table (id1 string id, s1 int32 measurement, s2 int32 measurement)");
+        statement.addBatch("insert into db(id1, s1, s2, time, time) values ('d1', 2, 3, 1, 1)");
         statement.executeBatch();
         fail();
       } catch (SQLException e) {

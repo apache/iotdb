@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -53,38 +54,33 @@ public class IoTDBRecoverIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverIT.class);
 
   private static final String TIMESTAMP_STR = "Time";
-  private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
+  private static final String TEMPERATURE_STR = "temperature";
   private static final String[] creationSqls =
       new String[] {
-        "CREATE DATABASE root.vehicle.d0",
-        "CREATE DATABASE root.vehicle.d1",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
+        "CREATE DATABASE test",
+        "USE \"test\"",
+        "CREATE TABLE vehicle (id1 string id, s0 int32 measurement, s1 int64 measurement, s2 float measurement, s3 text measurement, s4 boolean measurement)"
       };
   private static final String[] dataSet2 =
       new String[] {
-        "CREATE DATABASE root.ln.wf01.wt01",
-        "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-            + "values(1, 1.1, false, 11)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-            + "values(2, 2.2, true, 22)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-            + "values(3, 3.3, false, 33 )",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-            + "values(4, 4.4, false, 44)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-            + "values(5, 5.5, false, 55)"
+        "CREATE DATABASE ln",
+        "USE \"ln\"",
+        "CREATE TABLE wf01 (id1 string id, status boolean measurement, temperature float measurement, hardware int32 measurement)",
+        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+            + "values('wt01', 1, 1.1, false, 11)",
+        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+            + "values('wt01', 2, 2.2, true, 22)",
+        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+            + "values('wt01', 3, 3.3, false, 33 )",
+        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+            + "values('wt01', 4, 4.4, false, 44)",
+        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+            + "values('wt01',5, 5.5, false, 55)"
       };
-  private final String d0s0 = "root.vehicle.d0.s0";
-  private final String d0s1 = "root.vehicle.d0.s1";
-  private final String d0s2 = "root.vehicle.d0.s2";
-  private final String d0s3 = "root.vehicle.d0.s3";
+  private final String d0s0 = "s0";
+  private final String d0s1 = "s1";
+  private final String d0s2 = "s2";
+  private final String d0s3 = "s3";
 
   @Before
   public void setUp() throws Exception {
@@ -111,37 +107,34 @@ public class IoTDBRecoverIT {
     // check cluster whether restart
     ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
-      String selectSql = "select count(temperature) from root.ln.wf01.wt01 where time > 3";
+      statement.execute("use \"ln\"");
+      String selectSql = "select count(temperature) from wf01 where time > 3";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(TEMPERATURE_STR));
+            resultSet.getString("time") + "," + resultSet.getString(count(TEMPERATURE_STR));
         Assert.assertEquals(retArray[0], ans);
       }
 
-      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where time > 3";
+      selectSql = "select min_time(temperature) from wf01 where time > 3";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+            resultSet.getString("time") + "," + resultSet.getString(minTime(TEMPERATURE_STR));
         Assert.assertEquals(retArray[1], ans);
       }
 
-      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3";
+      selectSql = "select min_time(temperature) from wf01 where temperature > 3";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+            resultSet.getString("time") + "," + resultSet.getString(minTime(TEMPERATURE_STR));
         Assert.assertEquals(retArray[2], ans);
       }
 
@@ -162,7 +155,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
+            resultSet.getString("time")
                 + ","
                 + resultSet.getString(maxValue(d0s0))
                 + ","
@@ -175,7 +168,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
+            resultSet.getString("time")
                 + ","
                 + resultSet.getString(maxValue(d0s0))
                 + ","
@@ -203,17 +196,17 @@ public class IoTDBRecoverIT {
     ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     // count test
     String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       String selectSql =
           "select count(s0),count(s1),count(s2),count(s3) "
-              + "from root.vehicle.d0 where time >= 6000 and time <= 9000";
+              + "from vehicle where time >= 6000 and time <= 9000";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
+            resultSet.getString("time")
                 + ","
                 + resultSet.getString(count(d0s0))
                 + ","
@@ -225,12 +218,12 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(retArray[0], ans);
       }
 
-      selectSql = "select count(s0),count(s1),count(s2),count(s3) from root.vehicle.d0";
+      selectSql = "select count(s0),count(s1),count(s2),count(s3) from vehicle";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
+            resultSet.getString("time")
                 + ","
                 + resultSet.getString(count(d0s0))
                 + ","
@@ -248,7 +241,7 @@ public class IoTDBRecoverIT {
   }
 
   private void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
@@ -261,7 +254,7 @@ public class IoTDBRecoverIT {
 
       // prepare BufferWrite file
       String insertTemplate =
-          "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
+          "INSERT INTO vehicle(id1,timestamp,s0,s1,s2,s3,s4)" + " VALUES('d0',%d,%d,%d,%f,%s,%s)";
       for (int i = 5000; i < 7000; i++) {
         statement.addBatch(
             String.format(

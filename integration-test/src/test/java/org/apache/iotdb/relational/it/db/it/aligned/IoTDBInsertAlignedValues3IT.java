@@ -22,6 +22,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
@@ -57,14 +58,18 @@ public class IoTDBInsertAlignedValues3IT {
 
   @Test
   public void testInsertAlignedWithEmptyPage2() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database lz");
+      statement.execute("use \"lz\"");
       statement.execute(
-          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
+          "create table dev (id1 string id, s1 int32 measurement, s2 int32 measurement, s3 int32 measurement)");
       for (int i = 0; i < 100; i++) {
         if (i >= 49) {
           statement.addBatch(
-              "insert into root.lz.dev.GPS(time,S1,S2,S3) aligned values("
+              "insert into dev(id1,time,s1,s2,s3) values("
+                  + "GPS"
+                  + ","
                   + i
                   + ","
                   + i
@@ -75,7 +80,9 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         } else {
           statement.addBatch(
-              "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
+              "insert into root.lz.dev.GPS(id1,time,s1,s2) aligned values("
+                  + "GPS"
+                  + ","
                   + i
                   + ","
                   + i
@@ -87,7 +94,7 @@ public class IoTDBInsertAlignedValues3IT {
       statement.executeBatch();
       statement.execute("flush");
       int rowCount = 0;
-      try (ResultSet resultSet = statement.executeQuery("select S3 from root.lz.dev.GPS")) {
+      try (ResultSet resultSet = statement.executeQuery("select s3 from dev")) {
         while (resultSet.next()) {
           assertEquals(rowCount + 49, resultSet.getInt(2));
           rowCount++;
@@ -95,7 +102,7 @@ public class IoTDBInsertAlignedValues3IT {
         assertEquals(51, rowCount);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select S2 from root.lz.dev.GPS")) {
+      try (ResultSet resultSet = statement.executeQuery("select s2 from dev")) {
         rowCount = 0;
         while (resultSet.next()) {
           assertEquals(rowCount, resultSet.getInt(2));
@@ -104,7 +111,7 @@ public class IoTDBInsertAlignedValues3IT {
         assertEquals(100, rowCount);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select S1 from root.lz.dev.GPS")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from dev")) {
         rowCount = 0;
         while (resultSet.next()) {
           assertEquals(rowCount, resultSet.getInt(2));

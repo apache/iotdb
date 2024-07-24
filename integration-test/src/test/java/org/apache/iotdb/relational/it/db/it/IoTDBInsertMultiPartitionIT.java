@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -57,12 +58,15 @@ public class IoTDBInsertMultiPartitionIT {
   @Test
   public void testInsertMultiPartition() {
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1) values(1,2)");
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
+      statement.execute("create table sg (id1 string id, s1 int32 measurement)");
+      statement.execute("insert into sg(id1,time,s1) values('d1',1,2)");
       statement.execute("flush");
-      statement.execute("insert into root.sg.d1(time,s1) values(2,2)");
-      statement.execute("insert into root.sg.d1(time,s1) values(604800001,2)");
+      statement.execute("insert into sg(id1,time,s1) values('d1',2,2)");
+      statement.execute("insert into sg(id1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
     } catch (Exception e) {
       fail(e.getMessage());

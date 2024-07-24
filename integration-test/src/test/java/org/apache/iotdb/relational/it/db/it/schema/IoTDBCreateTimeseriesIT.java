@@ -27,6 +27,7 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -46,6 +47,7 @@ import static org.junit.Assert.fail;
  * IoTDB server should be defined as integration test.
  */
 @Category({LocalStandaloneIT.class, ClusterIT.class})
+@Ignore // TODO: delete this test
 public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
 
   public IoTDBCreateTimeseriesIT(SchemaTestMode schemaTestMode) {

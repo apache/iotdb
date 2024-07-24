@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
@@ -64,9 +65,12 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestart() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1.0)");
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
+      statement.execute("create table turbine (id1 string id, s1 float measurement)");
+      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 1,1.0)");
       statement.execute("flush");
     }
 
@@ -77,9 +81,9 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,1.0)");
+      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 2,1.0)");
     }
 
     try {
@@ -90,14 +94,14 @@ public class IoTDBRestartIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1.0)");
+      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 3,1.0)");
 
       String[] exp = new String[] {"1,1.0", "2,1.0", "3,1.0"};
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM turbine")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
-          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String result = resultSet.getString("time") + "," + resultSet.getString(2);
           assertEquals(exp[cnt], result);
           cnt++;
         }

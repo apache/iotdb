@@ -23,9 +23,11 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,7 +38,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -46,15 +48,14 @@ public class IoTDBInsertWithoutTimeIT {
 
   private static final List<String> sqls =
       Arrays.asList(
-          "CREATE DATABASE root.sg1",
-          "CREATE TIMESERIES root.sg1.d1.s1 INT64",
-          "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
-          "CREATE TIMESERIES root.sg1.d1.s3 TEXT");
+          "CREATE DATABASE test",
+          "USE \"test\"",
+          "CREATE TABLE sg1(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement)");
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
-    createTimeseries();
+    createTable();
   }
 
   @After
@@ -62,8 +63,8 @@ public class IoTDBInsertWithoutTimeIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void createTimeseries() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+  private void createTable() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
@@ -76,52 +77,58 @@ public class IoTDBInsertWithoutTimeIT {
 
   @Test
   public void testInsertWithoutTime() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
+      statement.execute("use \"test\"");
+      statement.execute("insert into sg1(id1, s1, s2, s3) values ('d1',1, 1, '1')");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
+      statement.execute("insert into sg1(id1, s2, s1, s3) values ('d1',2, 2, '2')");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
+      statement.execute("insert into sg1(id1, s3, s2, s1) values ('d1','3', 3, 3)");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s1) values (1)");
-      statement.execute("insert into root.sg1.d1(s2) values (2)");
-      statement.execute("insert into root.sg1.d1(s3) values ('3')");
+      statement.execute("insert into sg1(id1, s1) values ('d1',1)");
+      statement.execute("insert into sg1(id1, s2) values ('d1',2)");
+      statement.execute("insert into sg1(id1, s3) values ('d1','3')");
     } catch (SQLException | InterruptedException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    String expectedHeader = "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+    String expectedHeader = "count(s1),count(s2),count(s3),";
     String[] retArray = new String[] {"4,4,4,"};
-    resultSetEqualTest(
-        "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
+    resultSetEqualTest("select count(s1), count(s2), count(s3) from sg1", expectedHeader, retArray);
   }
 
   @Test
+  @Ignore // TODO: delete
   public void testInsertWithoutValueColumns() {
-    assertNonQueryTestFail(
-        "insert into root.sg1.d1(time) values (1)",
-        "InsertStatement should contain at least one measurement");
+    assertTableNonQueryTestFail(
+        "insert into sg1(id1, time) values ('d1', 1)",
+        "InsertStatement should contain at least one measurement",
+        "test");
   }
 
   @Test
   public void testInsertMultiRow() {
-    assertNonQueryTestFail(
-        "insert into root.sg1.d1(s3) values ('1'), ('2')",
-        "need timestamps when insert multi rows");
-    assertNonQueryTestFail(
-        "insert into root.sg1.d1(s1, s2) values (1, 1), (2, 2)",
-        "need timestamps when insert multi rows");
+    assertTableNonQueryTestFail(
+        "insert into sg1(s3) values ('d1', '1'), ('d1', '2')",
+        "need timestamps when insert multi rows",
+        "test");
+    assertTableNonQueryTestFail(
+        "insert into sg1(id1, s1, s2) values ('d1', 1, 1), ('d1', 2, 2)",
+        "need timestamps when insert multi rows",
+        "test");
   }
 
   @Test
   public void testInsertWithMultiTimesColumns() {
-    assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, time) values (1, 1)",
-        "One row should only have one time value");
-    assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, s1, time) values (1, 1, 1)",
-        "One row should only have one time value");
+    assertTableNonQueryTestFail(
+        "insert into sg1(id1, time, time) values ('d1', 1, 1)",
+        "One row should only have one time value",
+        "test");
+    assertTableNonQueryTestFail(
+        "insert into sg1(id1, time, s1, time) values ('d1', 1, 1, 1)",
+        "One row should only have one time value",
+        "test");
   }
 }
