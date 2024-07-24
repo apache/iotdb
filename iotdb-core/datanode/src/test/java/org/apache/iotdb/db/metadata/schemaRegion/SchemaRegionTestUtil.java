@@ -445,26 +445,25 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(
-      ISchemaRegion schemaRegion,
-      String table,
-      int idColumnNum,
-      List<SchemaFilter> idDeterminedFilterList,
-      SchemaFilter idFuzzyFilter)
-      throws MetadataException {
-    List<PartialPath> patternList =
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final int idColumnNum,
+      final List<SchemaFilter> idDeterminedFilterList,
+      final SchemaFilter idFuzzyFilter) {
+    final List<PartialPath> patternList =
         DeviceFilterUtil.convertToDevicePattern(
             schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1),
             table,
             idColumnNum,
             Collections.singletonList(idDeterminedFilterList));
-    List<IDeviceSchemaInfo> result = new ArrayList<>();
-    for (PartialPath pattern : patternList) {
-      try (ISchemaReader<IDeviceSchemaInfo> reader =
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    for (final PartialPath pattern : patternList) {
+      try (final ISchemaReader<IDeviceSchemaInfo> reader =
           schemaRegion.getTableDeviceReader(new ShowTableDevicesPlan(pattern, idFuzzyFilter))) {
         while (reader.hasNext()) {
           result.add(reader.next());
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         throw new RuntimeException(e);
       }
     }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -255,33 +257,37 @@ public class TableDeviceSchemaFetcher {
 
   // return whether all of required info of current device is in cache
   private boolean tryGetDeviceInCache(
-      List<DeviceEntry> deviceEntryList,
-      String database,
-      TsTable tableInstance,
-      List<SchemaFilter> idFilters,
-      Predicate<DeviceEntry> check,
-      List<String> attributeColumns) {
-    String[] idValues = new String[tableInstance.getIdNums()];
-    for (SchemaFilter schemaFilter : idFilters) {
-      PreciseFilter idFilter = (PreciseFilter) schemaFilter;
-      idValues[idFilter.getIndex()] = idFilter.getValue();
+      final List<DeviceEntry> deviceEntryList,
+      final String database,
+      final TsTable tableInstance,
+      final List<SchemaFilter> idFilters,
+      final Predicate<DeviceEntry> check,
+      final List<String> attributeColumns) {
+    final String[] idValues = new String[tableInstance.getIdNums()];
+    for (final SchemaFilter schemaFilter : idFilters) {
+      final IdFilter idFilter = (IdFilter) schemaFilter;
+      final SchemaFilter childFilter = idFilter.getChild();
+      if (!childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+        return false;
+      }
+      idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    Map<String, String> attributeMap =
+    final Map<String, String> attributeMap =
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
     if (attributeMap == null) {
       return false;
     }
-    List<String> attributeValues = new ArrayList<>(attributeColumns.size());
-    for (String attributeKey : attributeColumns) {
+    final List<String> attributeValues = new ArrayList<>(attributeColumns.size());
+    for (final String attributeKey : attributeColumns) {
       String value = attributeMap.get(attributeKey);
       // TODO table metadata: what if the value is null?
       attributeValues.add(value);
     }
-    String[] deviceIdNodes = new String[idValues.length + 1];
+    final String[] deviceIdNodes = new String[idValues.length + 1];
     deviceIdNodes[0] = tableInstance.getTableName();
     System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
-    DeviceEntry deviceEntry =
+    final DeviceEntry deviceEntry =
         new DeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes), attributeValues);
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate

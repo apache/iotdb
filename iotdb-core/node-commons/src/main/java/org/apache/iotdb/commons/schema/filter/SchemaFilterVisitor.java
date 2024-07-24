@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
@@ -104,10 +103,6 @@ public abstract class SchemaFilterVisitor<C> {
   }
 
   public boolean visitLikeFilter(final LikeFilter filter, final C context) {
-    return visitFilter(filter, context);
-  }
-
-  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, C context) {
     return visitFilter(filter, context);
   }
 }

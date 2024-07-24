@@ -43,25 +43,25 @@ public class DeviceFilterUtil {
   // root.db.table.*.*..
   // e.g. input (db, table[c1, c2], [[]]), return [root.db.table.*.*]
   public static List<PartialPath> convertToDevicePattern(
-      String database,
-      String tableName,
-      int idColumnNum,
-      List<List<SchemaFilter>> idDeterminedFilterList) {
-    List<PartialPath> pathList = new ArrayList<>();
-    int length = idColumnNum + 3;
-    for (List<SchemaFilter> idFilterList : idDeterminedFilterList) {
-      String[] nodes = new String[length];
+      final String database,
+      final String tableName,
+      final int idColumnNum,
+      final List<List<SchemaFilter>> idDeterminedFilterList) {
+    final List<PartialPath> pathList = new ArrayList<>();
+    final int length = idColumnNum + 3;
+    for (final List<SchemaFilter> idFilterList : idDeterminedFilterList) {
+      final String[] nodes = new String[length];
       Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
       nodes[0] = PATH_ROOT;
       nodes[1] = database;
       nodes[2] = tableName;
       final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
-      for (SchemaFilter schemaFilter : idFilterList) {
+      for (final SchemaFilter schemaFilter : idFilterList) {
         if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
           final int index = ((IdFilter) schemaFilter).getIndex() + 3;
           final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
           if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
-            nodes[index] = ((PreciseFilter) ((IdFilter) schemaFilter).getChild()).getValue();
+            nodes[index] = ((PreciseFilter) childFilter).getValue();
           } else {
             partialPath.setMatchFunction(
                 index, node -> childFilter.accept(StringValueFilterVisitor.getInstance(), node));

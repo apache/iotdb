@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -135,7 +136,9 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Arrays.asList(new PreciseFilter(0, "hebei"), new PreciseFilter(1, "p_1")),
+            Arrays.asList(
+                new IdFilter(new PreciseFilter("hebei"), 0),
+                new IdFilter(new PreciseFilter("p_1"), 1)),
             null);
     Assert.assertEquals(2, deviceSchemaInfoList.size());
 
@@ -144,7 +147,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(new PreciseFilter(1, "p_1")),
+            Collections.singletonList(new IdFilter(new PreciseFilter("p_1"), 1)),
             null);
     Assert.assertEquals(3, deviceSchemaInfoList.size());
 
@@ -153,8 +156,8 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(new PreciseFilter(1, "p_1")),
-            new DeviceAttributeFilter("cycle", "daily"));
+            Collections.singletonList(new IdFilter(new PreciseFilter("p_1"), 1)),
+            new AttributeFilter(new PreciseFilter("daily"), "cycle"));
     Assert.assertEquals(1, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
@@ -163,7 +166,9 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             tableName,
             3,
             Collections.emptyList(),
-            new OrFilter(new PreciseFilter(1, "p_1"), new DeviceAttributeFilter("cycle", "daily")));
+            new OrFilter(
+                new IdFilter(new PreciseFilter("p_1"), 1),
+                new AttributeFilter(new PreciseFilter("daily"), "cycle")));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
   }
 
@@ -208,7 +213,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(new PreciseFilter(1, null)),
+            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
             null);
     Assert.assertEquals(1, deviceSchemaInfoList.size());
 
@@ -218,7 +223,9 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             tableName,
             3,
             Collections.emptyList(),
-            new OrFilter(new PreciseFilter(2, null), new DeviceAttributeFilter("cycle", null)));
+            new OrFilter(
+                new IdFilter(new PreciseFilter((String) null), 2),
+                new AttributeFilter(new PreciseFilter((String) null), "cycle")));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
   }
 
@@ -263,7 +270,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             4,
-            Collections.singletonList(new PreciseFilter(3, "r_1")),
+            Collections.singletonList(new IdFilter(new PreciseFilter("r_1"), 3)),
             null);
     Assert.assertEquals(1, deviceSchemaInfoList.size());
 
