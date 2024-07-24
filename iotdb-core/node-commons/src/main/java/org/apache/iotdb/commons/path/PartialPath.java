@@ -65,9 +65,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath() {}
 
   public PartialPath(IDeviceID device) throws IllegalPathException {
-    nodes = new String[device.segmentNum()];
-    for (int i = 0; i < nodes.length; i++) {
-      nodes[i] = device.segment(i).toString();
+    // the first segment is the table name, which may contain multiple levels
+    String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
+    nodes = new String[device.segmentNum() - 1 + tableNameSegments.length];
+    System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+    // copy non-table-name segments
+    for (int i = 0; i < device.segmentNum() - 1; i++) {
+      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
     }
     this.fullPath = getFullPath();
   }
@@ -92,11 +96,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   protected PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    nodes = new String[device.segmentNum() + 1];
-    for (int i = 0; i < device.segmentNum(); i++) {
-      nodes[i] = device.segment(i).toString();
+    // the first segment is the table name, which may contain multiple levels
+    String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
+    nodes = new String[device.segmentNum() + tableNameSegments.length];
+    System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+    // copy non-table-name segments
+    for (int i = 0; i < device.segmentNum() - 1; i++) {
+      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
     }
-    nodes[device.segmentNum()] = measurement;
+    nodes[device.segmentNum() + tableNameSegments.length - 1] = measurement;
     this.fullPath = getFullPath();
   }
 
