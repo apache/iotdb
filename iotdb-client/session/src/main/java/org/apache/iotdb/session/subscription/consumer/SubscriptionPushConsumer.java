@@ -116,8 +116,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     super.open();
-    submitAutoPollWorker();
+
+    // set isClosed to false before submitting workers
     isClosed.set(false);
+
+    // submit auto poll worker
+    submitAutoPollWorker();
   }
 
   @Override
