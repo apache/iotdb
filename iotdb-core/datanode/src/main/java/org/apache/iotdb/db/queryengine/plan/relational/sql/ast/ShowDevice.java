@@ -64,12 +64,14 @@ public class ShowDevice extends Statement {
       String database,
       String tableName,
       List<List<SchemaFilter>> idDeterminedFilterList,
-      Expression idFuzzyFilterList) {
+      Expression idFuzzyFilterList,
+      List<IDeviceID> partitionKeyList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedFilterList = idDeterminedFilterList;
     this.idFuzzyPredicate = idFuzzyFilterList;
+    this.partitionKeyList = partitionKeyList;
   }
 
   public String getDatabase() {
@@ -99,17 +101,10 @@ public class ShowDevice extends Statement {
   }
 
   public boolean isIdDetermined() {
-    return isIdDetermined;
-  }
-
-  public void setIdDetermined(boolean idDetermined) {
-    isIdDetermined = idDetermined;
+    return Objects.nonNull(partitionKeyList);
   }
 
   public List<IDeviceID> getPartitionKeyList() {
-    if (partitionKeyList == null) {
-      // TODO table metadata: parse idDeterminedFilterList to IDeviceID list
-    }
     return partitionKeyList;
   }
 

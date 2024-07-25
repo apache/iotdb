@@ -43,7 +43,7 @@ import java.util.List;
 
 public abstract class SchemaFilter {
 
-  public static void serialize(SchemaFilter schemaFilter, ByteBuffer byteBuffer) {
+  public static void serialize(final SchemaFilter schemaFilter, final ByteBuffer byteBuffer) {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), byteBuffer);
     } else {
@@ -52,7 +52,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static void serialize(SchemaFilter schemaFilter, DataOutputStream outputStream)
+  public static void serialize(final SchemaFilter schemaFilter, final DataOutputStream outputStream)
       throws IOException {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), outputStream);
@@ -119,18 +119,17 @@ public abstract class SchemaFilter {
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }
-    // if binary filter, check left and right
     if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.AND)) {
       final AndFilter andFilter = (AndFilter) schemaFilter;
       andFilter.getChildren().forEach(child -> internalExtract(result, child, filterType));
     }
   }
 
-  public abstract <C> boolean accept(SchemaFilterVisitor<C> visitor, C node);
+  public abstract <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node);
 
   public abstract SchemaFilterType getSchemaFilterType();
 
-  protected abstract void serialize(ByteBuffer byteBuffer);
+  protected abstract void serialize(final ByteBuffer byteBuffer);
 
-  protected abstract void serialize(DataOutputStream stream) throws IOException;
+  protected abstract void serialize(final DataOutputStream stream) throws IOException;
 }

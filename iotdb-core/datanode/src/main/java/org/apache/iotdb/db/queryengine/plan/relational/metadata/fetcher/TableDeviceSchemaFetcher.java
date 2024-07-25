@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -174,25 +175,29 @@ public class TableDeviceSchemaFetcher {
     final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
     final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
 
-    // here we use binary tree way, because the following SchemaFilter only support binary OrFilter
-    // TODO table metadata: add multi way OrFilter for SchemaFilter
     final Expression compactedIdFuzzyPredicate =
         SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyPredicateList);
 
-    // each element represents one batch of possible devices
+    // Each element represents one batch of possible devices
     // expressions inner each element are and-concat representing conditions of different column
     final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList =
         SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(
             idDeterminedPredicateList, tableInstance);
-    // if List<Expression> in idPredicateList contains all id columns comparison which can use
+    // If List<Expression> in idPredicateList contains all id columns comparison which can use
     // SchemaCache, we store its index.
     final List<Integer> idSingleMatchIndexList =
         SchemaPredicateUtil.extractIdSingleMatchExpressionCases(index2FilterMapList, tableInstance);
-    // store missing cache index in idSingleMatchIndexList
+    // Store missing cache index in idSingleMatchIndexList
     final List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
 
+    final boolean isExactDeviceQuery = idSingleMatchIndexList.size() == index2FilterMapList.size();
+
+    // If the query is exact, then we can specify the fetch paths to determine the related schema
+    // regions
+    final List<IDeviceID> fetchPaths = isExactDeviceQuery ? new ArrayList<>() : null;
+
     if (!idSingleMatchIndexList.isEmpty()) {
-      // try get from cache
+      // Try get from cache
       final ConvertSchemaPredicateToFilterVisitor visitor =
           new ConvertSchemaPredicateToFilterVisitor();
       final ConvertSchemaPredicateToFilterVisitor.Context context =
@@ -210,7 +215,8 @@ public class TableDeviceSchemaFetcher {
             tableInstance,
             index2FilterMapList.get(index),
             o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
-            attributeColumns)) {
+            attributeColumns,
+            fetchPaths)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -250,8 +256,7 @@ public class TableDeviceSchemaFetcher {
           idPredicateForFetch,
           compactedIdFuzzyPredicate,
           deviceEntryList,
-          // only cache those exact device query
-          idSingleMatchIndexList.size() == index2FilterMapList.size(),
+          fetchPaths,
           queryContext);
     }
 
@@ -269,7 +274,8 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final Map<Integer, List<SchemaFilter>> idFilters,
       final Predicate<DeviceEntry> check,
-      final List<String> attributeColumns) {
+      final List<String> attributeColumns,
+      final List<IDeviceID> fetchPaths) {
     final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
@@ -280,28 +286,41 @@ public class TableDeviceSchemaFetcher {
     final Map<String, String> attributeMap =
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
     if (attributeMap == null) {
+      if (Objects.nonNull(fetchPaths)) {
+        fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
+      }
       return false;
     }
     final List<String> attributeValues = new ArrayList<>(attributeColumns.size());
     for (final String attributeKey : attributeColumns) {
       if (!attributeMap.containsKey(attributeKey)) {
         // The attributes may be updated and the cache entry is stale
+        if (Objects.nonNull(fetchPaths)) {
+          fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
+        }
         return false;
       }
       String value = attributeMap.get(attributeKey);
       attributeValues.add(value);
     }
-    final String[] deviceIdNodes = new String[idValues.length + 1];
-    deviceIdNodes[0] = tableInstance.getTableName();
-    System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
+
     final DeviceEntry deviceEntry =
-        new DeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes), attributeValues);
+        new DeviceEntry(convertIdValuesToDeviceID(idValues, tableInstance), attributeValues);
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
       deviceEntryList.add(deviceEntry);
     }
     return true;
+  }
+
+  private IDeviceID convertIdValuesToDeviceID(
+      final String[] idValues, final TsTable tableInstance) {
+    // Convert to IDeviceID
+    final String[] deviceIdNodes = new String[idValues.length + 1];
+    deviceIdNodes[0] = tableInstance.getTableName();
+    System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
+    return IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes);
   }
 
   private void fetchMissingDeviceSchemaForQuery(
@@ -311,14 +330,14 @@ public class TableDeviceSchemaFetcher {
       final List<List<SchemaFilter>> idDeterminedFilterList,
       final Expression idFuzzyPredicate,
       final List<DeviceEntry> deviceEntryList,
-      final boolean cacheFetchedDevice,
+      final List<IDeviceID> fetchPaths,
       final MPPQueryContext mppQueryContext) {
 
     final String table = tableInstance.getTableName();
 
     final long queryId = SessionManager.getInstance().requestQueryId();
     final ShowDevice statement =
-        new ShowDevice(database, table, idDeterminedFilterList, idFuzzyPredicate);
+        new ShowDevice(database, table, idDeterminedFilterList, idFuzzyPredicate, fetchPaths);
     final ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
@@ -367,7 +386,9 @@ public class TableDeviceSchemaFetcher {
               new DeviceEntry(
                   deviceID,
                   attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList())));
-          if (cacheFetchedDevice) {
+          // Only cache those exact device query
+          // Fetch paths is null iff there are fuzzy queries related to id columns
+          if (Objects.nonNull(fetchPaths)) {
             cache.put(database, table, Arrays.copyOfRange(nodes, 1, nodes.length), attributeMap);
           }
         }
