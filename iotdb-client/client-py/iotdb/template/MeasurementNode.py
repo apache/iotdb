@@ -26,13 +26,8 @@ warnings.simplefilter("always", DeprecationWarning)
 
 class MeasurementNode(TemplateNode):
 
-    def __init__(
-        self,
-        name: str,
-        data_type: TSDataType,
-        encoding: TSEncoding,
-        compression_type: Compressor,
-    ):
+    def __init__(self, name: str, data_type: TSDataType, encoding: TSEncoding, compression_type: Compressor):
+        super().__init__(name)
         warnings.warn(
             "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
             DeprecationWarning,
