@@ -33,6 +33,7 @@ class MeasurementNode(TemplateNode):
         encoding: TSEncoding,
         compression_type: Compressor,
     ):
+        super().__init__(name)
         warnings.warn(
             "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
             DeprecationWarning,
