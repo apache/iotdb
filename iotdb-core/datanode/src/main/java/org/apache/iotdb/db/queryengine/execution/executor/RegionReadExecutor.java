@@ -94,6 +94,12 @@ public class RegionReadExecutor {
         resp.setMessage(info.getMessage());
       }
       return resp;
+    } catch (ConsensusGroupNotExistException e) {
+      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
+      resp.setNeedRetry(true);
+      resp.setStatus(new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+      return resp;
     } catch (Throwable e) {
       LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
       resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
@@ -104,9 +110,6 @@ public class RegionReadExecutor {
           || t instanceof ServerNotReadyException) {
         resp.setNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
-      } else if (t instanceof ConsensusGroupNotExistException) {
-        resp.setNeedRetry(true);
-        resp.setStatus(new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
       }
       return resp;
     }
