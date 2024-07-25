@@ -47,8 +47,6 @@ public class ShowDevice extends Statement {
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   private Expression idFuzzyPredicate;
 
-  private boolean isIdDetermined = false;
-
   private transient List<IDeviceID> partitionKeyList;
 
   // for sql-input show device usage
