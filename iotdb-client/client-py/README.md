@@ -21,7 +21,6 @@
 
 # Apache IoTDB
 
-[![Python Client](https://github.com/apache/iotdb/actions/workflows/client-python.yml/badge.svg?branch=master)](https://github.com/apache/iotdb/actions/workflows/client-python.yml)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -40,15 +39,13 @@ high-speed data ingestion and complex data analysis in the IoT industrial fields
 
 ### Requirements
 
-You have to install thrift (>=0.13) before using the package.
+You have to install thrift (>=0.14.1) before using the package.
 
 
 
 ### How to use (Example)
 
 First, download the latest package: `pip3 install apache-iotdb`
-
-*Notice: If you are installing Python API v0.13.0, DO NOT install by `pip install apache-iotdb==0.13.0`, use `pip install apache-iotdb==0.13.0.post1` instead!* 
 
 You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
 
@@ -604,8 +601,7 @@ Namely, these are
 
 * Remove all transient directories from last release (if exists)
 * (Re-)generate all generated sources via mvn
-* Run Linting (flake8)
-* Run Tests via pytest
+* Run Tests via pytest (optional)
 * Build
 * Release to pypi
 
