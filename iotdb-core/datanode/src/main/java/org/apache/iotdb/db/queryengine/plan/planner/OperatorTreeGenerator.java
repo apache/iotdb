@@ -1534,7 +1534,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               ImmutableMap.of(),
               ImmutableList.of(),
               inputDataTypes,
-              inputLocations.size() - 1,
+              inputLocations.size(),
               null);
 
       for (Expression expression : projectExpressions) {
@@ -1702,7 +1702,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               filterExpressionColumnTransformerMap,
               commonTransformerList,
               filterOutputDataTypes,
-              inputLocations.size() - 1,
+              inputLocations.size(),
               null);
 
       for (Expression expression : projectExpressions) {
