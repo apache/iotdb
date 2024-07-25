@@ -32,4 +32,4 @@ cd /home/runner/go/pkg/mod/github.com/magefile/mage@v1.15.0
 chmod 755 /home/runner/go/pkg/mod/github.com/magefile/*
 go run /home/runner/go/pkg/mod/github.com/magefile/mage@v1.15.0/bootstrap.go
 cd $work_path
-$go_path/bin/mage -v
+/home/runner/go/bin/mage -v
