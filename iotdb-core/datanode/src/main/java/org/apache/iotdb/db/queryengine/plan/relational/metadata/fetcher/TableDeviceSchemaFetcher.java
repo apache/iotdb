@@ -284,8 +284,11 @@ public class TableDeviceSchemaFetcher {
     }
     final List<String> attributeValues = new ArrayList<>(attributeColumns.size());
     for (final String attributeKey : attributeColumns) {
+      if (!attributeMap.containsKey(attributeKey)) {
+        // The attributes may be updated and the cache entry is stale
+        return false;
+      }
       String value = attributeMap.get(attributeKey);
-      // TODO table metadata: what if the value is null?
       attributeValues.add(value);
     }
     final String[] deviceIdNodes = new String[idValues.length + 1];
