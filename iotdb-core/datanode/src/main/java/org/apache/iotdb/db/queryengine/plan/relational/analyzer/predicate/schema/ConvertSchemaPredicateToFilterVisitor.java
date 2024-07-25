@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
-import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;

@@ -17,38 +17,51 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl.singlechild;
+package org.apache.iotdb.commons.schema.filter.impl.multichildren;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class AbstractSingleChildFilter extends SchemaFilter {
+public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
 
-  private final SchemaFilter child;
+  private final List<SchemaFilter> children;
 
-  protected AbstractSingleChildFilter(final SchemaFilter child) {
-    // child should not be null
-    this.child = child;
+  protected AbstractMultiChildrenFilter(final List<SchemaFilter> children) {
+    this.children = children;
   }
 
-  protected AbstractSingleChildFilter(final ByteBuffer byteBuffer) {
-    this.child = SchemaFilter.deserialize(byteBuffer);
+  protected AbstractMultiChildrenFilter(final ByteBuffer byteBuffer) {
+    final int num = ReadWriteIOUtils.readInt(byteBuffer);
+    children = new ArrayList<>();
+    for (int i = 0; i < num; ++i) {
+      this.children.add(SchemaFilter.deserialize(byteBuffer));
+    }
   }
 
-  public SchemaFilter getChild() {
-    return child;
+  public List<SchemaFilter> getChildren() {
+    return children;
   }
 
   @Override
   public void serialize(final ByteBuffer byteBuffer) {
-    SchemaFilter.serialize(child, byteBuffer);
+    ReadWriteIOUtils.write(children.size(), byteBuffer);
+    for (final SchemaFilter child : children) {
+      SchemaFilter.serialize(child, byteBuffer);
+    }
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    SchemaFilter.serialize(child, stream);
+    ReadWriteIOUtils.write(children.size(), stream);
+    for (final SchemaFilter child : children) {
+      SchemaFilter.serialize(child, stream);
+    }
   }
 }

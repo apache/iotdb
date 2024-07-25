@@ -17,58 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.multichildren;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
-public class OrFilter extends SchemaFilter {
-  private final SchemaFilter left;
-  private final SchemaFilter right;
+public class AndFilter extends AbstractMultiChildrenFilter {
 
-  public OrFilter(SchemaFilter left, SchemaFilter right) {
-    // left and right should not be null
-    this.left = left;
-    this.right = right;
+  public AndFilter(final List<SchemaFilter> children) {
+    super(children);
   }
 
-  public OrFilter(ByteBuffer byteBuffer) {
-    this.left = SchemaFilter.deserialize(byteBuffer);
-    this.right = SchemaFilter.deserialize(byteBuffer);
-  }
-
-  public SchemaFilter getLeft() {
-    return left;
-  }
-
-  public SchemaFilter getRight() {
-    return right;
+  public AndFilter(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitOrFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
+    return visitor.visitAndFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.OR;
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    left.serialize(byteBuffer);
-    right.serialize(byteBuffer);
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    left.serialize(stream);
-    right.serialize(stream);
+    return SchemaFilterType.AND;
   }
 }

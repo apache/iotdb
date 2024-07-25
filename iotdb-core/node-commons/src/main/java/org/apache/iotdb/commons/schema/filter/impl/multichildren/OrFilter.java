@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.multichildren;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -26,18 +27,17 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class AndFilter extends SchemaFilter {
-
+public class OrFilter extends SchemaFilter {
   private final SchemaFilter left;
   private final SchemaFilter right;
 
-  public AndFilter(SchemaFilter left, SchemaFilter right) {
+  public OrFilter(SchemaFilter left, SchemaFilter right) {
     // left and right should not be null
     this.left = left;
     this.right = right;
   }
 
-  public AndFilter(ByteBuffer byteBuffer) {
+  public OrFilter(ByteBuffer byteBuffer) {
     this.left = SchemaFilter.deserialize(byteBuffer);
     this.right = SchemaFilter.deserialize(byteBuffer);
   }
@@ -52,12 +52,12 @@ public class AndFilter extends SchemaFilter {
 
   @Override
   public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitAndFilter(this, node);
+    return visitor.visitOrFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.AND;
+    return SchemaFilterType.OR;
   }
 
   @Override

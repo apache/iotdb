@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.schema.filter.impl.values;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

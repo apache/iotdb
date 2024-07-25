@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.commons.schema.filter;
 
-import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
 
 import org.apache.tsfile.enums.TSDataType;
