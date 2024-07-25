@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -48,7 +49,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSeriesPlan {
-  private PartialPath path;
+  private MeasurementPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
@@ -66,7 +67,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   public CreateTimeSeriesNode(
       PlanNodeId id,
-      PartialPath path,
+      MeasurementPath path,
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressor,
@@ -88,11 +89,11 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     }
   }
 
-  public PartialPath getPath() {
+  public MeasurementPath getPath() {
     return path;
   }
 
-  public void setPath(PartialPath path) {
+  public void setPath(MeasurementPath path) {
     this.path = path;
   }
 
@@ -192,7 +193,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath path;
+    MeasurementPath path;
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;
@@ -205,7 +206,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
     try {
-      path = new PartialPath(new String(bytes));
+      path = new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize CreateTimeSeriesNode", e);
     }

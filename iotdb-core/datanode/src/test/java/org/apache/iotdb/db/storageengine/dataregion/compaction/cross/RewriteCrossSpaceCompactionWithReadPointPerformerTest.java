@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -582,7 +582,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -607,7 +607,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -701,7 +701,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -726,7 +726,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -737,7 +737,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         1200,
         0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"

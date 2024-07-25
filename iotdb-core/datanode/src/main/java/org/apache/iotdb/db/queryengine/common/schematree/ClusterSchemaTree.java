@@ -242,7 +242,7 @@ public class ClusterSchemaTree implements ISchemaTree {
                 fullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()
-                    .concatNode(logicalViewSchema.getMeasurementId())
+                    .concatAsMeasurementPath(logicalViewSchema.getMeasurementId())
                     .getFullPath()));
       } else if (measurementPathList.size() > 1) {
         throw new SemanticException(
@@ -251,7 +251,7 @@ public class ClusterSchemaTree implements ISchemaTree {
                 fullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()
-                    .concatNode(logicalViewSchema.getMeasurementId())));
+                    .concatAsMeasurementPath(logicalViewSchema.getMeasurementId())));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
         MeasurementPath measurementPath = measurementPathList.get(0);

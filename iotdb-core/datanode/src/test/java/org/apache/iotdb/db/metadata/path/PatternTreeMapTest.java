@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -128,84 +129,86 @@ public class PatternTreeMapTest {
     // [1,3] [6,10]
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3));
+        new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 1, 3));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10));
+        new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 6, 10));
 
     patternTreeMap.append(
-        new PartialPath("root.**.s1"), new Deletion(new PartialPath("root.**.s1"), 5, 10, 100));
+        new PartialPath("root.**.s1"), new Deletion(new MeasurementPath("root.**.s1"), 5, 10, 100));
     patternTreeMap.append(
-        new PartialPath("root.**.s1"), new Deletion(new PartialPath("root.**.s1"), 10, 100, 200));
+        new PartialPath("root.**.s1"),
+        new Deletion(new MeasurementPath("root.**.s1"), 10, 100, 200));
 
     patternTreeMap.append(
-        new PartialPath("root.**"), new Deletion(new PartialPath("root.**"), 5, 10, 100));
+        new PartialPath("root.**"), new Deletion(new MeasurementPath("root.**"), 5, 10, 100));
     patternTreeMap.append(
-        new PartialPath("root.**"), new Deletion(new PartialPath("root.**"), 5, 10, 100));
+        new PartialPath("root.**"), new Deletion(new MeasurementPath("root.**"), 5, 10, 100));
 
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s1"),
         Arrays.asList(
-            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3),
-            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10),
-            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
-            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
-            new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+            new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 1, 3),
+            new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 6, 10),
+            new Deletion(new MeasurementPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new MeasurementPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new MeasurementPath("root.**"), 5, 10, 100)));
 
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d2.s1"),
         Arrays.asList(
-            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
-            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
-            new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+            new Deletion(new MeasurementPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new MeasurementPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new MeasurementPath("root.**"), 5, 10, 100)));
 
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s2"),
-        Collections.singletonList(new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+        Collections.singletonList(new Deletion(new MeasurementPath("root.**"), 5, 10, 100)));
 
     patternTreeMap.append(
         new PartialPath("root.sg1.d2.s1"),
-        new Deletion(new PartialPath("root.sg1.d2.s1"), 4, 4, 6));
+        new Deletion(new MeasurementPath("root.sg1.d2.s1"), 4, 4, 6));
     patternTreeMap.append(
-        new PartialPath("root.**.s2"), new Deletion(new PartialPath("root.**.s2"), 4, 4, 6));
+        new PartialPath("root.**.s2"), new Deletion(new MeasurementPath("root.**.s2"), 4, 4, 6));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.s3"),
-        new Deletion(new PartialPath("root.sg1.d1.s3"), 4, 5, 6));
+        new Deletion(new MeasurementPath("root.sg1.d1.s3"), 4, 5, 6));
     patternTreeMap.append(
-        new PartialPath("root.sg1.d1.*"), new Deletion(new PartialPath("root.sg1.d1.*"), 8, 4, 6));
+        new PartialPath("root.sg1.d1.*"),
+        new Deletion(new MeasurementPath("root.sg1.d1.*"), 8, 4, 6));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.*.d3.s5"),
-        new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6));
+        new Deletion(new MeasurementPath("root.sg1.d1.*.d3.s5"), 2, 4, 6));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.*.d3.s4"),
-        new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6));
+        new Deletion(new MeasurementPath("root.sg1.d1.*.d3.s4"), 3, 4, 6));
 
     checkOverlappedByDevice(
         patternTreeMap,
         new PartialPath("root.sg1.d1"),
         Arrays.asList(
-            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3),
-            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10),
-            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
-            new Deletion(new PartialPath("root.**.s2"), 4, 4, 6),
-            new Deletion(new PartialPath("root.sg1.d1.s3"), 4, 5, 6),
-            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
-            new Deletion(new PartialPath("root.sg1.d1.*"), 8, 4, 6),
-            new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+            new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 1, 3),
+            new Deletion(new MeasurementPath("root.sg1.d1.s1"), 1, 6, 10),
+            new Deletion(new MeasurementPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new MeasurementPath("root.**.s2"), 4, 4, 6),
+            new Deletion(new MeasurementPath("root.sg1.d1.s3"), 4, 5, 6),
+            new Deletion(new MeasurementPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new MeasurementPath("root.sg1.d1.*"), 8, 4, 6),
+            new Deletion(new MeasurementPath("root.**"), 5, 10, 100)));
 
     checkOverlappedByDevice(
         patternTreeMap,
         new PartialPath("root.sg1.d1.t1.d3"),
         Arrays.asList(
-            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
-            new Deletion(new PartialPath("root.**.s2"), 4, 4, 6),
-            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
-            new Deletion(new PartialPath("root.**"), 5, 10, 100),
-            new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6),
-            new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6)));
+            new Deletion(new MeasurementPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new MeasurementPath("root.**.s2"), 4, 4, 6),
+            new Deletion(new MeasurementPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new MeasurementPath("root.**"), 5, 10, 100),
+            new Deletion(new MeasurementPath("root.sg1.d1.*.d3.s5"), 2, 4, 6),
+            new Deletion(new MeasurementPath("root.sg1.d1.*.d3.s4"), 3, 4, 6)));
   }
 
   private <T> void checkOverlapped(

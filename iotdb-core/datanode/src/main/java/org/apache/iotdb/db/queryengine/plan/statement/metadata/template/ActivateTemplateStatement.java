@@ -59,7 +59,7 @@ public class ActivateTemplateStatement extends Statement {
       return Collections.emptyList();
     }
     return templateSetInfo.left.getSchemaMap().keySet().stream()
-        .map(path::concatNode)
+        .map(path::concatAsMeasurementPath)
         .collect(Collectors.toList());
   }
 

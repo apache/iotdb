@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.node.metadata.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -171,7 +172,7 @@ public class MetadataWriteNodeSerDeTest {
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             planNodeId,
-            new PartialPath("root.db.d1.s1"),
+            new MeasurementPath("root.db.d1.s1"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
