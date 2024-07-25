@@ -38,4 +38,9 @@ public class SubscriptionRuntimeCriticalException extends SubscriptionException 
         && Objects.equals(
             getTimeStamp(), ((SubscriptionRuntimeCriticalException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

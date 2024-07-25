@@ -138,6 +138,7 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  @SuppressWarnings("java:S2276")
   public synchronized void start(boolean startConsensusPipes) throws IOException {
     stateMachine.start();
     MetricService.getInstance().addMetricSet(this.pipeConsensusServerMetrics);

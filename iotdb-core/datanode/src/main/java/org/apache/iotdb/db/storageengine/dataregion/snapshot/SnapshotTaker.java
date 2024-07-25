@@ -134,6 +134,34 @@ public class SnapshotTaker {
     }
   }
 
+  public boolean cleanSnapshot() {
+    return clearSnapshotOfDataRegion(this.dataRegion);
+  }
+
+  public static boolean clearSnapshotOfDataRegion(DataRegion dataRegion) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    boolean allSuccess = true;
+    for (String dataDir : dataDirs) {
+      StringBuilder pathBuilder = new StringBuilder(dataDir);
+      pathBuilder.append(File.separator).append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+      pathBuilder.append(File.separator).append(dataRegion.getDatabaseName());
+      pathBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR).append(dataRegion.getDataRegionId());
+      try {
+        String path = pathBuilder.toString();
+        if (new File(path).exists()) {
+          FileUtils.recursivelyDeleteFolder(path);
+        }
+      } catch (IOException e) {
+        allSuccess = false;
+        LOGGER.warn(
+            "Clear snapshot dir fail, you should manually delete this dir before do region migration again: {}",
+            pathBuilder,
+            e);
+      }
+    }
+    return allSuccess;
+  }
+
   private void readLockTheFile() {
     TsFileManager manager = dataRegion.getTsFileManager();
     manager.readLock();

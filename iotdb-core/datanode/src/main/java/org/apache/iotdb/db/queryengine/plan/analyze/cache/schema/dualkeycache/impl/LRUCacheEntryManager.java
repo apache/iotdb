@@ -111,6 +111,8 @@ class LRUCacheEntryManager<FK, SK, V>
   static class LRUCacheEntry<SK, V> implements ICacheEntry<SK, V> {
 
     private final SK secondKey;
+
+    @SuppressWarnings("java:S3077")
     private volatile ICacheEntryGroup cacheEntryGroup;
 
     private V value;

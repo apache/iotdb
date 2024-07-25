@@ -281,7 +281,7 @@ public class CommonConfig {
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
-  private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+  private long datanodeTokenTimeoutMS = 180 * 1000L; // 3 minutes
 
   // timeseries and device limit
   private long seriesLimitThreshold = -1;
