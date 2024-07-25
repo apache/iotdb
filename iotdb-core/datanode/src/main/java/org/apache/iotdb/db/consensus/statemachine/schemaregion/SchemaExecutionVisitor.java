@@ -141,7 +141,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
       PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
     return SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-        devicePath.concatNode(measurementGroup.getMeasurements().get(index)),
+        devicePath.concatAsMeasurementPath(measurementGroup.getMeasurements().get(index)),
         measurementGroup.getDataTypes().get(index),
         measurementGroup.getEncodings().get(index),
         measurementGroup.getCompressors().get(index),

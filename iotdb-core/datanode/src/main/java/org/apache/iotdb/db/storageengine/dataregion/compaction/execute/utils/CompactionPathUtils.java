@@ -32,7 +32,7 @@ public class CompactionPathUtils {
 
   public static PartialPath getPath(IDeviceID device, String measurement)
       throws IllegalPathException {
-    return getPath(device).concatNode(measurement);
+    return getPath(device).concatAsMeasurementPath(measurement);
   }
 
   public static PartialPath getPath(IDeviceID device) throws IllegalPathException {

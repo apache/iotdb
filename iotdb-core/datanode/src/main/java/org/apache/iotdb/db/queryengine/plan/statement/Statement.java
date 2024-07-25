@@ -60,7 +60,7 @@ public abstract class Statement extends StatementNode {
     return false;
   }
 
-  public abstract List<PartialPath> getPaths();
+  public abstract List<? extends PartialPath> getPaths();
 
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return AuthorityChecker.getTSStatus(

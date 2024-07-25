@@ -227,6 +227,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     Long queryId = null;
     try {
       if (requestBody != null && !requestBody.isEmpty()) {
+        // TODO: necessary to create a PartialPath
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
         Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
