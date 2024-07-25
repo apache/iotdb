@@ -1,6 +1,3 @@
-#!/bin/bash
-#
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -18,28 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-# the python version must be python3.
-python3 --version
-
-rm -Rf build
-rm -Rf dist
-rm -Rf iotdb_session.egg_info
-
-# (Re-)build generated code
-(cd ../..; mvn clean package -pl iotdb-client/client-py -am)
-
-# Run Linting
-black .
-
-# Run unit tests
-if [ "$1" == "test" ]; then
-  pytest .
-fi
-
-# See https://packaging.python.org/tutorials/packaging-projects/
-#python3 setup.py sdist bdist_wheel
-python3 -m build
-if [ "$1" == "release" ]; then
-  python3 -m twine upload  dist/*
-fi

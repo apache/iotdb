@@ -22,13 +22,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apache-iotdb"
-version = "1.3.3.dev0"
+version = "${iotdb_version}"
 description = "Apache IoTDB client API"
 readme = "README.md"
+readme-content-type = "text/markdown"
 authors = [
     { name = "Apache IoTDB", email = "dev@iotdb.apache.org" }
 ]
-license = { text = "Apache License, Version 2.0" }
+license = { text = "Apache License, Version 2.0", file = "LICENSE" }
+homepage = "https://github.com/apache/iotdb"
 keywords = ["iotdb", "apache", "client", "API"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -52,9 +54,6 @@ Documentation = "https://github.com/apache/iotdb"
 
 [project.entry-points."sqlalchemy.dialects"]
 iotdb = "iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect"
-
-[tool.setuptools]
-packages = ["iotdb"]
 
 [tool.black]
 line-length = 88
