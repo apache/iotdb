@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.relational.it.query.old.aligned;
+
+package org.apache.iotdb.relational.it.query.old.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -30,22 +31,13 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedSeriesQuery5TableIT extends IoTDBAlignedSeriesQueryTableIT {
-
+public class IoTDBOrderByLimitOffsetAlignByDeviceTable2IT
+    extends IoTDBOrderByLimitOffsetAlignByDeviceTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(1)
-        .setMaxNumberOfPointsInPage(1)
-        .setDriverTaskExecutionTimeSliceInMs(20);
-
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
-    TableUtils.insertData();
+    insertData3();
   }
 
   @AfterClass

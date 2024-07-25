@@ -38,7 +38,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
+public class IoTDBOrderByLimitOffsetAlignByDeviceTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {

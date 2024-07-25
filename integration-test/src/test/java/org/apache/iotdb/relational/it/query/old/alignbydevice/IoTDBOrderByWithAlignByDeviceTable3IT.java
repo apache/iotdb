@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.old.aligned;
+package org.apache.iotdb.relational.it.query.old.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -31,24 +31,17 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDown3TableIT extends IoTDBPredicatePushDownTableIT {
-
+public class IoTDBOrderByWithAlignByDeviceTable3IT extends IoTDBOrderByWithAlignByDeviceTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3)
-        .setMaxNumberOfPointsInPage(3);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
-    TableUtils.insertData();
+    insertData();
+    insertData2();
   }
 
   @AfterClass
-  public static void tearDown() {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

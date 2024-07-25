@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.relational.it.query.old.aligned;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -31,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDown2TableIT extends IoTDBPredicatePushDownTableIT {
+public class IoTDBAlignedSeriesQueryTable5IT extends IoTDBAlignedSeriesQueryTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -41,8 +40,10 @@ public class IoTDBPredicatePushDown2TableIT extends IoTDBPredicatePushDownTableI
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3)
-        .setMaxNumberOfPointsInPage(2);
+        .setMaxTsBlockLineNumber(1)
+        .setMaxNumberOfPointsInPage(1)
+        .setDriverTaskExecutionTimeSliceInMs(20);
+
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
   }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -30,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedSeriesQuery3TableIT extends IoTDBAlignedSeriesQueryTableIT {
+public class IoTDBAlignedSeriesQueryTable4IT extends IoTDBAlignedSeriesQueryTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -41,13 +41,13 @@ public class IoTDBAlignedSeriesQuery3TableIT extends IoTDBAlignedSeriesQueryTabl
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3)
-        .setMaxNumberOfPointsInPage(3);
+        .setDegreeOfParallelism(4);
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
   }
 
   @AfterClass
-  public static void tearDown() {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

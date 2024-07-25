@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDown4TableIT extends IoTDBPredicatePushDownTableIT {
+public class IoTDBPredicatePushDownTable4IT extends IoTDBPredicatePushDownTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
