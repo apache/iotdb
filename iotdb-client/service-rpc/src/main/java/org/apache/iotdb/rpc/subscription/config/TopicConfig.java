@@ -88,26 +88,16 @@ public class TopicConfig extends PipeParameters {
         attributes.getOrDefault(TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE));
   }
 
-  public Map<String, String> getAttributesWithTimeRange(final long creationTime) {
+  public Map<String, String> getAttributesWithTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
-    // parse start time
-    final String startTime =
-        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
-    if (TopicConstant.NOW_TIME_VALUE.equalsIgnoreCase(startTime)) {
-      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, String.valueOf(creationTime));
-    } else {
-      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, startTime);
-    }
-
-    // parse end time
-    final String endTime =
-        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
-    if (TopicConstant.NOW_TIME_VALUE.equalsIgnoreCase(endTime)) {
-      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, String.valueOf(creationTime));
-    } else {
-      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
-    }
+    // there should be no TopicConstant.NOW_TIME_VALUE here
+    attributesWithTimeRange.put(
+        TopicConstant.START_TIME_KEY,
+        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE)));
+    attributesWithTimeRange.put(
+        TopicConstant.END_TIME_KEY,
+        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE)));
 
     return attributesWithTimeRange;
   }

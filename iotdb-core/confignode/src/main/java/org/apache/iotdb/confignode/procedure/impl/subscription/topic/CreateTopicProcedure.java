@@ -20,9 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -78,9 +76,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     topicMeta =
         new TopicMeta(
             createTopicReq.getTopicName(),
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                System.currentTimeMillis(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            System.currentTimeMillis(),
             createTopicReq.getTopicAttributes());
   }
 
