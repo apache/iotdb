@@ -320,9 +320,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
               + region.getDatabaseName()
               + "-"
               + region.getDataRegionId();
-      File file = new File(snapshotDir).getCanonicalFile();
-      logger.info("snapshotDir: {},  file: {}", file.toString(), snapshotDir);
-      return file;
+      return new File(snapshotDir).getCanonicalFile();
     } catch (IOException | NullPointerException e) {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
       return null;
