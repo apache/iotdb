@@ -102,15 +102,13 @@ public class TableDeviceSchemaValidator {
       } else {
         final Object[] deviceAttributeValueList = attributeValueList.get(i);
         for (int j = 0, attributeSize = attributeKeyList.size(); j < attributeSize; j++) {
-          if (deviceAttributeValueList[j] != null) {
-            final String key = attributeKeyList.get(j);
-            if (!attributeMap.containsKey(key)) {
-              result.attributeMissingInCacheDeviceIndexList.add(i);
-              break;
-            } else if (!Objects.equals(attributeMap.get(key), deviceAttributeValueList[j])) {
-              result.attributeUpdateDeviceIndexList.add(i);
-              break;
-            }
+          final String key = attributeKeyList.get(j);
+          if (!attributeMap.containsKey(key)) {
+            result.attributeMissingInCacheDeviceIndexList.add(i);
+            break;
+          } else if (!Objects.equals(attributeMap.get(key), deviceAttributeValueList[j])) {
+            result.attributeUpdateDeviceIndexList.add(i);
+            break;
           }
         }
       }
