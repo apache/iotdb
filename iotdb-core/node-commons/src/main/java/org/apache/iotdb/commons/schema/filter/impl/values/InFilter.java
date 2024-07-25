@@ -30,6 +30,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -67,7 +68,7 @@ public class InFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(values.size(), byteBuffer);
     for (final String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);
@@ -75,10 +76,27 @@ public class InFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(values.size(), stream);
     for (final String value : values) {
       ReadWriteIOUtils.write(value, stream);
     }
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final InFilter that = (InFilter) o;
+    return Objects.equals(values, that.values);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(values);
   }
 }

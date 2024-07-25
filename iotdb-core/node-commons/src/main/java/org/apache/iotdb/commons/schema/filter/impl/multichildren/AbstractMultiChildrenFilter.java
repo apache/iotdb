@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
 
@@ -50,7 +51,7 @@ public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(children.size(), byteBuffer);
     for (final SchemaFilter child : children) {
       SchemaFilter.serialize(child, byteBuffer);
@@ -58,10 +59,27 @@ public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(children.size(), stream);
     for (final SchemaFilter child : children) {
       SchemaFilter.serialize(child, stream);
     }
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AbstractMultiChildrenFilter that = (AbstractMultiChildrenFilter) o;
+    return Objects.equals(children, that.children);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(children);
   }
 }

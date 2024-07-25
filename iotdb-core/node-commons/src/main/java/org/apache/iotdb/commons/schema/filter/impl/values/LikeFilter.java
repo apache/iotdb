@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 // Does not support escape now
 public class LikeFilter extends SchemaFilter {
@@ -56,12 +57,29 @@ public class LikeFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(regex, byteBuffer);
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(regex, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final LikeFilter that = (LikeFilter) o;
+    return Objects.equals(regex, that.regex);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(regex);
   }
 }

@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /**
  * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
@@ -62,14 +63,31 @@ public class AttributeFilter extends AbstractSingleChildFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(key, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AttributeFilter that = (AttributeFilter) o;
+    return super.equals(o) && Objects.equals(key, that.key);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(key, super.hashCode());
   }
 }

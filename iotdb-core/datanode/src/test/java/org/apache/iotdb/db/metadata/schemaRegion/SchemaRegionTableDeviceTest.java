@@ -173,8 +173,9 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             3,
             Collections.emptyList(),
             new OrFilter(
-                new IdFilter(new PreciseFilter("p_1"), 1),
-                new AttributeFilter(new PreciseFilter("daily"), "cycle")));
+                Arrays.asList(
+                    new IdFilter(new PreciseFilter("p_1"), 1),
+                    new AttributeFilter(new PreciseFilter("daily"), "cycle"))));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
@@ -253,8 +254,9 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             3,
             Collections.emptyList(),
             new OrFilter(
-                new IdFilter(new PreciseFilter((String) null), 2),
-                new AttributeFilter(new PreciseFilter((String) null), "cycle")));
+                Arrays.asList(
+                    new IdFilter(new PreciseFilter((String) null), 2),
+                    new AttributeFilter(new PreciseFilter((String) null), "cycle"))));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =

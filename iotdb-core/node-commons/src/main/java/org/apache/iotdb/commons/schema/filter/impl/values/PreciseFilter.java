@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PreciseFilter extends SchemaFilter {
 
@@ -60,12 +61,29 @@ public class PreciseFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(value, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PreciseFilter that = (PreciseFilter) o;
+    return Objects.equals(value, that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value);
   }
 }

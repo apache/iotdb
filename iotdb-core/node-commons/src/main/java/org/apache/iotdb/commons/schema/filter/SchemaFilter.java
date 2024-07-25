@@ -105,22 +105,24 @@ public abstract class SchemaFilter {
    * @param filterType type
    * @return list of SchemaFilter with specific type
    */
-  public static List<SchemaFilter> extract(SchemaFilter schemaFilter, SchemaFilterType filterType) {
-    List<SchemaFilter> res = new ArrayList<>();
+  public static List<SchemaFilter> extract(
+      final SchemaFilter schemaFilter, final SchemaFilterType filterType) {
+    final List<SchemaFilter> res = new ArrayList<>();
     internalExtract(res, schemaFilter, filterType);
     return res;
   }
 
   private static void internalExtract(
-      List<SchemaFilter> result, SchemaFilter schemaFilter, SchemaFilterType filterType) {
+      final List<SchemaFilter> result,
+      final SchemaFilter schemaFilter,
+      final SchemaFilterType filterType) {
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }
     // if binary filter, check left and right
     if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.AND)) {
-      AndFilter andFilter = (AndFilter) schemaFilter;
-      internalExtract(result, andFilter.getLeft(), filterType);
-      internalExtract(result, andFilter.getRight(), filterType);
+      final AndFilter andFilter = (AndFilter) schemaFilter;
+      andFilter.getChildren().forEach(child -> internalExtract(result, child, filterType));
     }
   }
 
@@ -128,7 +130,7 @@ public abstract class SchemaFilter {
 
   public abstract SchemaFilterType getSchemaFilterType();
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  protected abstract void serialize(ByteBuffer byteBuffer);
 
-  public abstract void serialize(DataOutputStream stream) throws IOException;
+  protected abstract void serialize(DataOutputStream stream) throws IOException;
 }

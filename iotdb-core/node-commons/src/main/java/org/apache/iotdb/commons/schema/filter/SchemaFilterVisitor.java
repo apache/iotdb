@@ -75,11 +75,11 @@ public abstract class SchemaFilterVisitor<C> {
   }
 
   public final boolean visitAndFilter(final AndFilter andFilter, final C context) {
-    return andFilter.getLeft().accept(this, context) && andFilter.getRight().accept(this, context);
+    return andFilter.getChildren().stream().allMatch(child -> child.accept(this, context));
   }
 
   public final boolean visitOrFilter(final OrFilter orFilter, final C context) {
-    return orFilter.getLeft().accept(this, context) || orFilter.getRight().accept(this, context);
+    return orFilter.getChildren().stream().anyMatch(child -> child.accept(this, context));
   }
 
   public final boolean visitNotFilter(final NotFilter notFilter, final C context) {

@@ -106,16 +106,13 @@ public class ConvertSchemaPredicateToFilterVisitor
   @Override
   protected SchemaFilter visitLogicalExpression(
       final LogicalExpression node, final Context context) {
-    final Expression rightExpression =
-        node.getTerms().size() == 2
-            ? node.getTerms().get(1)
-            : new LogicalExpression(
-                node.getOperator(), node.getTerms().subList(1, node.getTerms().size()));
+    final List<SchemaFilter> children =
+        node.getTerms().stream()
+            .map(expression -> expression.accept(this, context))
+            .collect(Collectors.toList());
     return node.getOperator() == LogicalExpression.Operator.OR
-        ? new OrFilter(
-            node.getTerms().get(0).accept(this, context), rightExpression.accept(this, context))
-        : new AndFilter(
-            node.getTerms().get(0).accept(this, context), rightExpression.accept(this, context));
+        ? new OrFilter(children)
+        : new AndFilter(children);
   }
 
   @Override

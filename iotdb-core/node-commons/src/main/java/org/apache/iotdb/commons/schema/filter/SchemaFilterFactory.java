@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
@@ -27,6 +28,8 @@ import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
 
 import org.apache.tsfile.enums.TSDataType;
+
+import java.util.Arrays;
 
 public class SchemaFilterFactory {
 
@@ -50,13 +53,13 @@ public class SchemaFilterFactory {
     return new TemplateFilter(templateName, isEqual);
   }
 
-  public static SchemaFilter and(SchemaFilter left, SchemaFilter right) {
+  public static SchemaFilter and(final SchemaFilter left, final SchemaFilter right) {
     if (left == null) {
       return right;
     } else if (right == null) {
       return left;
     } else {
-      return new AndFilter(left, right);
+      return new AndFilter(Arrays.asList(left, right));
     }
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public abstract class AbstractSingleChildFilter extends SchemaFilter {
 
@@ -43,12 +44,29 @@ public abstract class AbstractSingleChildFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(final ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     SchemaFilter.serialize(child, byteBuffer);
   }
 
   @Override
-  public void serialize(final DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     SchemaFilter.serialize(child, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AbstractSingleChildFilter that = (AbstractSingleChildFilter) o;
+    return Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(child);
   }
 }
