@@ -185,7 +185,7 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
-   * @return true if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
+   * @return false if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
    *     pipe without runtime exception)
    * @throws PipeException if validation for pipe parameters failed
    */

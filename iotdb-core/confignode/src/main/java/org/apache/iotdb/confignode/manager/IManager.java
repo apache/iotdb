@@ -632,7 +632,7 @@ public interface IManager {
   TSStatus stopPipe(String pipeName);
 
   /**
-   * Drop Pipe function with IF Exists semantics.
+   * Drop Pipe function with If Exists semantics.
    *
    * @param req
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link

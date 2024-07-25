@@ -134,7 +134,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       return Flow.NO_MORE_STATE;
     }
 
-    // If the plugin does not exist and the IFExists condition is met, the process ends.
+    // If the plugin does not exist and the If Exists condition is met, the process ends.
     if (!exists) {
       LOGGER.info(
           "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})",

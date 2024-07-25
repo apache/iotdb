@@ -130,7 +130,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     pipePluginCoordinator.lock();
     boolean notExists = true;
     try {
-      // If the result is ture, the Procedure will continue; if it is false, the Procedure will exit
+      // If the result is ture, the procedure will continue; if it is false, the procedure will exit
       // normally.
       notExists =
           pipePluginCoordinator

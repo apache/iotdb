@@ -164,7 +164,7 @@ public class SubscriptionCoordinator {
       return RpcUtils.getStatus(
           TSStatusCode.TOPIC_NOT_EXIST_ERROR,
           String.format(
-              "Failed to drop Topic %s. Failures: %s does not exist.",
+              "Failed to drop topic %s. Failures: %s does not exist.",
               req.getTopicName(), req.getTopicName()));
     }
 

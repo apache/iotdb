@@ -169,8 +169,8 @@ public class PipeTaskCoordinator {
     }
 
     if (!isPipeExistedBeforeDrop && !req.isIfExistsCondition()) {
-      // If the IF EXISTS condition is not set and the pipe does not exist before the delete
-      // operation,return an error status indicating that the pipe does not exist.
+      // If the If Exists condition is not set and the pipe does not exist before the delete
+      // operation, return an error status indicating that the pipe does not exist.
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
