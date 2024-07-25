@@ -52,10 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -240,13 +238,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+          .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",
@@ -322,7 +320,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
               + region.getDatabaseName()
               + "-"
               + region.getDataRegionId();
-      return new File(snapshotDir).getCanonicalFile();
+      File file = new File(snapshotDir).getCanonicalFile();
+      logger.info("snapshotDir: {},  file: {}", file.toString(), snapshotDir);
+      return file;
     } catch (IOException | NullPointerException e) {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
       return null;
