@@ -3,6 +3,6 @@
 /build/
 /dist/
 /apache_iotdb.egg-info
-pyproject.toml
+/pyproject.toml
 !/resources/pyproject.toml
 
