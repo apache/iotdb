@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -149,7 +151,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       byte[] bytes = new byte[length];
       buffer.get(bytes);
       try {
-        createAlignedTimeSeriesPlan.setDevicePath(new PartialPath(new String(bytes)));
+        createAlignedTimeSeriesPlan.setDevicePath(
+            new PartialPath(new String(bytes, TSFileConfig.STRING_CHARSET)));
       } catch (IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
@@ -225,7 +228,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       byte[] bytes = new byte[length];
       buffer.get(bytes);
       try {
-        createTimeSeriesPlan.setPath(new PartialPath(new String(bytes)));
+        createTimeSeriesPlan.setPath(
+            new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET)));
       } catch (IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }

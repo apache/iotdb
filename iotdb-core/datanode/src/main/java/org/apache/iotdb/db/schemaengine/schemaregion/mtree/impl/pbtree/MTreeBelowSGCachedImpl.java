@@ -415,7 +415,7 @@ public class MTreeBelowSGCachedImpl {
                     node.getAsMeasurementMNode();
                 if (node.getAsMeasurementMNode().isPreDeleted()) {
                   throw new MeasurementInBlackListException(
-                      devicePath.concatNode(measurements.get(i)));
+                      devicePath.concatAsMeasurementPath(measurements.get(i)));
                 } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
                   throw new MeasurementAlreadyExistException(
                       devicePath.getFullPath() + "." + measurements.get(i),

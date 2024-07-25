@@ -102,12 +102,12 @@ public class CollectNode extends MultiChildProcessNode {
   }
 
   public static CollectNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> outputs = new ArrayList<>(size);
     while (size-- > 0) {
       outputs.add(Symbol.deserialize(byteBuffer));
     }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     CollectNode collectNode = new CollectNode(planNodeId);
     collectNode.setOutputSymbols(outputs);
     return collectNode;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -194,7 +195,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
             if (tsFileResource != null) {
               for (IDeviceID device : tsFileResource.getDevices()) {
                 memTable.delete(
-                    new PartialPath(device, "*"),
+                    new MeasurementPath(device, "*"),
                     new PartialPath(device),
                     tsFileResource.getStartTime(device),
                     tsFileResource.getEndTime(device));

@@ -90,7 +90,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
