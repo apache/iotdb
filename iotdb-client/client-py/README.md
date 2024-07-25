@@ -601,8 +601,7 @@ Namely, these are
 
 * Remove all transient directories from last release (if exists)
 * (Re-)generate all generated sources via mvn
-* Run Linting
-* Run Tests via pytest
+* Run Tests via pytest (optional)
 * Build
 * Release to pypi
 
