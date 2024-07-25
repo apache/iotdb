@@ -30,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedSeriesQuery3IT extends IoTDBAlignedSeriesQueryIT {
+public class IoTDBAlignedSeriesQuery5TableIT extends IoTDBAlignedSeriesQueryTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -40,14 +40,16 @@ public class IoTDBAlignedSeriesQuery3IT extends IoTDBAlignedSeriesQueryIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3)
-        .setMaxNumberOfPointsInPage(3);
+        .setMaxTsBlockLineNumber(1)
+        .setMaxNumberOfPointsInPage(1)
+        .setDriverTaskExecutionTimeSliceInMs(20);
+
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
   }
 
   @AfterClass
-  public static void tearDown() {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

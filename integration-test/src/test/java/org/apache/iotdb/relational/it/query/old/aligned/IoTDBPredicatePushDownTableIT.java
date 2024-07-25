@@ -35,7 +35,7 @@ import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.tableR
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDownIT {
+public class IoTDBPredicatePushDownTableIT {
 
   private final String database = "db";
 

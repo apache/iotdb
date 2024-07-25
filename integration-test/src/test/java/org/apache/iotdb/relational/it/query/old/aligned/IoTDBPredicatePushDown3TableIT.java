@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDown4IT extends IoTDBPredicatePushDownIT {
+public class IoTDBPredicatePushDown3TableIT extends IoTDBPredicatePushDownTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -42,13 +42,13 @@ public class IoTDBPredicatePushDown4IT extends IoTDBPredicatePushDownIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3)
-        .setDegreeOfParallelism(4);
+        .setMaxNumberOfPointsInPage(3);
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

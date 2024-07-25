@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.relational.it.query.old.aligned;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -31,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPredicatePushDown3IT extends IoTDBPredicatePushDownIT {
+public class IoTDBAlignedSeriesQuery3TableIT extends IoTDBAlignedSeriesQueryTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {

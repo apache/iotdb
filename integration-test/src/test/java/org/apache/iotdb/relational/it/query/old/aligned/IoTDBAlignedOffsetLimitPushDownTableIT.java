@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedOffsetLimitPushDownIT {
+public class IoTDBAlignedOffsetLimitPushDownTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {

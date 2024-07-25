@@ -57,7 +57,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedSeriesQueryIT {
+public class IoTDBAlignedSeriesQueryTableIT {
 
   private static final double DELTA = 1e-6;
 
