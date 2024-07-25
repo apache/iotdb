@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChildFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -86,20 +87,21 @@ public class SchemaPredicateUtil {
             .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
-    int finalResultSize = 1;
+    int remainingCaseNum = 1;
     for (final List<Expression> filterList : orConcatList) {
-      finalResultSize *= filterList.size();
+      remainingCaseNum *= filterList.size();
     }
     final List<Map<Integer, List<SchemaFilter>>> result = new ArrayList<>();
     final int[] indexes = new int[orSize]; // index count, each case represents one possible result
     boolean hasConflictFilter;
     Expression currentExpression;
-    while (finalResultSize > 0) {
+    while (remainingCaseNum > 0) {
       hasConflictFilter = false;
       final Map<Integer, List<SchemaFilter>> oneCase = new HashMap<>();
       for (int j = 0; j < orSize; j++) {
         currentExpression = orConcatList.get(j).get(indexes[j]);
-        if (!handleFilter((IdFilter) currentExpression.accept(visitor, context), oneCase)) {
+        if (!handleFilter(
+            (AbstractSingleChildFilter) currentExpression.accept(visitor, context), oneCase)) {
           hasConflictFilter = true;
           break;
         }
@@ -116,41 +118,51 @@ public class SchemaPredicateUtil {
         }
         indexes[k] = 0;
       }
-      finalResultSize--;
+      remainingCaseNum--;
     }
     return result;
   }
 
   private static boolean handleFilter(
-      final IdFilter filter, final Map<Integer, List<SchemaFilter>> index2FilterMap) {
-    final int index = filter.getIndex();
-    final SchemaFilter childFilter = filter.getChild();
+      final AbstractSingleChildFilter filter,
+      final Map<Integer, List<SchemaFilter>> index2FilterMap) {
+    // Only "not" and "IdFilter" is possible here to be the root filter
+    AbstractSingleChildFilter currentFilter = filter;
+    boolean isNotFilter = false;
+    while (currentFilter.getSchemaFilterType().equals(SchemaFilterType.NOT)) {
+      currentFilter = (AbstractSingleChildFilter) currentFilter.getChild();
+      isNotFilter = !isNotFilter;
+    }
+
+    final int index = ((IdFilter) currentFilter).getIndex();
+    final SchemaFilter childFilter = currentFilter.getChild();
 
     if (!index2FilterMap.containsKey(index)) {
-      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(childFilter);
+      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(filter);
     }
-    if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+    if (!isNotFilter && childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
       if (index2FilterMap.get(index).stream()
           .allMatch(
               existingFilter ->
                   existingFilter.accept(
                       StringValueFilterVisitor.getInstance(),
                       ((PreciseFilter) childFilter).getValue()))) {
-        index2FilterMap.put(index, Collections.singletonList(childFilter));
+        index2FilterMap.put(index, Collections.singletonList(currentFilter));
       } else {
         return false;
       }
     } else {
-      if (index2FilterMap
-          .get(index)
-          .get(0)
-          .getSchemaFilterType()
-          .equals(SchemaFilterType.PRECISE)) {
-        return childFilter.accept(
+      final SchemaFilter firstFilter = index2FilterMap.get(index).get(0);
+      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.ID))
+          && ((IdFilter) firstFilter)
+              .getChild()
+              .getSchemaFilterType()
+              .equals(SchemaFilterType.PRECISE)) {
+        return filter.accept(
             StringValueFilterVisitor.getInstance(),
             ((PreciseFilter) index2FilterMap.get(index).get(0)).getValue());
       } else {
-        index2FilterMap.get(index).add(childFilter);
+        index2FilterMap.get(index).add(filter);
       }
     }
     return true;
@@ -177,17 +189,18 @@ public class SchemaPredicateUtil {
       final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
       final TsTable tableInstance) {
     final List<Integer> selectedExpressionCases = new ArrayList<>();
-    int idCount = tableInstance.getIdNums();
+    final int idCount = tableInstance.getIdNums();
     for (int i = 0; i < index2FilterMapList.size(); i++) {
       final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
       if (filterMap.size() == idCount
           && filterMap.values().stream()
               .allMatch(
                   filterList ->
-                      ((IdFilter) filterList.get(0))
-                          .getChild()
-                          .getSchemaFilterType()
-                          .equals(SchemaFilterType.PRECISE))) {
+                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.ID)
+                          && ((IdFilter) filterList.get(0))
+                              .getChild()
+                              .getSchemaFilterType()
+                              .equals(SchemaFilterType.PRECISE))) {
         selectedExpressionCases.add(i);
       }
     }

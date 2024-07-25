@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.schema.filter.impl;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -49,6 +51,16 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
   @Override
   public boolean visitLikeFilter(final LikeFilter filter, final String context) {
     return compileRegex(filter.getRegex()).matcher(context).find();
+  }
+
+  @Override
+  public boolean visitIdFilter(final IdFilter filter, final String context) {
+    return filter.getChild().accept(this, context);
+  }
+
+  @Override
+  public boolean visitAttributeFilter(final AttributeFilter filter, final String context) {
+    return filter.getChild().accept(this, context);
   }
 
   private static class StringValueFilterVisitorContainer {
