@@ -160,7 +160,7 @@ public class SchemaPredicateUtil {
               .equals(SchemaFilterType.PRECISE)) {
         return filter.accept(
             StringValueFilterVisitor.getInstance(),
-            ((PreciseFilter) index2FilterMap.get(index).get(0)).getValue());
+            ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue());
       } else {
         index2FilterMap.get(index).add(filter);
       }
