@@ -38,7 +38,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
+public class IoTDBOrderByLimitOffsetAlignByDeviceTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -57,7 +57,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray = new String[] {"1970-01-01T00:00:00.003Z,d1,111,"};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE s1>40 ORDER BY Time LIMIT 1",
+        "SELECT * FROM table1 WHERE s1>40 ORDER BY Time, device_id LIMIT 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -78,7 +78,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     // 4. both exist OFFSET and LIMIT, can push down LIMIT as OFFSET+LIMIT
     retArray = new String[] {"1970-01-01T00:00:00.003Z,d2,222,"};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 ORDER BY Time DESC OFFSET 1 LIMIT 1",
+        "SELECT * FROM table1 ORDER BY Time DESC, device_id OFFSET 1 LIMIT 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

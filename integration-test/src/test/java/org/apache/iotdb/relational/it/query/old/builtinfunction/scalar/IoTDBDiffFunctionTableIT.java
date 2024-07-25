@@ -38,7 +38,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDiffFunctionIT {
+public class IoTDBDiffFunctionTableIT {
 
   private static final String DATABASE_NAME = "db";
 

@@ -39,7 +39,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignByDeviceIT {
+public class IoTDBAlignByDeviceTableIT {
 
   private static final String DATABASE_NAME = "db";
 

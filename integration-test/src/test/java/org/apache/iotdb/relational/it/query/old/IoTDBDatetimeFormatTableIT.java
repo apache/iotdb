@@ -41,7 +41,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDatetimeFormatIT {
+public class IoTDBDatetimeFormatTableIT {
 
   private static final String DATABASE_NAME = "db";
 

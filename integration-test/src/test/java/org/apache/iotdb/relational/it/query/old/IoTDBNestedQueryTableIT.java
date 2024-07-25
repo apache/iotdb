@@ -43,7 +43,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBNestedQueryIT {
+public class IoTDBNestedQueryTableIT {
 
   private static final String DATABASE_NAME = "db";
 
