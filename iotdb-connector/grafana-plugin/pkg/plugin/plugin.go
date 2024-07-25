@@ -291,6 +291,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	}
 	// create data frame response.
 	frame := data.NewFrame("response")
+	times := nil
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
 		if queryDataResp.Timestamps != nil && len(queryDataResp.Timestamps) > 0 {
 			times := make([]time.Time, len(queryDataResp.Timestamps))
