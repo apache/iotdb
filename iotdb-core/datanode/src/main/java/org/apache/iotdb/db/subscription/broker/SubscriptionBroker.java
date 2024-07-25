@@ -144,8 +144,10 @@ public class SubscriptionBroker {
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
-        // No logs are printed here because there will be a delay in the creation of the prefetching
-        // queue after subscription.
+        LOGGER.warn(
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+            topicName,
+            brokerId);
         continue;
       }
       if (prefetchingQueue.isClosed()) {
