@@ -63,42 +63,42 @@ public class IoTDBOrderByTableIT {
       new String[] {
         "CREATE DATABASE sg",
         "USE sg",
-        "CREATE TABLE table0 (d string id, attr1 string attribute, num int32 measurement, bigNum int32 measurement, "
+        "CREATE TABLE table0 (device string id, attr1 string attribute, num int32 measurement, bigNum int64 measurement, "
             + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement);",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values(d1, 51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 0,3,2947483648,231.2121,'coconut',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 20,2,2147483648,434.12,'pineapple',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 40,1,2247483648,12.123,'apricot',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 80,9,2147483646,43.12,'apple',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 100,8,2147483964,4654.231,'papaya',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536000000,6,2147483650,1231.21,'banana',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536000100,10,3147483648,231.55,'pumelo',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536000500,4,2147493648,213.1,'peach',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536001000,5,2149783648,56.32,'orange',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536010000,7,2147983648,213.112,'lemon',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 31536100000,11,2147468648,54.121,'pitaya',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 41536000000,12,2146483648,45.231,'strawberry',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 41536000020,14,2907483648,231.34,'cherry',FALSE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 41536900000,13,2107483648,54.12,'lychee',TRUE)",
+        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 51536000000,15,3147483648,235.213,'watermelon',TRUE)"
       };
 
   private static final String[] sql2 =
       new String[] {
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into table0(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',0,3,2947483648,231.2121,'coconut',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',20,2,2147483648,434.12,'pineapple',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',40,1,2247483648,12.123,'apricot',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',80,9,2147483646,43.12,'apple',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',100,8,2147483964,4654.231,'papaya',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536000000,6,2147483650,1231.21,'banana',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536000100,10,3147483648,231.55,'pumelo',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536000500,4,2147493648,213.1,'peach',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536001000,5,2149783648,56.32,'orange',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536010000,7,2147983648,213.112,'lemon',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',31536100000,11,2147468648,54.121,'pitaya',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',41536000000,12,2146483648,45.231,'strawberry',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',41536000020,14,2907483648,231.34,'cherry',FALSE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',41536900000,13,2107483648,54.12,'lychee',TRUE)",
+        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',51536000000,15,3147483648,235.213,'watermelon',TRUE)"
       };
 
   @BeforeClass
