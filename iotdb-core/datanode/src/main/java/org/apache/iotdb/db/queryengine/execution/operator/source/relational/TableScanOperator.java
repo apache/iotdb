@@ -56,7 +56,6 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedS
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class TableScanOperator extends AbstractSeriesScanOperator {
-
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
 
@@ -257,7 +256,8 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp();
+    return (retainedTsBlock == null)
+        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
   }
 
   @Override
