@@ -202,7 +202,7 @@ public class IoTDBTableIT {
 
       String[] columnNames =
           new String[] {
-            "Time", "region_id", "plant_id", "device_id", "model", "temperature", "humidity"
+            "time", "region_id", "plant_id", "device_id", "model", "temperature", "humidity"
           };
       String[] dataTypes =
           new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
@@ -226,7 +226,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      columnNames = new String[] {"Time", "region_id", "plant_id", "color", "temperature", "speed"};
+      columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
 
