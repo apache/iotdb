@@ -432,7 +432,7 @@ public class PipeConsensusReceiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        tsFileWriter.returnSelf();
+        tsFileWriter.returnSelf(consensusPipeName);
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file {} successfully.",
             consensusPipeName,
@@ -552,7 +552,7 @@ public class PipeConsensusReceiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        tsFileWriter.returnSelf();
+        tsFileWriter.returnSelf(consensusPipeName);
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file with mods {} successfully.",
             consensusPipeName,
@@ -1090,6 +1090,7 @@ public class PipeConsensusReceiver {
               }
             }
             diskBuffer.closeSelf(consensusPipeName);
+            diskBuffer.returnSelf(consensusPipeName);
           });
     }
   }
@@ -1141,9 +1142,13 @@ public class PipeConsensusReceiver {
       isUsed = used;
     }
 
-    public void returnSelf() {
+    public void returnSelf(ConsensusPipeName consensusPipeName) {
       this.isUsed = false;
       this.commitIdOfCorrespondingHolderEvent = null;
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self",
+          consensusPipeName.toString(),
+          index);
     }
 
     public void closeSelf(ConsensusPipeName consensusPipeName) {
