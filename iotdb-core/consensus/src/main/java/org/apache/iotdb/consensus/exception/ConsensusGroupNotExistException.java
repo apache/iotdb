@@ -25,6 +25,11 @@ public class ConsensusGroupNotExistException extends ConsensusException {
 
   private final transient ConsensusGroupId groupId;
 
+  public ConsensusGroupNotExistException(String cause) {
+    super(cause);
+    this.groupId = null;
+  }
+
   public ConsensusGroupNotExistException(ConsensusGroupId groupId) {
     super(String.format("The consensus group %s doesn't exist", groupId));
     this.groupId = groupId;
