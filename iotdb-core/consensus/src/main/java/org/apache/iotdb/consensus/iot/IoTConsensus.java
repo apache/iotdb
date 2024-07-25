@@ -474,7 +474,11 @@ public class IoTConsensus implements IConsensus {
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
     config = consensusConfig.getIotConsensusConfig();
 
-    // only update region migration speed limit for now
+    for (IoTConsensusServerImpl impl : stateMachineMap.values()) {
+      impl.reloadConsensusConfig(config);
+    }
+
+    // update region migration speed limit
     IoTConsensusRateLimiter.getInstance()
         .init(config.getReplication().getRegionMigrationSpeedLimitBytesPerSecond());
   }
