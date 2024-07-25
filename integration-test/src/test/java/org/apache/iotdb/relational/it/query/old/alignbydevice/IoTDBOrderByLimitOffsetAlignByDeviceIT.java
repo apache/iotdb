@@ -57,7 +57,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray = new String[] {"1970-01-01T00:00:00.003Z,d1,111,"};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE s1>40 ORDER BY Time LIMIT 1",
+        "SELECT * FROM table1 WHERE s1>40 ORDER BY Time, device_id LIMIT 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
