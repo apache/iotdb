@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignByDeviceTable3IT extends IoTDBAlignByDeviceIT {
+public class IoTDBAlignByDeviceTable3IT extends IoTDBAlignByDeviceTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
