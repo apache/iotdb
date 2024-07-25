@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
@@ -105,13 +106,16 @@ public class ConvertSchemaPredicateToFilterVisitor
   @Override
   protected SchemaFilter visitLogicalExpression(
       final LogicalExpression node, final Context context) {
-    if (node.getOperator() != LogicalExpression.Operator.OR || node.getTerms().size() != 2) {
-      throw new IllegalStateException(
-          "Operator is " + node.getOperator() + ", operand size is " + node.getTerms().size());
-    }
-    // The operator of the logical expression shall be OR
-    return new OrFilter(
-        node.getTerms().get(0).accept(this, context), node.getTerms().get(1).accept(this, context));
+    final Expression rightExpression =
+        node.getTerms().size() == 2
+            ? node.getTerms().get(1)
+            : new LogicalExpression(
+                node.getOperator(), node.getTerms().subList(1, node.getTerms().size()));
+    return node.getOperator() == LogicalExpression.Operator.OR
+        ? new OrFilter(
+            node.getTerms().get(0).accept(this, context), rightExpression.accept(this, context))
+        : new AndFilter(
+            node.getTerms().get(0).accept(this, context), rightExpression.accept(this, context));
   }
 
   @Override
