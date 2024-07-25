@@ -37,6 +37,7 @@ public class IoTDBOrderByWithAlignByDevice2IT extends IoTDBOrderByWithAlignByDev
     EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertData2();
   }
 
   @AfterClass
