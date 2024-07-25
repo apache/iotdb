@@ -15,15 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
--r requirements.txt
-# Pytest to run tests
-pytest>=7.0.0
-testcontainers==3.4.2
-# For Linting
-flake8>=5.0.0
-black>=22.8.0
-# For releases
-twine==3.4.1
-wheel>=0.37.1
-build >= 0.9.0
