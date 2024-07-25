@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -46,7 +47,7 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private final List<List<Expression>> idDeterminedPredicateList;
+  private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   private final Expression idFuzzyPredicate;
@@ -55,7 +56,7 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
       PlanNodeId planNodeId,
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedPredicateList,
+      List<List<SchemaFilter>> idDeterminedPredicateList,
       Expression idFuzzyPredicate,
       List<ColumnHeader> columnHeaderList,
       TRegionReplicaSet schemaRegionReplicaSet) {
@@ -64,7 +65,7 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     this.idFuzzyPredicate = idFuzzyPredicate;
   }
 
-  public List<List<Expression>> getIdDeterminedPredicateList() {
+  public List<List<SchemaFilter>> getIdDeterminedPredicateList() {
     return idDeterminedPredicateList;
   }
 
@@ -101,10 +102,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
     ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
-    for (List<Expression> filterList : idDeterminedPredicateList) {
+    for (List<SchemaFilter> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), byteBuffer);
-      for (Expression expression : filterList) {
-        Expression.serialize(expression, byteBuffer);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, byteBuffer);
       }
     }
 
@@ -126,10 +127,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(tableName, stream);
 
     ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
-    for (List<Expression> filterList : idDeterminedPredicateList) {
+    for (List<SchemaFilter> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
-      for (Expression expression : filterList) {
-        Expression.serialize(expression, stream);
+      for (SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, stream);
       }
     }
 
@@ -149,12 +150,12 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
     String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<List<Expression>> idDeterminedFilterList = new ArrayList<>(size);
+    List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       int singleSize = ReadWriteIOUtils.readInt(buffer);
       idDeterminedFilterList.add(new ArrayList<>(singleSize));
       for (int k = 0; k < singleSize; k++) {
-        idDeterminedFilterList.get(i).add(Expression.deserialize(buffer));
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
       }
     }
 
@@ -181,11 +182,17 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    TableDeviceQueryNode that = (TableDeviceQueryNode) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    final TableDeviceQueryNode that = (TableDeviceQueryNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)

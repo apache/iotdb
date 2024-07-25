@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -57,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -158,56 +158,57 @@ public class TableDeviceSchemaFetcher {
   }
 
   public List<DeviceEntry> fetchDeviceSchemaForDataQuery(
-      String database,
-      String table,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext queryContext) {
-    List<DeviceEntry> deviceEntryList = new ArrayList<>();
+      final String database,
+      final String table,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext queryContext) {
+    final List<DeviceEntry> deviceEntryList = new ArrayList<>();
 
-    TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
+    final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
-    Pair<List<Expression>, List<Expression>> separatedExpression =
+    final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(expressionList, tableInstance);
-    List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
-    List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
+    final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
+    final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
 
     // here we use binary tree way, because the following SchemaFilter only support binary OrFilter
     // TODO table metadata: add multi way OrFilter for SchemaFilter
-    Expression compactedIdFuzzyPredicate =
+    final Expression compactedIdFuzzyPredicate =
         SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyPredicateList);
 
     // each element represents one batch of possible devices
     // expressions inner each element are and-concat representing conditions of different column
-    List<List<Expression>> idPredicateList =
-        SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(idDeterminedPredicateList);
+    final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList =
+        SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(
+            idDeterminedPredicateList, tableInstance);
     // if List<Expression> in idPredicateList contains all id columns comparison which can use
     // SchemaCache, we store its index.
-    List<Integer> idSingleMatchIndexList =
-        SchemaPredicateUtil.extractIdSingleMatchExpressionCases(idPredicateList, tableInstance);
+    final List<Integer> idSingleMatchIndexList =
+        SchemaPredicateUtil.extractIdSingleMatchExpressionCases(index2FilterMapList, tableInstance);
     // store missing cache index in idSingleMatchIndexList
-    List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
+    final List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
 
     if (!idSingleMatchIndexList.isEmpty()) {
       // try get from cache
-      ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
-      ConvertSchemaPredicateToFilterVisitor.Context context =
+      final ConvertSchemaPredicateToFilterVisitor visitor =
+          new ConvertSchemaPredicateToFilterVisitor();
+      final ConvertSchemaPredicateToFilterVisitor.Context context =
           new ConvertSchemaPredicateToFilterVisitor.Context(tableInstance);
-      DeviceInCacheFilterVisitor filterVisitor = new DeviceInCacheFilterVisitor(attributeColumns);
-      SchemaFilter fuzzyFilter =
+      final DeviceInCacheFilterVisitor filterVisitor =
+          new DeviceInCacheFilterVisitor(attributeColumns);
+      final SchemaFilter fuzzyFilter =
           compactedIdFuzzyPredicate == null
               ? null
               : compactedIdFuzzyPredicate.accept(visitor, context);
-      for (int index : idSingleMatchIndexList) {
+      for (final int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
             database,
             tableInstance,
-            idPredicateList.get(index).stream()
-                .map(o -> o.accept(visitor, context))
-                .collect(Collectors.toList()),
+            index2FilterMapList.get(index),
             o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
             attributeColumns)) {
           idSingleMatchPredicateNotInCache.add(index);
@@ -215,23 +216,29 @@ public class TableDeviceSchemaFetcher {
       }
     }
 
-    if (idSingleMatchIndexList.size() < idPredicateList.size()
+    if (idSingleMatchIndexList.size() < index2FilterMapList.size()
         || !idSingleMatchPredicateNotInCache.isEmpty()) {
-      List<List<Expression>> idPredicateForFetch =
+      List<List<SchemaFilter>> idPredicateForFetch =
           new ArrayList<>(
-              idPredicateList.size()
+              index2FilterMapList.size()
                   - idSingleMatchIndexList.size()
                   + idSingleMatchPredicateNotInCache.size());
       int idx1 = 0;
       int idx2 = 0;
-      for (int i = 0; i < idPredicateList.size(); i++) {
+      for (int i = 0; i < index2FilterMapList.size(); i++) {
         if (idx1 >= idSingleMatchIndexList.size() || i != idSingleMatchIndexList.get(idx1)) {
-          idPredicateForFetch.add(idPredicateList.get(i));
+          idPredicateForFetch.add(
+              index2FilterMapList.get(i).values().stream()
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList()));
         } else {
           idx1++;
           if (idx2 >= idSingleMatchPredicateNotInCache.size()
               || i == idSingleMatchPredicateNotInCache.get(idx2)) {
-            idPredicateForFetch.add(idPredicateList.get(i));
+            idPredicateForFetch.add(
+                index2FilterMapList.get(i).values().stream()
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList()));
             idx2++;
           }
         }
@@ -244,7 +251,7 @@ public class TableDeviceSchemaFetcher {
           compactedIdFuzzyPredicate,
           deviceEntryList,
           // only cache those exact device query
-          idSingleMatchIndexList.size() == idPredicateList.size(),
+          idSingleMatchIndexList.size() == index2FilterMapList.size(),
           queryContext);
     }
 
@@ -260,16 +267,13 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList,
       final String database,
       final TsTable tableInstance,
-      final List<SchemaFilter> idFilters,
+      final Map<Integer, List<SchemaFilter>> idFilters,
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns) {
     final String[] idValues = new String[tableInstance.getIdNums()];
-    for (final SchemaFilter schemaFilter : idFilters) {
-      final IdFilter idFilter = (IdFilter) schemaFilter;
+    for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
+      final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
-      if (!childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
-        return false;
-      }
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
@@ -298,21 +302,21 @@ public class TableDeviceSchemaFetcher {
   }
 
   private void fetchMissingDeviceSchemaForQuery(
-      String database,
-      TsTable tableInstance,
-      List<String> attributeColumns,
-      List<List<Expression>> idDeterminedPredicateList,
-      Expression idFuzzyPredicate,
-      List<DeviceEntry> deviceEntryList,
-      boolean cacheFetchedDevice,
-      MPPQueryContext mppQueryContext) {
+      final String database,
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final List<List<SchemaFilter>> idDeterminedFilterList,
+      final Expression idFuzzyPredicate,
+      final List<DeviceEntry> deviceEntryList,
+      final boolean cacheFetchedDevice,
+      final MPPQueryContext mppQueryContext) {
 
-    String table = tableInstance.getTableName();
+    final String table = tableInstance.getTableName();
 
-    long queryId = SessionManager.getInstance().requestQueryId();
-    ShowDevice statement =
-        new ShowDevice(database, table, idDeterminedPredicateList, idFuzzyPredicate);
-    ExecutionResult executionResult =
+    final long queryId = SessionManager.getInstance().requestQueryId();
+    final ShowDevice statement =
+        new ShowDevice(database, table, idDeterminedFilterList, idFuzzyPredicate);
+    final ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
             relationSqlParser,
@@ -331,30 +335,30 @@ public class TableDeviceSchemaFetcher {
               executionResult.status.getMessage(), executionResult.status.getCode()));
     }
 
-    List<ColumnHeader> columnHeaderList =
+    final List<ColumnHeader> columnHeaderList =
         coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
     Throwable t = null;
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-        Optional<TsBlock> tsBlock;
+        final Optional<TsBlock> tsBlock;
         try {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-        } catch (IoTDBException e) {
+        } catch (final IoTDBException e) {
           t = e;
           throw new RuntimeException("Fetch Table Device Schema failed. ", e);
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-        Column[] columns = tsBlock.get().getValueColumns();
+        final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          String[] nodes = new String[idLength + 1];
+          final String[] nodes = new String[idLength + 1];
           nodes[0] = table;
-          Map<String, String> attributeMap = new HashMap<>();
+          final Map<String, String> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
-          IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
+          final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
           // TODO table metadata: add memory control in query
           deviceEntryList.add(
               new DeviceEntry(
@@ -365,7 +369,7 @@ public class TableDeviceSchemaFetcher {
           }
         }
       }
-    } catch (Throwable throwable) {
+    } catch (final Throwable throwable) {
       t = throwable;
       throw throwable;
     } finally {

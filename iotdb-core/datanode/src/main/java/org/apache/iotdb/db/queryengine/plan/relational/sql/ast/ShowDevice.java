@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.List;
@@ -40,7 +42,7 @@ public class ShowDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<Expression>> idDeterminedPredicateList;
+  private List<List<SchemaFilter>> idDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   private Expression idFuzzyPredicate;
@@ -61,12 +63,12 @@ public class ShowDevice extends Statement {
   public ShowDevice(
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedPredicateList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
       Expression idFuzzyFilterList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idDeterminedFilterList = idDeterminedFilterList;
     this.idFuzzyPredicate = idFuzzyFilterList;
   }
 
@@ -82,11 +84,11 @@ public class ShowDevice extends Statement {
     return rawExpression;
   }
 
-  public List<List<Expression>> getIdDeterminedPredicateList() {
-    if (idDeterminedPredicateList == null) {
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
+    if (idDeterminedFilterList == null) {
       // TODO table metadata: process raw expression input by show device sql
     }
-    return idDeterminedPredicateList;
+    return idDeterminedFilterList;
   }
 
   public Expression getIdFuzzyPredicate() {
@@ -129,14 +131,14 @@ public class ShowDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)
-        && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
+        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
         && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        database, tableName, rawExpression, idDeterminedPredicateList, idFuzzyPredicate);
+        database, tableName, rawExpression, idDeterminedFilterList, idFuzzyPredicate);
   }
 
   @Override
@@ -151,7 +153,7 @@ public class ShowDevice extends Statement {
         + ", rawExpression="
         + rawExpression
         + ", idDeterminedFilterList="
-        + idDeterminedPredicateList
+        + idDeterminedFilterList
         + ", idFuzzyFilter="
         + idFuzzyPredicate
         + '}';

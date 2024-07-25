@@ -40,7 +40,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -50,7 +49,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final String tableName;
 
-  private final List<List<Expression>> idDeterminedPredicateList;
+  private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
   private final Expression idFuzzyPredicate;
 
@@ -61,7 +60,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   public TableDeviceQuerySource(
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedPredicateList,
+      List<List<SchemaFilter>> idDeterminedPredicateList,
       Expression idFuzzyPredicate,
       List<ColumnHeader> columnHeaderList) {
     this.database = database;
@@ -161,23 +160,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         database,
         tableName,
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
-        getExecutableIdDeterminedFilter(idDeterminedPredicateList));
-  }
-
-  private List<List<SchemaFilter>> getExecutableIdDeterminedFilter(
-      List<List<Expression>> idDeterminedFilterList) {
-    ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
-    ConvertSchemaPredicateToFilterVisitor.Context context =
-        new ConvertSchemaPredicateToFilterVisitor.Context(table);
-    List<List<SchemaFilter>> result = new ArrayList<>(idDeterminedFilterList.size());
-    for (List<Expression> expressionList : idDeterminedFilterList) {
-      List<SchemaFilter> filterList = new ArrayList<>(expressionList.size());
-      for (Expression expression : expressionList) {
-        filterList.add(visitor.process(expression, context));
-      }
-      result.add(filterList);
-    }
-    return result;
+        idDeterminedPredicateList);
   }
 
   private SchemaFilter getExecutableIdFuzzyFilter(Expression idFuzzyExpression) {

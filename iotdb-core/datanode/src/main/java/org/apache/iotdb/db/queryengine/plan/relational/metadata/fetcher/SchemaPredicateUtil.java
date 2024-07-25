@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ExtractPredicateColumnNameVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -32,9 +37,10 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
@@ -68,8 +74,13 @@ public class SchemaPredicateUtil {
   // return or concat filter list, inner which all filter is and concat
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
-  static List<List<Expression>> convertDeviceIdPredicateToOrConcatList(
-      final List<Expression> schemaFilterList) {
+  static List<Map<Integer, List<SchemaFilter>>> convertDeviceIdPredicateToOrConcatList(
+      final List<Expression> schemaFilterList, final TsTable table) {
+    final ConvertSchemaPredicateToFilterVisitor visitor =
+        new ConvertSchemaPredicateToFilterVisitor();
+    final ConvertSchemaPredicateToFilterVisitor.Context context =
+        new ConvertSchemaPredicateToFilterVisitor.Context(table);
+
     final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
             .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
@@ -79,33 +90,23 @@ public class SchemaPredicateUtil {
     for (final List<Expression> filterList : orConcatList) {
       finalResultSize *= filterList.size();
     }
-    final List<List<Expression>> result = new ArrayList<>(finalResultSize);
+    final List<Map<Integer, List<SchemaFilter>>> result = new ArrayList<>();
     final int[] indexes = new int[orSize]; // index count, each case represents one possible result
-    final Set<String> checkedColumnNames = new HashSet<>();
     boolean hasConflictFilter;
     Expression currentExpression;
-    String currentColumnName;
     while (finalResultSize > 0) {
-      checkedColumnNames.clear();
       hasConflictFilter = false;
-      List<Expression> oneCase = new ArrayList<>(orConcatList.size());
+      final Map<Integer, List<SchemaFilter>> oneCase = new HashMap<>();
       for (int j = 0; j < orSize; j++) {
         currentExpression = orConcatList.get(j).get(indexes[j]);
-        currentColumnName =
-            currentExpression.accept(ExtractPredicateColumnNameVisitor.getInstance(), null);
-        if (checkedColumnNames.contains(currentColumnName)) {
+        if (!handleFilter((IdFilter) currentExpression.accept(visitor, context), oneCase)) {
           hasConflictFilter = true;
           break;
         }
-        checkedColumnNames.add(currentColumnName);
-        oneCase.add(currentExpression);
       }
 
       if (!hasConflictFilter) {
         result.add(oneCase);
-      } else {
-        // TODO table metadata
-        throw new IllegalStateException("have conflict filter!");
       }
 
       for (int k = orSize - 1; k >= 0; k--) {
@@ -118,6 +119,41 @@ public class SchemaPredicateUtil {
       finalResultSize--;
     }
     return result;
+  }
+
+  private static boolean handleFilter(
+      final IdFilter filter, final Map<Integer, List<SchemaFilter>> index2FilterMap) {
+    final int index = filter.getIndex();
+    final SchemaFilter childFilter = filter.getChild();
+
+    if (!index2FilterMap.containsKey(index)) {
+      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(childFilter);
+    }
+    if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+      if (index2FilterMap.get(index).stream()
+          .allMatch(
+              existingFilter ->
+                  existingFilter.accept(
+                      StringValueFilterVisitor.getInstance(),
+                      ((PreciseFilter) childFilter).getValue()))) {
+        index2FilterMap.put(index, Collections.singletonList(childFilter));
+      } else {
+        return false;
+      }
+    } else {
+      if (index2FilterMap
+          .get(index)
+          .get(0)
+          .getSchemaFilterType()
+          .equals(SchemaFilterType.PRECISE)) {
+        return childFilter.accept(
+            StringValueFilterVisitor.getInstance(),
+            ((PreciseFilter) index2FilterMap.get(index).get(0)).getValue());
+      } else {
+        index2FilterMap.get(index).add(childFilter);
+      }
+    }
+    return true;
   }
 
   public static String getColumnName(Expression expression) {
@@ -138,11 +174,20 @@ public class SchemaPredicateUtil {
   }
 
   static List<Integer> extractIdSingleMatchExpressionCases(
-      List<List<Expression>> idDeterminedExpressionList, TsTable tableInstance) {
-    List<Integer> selectedExpressionCases = new ArrayList<>();
+      final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
+      final TsTable tableInstance) {
+    final List<Integer> selectedExpressionCases = new ArrayList<>();
     int idCount = tableInstance.getIdNums();
-    for (int i = 0; i < idDeterminedExpressionList.size(); i++) {
-      if (idDeterminedExpressionList.get(i).size() == idCount) {
+    for (int i = 0; i < index2FilterMapList.size(); i++) {
+      final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
+      if (filterMap.size() == idCount
+          && filterMap.values().stream()
+              .allMatch(
+                  filterList ->
+                      ((IdFilter) filterList.get(0))
+                          .getChild()
+                          .getSchemaFilterType()
+                          .equals(SchemaFilterType.PRECISE))) {
         selectedExpressionCases.add(i);
       }
     }

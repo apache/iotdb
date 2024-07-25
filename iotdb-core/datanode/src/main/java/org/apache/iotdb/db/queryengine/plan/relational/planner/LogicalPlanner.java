@@ -251,7 +251,7 @@ public class LogicalPlanner {
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedPredicateList(),
+            statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
             columnHeaderList,
             null);
