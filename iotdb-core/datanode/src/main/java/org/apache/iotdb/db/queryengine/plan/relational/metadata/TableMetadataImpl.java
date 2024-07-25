@@ -375,13 +375,6 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
   }
 
-  public static boolean isThreeNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 3
-        && isNumericType(argumentTypes.get(0))
-        && isNumericType(argumentTypes.get(1))
-        && isNumericType(argumentTypes.get(2));
-  }
-
   public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }

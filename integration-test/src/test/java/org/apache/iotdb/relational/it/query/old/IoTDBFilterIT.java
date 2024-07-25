@@ -177,7 +177,6 @@ public class IoTDBFilterIT {
     }
   }
 
-  @Ignore
   @Test
   public void testSameConstantWithDifferentType() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
