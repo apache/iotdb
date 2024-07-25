@@ -159,8 +159,8 @@ public class SubscriptionCoordinator {
     }
 
     if (!isTopicExistedBeforeDrop && req.isIfExistsCondition()) {
-      // If the IF EXISTS condition is not set and the topic does not exist before the delete
-      // operation,return an error status indicating that the topic does not exist.
+      // If the If Exists condition is not set and the topic does not exist before the delete
+      // operation, return an error status indicating that the topic does not exist.
       return RpcUtils.getStatus(
           TSStatusCode.TOPIC_NOT_EXIST_ERROR,
           String.format(
