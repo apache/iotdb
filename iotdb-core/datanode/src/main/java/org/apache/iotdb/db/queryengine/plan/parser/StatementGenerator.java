@@ -590,9 +590,9 @@ public class StatementGenerator {
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct create multi timeseries statement
-    List<PartialPath> paths = new ArrayList<>();
+    List<MeasurementPath> paths = new ArrayList<>();
     for (String path : req.paths) {
-      paths.add(new PartialPath(path));
+      paths.add(new MeasurementPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Integer dataType : req.dataTypes) {

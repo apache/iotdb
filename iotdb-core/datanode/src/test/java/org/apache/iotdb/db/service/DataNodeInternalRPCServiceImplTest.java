@@ -246,10 +246,10 @@ public class DataNodeInternalRPCServiceImplTest {
     CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
         new CreateMultiTimeSeriesNode(
             new PlanNodeId("0"),
-            new ArrayList<PartialPath>() {
+            new ArrayList<MeasurementPath>() {
               {
-                add(new PartialPath("root.ln.d3.s1"));
-                add(new PartialPath("root.ln.d3.s2"));
+                add(new MeasurementPath("root.ln.d3.s1"));
+                add(new MeasurementPath("root.ln.d3.s2"));
               }
             },
             new ArrayList<TSDataType>() {

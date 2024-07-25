@@ -2600,7 +2600,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analyzeSchemaProps(createMultiTimeSeriesStatement.getPropsList());
 
-    List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
+    List<MeasurementPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
 
     DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -142,7 +143,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
       final CreateMultiTimeSeriesNode node, final Void context) {
     final CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
 
-    final List<PartialPath> paths = new ArrayList<>();
+    final List<MeasurementPath> paths = new ArrayList<>();
     final List<TSDataType> dataTypes = new ArrayList<>();
     final List<TSEncoding> encodings = new ArrayList<>();
     final List<CompressionType> compressors = new ArrayList<>();
