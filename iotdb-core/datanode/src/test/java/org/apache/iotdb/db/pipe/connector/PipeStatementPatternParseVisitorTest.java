@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -47,7 +48,7 @@ public class PipeStatementPatternParseVisitorTest {
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
     final CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
-    createTimeSeriesStatement.setPath(new PartialPath("root.db.device.s1"));
+    createTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
     createTimeSeriesStatement.setDataType(TSDataType.FLOAT);
     createTimeSeriesStatement.setEncoding(TSEncoding.RLE);
     createTimeSeriesStatement.setCompressor(CompressionType.SNAPPY);
@@ -58,7 +59,7 @@ public class PipeStatementPatternParseVisitorTest {
 
     final CreateTimeSeriesStatement createTimeSeriesStatementToFilter =
         new CreateTimeSeriesStatement();
-    createTimeSeriesStatementToFilter.setPath(new PartialPath("root.db1.device.s1"));
+    createTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
     createTimeSeriesStatementToFilter.setDataType(TSDataType.FLOAT);
     createTimeSeriesStatementToFilter.setEncoding(TSEncoding.RLE);
     createTimeSeriesStatementToFilter.setCompressor(CompressionType.SNAPPY);

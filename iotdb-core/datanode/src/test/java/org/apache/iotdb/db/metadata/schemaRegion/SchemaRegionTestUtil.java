@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -72,7 +73,7 @@ public class SchemaRegionTestUtil {
       throws MetadataException {
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath(fullPath),
+            new MeasurementPath(fullPath),
             dataType,
             encoding,
             compressor,
@@ -97,7 +98,7 @@ public class SchemaRegionTestUtil {
     for (int i = 0; i < fullPaths.size(); i++) {
       schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath(fullPaths.get(i)),
+              new MeasurementPath(fullPaths.get(i)),
               dataTypes.get(i),
               encodings.get(i),
               compressors.get(i),

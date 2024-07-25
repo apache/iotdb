@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -736,7 +737,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
       TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
       resource
           .getModFile()
-          .write(new Deletion(new PartialPath("root.sg.d1.*"), i * 100, i * 100 + 20));
+          .write(new Deletion(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
       resource.getModFile().close();
       int finalI = i;
       originData.forEach(

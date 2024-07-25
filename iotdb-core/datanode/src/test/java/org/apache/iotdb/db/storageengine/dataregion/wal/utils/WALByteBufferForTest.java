@@ -22,8 +22,18 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 
 import java.nio.ByteBuffer;
 
-public class WALByteBufferForTest implements IWALByteBufferView {
+public class WALByteBufferForTest extends IWALByteBufferView {
   private final ByteBuffer buffer;
+
+  @Override
+  public void write(int b) {
+    put((byte) b);
+  }
+
+  @Override
+  public void write(byte[] b) {
+    put(b);
+  }
 
   public WALByteBufferForTest(ByteBuffer buffer) {
     this.buffer = buffer;

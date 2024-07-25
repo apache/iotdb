@@ -488,7 +488,7 @@ class AutoCreateSchemaExecutor {
       }
 
       schemaTree.appendSingleMeasurement(
-          devicePath.concatNode(measurements.get(i)),
+          devicePath.concatAsMeasurementPath(measurements.get(i)),
           new MeasurementSchema(
               measurements.get(i), tsDataTypes.get(i), encodings.get(i), compressors.get(i)),
           null,
@@ -613,7 +613,7 @@ class AutoCreateSchemaExecutor {
           continue;
         }
         schemaTree.appendSingleMeasurement(
-            entry.getKey().concatNode(measurementGroup.getMeasurements().get(i)),
+            entry.getKey().concatAsMeasurementPath(measurementGroup.getMeasurements().get(i)),
             new MeasurementSchema(
                 measurementGroup.getMeasurements().get(i),
                 measurementGroup.getDataTypes().get(i),

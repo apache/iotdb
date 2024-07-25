@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -157,7 +158,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg.s1.g1.temp",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s1.g1.temp"),
+            new MeasurementPath("root.sg.s1.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -168,7 +169,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg.s1.g1.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s1.g1.status"),
+            new MeasurementPath("root.sg.s1.g1.status"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -179,7 +180,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg.s2.g2.t2.temp",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s2.g2.t2.temp"),
+            new MeasurementPath("root.sg.s2.g2.t2.temp"),
             TSDataType.DOUBLE,
             TSEncoding.RLE,
             CompressionType.GZIP,
@@ -190,7 +191,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg.s2.g4.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s2.g4.status"),
+            new MeasurementPath("root.sg.s2.g4.status"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.ZSTD,
@@ -201,7 +202,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg.s2.g5.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s2.g5.level"),
+            new MeasurementPath("root.sg.s2.g5.level"),
             TSDataType.INT32,
             TSEncoding.GORILLA,
             CompressionType.LZMA2,
@@ -400,7 +401,7 @@ public class SchemaRegionSnapshotParserTest {
     PartialPath databasePath = new PartialPath("root.sg");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s1.g1.temp"),
+            new MeasurementPath("root.sg.s1.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -411,7 +412,7 @@ public class SchemaRegionSnapshotParserTest {
         0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s1.g3.temp"),
+            new MeasurementPath("root.sg.s1.g3.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -422,7 +423,7 @@ public class SchemaRegionSnapshotParserTest {
         0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.s2.g1.temp"),
+            new MeasurementPath("root.sg.s2.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -522,7 +523,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg1.s1.t2.temperature",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg1.s1.t2.temperature"),
+            new MeasurementPath("root.sg1.s1.t2.temperature"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -533,7 +534,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg1.s1.t2.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg1.s1.t2.status"),
+            new MeasurementPath("root.sg1.s1.t2.status"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -588,7 +589,7 @@ public class SchemaRegionSnapshotParserTest {
     planMap.put(
         "root.sg2.t2.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg2.t2.level"),
+            new MeasurementPath("root.sg2.t2.level"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.UNCOMPRESSED,
