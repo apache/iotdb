@@ -17,31 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.old.alignbydevice;
+package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBOrderByWithAlignByDevice2IT extends IoTDBOrderByWithAlignByDeviceTableIT {
+public class IoTDBDiffFunctionTable2IT extends IoTDBDiffFunctionTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupNumPerDatabase(2);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
-    insertData2();
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

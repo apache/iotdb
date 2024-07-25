@@ -30,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDiffFunction3IT extends IoTDBDiffFunctionIT {
+public class IoTDBDiffFunction3IT extends IoTDBDiffFunctionTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
