@@ -132,11 +132,11 @@ public class IoTDBInsertAlignedValues2IT {
       statement.execute(
           "create table sg (id1 string id, s1 string measurement, s2 string measurement)");
 
-      statement.execute("insert into sg(id1, time, s1, s2) aligned values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg(id1, time, s1, s2) aligned values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg(id1, time, s1, s2) aligned values('d2', 1,'aa','bb')");
+      statement.execute("insert into sg(id1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg(id1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg(id1, time, s1, s2) values('d2', 1,'aa','bb')");
       statement.execute("flush");
-      statement.execute("insert into sg(id1, time, s1, s2) aligned values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg(id1, time, s1, s2) values('d1', 1,'aa','bb')");
     }
   }
 
@@ -144,7 +144,7 @@ public class IoTDBInsertAlignedValues2IT {
   public void testInsertComplexAlignedValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.addBatch("create database sg");
+      statement.addBatch("create database test");
       statement.addBatch("use database \"test\"");
       statement.addBatch(
           "create table sg (id1 string id, s1 int32 measurement, s2 int32 measurement)");

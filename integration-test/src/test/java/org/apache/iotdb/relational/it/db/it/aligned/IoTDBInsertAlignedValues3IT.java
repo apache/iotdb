@@ -80,7 +80,7 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         } else {
           statement.addBatch(
-              "insert into root.lz.dev.GPS(id1,time,s1,s2) aligned values("
+              "insert into root.lz.dev.GPS(id1,time,s1,s2) values("
                   + "GPS"
                   + ","
                   + i
