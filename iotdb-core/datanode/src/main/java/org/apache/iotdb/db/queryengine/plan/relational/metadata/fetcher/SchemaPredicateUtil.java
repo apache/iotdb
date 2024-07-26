@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -43,8 +44,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 
 public class SchemaPredicateUtil {
 
@@ -87,7 +86,7 @@ public class SchemaPredicateUtil {
 
     final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
-            .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
+            .map(IrUtils::extractOrPredicatesWithInExpanded)
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
     int remainingCaseNum = 1;
