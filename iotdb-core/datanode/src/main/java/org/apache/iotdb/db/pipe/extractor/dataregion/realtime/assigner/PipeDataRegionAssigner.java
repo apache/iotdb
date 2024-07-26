@@ -41,7 +41,7 @@ public class PipeDataRegionAssigner implements Closeable {
    */
   private final PipeDataRegionMatcher matcher;
 
-  private int counter;
+  private int counter = 0;
 
   /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
