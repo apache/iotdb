@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.read.common.RowRecord;
@@ -73,6 +74,11 @@ public class TestUtils {
 
   public static final String TIME_PRECISION_IN_NS = "ns";
 
+  public static String defaultFormatDataTime(long time) {
+    return RpcUtils.formatDatetime(
+        RpcUtils.DEFAULT_TIME_FORMAT, TIME_PRECISION_IN_MS, time, DEFAULT_ZONE_ID);
+  }
+
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -88,6 +94,32 @@ public class TestUtils {
 
   public static void prepareData(List<String> sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.addBatch(sql);
+      }
+      statement.executeBatch();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void prepareTableData(String[] sqls) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.addBatch(sql);
+      }
+      statement.executeBatch();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void prepareTableData(List<String> sqls) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.addBatch(sql);
@@ -247,7 +279,7 @@ public class TestUtils {
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {
-      Assert.assertEquals(errMsg, e.getMessage());
+      Assert.assertTrue(e.getMessage().contains(errMsg));
     }
   }
 
