@@ -53,8 +53,8 @@ Documentation = "https://github.com/apache/iotdb"
 [project.entry-points."sqlalchemy.dialects"]
 iotdb = "iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect"
 
-[tool.setuptools]
-packages = ["iotdb"]
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.black]
 line-length = 88
