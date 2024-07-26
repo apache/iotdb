@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Iterables;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -79,9 +78,8 @@ public class SortNode extends SingleChildProcessNode {
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
-    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SortNode(planNodeId, null, orderingScheme, partial, false);
+    return new SortNode(planNodeId, null, orderingScheme, false, false);
   }
 
   @Override

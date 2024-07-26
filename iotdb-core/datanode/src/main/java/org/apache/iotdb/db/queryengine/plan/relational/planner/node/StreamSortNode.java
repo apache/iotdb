@@ -79,7 +79,6 @@ public class StreamSortNode extends SortNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);
-    ReadWriteIOUtils.write(partial, byteBuffer);
     ReadWriteIOUtils.write(streamCompareKeyEndIndex, byteBuffer);
   }
 
@@ -87,17 +86,15 @@ public class StreamSortNode extends SortNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(stream);
     orderingScheme.serialize(stream);
-    ReadWriteIOUtils.write(partial, stream);
     ReadWriteIOUtils.write(streamCompareKeyEndIndex, stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
-    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
     int streamCompareKeyEndIndex = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new StreamSortNode(
-        planNodeId, null, orderingScheme, partial, false, streamCompareKeyEndIndex);
+        planNodeId, null, orderingScheme, false, false, streamCompareKeyEndIndex);
   }
 
   @Override

@@ -67,13 +67,13 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
-public class DistributedPlanGenerator
-    extends PlanVisitor<List<PlanNode>, DistributedPlanGenerator.PlanContext> {
+public class TableDistributedPlanGenerator
+    extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
   private final QueryId queryId;
   private final Analysis analysis;
   Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
 
-  public DistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
+  public TableDistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
   }
@@ -83,8 +83,8 @@ public class DistributedPlanGenerator
     if (res.size() == 1) {
       return res;
     } else if (res.size() > 1) {
-      CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
-      collectNode.setOutputSymbols(res.get(0).getOutputSymbols());
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
@@ -93,7 +93,7 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitPlan(PlanNode node, DistributedPlanGenerator.PlanContext context) {
+  public List<PlanNode> visitPlan(PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return Collections.singletonList(node);
     }
@@ -395,8 +395,8 @@ public class DistributedPlanGenerator
     }
 
     // children has no sort property, use CollectNode to merge children
-    CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
-    collectNode.setOutputSymbols(firstChild.getOutputSymbols());
+    CollectNode collectNode =
+        new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
   }

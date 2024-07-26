@@ -73,38 +73,8 @@ public class TableDistributionPlanner {
   }
 
   public DistributedQueryPlan plan() {
-
-    // generate table model distributed plan
-    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
-    List<PlanNode> distributedPlanResult =
-        new DistributedPlanGenerator(mppQueryContext, analysis)
-            .genResult(logicalQueryPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
-
-    // distribute plan optimize rule
-    PlanNode distributedPlan = distributedPlanResult.get(0);
-
-    if (analysis.getStatement() instanceof Query) {
-      for (PlanOptimizer optimizer : optimizers) {
-        distributedPlan =
-            optimizer.optimize(
-                distributedPlan,
-                new PlanOptimizer.Context(
-                    null,
-                    analysis,
-                    null,
-                    mppQueryContext,
-                    mppQueryContext.getTypeProvider(),
-                    new SymbolAllocator(),
-                    mppQueryContext.getQueryId(),
-                    NOOP,
-                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
-      }
-    }
-
-    // add exchange node for distributed plan
-    PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+    TableDistributedPlanGenerator.PlanContext planContext = new TableDistributedPlanGenerator.PlanContext();
+    PlanNode outputNodeWithExchange = generateDistributePlanWithOptimize(planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
@@ -133,6 +103,40 @@ public class TableDistributionPlanner {
 
     return new DistributedQueryPlan(
         logicalQueryPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+  }
+
+  public PlanNode generateDistributePlanWithOptimize(
+      TableDistributedPlanGenerator.PlanContext planContext) {
+    // generate table model distributed plan
+
+    List<PlanNode> distributedPlanResult =
+        new TableDistributedPlanGenerator(mppQueryContext, analysis)
+            .genResult(logicalQueryPlan.getRootNode(), planContext);
+    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+
+    // distribute plan optimize rule
+    PlanNode distributedPlan = distributedPlanResult.get(0);
+
+    if (analysis.getStatement() instanceof Query) {
+      for (PlanOptimizer optimizer : optimizers) {
+        distributedPlan =
+            optimizer.optimize(
+                distributedPlan,
+                new PlanOptimizer.Context(
+                    null,
+                    analysis,
+                    null,
+                    mppQueryContext,
+                    mppQueryContext.getTypeProvider(),
+                    new SymbolAllocator(),
+                    mppQueryContext.getQueryId(),
+                    NOOP,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
+    }
+
+    // add exchange node for distributed plan
+    return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }
 
   public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
@@ -169,7 +173,7 @@ public class TableDistributionPlanner {
     rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
-  private void adjustUpStream(PlanNode root, DistributedPlanGenerator.PlanContext context) {
+  private void adjustUpStream(PlanNode root, TableDistributedPlanGenerator.PlanContext context) {
     if (!context.hasExchangeNode) {
       return;
     }
@@ -179,7 +183,7 @@ public class TableDistributionPlanner {
 
   private void adjustUpStreamHelper(
       PlanNode root,
-      DistributedPlanGenerator.PlanContext context,
+      TableDistributedPlanGenerator.PlanContext context,
       Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
     for (PlanNode child : root.getChildren()) {
       adjustUpStreamHelper(child, context, regionNodeMap);
