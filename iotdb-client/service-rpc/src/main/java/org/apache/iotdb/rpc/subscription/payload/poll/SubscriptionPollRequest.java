@@ -84,6 +84,9 @@ public class SubscriptionPollRequest {
         case POLL_FILE:
           payload = new PollFilePayload().deserialize(buffer);
           break;
+        case POLL_TABLETS:
+          payload = new PollTabletsPayload().deserialize(buffer);
+          break;
         default:
           LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
           break;

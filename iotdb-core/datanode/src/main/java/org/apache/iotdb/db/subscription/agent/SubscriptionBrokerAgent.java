@@ -78,6 +78,23 @@ public class SubscriptionBrokerAgent {
     return broker.pollTsFile(consumerId, commitContext, writingOffset);
   }
 
+  public List<SubscriptionEvent> pollTablets(
+      final ConsumerConfig consumerConfig,
+      final SubscriptionCommitContext commitContext,
+      final int offset) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.pollTablets(consumerId, commitContext, offset);
+  }
+
   /**
    * @return list of successful commit contexts
    */

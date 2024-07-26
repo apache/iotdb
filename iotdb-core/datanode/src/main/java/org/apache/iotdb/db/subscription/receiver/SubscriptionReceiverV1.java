@@ -42,6 +42,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
@@ -353,6 +354,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 handlePipeSubscribePollTsFileInternal(
                     consumerConfig, (PollFilePayload) request.getPayload());
             break;
+          case POLL_TABLETS:
+            events =
+                handlePipeSubscribePollTabletsInternal(
+                    consumerConfig, (PollTabletsPayload) request.getPayload());
+            break;
           default:
             events = null;
             break;
@@ -458,6 +464,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return SubscriptionAgent.broker()
         .pollTsFile(
             consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
+  }
+
+  private List<SubscriptionEvent> handlePipeSubscribePollTabletsInternal(
+      final ConsumerConfig consumerConfig, final PollTabletsPayload messagePayload) {
+    return SubscriptionAgent.broker()
+        .pollTablets(consumerConfig, messagePayload.getCommitContext(), messagePayload.getOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

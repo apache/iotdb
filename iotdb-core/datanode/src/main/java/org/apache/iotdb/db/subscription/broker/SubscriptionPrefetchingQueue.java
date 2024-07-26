@@ -36,9 +36,13 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
+import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +65,10 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
+  // <consumer id, commit context> -> event
+  protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent>
+      inFlightSubscriptionEventMap;
+
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -74,6 +82,8 @@ public abstract class SubscriptionPrefetchingQueue {
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
+
+    this.inFlightSubscriptionEventMap = new ConcurrentHashMap<>();
   }
 
   public void cleanup() {
@@ -84,6 +94,11 @@ public abstract class SubscriptionPrefetchingQueue {
     // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
     // in uncommittedEvents
     prefetchingQueue.clear();
+
+    // clean up events in inFlightSubscriptionEventMap
+    // TODO: consider new events after cleaning up
+    inFlightSubscriptionEventMap.values().forEach(SubscriptionEvent::cleanup);
+    inFlightSubscriptionEventMap.clear();
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
@@ -118,6 +133,7 @@ public abstract class SubscriptionPrefetchingQueue {
         }
         event.recordLastPolledConsumerId(consumerId);
         event.recordLastPolledTimestamp();
+        inFlightSubscriptionEventMap.put(new Pair<>(consumerId, event.getCommitContext()), event);
         // Re-enqueue the uncommitted event at the end of the queue.
         // This operation should be performed after recordLastPolledTimestamp to prevent multiple
         // consumers from consuming the same event.
@@ -137,7 +153,46 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// prefetch ///////////////////////////////
 
-  public abstract void executePrefetch();
+  public void executePrefetch() {
+    this.tryPrefetch(false);
+
+    // Iterate on the snapshot of the key set, NOTE:
+    // 1. Ignore entries added during iteration.
+    // 2. For entries deleted by other threads during iteration, just check if the value is null.
+    for (final Pair<String, SubscriptionCommitContext> pair :
+        ImmutableSet.copyOf(inFlightSubscriptionEventMap.keySet())) {
+      inFlightSubscriptionEventMap.compute(
+          pair,
+          (key, ev) -> {
+            if (Objects.isNull(ev)) {
+              return null;
+            }
+
+            // clean up committed event
+            if (ev.isCommitted()) {
+              ev.cleanup();
+              return null; // remove this entry
+            }
+
+            // nack pollable event
+            if (ev.pollable()) {
+              ev.nack();
+              return null; // remove this entry
+            }
+
+            // prefetch and serialize remaining subscription events
+            // NOTE: Since the compute call for the same key is atomic and will be executed
+            // serially, the current prefetch and serialize operations are safe.
+            try {
+              ev.prefetchRemainingResponses();
+              ev.trySerializeRemainingResponses();
+            } catch (final IOException ignored) {
+            }
+
+            return ev;
+          });
+    }
+  }
 
   /**
    * Prefetch at most one {@link SubscriptionEvent} from {@link
@@ -372,20 +427,27 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
     return new SubscriptionEvent(
         new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.TERMINATION.getType(),
-            new TerminationPayload(),
-            generateInvalidSubscriptionCommitContext()));
+        Collections.singletonList(
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TERMINATION.getType(),
+                new TerminationPayload(),
+                generateInvalidSubscriptionCommitContext())));
   }
 
   public SubscriptionEvent generateSubscriptionPollErrorResponse(
       final String errorMessage, final boolean critical) {
     return new SubscriptionEvent(
         new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.ERROR.getType(),
-            new ErrorPayload(errorMessage, critical),
-            generateInvalidSubscriptionCommitContext()));
+        Collections.singletonList(
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.ERROR.getType(),
+                new ErrorPayload(errorMessage, critical),
+                generateInvalidSubscriptionCommitContext())));
+  }
+
+  protected SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
+    // consider non-critical by default, meaning the client can retry
+    return generateSubscriptionPollErrorResponse(errorMessage, false);
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -409,6 +471,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("uncommittedEvents", uncommittedEvents.toString());
     result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("inFlightSubscriptionEventMap", inFlightSubscriptionEventMap.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;

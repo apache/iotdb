@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
@@ -48,6 +49,7 @@ import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.subscription.util.TopicIterator;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -428,10 +430,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           }
           switch (SubscriptionPollResponseType.valueOf(responseType)) {
             case TABLETS:
-              messages.add(
-                  new SubscriptionMessage(
-                      pollResponse.getCommitContext(),
-                      ((TabletsPayload) pollResponse.getPayload()).getTablets()));
+              pollTablets(pollResponse).ifPresent(messages::add);
               break;
             case FILE_INIT:
               pollFile(
@@ -544,7 +543,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
-      // Only one SubscriptionEvent polled currently...
+      // only one SubscriptionEvent polled currently
       final SubscriptionPollResponse response = responses.get(0);
       final SubscriptionPollPayload payload = response.getPayload();
       final short responseType = response.getResponseType();
@@ -678,6 +677,88 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  private Optional<SubscriptionMessage> pollTablets(
+      final SubscriptionPollResponse initialResponse) {
+    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
+    LOGGER.info("{} start to poll tablets with commit context {}", this, commitContext);
+
+    int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
+    while (true) {
+      if (nextOffset == -1) {
+        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+      }
+
+      final List<SubscriptionPollResponse> responses =
+          pollTabletsInternal(commitContext, nextOffset);
+
+      // It's agreed that the server will always return at least one response, even in case of
+      // failure.
+      if (responses.isEmpty()) {
+        final String errorMessage =
+            String.format("SubscriptionConsumer %s poll empty response", this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      // only one SubscriptionEvent polled currently
+      final SubscriptionPollResponse response = responses.get(0);
+      final SubscriptionPollPayload payload = response.getPayload();
+      final short responseType = response.getResponseType();
+      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      switch (SubscriptionPollResponseType.valueOf(responseType)) {
+        case TABLETS:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext = response.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // update tablets
+            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+
+            // update offset
+            nextOffset = ((TabletsPayload) payload).getNextOffset();
+            break;
+          }
+        case ERROR:
+          {
+            // no need to check commit context
+
+            final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
+            final boolean critical = ((ErrorPayload) payload).isCritical();
+            LOGGER.warn(
+                "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
+                this,
+                commitContext,
+                errorMessage,
+                critical);
+            if (critical) {
+              throw new SubscriptionRuntimeCriticalException(errorMessage);
+            } else {
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+          }
+        default:
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+    }
+  }
+
   private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
       throws SubscriptionException {
     providers.acquireReadLock();
@@ -727,6 +808,37 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             new SubscriptionPollRequest(
                 SubscriptionPollRequestType.POLL_FILE.getType(),
                 new PollFilePayload(commitContext, writingOffset),
+                0L));
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
+      }
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private List<SubscriptionPollResponse> pollTabletsInternal(
+      final SubscriptionCommitContext commitContext, final int offset)
+      throws SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
+    providers.acquireReadLock();
+    try {
+      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
+        throw new SubscriptionConnectionException(
+            String.format(
+                "something unexpected happened when %s poll tablets from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, dataNodeId));
+      }
+      // ignore SubscriptionConnectionException to improve poll auto retry
+      try {
+        return provider.poll(
+            new SubscriptionPollRequest(
+                SubscriptionPollRequestType.POLL_TABLETS.getType(),
+                new PollTabletsPayload(commitContext, offset),
                 0L));
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();

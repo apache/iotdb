@@ -20,56 +20,47 @@
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-public class TabletsPayload implements SubscriptionPollPayload {
+public class PollTabletsPayload implements SubscriptionPollPayload {
 
-  private transient List<Tablet> tablets = new ArrayList<>();
+  private transient SubscriptionCommitContext commitContext;
 
-  private transient int nextOffset;
+  private transient int offset;
 
-  public TabletsPayload() {}
-
-  public TabletsPayload(final List<Tablet> tablets, final int nextOffset) {
-    this.tablets = tablets;
-    this.nextOffset = nextOffset;
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
   }
 
-  public List<Tablet> getTablets() {
-    return tablets;
+  public int getOffset() {
+    return offset;
   }
 
-  public int getNextOffset() {
-    return nextOffset;
+  public PollTabletsPayload() {}
+
+  public PollTabletsPayload(final SubscriptionCommitContext commitContext, final int offset) {
+    this.commitContext = commitContext;
+    this.offset = offset;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(tablets.size(), stream);
-    for (final Tablet tablet : tablets) {
-      tablet.serialize(stream);
-    }
-    ReadWriteIOUtils.write(nextOffset, stream);
+    commitContext.serialize(stream);
+    ReadWriteIOUtils.write(offset, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
-    final List<Tablet> tablets = new ArrayList<>();
-    final int size = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < size; ++i) {
-      tablets.add(Tablet.deserialize(buffer));
-    }
-    this.tablets = tablets;
-    this.nextOffset = ReadWriteIOUtils.readInt(buffer);
+    commitContext = SubscriptionCommitContext.deserialize(buffer);
+    offset = ReadWriteIOUtils.readInt(buffer);
     return this;
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(final Object obj) {
@@ -79,18 +70,18 @@ public class TabletsPayload implements SubscriptionPollPayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TabletsPayload that = (TabletsPayload) obj;
-    return Objects.equals(this.tablets, that.tablets)
-        && Objects.equals(this.nextOffset, that.nextOffset);
+    final PollTabletsPayload that = (PollTabletsPayload) obj;
+    return Objects.equals(this.commitContext, that.commitContext)
+        && Objects.equals(this.offset, that.offset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablets, nextOffset);
+    return Objects.hash(commitContext, offset);
   }
 
   @Override
   public String toString() {
-    return "TabletsPayload{size of tablets=" + tablets.size() + ", nextOffset=" + nextOffset + "}";
+    return "PollTabletsPayload{commitContext=" + commitContext + ", offset=" + offset + "}";
   }
 }

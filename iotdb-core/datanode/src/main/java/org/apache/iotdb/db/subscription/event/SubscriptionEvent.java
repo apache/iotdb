@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,15 +53,15 @@ public class SubscriptionEvent {
   private final SubscriptionPipeEvents pipeEvents;
 
   private final SubscriptionPollResponse[] responses;
-  private int currentResponseIndex;
+  private int currentResponseIndex = 0;
 
   private final ByteBuffer[] byteBuffers; // serialized responses
   private final SubscriptionCommitContext
       commitContext; // all responses have the same commit context
 
-  private String lastPolledConsumerId;
-  private long lastPolledTimestamp;
-  private long committedTimestamp;
+  private String lastPolledConsumerId = null;
+  private long lastPolledTimestamp = INVALID_TIMESTAMP;
+  private long committedTimestamp = INVALID_TIMESTAMP;
 
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final SubscriptionPollResponse initialResponse) {
@@ -69,37 +70,36 @@ public class SubscriptionEvent {
     final int responseLength = getResponseLength(initialResponse.getResponseType());
     this.responses = new SubscriptionPollResponse[responseLength];
     this.responses[0] = initialResponse;
-    this.currentResponseIndex = 0;
 
     this.byteBuffers = new ByteBuffer[responseLength];
     this.commitContext = initialResponse.getCommitContext();
+  }
 
-    this.lastPolledConsumerId = null;
-    this.lastPolledTimestamp = INVALID_TIMESTAMP;
-    this.committedTimestamp = INVALID_TIMESTAMP;
+  public SubscriptionEvent(
+      final SubscriptionPipeEvents pipeEvents, final List<SubscriptionPollResponse> responses) {
+    this.pipeEvents = pipeEvents;
+
+    final int responseLength = responses.size();
+    this.responses = new SubscriptionPollResponse[responseLength];
+    for (int i = 0; i < responseLength; i++) {
+      this.responses[i] = responses.get(i);
+    }
+
+    this.byteBuffers = new ByteBuffer[responseLength];
+    this.commitContext = this.responses[0].getCommitContext();
   }
 
   private int getResponseLength(final short responseType) {
-    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+    if (!Objects.equals(SubscriptionPollResponseType.FILE_INIT.getType(), responseType)) {
       LOGGER.warn("unexpected response type: {}", responseType);
       return 1;
     }
-    switch (SubscriptionPollResponseType.valueOf(responseType)) {
-      case FILE_INIT:
-        final long tsFileLength = pipeEvents.getTsFile().length();
-        final long readFileBufferSize =
-            SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-        final int length = (int) (tsFileLength / readFileBufferSize);
-        // add for init, last piece and seal
-        return (tsFileLength % readFileBufferSize != 0) ? length + 3 : length + 2;
-      case TABLETS:
-      case ERROR:
-      case TERMINATION:
-        return 1;
-      default:
-        LOGGER.warn("unexpected response type: {}", responseType);
-        return 1;
-    }
+    final long fileLength = pipeEvents.getTsFile().length();
+    final long readFileBufferSize =
+        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
+    final int length = (int) (fileLength / readFileBufferSize);
+    // add for init, last piece and seal
+    return (fileLength % readFileBufferSize != 0) ? length + 3 : length + 2;
   }
 
   public SubscriptionPollResponse getCurrentResponse() {

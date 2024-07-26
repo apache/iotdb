@@ -127,7 +127,42 @@ public class SubscriptionBroker {
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, commitContext, writingOffset);
-    // Only one SubscriptionEvent polled currently...
+    // only one SubscriptionEvent polled currently
+    return Collections.singletonList(event);
+  }
+
+  public List<SubscriptionEvent> pollTablets(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    final String topicName = commitContext.getTopicName();
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] does not exist",
+              topicName, brokerId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    if (!(prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] is invalid",
+              topicName, brokerId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
+      return Collections.emptyList();
+    }
+    final SubscriptionEvent event =
+        ((SubscriptionPrefetchingTabletQueue) prefetchingQueue)
+            .pollTablets(consumerId, commitContext, offset);
+    // only one SubscriptionEvent polled currently
     return Collections.singletonList(event);
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -48,6 +49,9 @@ public class SubscriptionPipeTabletEventBatch {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
+
+  private static final long READ_TABLET_BUFFER_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
   private final SubscriptionPrefetchingTabletQueue prefetchingQueue;
 
@@ -100,15 +104,48 @@ public class SubscriptionPipeTabletEventBatch {
   }
 
   private List<SubscriptionEvent> generateSubscriptionEvents() {
+    final int tabletsSize = tablets.size();
     final SubscriptionCommitContext commitContext =
         prefetchingQueue.generateSubscriptionCommitContext();
-    return Collections.singletonList(
-        new SubscriptionEvent(
-            new SubscriptionPipeTabletBatchEvents(this),
+    final List<SubscriptionPollResponse> responses = new ArrayList<>();
+    final List<Tablet> currentTablets = new ArrayList<>();
+    long currentTotalBufferSize = 0;
+    for (int i = 0; i < tabletsSize; ++i) {
+      final Tablet tablet = tablets.get(i);
+      final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+      if (bufferSize > READ_TABLET_BUFFER_SIZE) {
+        LOGGER.warn("Detect large tablet with size {} in bytes", bufferSize);
+        responses.add(
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(tablets),
-                commitContext)));
+                new TabletsPayload(Collections.singletonList(tablet), responses.size() + 1),
+                commitContext));
+        continue;
+      }
+      if (currentTotalBufferSize + bufferSize > READ_TABLET_BUFFER_SIZE) {
+        responses.add(
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TABLETS.getType(),
+                new TabletsPayload(
+                    new ArrayList<>(currentTablets),
+                    (i == tabletsSize - 1) ? -1 : responses.size() + 1),
+                commitContext));
+        currentTablets.clear();
+        currentTotalBufferSize = 0;
+        continue;
+      }
+      currentTablets.add(tablet);
+      currentTotalBufferSize += bufferSize;
+    }
+    if (!currentTablets.isEmpty()) {
+      responses.add(
+          new SubscriptionPollResponse(
+              SubscriptionPollResponseType.TABLETS.getType(),
+              new TabletsPayload(new ArrayList<>(currentTablets), -1),
+              commitContext));
+    }
+    return Collections.singletonList(
+        new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
 
   private void constructBatch(final EnrichedEvent event) {

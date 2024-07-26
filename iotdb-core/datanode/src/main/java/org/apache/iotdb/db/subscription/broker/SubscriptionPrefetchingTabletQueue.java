@@ -25,7 +25,14 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
+import org.apache.tsfile.utils.Pair;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,13 +81,85 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         });
   }
 
-  /////////////////////////////// prefetch ///////////////////////////////
+  /////////////////////////////// poll ///////////////////////////////
 
-  @Override
-  public void executePrefetch() {
-    super.tryPrefetch(false);
-    this.serializeEventsInQueue();
+  public @NonNull SubscriptionEvent pollTablets(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    // 1. Extract current event and check it
+    final SubscriptionEvent event =
+        inFlightSubscriptionEventMap.compute(
+            new Pair<>(consumerId, commitContext),
+            (key, ev) -> {
+              if (Objects.nonNull(ev) && ev.isCommitted()) {
+                ev.cleanup();
+                return null; // remove this entry
+              }
+              return ev;
+            });
+
+    if (Objects.isNull(event)) {
+      final String errorMessage =
+          String.format(
+              "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any TsFile to consumer %s, commit context: %s, offset: %s",
+              this, consumerId, commitContext, offset);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    // check consumer id
+    if (!Objects.equals(event.getLastPolledConsumerId(), consumerId)) {
+      final String errorMessage =
+          String.format(
+              "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, offset: %s, prefetching queue: %s",
+              event.getLastPolledConsumerId(), consumerId, commitContext, offset, this);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    final SubscriptionPollResponse response = event.getCurrentResponse();
+    final SubscriptionPollPayload payload = response.getPayload();
+
+    // 2. Check previous response type and offset
+    final short responseType = response.getResponseType();
+    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+      final String errorMessage = String.format("unexpected response type: %s", responseType);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    switch (SubscriptionPollResponseType.valueOf(responseType)) {
+      case TABLETS:
+        // check offset
+        if (!Objects.equals(offset, ((TabletsPayload) payload).getNextOffset())) {
+          final String errorMessage =
+              String.format(
+                  "inconsistent offset, current: %s, incoming: %s, consumer: %s, prefetching queue: %s",
+                  ((TabletsPayload) payload).getNextOffset(), offset, consumerId, this);
+          LOGGER.warn(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
+        }
+        break;
+      default:
+        {
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
+        }
+    }
+
+    // 3. Poll next tablets
+    try {
+      event.fetchNextResponse();
+    } catch (final Exception ignored) {
+
+    }
+
+    event.recordLastPolledConsumerId(consumerId);
+    event.recordLastPolledTimestamp();
+    return event;
   }
+
+  /////////////////////////////// prefetch ///////////////////////////////
 
   @Override
   protected boolean onEvent(final TabletInsertionEvent event) {
