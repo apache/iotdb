@@ -308,7 +308,7 @@ public class PipeConfig {
 
   public void printAllConfigs() {
     LOGGER.info(
-        "PipeDataSynchronizationAcknowledgeRate: {}",
+        "PipeDataSynchronizationProgressReportRate: {}",
         getPipeDataSynchronizationProgressReportRate());
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
