@@ -43,6 +43,7 @@ import org.apache.tsfile.utils.Binary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -157,6 +158,10 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   private List<PartialPath> getDevicePatternList() {
+    if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database, tableName))) {
+      throw new SchemaExecutionException(
+          String.format("Table '%s.%s' does not exist.", database, tableName));
+    }
     return DeviceFilterUtil.convertToDevicePattern(
         database,
         tableName,

@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -51,8 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -252,10 +251,12 @@ public class LogicalPlanner {
 
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
     final String database = planQueryDevice(statement, analysis);
-    final List<ColumnHeader> columnHeaderList =
-        getColumnHeaderList(database, statement.getTableName());
-    analysis.setRespDatasetHeader(
-        new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
+    List<ColumnHeader> columnHeaderList = null;
+    if (!analysis.isFailed()) {
+      columnHeaderList = getColumnHeaderList(database, statement.getTableName());
+      analysis.setRespDatasetHeader(
+          new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
+    }
 
     return new TableDeviceQueryScanNode(
         queryContext.getQueryId().genPlanNodeId(),
@@ -298,11 +299,7 @@ public class LogicalPlanner {
             : statement.getDatabase();
 
     if (Objects.isNull(database)) {
-      analysis.setFinishQueryAfterAnalyze();
-      analysis.setFailStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.METADATA_ERROR.getStatusCode(),
-              "The database must be set before show devices."));
+      throw new SemanticException("The database must be set before show devices.");
     }
 
     final SchemaPartition schemaPartition =
@@ -315,6 +312,11 @@ public class LogicalPlanner {
       analysis.setFinishQueryAfterAnalyze();
     }
 
+    if (Objects.isNull(
+        DataNodeTableCache.getInstance().getTable(database, statement.getTableName()))) {
+      throw new SemanticException(
+          String.format("Table '%s.%s' does not exist.", database, statement.getTableName()));
+    }
     return database;
   }
 
