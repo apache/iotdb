@@ -85,7 +85,7 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitNotExpression(final NotExpression node, final Context context) {
-    return visitExpression(node, context);
+    return node.getValue().accept(this, context);
   }
 
   @Override
