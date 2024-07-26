@@ -117,8 +117,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
    * {@link #createPipeRequest}, throw {@link PipeException}. If there is an IfNotExists condition,
    * return {@code false}. If there is no Pipe with the same name, return {@code true}.
    *
-   * @param env
-   * @return
+   * @param env the environment for the procedure
+   * @return {@code true} The pipeline does not exist {@code false} The pipeline already exists and
+   *     satisfies the IfNotExists condition
    * @throws PipeException
    */
   @Override
