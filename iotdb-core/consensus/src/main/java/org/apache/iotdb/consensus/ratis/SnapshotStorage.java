@@ -168,9 +168,9 @@ public class SnapshotStorage implements StateMachineStorage {
       FileInfo fileInfo;
       try {
         if (getSnapshotDir() == null) {
+          // For regions that place the snapshot in default sm folder, use relative path
           fileInfo = new FileInfo(file.toPath(), null);
         } else {
-
           fileInfo = new FileInfo(file.toPath().toRealPath(), null);
         }
       } catch (IOException e) {
