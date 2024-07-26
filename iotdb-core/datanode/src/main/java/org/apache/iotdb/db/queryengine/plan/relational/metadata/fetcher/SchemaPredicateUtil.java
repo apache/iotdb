@@ -150,7 +150,7 @@ public class SchemaPredicateUtil {
     }
 
     if (!index2FilterMap.containsKey(index)) {
-      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(filter);
+      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(currentFilter);
     }
     if (!isNotFilter && childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
       if (index2FilterMap.get(index).stream()
