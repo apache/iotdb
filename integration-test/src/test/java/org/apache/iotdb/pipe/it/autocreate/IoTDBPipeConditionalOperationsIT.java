@@ -161,7 +161,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualAutoIT {
   public void testBasicAlterPipeIfExists() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // Create pipe If Not Exists
+    // Alter pipe If Exists
     String sql =
         String.format(
             "Alter pipe If Exists a2b replace sink ('node-urls'='%s')",

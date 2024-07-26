@@ -162,10 +162,11 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(TDropPipeReq req) {
-    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(req.getPipeName());
-    final TSStatus status = configManager.getProcedureManager().dropPipe(req.getPipeName());
+    String pipeName = req.getPipeName();
+    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
+    final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
 
     if (!isPipeExistedBeforeDrop && !req.isIfExistsCondition()) {
@@ -174,8 +175,7 @@ public class PipeTaskCoordinator {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
-              "Failed to drop pipe %s. Failures: %s does not exist.",
-              req.getPipeName(), req.getPipeName()));
+              "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
 
     return status;

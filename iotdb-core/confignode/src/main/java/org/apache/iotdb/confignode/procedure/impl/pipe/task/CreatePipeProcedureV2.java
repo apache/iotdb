@@ -115,7 +115,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
    * Check the {@link PipePlugin} configuration in Pipe. If there is an error, throw {@link
    * PipeException}. If there is a Pipe with the same name and there is no IfNotExists condition in
    * {@link #createPipeRequest}, throw {@link PipeException}. If there is an IfNotExists condition,
-   * return false. If there is no Pipe with the same name, return true.
+   * return {@code false}. If there is no Pipe with the same name, return {@code true}.
    *
    * @param env
    * @return

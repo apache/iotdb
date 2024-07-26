@@ -54,7 +54,7 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
-  private static final String SKIP_Subscription_PROCEDURE_MESSAGE =
+  private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
       "Skip subscription-related operations and do nothing";
 
   private static final int RETRY_THRESHOLD = 1;
@@ -185,11 +185,10 @@ public abstract class AbstractOperateSubscriptionProcedure
         case VALIDATE:
           if (!executeFromValidate(env)) {
             // On client side, the message returned after the successful execution of the
-            // subscription
-            // command corresponding to this procedure is "Msg: The statement is executed
-            // successfully."
-            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_Subscription_PROCEDURE_MESSAGE);
-            this.setResult(SKIP_Subscription_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
+            // subscription command corresponding to this procedure is "Msg: The statement is
+            // executed successfully."
+            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
+            this.setResult(SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperateSubscriptionState.OPERATE_ON_CONFIG_NODES);

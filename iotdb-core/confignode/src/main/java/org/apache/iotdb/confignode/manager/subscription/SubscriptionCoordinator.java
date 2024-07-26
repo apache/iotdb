@@ -152,20 +152,20 @@ public class SubscriptionCoordinator {
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {
-    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(req.getTopicName());
-    final TSStatus status = configManager.getProcedureManager().dropTopic(req.getTopicName());
+    String topicName = req.getTopicName();
+    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(topicName);
+    final TSStatus status = configManager.getProcedureManager().dropTopic(topicName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop topic {}. Result status: {}.", req.getTopicName(), status);
+      LOGGER.warn("Failed to drop topic {}. Result status: {}.", topicName, status);
     }
 
-    if (!isTopicExistedBeforeDrop && req.isIfExistsCondition()) {
+    if (!isTopicExistedBeforeDrop && !req.isIfExistsCondition()) {
       // If the If Exists condition is not set and the topic does not exist before the delete
       // operation, return an error status indicating that the topic does not exist.
       return RpcUtils.getStatus(
           TSStatusCode.TOPIC_NOT_EXIST_ERROR,
           String.format(
-              "Failed to drop topic %s. Failures: %s does not exist.",
-              req.getTopicName(), req.getTopicName()));
+              "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
     }
 
     return status;
