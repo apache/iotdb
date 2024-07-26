@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class AbstractTableDeviceQueryNode extends TableDeviceSourceNode {
+public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode {
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -49,7 +49,7 @@ public class AbstractTableDeviceQueryNode extends TableDeviceSourceNode {
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   protected final Expression idFuzzyPredicate;
 
-  public AbstractTableDeviceQueryNode(
+  protected AbstractTableDeviceQueryNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,

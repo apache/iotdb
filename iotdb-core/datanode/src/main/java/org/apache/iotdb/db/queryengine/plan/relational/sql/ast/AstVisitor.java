@@ -494,4 +494,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowDevice(ShowDevice node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitCountDevice(CountDevice node, C context) {
+    return visitStatement(node, context);
+  }
 }

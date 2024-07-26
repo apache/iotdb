@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-// TODO table metadata: reuse query distinct logic
 public class CountDevice extends AbstractQueryDevice {
 
   // For sql-input show device usage
   public CountDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
+  }
+
+  @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitCountDevice(this, context);
   }
 
   @Override
