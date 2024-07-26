@@ -36,7 +36,6 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
-    RequestContext.set(output.getTransport());
     thriftConnectionNumber.incrementAndGet();
     return null;
   }
@@ -44,7 +43,6 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
   @Override
   public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
     thriftConnectionNumber.decrementAndGet();
-    RequestContext.remove();
   }
 
   @Override

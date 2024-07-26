@@ -94,87 +94,6 @@ public class DataNodeServerCommandLineTest extends TestCase {
 
   /**
    * In this test case we provide the coordinates for the data-node that we want to delete by
-   * providing the ip and port of the rpc service of that node.
-   *
-   * @throws Exception nothing should go wrong here.
-   */
-  public void testSingleDataNodeRemoveIpAndPort() throws Exception {
-    ConfigNodeInfo configNodeInfo = Mockito.mock(ConfigNodeInfo.class);
-    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-        Mockito.mock(IClientManager.class);
-    ConfigNodeClient client = Mockito.mock(ConfigNodeClient.class);
-    Mockito.when(configNodeClientManager.borrowClient(Mockito.any(ConfigRegionId.class)))
-        .thenReturn(client);
-    // This is the result of the getDataNodeConfiguration, which contains the list of known data
-    // nodes.
-    TDataNodeConfigurationResp tDataNodeConfigurationResp = new TDataNodeConfigurationResp();
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        1, new TDataNodeConfiguration(LOCATION_1, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        2, new TDataNodeConfiguration(LOCATION_2, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        3, new TDataNodeConfiguration(LOCATION_3, new TNodeResource()));
-    Mockito.when(client.getDataNodeConfiguration(Mockito.anyInt()))
-        .thenReturn(tDataNodeConfigurationResp);
-    // Only return something sensible, if exactly this location is asked to be deleted.
-    Mockito.when(
-            client.removeDataNode(new TDataNodeRemoveReq(Collections.singletonList(LOCATION_1))))
-        .thenReturn(
-            new TDataNodeRemoveResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
-    DataNode dataNode = Mockito.mock(DataNode.class);
-    DataNodeServerCommandLine sut =
-        new DataNodeServerCommandLine(configNodeInfo, configNodeClientManager, dataNode);
-
-    int returnCode = sut.run(new String[] {"-r", "1.2.3.4:6667"});
-
-    // Check the overall return code was ok.
-    Assert.assertEquals(0, returnCode);
-    // Check that the config node client was actually called with a request to remove the
-    // node we want it to remove
-    Mockito.verify(client, Mockito.times(1))
-        .removeDataNode(new TDataNodeRemoveReq(Collections.singletonList(LOCATION_1)));
-  }
-
-  /**
-   * In this test case we provide the coordinates for the data-node that we want to delete by
-   * providing the ip and port of the rpc service of that node. However, the coordinates are invalid
-   * and therefore the deletion fails with an error.
-   *
-   * @throws Exception nothing should go wrong here.
-   */
-  public void testSingleDataNodeRemoveIpAndPortWithInvalidCoordinates() throws Exception {
-    ConfigNodeInfo configNodeInfo = Mockito.mock(ConfigNodeInfo.class);
-    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-        Mockito.mock(IClientManager.class);
-    ConfigNodeClient client = Mockito.mock(ConfigNodeClient.class);
-    Mockito.when(configNodeClientManager.borrowClient(Mockito.any(ConfigRegionId.class)))
-        .thenReturn(client);
-    // This is the result of the getDataNodeConfiguration, which contains the list of known data
-    // nodes.
-    TDataNodeConfigurationResp tDataNodeConfigurationResp = new TDataNodeConfigurationResp();
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        1, new TDataNodeConfiguration(LOCATION_1, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        2, new TDataNodeConfiguration(LOCATION_2, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        3, new TDataNodeConfiguration(LOCATION_3, new TNodeResource()));
-    Mockito.when(client.getDataNodeConfiguration(Mockito.anyInt()))
-        .thenReturn(tDataNodeConfigurationResp);
-    DataNode dataNode = Mockito.mock(DataNode.class);
-    DataNodeServerCommandLine sut =
-        new DataNodeServerCommandLine(configNodeInfo, configNodeClientManager, dataNode);
-
-    try {
-      sut.run(new String[] {"-r", "4.3.2.1:815"});
-      Assert.fail("This call should have failed");
-    } catch (Exception e) {
-      // This is actually what we expected
-      Assert.assertTrue(e instanceof BadNodeUrlException);
-    }
-  }
-
-  /**
-   * In this test case we provide the coordinates for the data-node that we want to delete by
    * providing the node-id of that node.
    *
    * @throws Exception nothing should go wrong here.
@@ -256,49 +175,6 @@ public class DataNodeServerCommandLineTest extends TestCase {
 
   /**
    * In this test case we provide the coordinates for the data-node that we want to delete by
-   * providing the ip and port of the rpc service of that node. NOTE: The test was prepared to test
-   * deletion of multiple nodes, however currently we don't support this.
-   *
-   * @throws Exception nothing should go wrong here.
-   */
-  public void testMultipleDataNodeRemoveByIpAndPort() throws Exception {
-    ConfigNodeInfo configNodeInfo = Mockito.mock(ConfigNodeInfo.class);
-    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-        Mockito.mock(IClientManager.class);
-    ConfigNodeClient client = Mockito.mock(ConfigNodeClient.class);
-    Mockito.when(configNodeClientManager.borrowClient(Mockito.any(ConfigRegionId.class)))
-        .thenReturn(client);
-    // This is the result of the getDataNodeConfiguration, which contains the list of known data
-    // nodes.
-    TDataNodeConfigurationResp tDataNodeConfigurationResp = new TDataNodeConfigurationResp();
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        1, new TDataNodeConfiguration(LOCATION_1, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        2, new TDataNodeConfiguration(LOCATION_2, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        3, new TDataNodeConfiguration(LOCATION_3, new TNodeResource()));
-    Mockito.when(client.getDataNodeConfiguration(Mockito.anyInt()))
-        .thenReturn(tDataNodeConfigurationResp);
-    // Only return something sensible, if exactly the locations we want are asked to be deleted.
-    Mockito.when(
-            client.removeDataNode(new TDataNodeRemoveReq(Arrays.asList(LOCATION_1, LOCATION_2))))
-        .thenReturn(
-            new TDataNodeRemoveResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
-    DataNode dataNode = Mockito.mock(DataNode.class);
-    DataNodeServerCommandLine sut =
-        new DataNodeServerCommandLine(configNodeInfo, configNodeClientManager, dataNode);
-
-    try {
-      sut.run(new String[] {"-r", "1.2.3.4:6667,1.2.3.5:6668"});
-      Assert.fail("This call should have failed");
-    } catch (Exception e) {
-      // This is actually what we expected
-      Assert.assertTrue(e instanceof IllegalArgumentException);
-    }
-  }
-
-  /**
-   * In this test case we provide the coordinates for the data-node that we want to delete by
    * providing the node-id of that node. NOTE: The test was prepared to test deletion of multiple
    * nodes, however currently we don't support this.
    *
@@ -333,49 +209,6 @@ public class DataNodeServerCommandLineTest extends TestCase {
 
     try {
       sut.run(new String[] {"-r", "1,2"});
-      Assert.fail("This call should have failed");
-    } catch (Exception e) {
-      // This is actually what we expected
-      Assert.assertTrue(e instanceof IllegalArgumentException);
-    }
-  }
-
-  /**
-   * In this test case we provide the coordinates for the data-node that we want to delete by
-   * providing the node-id of that node. NOTE: The test was prepared to test deletion of multiple
-   * nodes, however currently we don't support this.
-   *
-   * @throws Exception nothing should go wrong here.
-   */
-  public void testMultipleDataNodeRemoveByMixedIpAndPortAndId() throws Exception {
-    ConfigNodeInfo configNodeInfo = Mockito.mock(ConfigNodeInfo.class);
-    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-        Mockito.mock(IClientManager.class);
-    ConfigNodeClient client = Mockito.mock(ConfigNodeClient.class);
-    Mockito.when(configNodeClientManager.borrowClient(Mockito.any(ConfigRegionId.class)))
-        .thenReturn(client);
-    // This is the result of the getDataNodeConfiguration, which contains the list of known data
-    // nodes.
-    TDataNodeConfigurationResp tDataNodeConfigurationResp = new TDataNodeConfigurationResp();
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        1, new TDataNodeConfiguration(LOCATION_1, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        2, new TDataNodeConfiguration(LOCATION_2, new TNodeResource()));
-    tDataNodeConfigurationResp.putToDataNodeConfigurationMap(
-        3, new TDataNodeConfiguration(LOCATION_3, new TNodeResource()));
-    Mockito.when(client.getDataNodeConfiguration(Mockito.anyInt()))
-        .thenReturn(tDataNodeConfigurationResp);
-    // Only return something sensible, if exactly the locations we want are asked to be deleted.
-    Mockito.when(
-            client.removeDataNode(new TDataNodeRemoveReq(Arrays.asList(LOCATION_1, LOCATION_2))))
-        .thenReturn(
-            new TDataNodeRemoveResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
-    DataNode dataNode = Mockito.mock(DataNode.class);
-    DataNodeServerCommandLine sut =
-        new DataNodeServerCommandLine(configNodeInfo, configNodeClientManager, dataNode);
-
-    try {
-      sut.run(new String[] {"-r", "1,1.2.3.5:6668"});
       Assert.fail("This call should have failed");
     } catch (Exception e) {
       // This is actually what we expected

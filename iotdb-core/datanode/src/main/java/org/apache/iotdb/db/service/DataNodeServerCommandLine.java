@@ -20,7 +20,6 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.thrift.TException;
@@ -191,40 +189,21 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   }
 
   protected List<NodeCoordinate> parseCoordinates(String coordinatesString) {
-    // Multiple coordinates are separated by ","
-    String[] coordinateStrings = coordinatesString.split(",");
-    List<NodeCoordinate> coordinates = new ArrayList<>(coordinateStrings.length);
-    for (String coordinate : coordinateStrings) {
-      // If the string contains a ":" then this is an IP+Port configuration
-      if (coordinate.contains(":")) {
-        coordinates.add(new NodeCoordinateIP(UrlUtils.parseTEndPointIpv4AndIpv6Url(coordinate)));
-      }
+    // Multiple nodeIds are separated by ","
+    String[] nodeIdStrings = coordinatesString.split(",");
+    List<NodeCoordinate> nodeIdCoordinates = new ArrayList<>(nodeIdStrings.length);
+    for (String nodeId : nodeIdStrings) {
       // In the other case, we expect it to be a numeric value referring to the node-id
-      else if (NumberUtils.isCreatable(coordinate)) {
-        coordinates.add(new NodeCoordinateNodeId(Integer.parseInt(coordinate)));
+      if (NumberUtils.isCreatable(nodeId)) {
+        nodeIdCoordinates.add(new NodeCoordinateNodeId(Integer.parseInt(nodeId)));
       }
     }
-    return coordinates;
+    return nodeIdCoordinates;
   }
 
   protected interface NodeCoordinate {
     // Returns true if the given location matches this coordinate
     boolean matches(TDataNodeLocation location);
-  }
-
-  /** Implementation of a NodeCoordinate that uses ip and port to match. */
-  protected static class NodeCoordinateIP implements NodeCoordinate {
-    private final TEndPoint endPoint;
-
-    public NodeCoordinateIP(TEndPoint endPoint) {
-      this.endPoint = endPoint;
-    }
-
-    @Override
-    public boolean matches(TDataNodeLocation location) {
-      return endPoint.ip.equals(location.getClientRpcEndPoint().getIp())
-          && endPoint.port == location.getClientRpcEndPoint().getPort();
-    }
   }
 
   /** Implementation of a NodeCoordinate that uses the node id to match. */

@@ -187,11 +187,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -259,24 +257,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
-    // If the remote server is configured to bind to all ip addresses (0.0.0.0),
-    // update the request to use the remote address we got this request from.
-    if ((req.dataNodeConfiguration.getLocation() != null)
-        && req.dataNodeConfiguration.getLocation().isSetClientRpcEndPoint()
-        && req.dataNodeConfiguration.getLocation().getClientRpcEndPoint().isSetIp()
-        && "0.0.0.0"
-            .equals(req.dataNodeConfiguration.getLocation().getClientRpcEndPoint().getIp())) {
-      Optional<InetAddress> addressOptional = RequestContext.get().getRemoteAddress();
-      if (addressOptional.isPresent()) {
-        InetAddress remoteAddress = addressOptional.get();
-        req = req.deepCopy();
-        req.getDataNodeConfiguration()
-            .getLocation()
-            .getClientRpcEndPoint()
-            .setIp(remoteAddress.getHostAddress());
-      }
-    }
-
     TDataNodeRegisterResp resp =
         ((DataNodeRegisterResp) configManager.registerDataNode(req))
             .convertToRpcDataNodeRegisterResp();
@@ -289,24 +269,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
-    // If the remote server is configured to bind to all ip addresses (0.0.0.0),
-    // update the request to use the remote address we got this request from.
-    if ((req.dataNodeConfiguration.getLocation() != null)
-        && req.dataNodeConfiguration.getLocation().isSetClientRpcEndPoint()
-        && req.dataNodeConfiguration.getLocation().getClientRpcEndPoint().isSetIp()
-        && "0.0.0.0"
-            .equals(req.dataNodeConfiguration.getLocation().getClientRpcEndPoint().getIp())) {
-      Optional<InetAddress> addressOptional = RequestContext.get().getRemoteAddress();
-      if (addressOptional.isPresent()) {
-        InetAddress remoteAddress = addressOptional.get();
-        req = req.deepCopy();
-        req.getDataNodeConfiguration()
-            .getLocation()
-            .getClientRpcEndPoint()
-            .setIp(remoteAddress.getHostAddress());
-      }
-    }
-
     TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
