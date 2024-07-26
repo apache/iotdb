@@ -25,8 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -333,7 +335,7 @@ public class DistributedPlanGenerator
         maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
       }
     }
-    context.mostUsedDataRegion = mostUsedDataRegion;
+    context.mostUsedRegion = mostUsedDataRegion;
 
     if (!context.hasSortNode) {
       return resultTableScanNodeList;
@@ -445,9 +447,21 @@ public class DistributedPlanGenerator
 
   // ------------------- schema related interface ---------------------------------------------
   @Override
-  public List<PlanNode> visitTableDeviceQuery(TableDeviceQueryNode node, PlanContext context) {
-    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
-    Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
+  public List<PlanNode> visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final PlanContext context) {
+    return visitAbstractTableDeviceQuery(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitTableDeviceQueryCount(
+      final TableDeviceQueryCountNode node, final PlanContext context) {
+    return visitAbstractTableDeviceQuery(node, context);
+  }
+
+  private List<PlanNode> visitAbstractTableDeviceQuery(
+      final AbstractTableDeviceQueryNode node, final PlanContext context) {
+    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
@@ -455,14 +469,15 @@ public class DistributedPlanGenerator
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
-    context.mostUsedDataRegion = schemaRegionSet.iterator().next();
+    context.mostUsedRegion = schemaRegionSet.iterator().next();
     if (schemaRegionSet.size() == 1) {
       node.setRegionReplicaSet(schemaRegionSet.iterator().next());
       return Collections.singletonList(node);
     } else {
-      List<PlanNode> res = new ArrayList<>(schemaRegionSet.size());
-      for (TRegionReplicaSet schemaRegion : schemaRegionSet) {
-        TableDeviceQueryNode clonedChild = (TableDeviceQueryNode) node.clone();
+      final List<PlanNode> res = new ArrayList<>(schemaRegionSet.size());
+      for (final TRegionReplicaSet schemaRegion : schemaRegionSet) {
+        final AbstractTableDeviceQueryNode clonedChild =
+            (AbstractTableDeviceQueryNode) node.clone();
         clonedChild.setPlanNodeId(queryId.genPlanNodeId());
         clonedChild.setRegionReplicaSet(schemaRegion);
         res.add(clonedChild);
@@ -472,27 +487,28 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTableDeviceFetch(TableDeviceFetchNode node, PlanContext context) {
-    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
-    Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
-    SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
-    Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =
+  public List<PlanNode> visitTableDeviceFetch(
+      final TableDeviceFetchNode node, final PlanContext context) {
+    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
+    final SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
+    final Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =
         schemaPartition.getSchemaPartitionMap().get(database);
 
     databaseMap.forEach(
         (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
     if (schemaRegionSet.size() == 1) {
-      context.mostUsedDataRegion = schemaRegionSet.iterator().next();
-      node.setRegionReplicaSet(context.mostUsedDataRegion);
+      context.mostUsedRegion = schemaRegionSet.iterator().next();
+      node.setRegionReplicaSet(context.mostUsedRegion);
       return Collections.singletonList(node);
     } else {
-      Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
+      final Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
 
-      for (Object[] deviceIdArray : node.getDeviceIdList()) {
-        IDeviceID deviceID =
+      for (final Object[] deviceIdArray : node.getDeviceIdList()) {
+        final IDeviceID deviceID =
             IDeviceID.Factory.DEFAULT_FACTORY.create(parseDeviceIdArray(deviceIdArray));
-        TRegionReplicaSet regionReplicaSet =
+        final TRegionReplicaSet regionReplicaSet =
             databaseMap.get(schemaPartition.calculateDeviceGroupId(deviceID));
         tableDeviceFetchMap
             .computeIfAbsent(
@@ -508,13 +524,13 @@ public class DistributedPlanGenerator
             .addDeviceId(deviceIdArray);
       }
 
-      List<PlanNode> res = new ArrayList<>();
+      final List<PlanNode> res = new ArrayList<>();
       TRegionReplicaSet mostUsedDataRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
-      for (Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
+      for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
           tableDeviceFetchMap.entrySet()) {
-        TRegionReplicaSet regionReplicaSet = entry.getKey();
-        TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
+        final TRegionReplicaSet regionReplicaSet = entry.getKey();
+        final TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
         res.add(subTableDeviceFetchNode);
 
         if (subTableDeviceFetchNode.getDeviceIdList().size() > maxDeviceEntrySizeOfTableScan) {
@@ -522,7 +538,7 @@ public class DistributedPlanGenerator
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedDataRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedDataRegion;
       return res;
     }
   }
@@ -532,7 +548,7 @@ public class DistributedPlanGenerator
     boolean hasExchangeNode = false;
     boolean hasSortNode = false;
     OrderingScheme expectedOrderingScheme;
-    TRegionReplicaSet mostUsedDataRegion;
+    TRegionReplicaSet mostUsedRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

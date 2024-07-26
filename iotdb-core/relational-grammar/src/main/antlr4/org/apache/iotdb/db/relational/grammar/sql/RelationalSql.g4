@@ -240,7 +240,7 @@ showDevicesStatement
     ;
 
 countDevicesStatement
-    : COUNT DEVICES (FROM tableName=qualifiedName)? (WHERE where=booleanExpression)?
+    : COUNT DEVICES FROM tableName=qualifiedName (WHERE where=booleanExpression)?
     ;
 
 // show timeseries and count timeseries have no meaning in relational model

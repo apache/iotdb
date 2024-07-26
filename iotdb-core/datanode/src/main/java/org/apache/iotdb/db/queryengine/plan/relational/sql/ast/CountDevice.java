@@ -19,31 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import java.util.List;
-
-public class ShowDevice extends AbstractQueryDevice {
+// TODO table metadata: reuse query distinct logic
+public class CountDevice extends AbstractQueryDevice {
 
   // For sql-input show device usage
-  public ShowDevice(final String tableName, final Expression rawExpression) {
+  public CountDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
-  }
-
-  // For device fetch serving data query
-  public ShowDevice(
-      final String database,
-      final String tableName,
-      final List<List<Expression>> idDeterminedPredicateList,
-      final Expression idFuzzyFilterList) {
-    super(database, tableName, idDeterminedPredicateList, idFuzzyFilterList);
-  }
-
-  @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitShowDevice(this, context);
   }
 
   @Override
   public String toString() {
-    return "ShowDevice" + toStringContent();
+    return "CountDevice" + toStringContent();
   }
 }

@@ -26,8 +26,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -37,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
@@ -52,10 +56,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -109,7 +115,7 @@ public class LogicalPlanner {
     return new LogicalQueryPlan(queryContext, planNode);
   }
 
-  private PlanNode planStatement(Analysis analysis, Statement statement) {
+  private PlanNode planStatement(final Analysis analysis, final Statement statement) {
     if (statement instanceof CreateDevice) {
       return planCreateDevice((CreateDevice) statement, analysis);
     }
@@ -118,6 +124,9 @@ public class LogicalPlanner {
     }
     if (statement instanceof ShowDevice) {
       return planShowDevice((ShowDevice) statement, analysis);
+    }
+    if (statement instanceof CountDevice) {
+      return planCountDevice((CountDevice) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -241,7 +250,46 @@ public class LogicalPlanner {
     return fetchNode;
   }
 
-  private PlanNode planShowDevice(ShowDevice statement, Analysis analysis) {
+  private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
+    final String database = planQueryDevice(statement, analysis);
+    final List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(database, statement.getTableName());
+    analysis.setRespDatasetHeader(
+        new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
+
+    return new TableDeviceQueryScanNode(
+        queryContext.getQueryId().genPlanNodeId(),
+        database,
+        statement.getTableName(),
+        statement.getIdDeterminedPredicateList(),
+        statement.getIdFuzzyPredicate(),
+        columnHeaderList,
+        null);
+  }
+
+  private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
+    final String database = planQueryDevice(statement, analysis);
+    final List<ColumnHeader> columnHeaderList =
+        Collections.singletonList(new ColumnHeader("count(devices)", TSDataType.INT64));
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
+    final TableDeviceQueryCountNode node =
+        new TableDeviceQueryCountNode(
+            queryContext.getQueryId().genPlanNodeId(),
+            database,
+            statement.getTableName(),
+            statement.getIdDeterminedPredicateList(),
+            statement.getIdFuzzyPredicate(),
+            columnHeaderList,
+            null);
+
+    final CountSchemaMergeNode countMergeNode =
+        new CountSchemaMergeNode(queryContext.getQueryId().genPlanNodeId());
+    countMergeNode.addChild(node);
+    return countMergeNode;
+  }
+
+  private String planQueryDevice(final AbstractQueryDevice statement, final Analysis analysis) {
     queryContext.setQueryType(QueryType.READ);
 
     final String database =
@@ -257,21 +305,7 @@ public class LogicalPlanner {
               "The database must be set before show devices."));
     }
 
-    List<ColumnHeader> columnHeaderList = getColumnHeaderList(database, statement.getTableName());
-
-    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
-
-    TableDeviceQueryNode queryNode =
-        new TableDeviceQueryNode(
-            queryContext.getQueryId().genPlanNodeId(),
-            database,
-            statement.getTableName(),
-            statement.getIdDeterminedPredicateList(),
-            statement.getIdFuzzyPredicate(),
-            columnHeaderList,
-            null);
-
-    SchemaPartition schemaPartition =
+    final SchemaPartition schemaPartition =
         statement.isIdDetermined()
             ? metadata.getSchemaPartition(database, statement.getPartitionKeyList())
             : metadata.getSchemaPartition(database);
@@ -281,7 +315,7 @@ public class LogicalPlanner {
       analysis.setFinishQueryAfterAnalyze();
     }
 
-    return queryNode;
+    return database;
   }
 
   private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {

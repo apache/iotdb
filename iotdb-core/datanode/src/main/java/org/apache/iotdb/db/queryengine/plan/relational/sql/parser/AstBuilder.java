@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -506,17 +507,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
+  public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
     if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
       throw new UnsupportedOperationException(
-          "Show devices with where/limit/offset is unsupported yet.");
+          "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
     }
     return new ShowDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 
   @Override
-  public Node visitCountDevicesStatement(RelationalSqlParser.CountDevicesStatementContext ctx) {
-    return super.visitCountDevicesStatement(ctx);
+  public Node visitCountDevicesStatement(
+      final RelationalSqlParser.CountDevicesStatementContext ctx) {
+    if (ctx.WHERE() != null) {
+      throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
+    }
+    return new CountDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 
   @Override
