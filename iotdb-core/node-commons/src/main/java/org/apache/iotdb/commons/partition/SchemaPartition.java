@@ -117,8 +117,6 @@ public class SchemaPartition extends Partition {
 
   @Override
   public String toString() {
-    return "SchemaPartition{" +
-        "schemaPartitionMap=" + schemaPartitionMap +
-        '}';
+    return "SchemaPartition{" + "schemaPartitionMap=" + schemaPartitionMap + '}';
   }
 }
