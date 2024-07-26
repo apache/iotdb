@@ -45,6 +45,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
+import org.apache.iotdb.session.subscription.util.TopicIterator;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.slf4j.Logger;
@@ -102,6 +103,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  private final TopicIterator topicIterator;
+
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -155,6 +158,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    this.topicIterator = new TopicIterator(2);
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -422,7 +427,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     do {
       try {
         // poll tablets or file
-        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
+        for (final SubscriptionPollResponse pollResponse :
+            pollInternal(topicIterator.nextBatch(topicNames))) {
           final short responseType = pollResponse.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
             LOGGER.warn("unexpected response type: {}", responseType);
