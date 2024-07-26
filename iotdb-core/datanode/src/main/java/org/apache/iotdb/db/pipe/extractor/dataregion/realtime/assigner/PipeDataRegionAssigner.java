@@ -79,10 +79,14 @@ public class PipeDataRegionAssigner implements Closeable {
         .forEach(
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
-                counter++;
-                if (!(event.getEvent() instanceof PipeTsFileInsertionEvent)
-                    && counter < pipeDataRegionAssignerAcknowledgeRate) {
-                  return;
+                // Limit the frequency of pipe response through the counter, and do not limit
+                // TsInsertionEvent
+                if (!(event.getEvent() instanceof PipeTsFileInsertionEvent)) {
+                  if (counter < pipeDataRegionAssignerAcknowledgeRate) {
+                    counter++;
+                    return;
+                  }
+                  counter = 0;
                 }
 
                 final ProgressReportEvent reportEvent =
@@ -96,7 +100,6 @@ public class PipeDataRegionAssigner implements Closeable {
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
                 extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
-                counter = 0;
                 return;
               }
 
