@@ -19,37 +19,45 @@
 
 package org.apache.iotdb.db.utils.writelog;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 
-public class PartitionLogReader implements AutoCloseable {
+public class PartitionLogReader {
 
-  private DataInputStream logStream;
-  private String filepath;
+  private final File logFile;
+  private final long fileLength;
+  private final int dataRegionId;
+  private final long partitionId;
 
-  private byte[] buffer;
+  public PartitionLogReader(File logFile, String dataRegionId, long partitionId)
+      throws IOException {
+    this.logFile = logFile;
+    this.fileLength = logFile.length();
+    this.dataRegionId = Integer.parseInt(dataRegionId);
+    this.partitionId = partitionId;
+  }
 
-  public PartitionLogReader(File logFile) throws IOException {
-    logStream =
+  public void read(Map<TsFileID, FileTimeIndex> fileTimeIndexMap) throws IOException {
+    DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
-    this.filepath = logFile.getPath();
-  }
-
-  public Map<TsFileID, FileTimeIndex> read() throws IOException {
-    // read the log file
-    // return the TsFileProcessor map
-    return null;
-  }
-
-  @Override
-  public void close() throws Exception {
+    long readLength = 0L;
+    while (readLength < fileLength) {
+      long fileVersion = logStream.readLong();
+      long compactionVersion = logStream.readLong();
+      long minStartTime = logStream.readLong();
+      long maxEndTime = logStream.readLong();
+      TsFileID tsFileID = new TsFileID(dataRegionId, partitionId, fileVersion, compactionVersion);
+      FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
+      fileTimeIndexMap.put(tsFileID, fileTimeIndex);
+      readLength += 4 * Long.BYTES;
+    }
     logStream.close();
   }
 }

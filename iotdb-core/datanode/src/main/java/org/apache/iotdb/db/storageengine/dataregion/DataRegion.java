@@ -825,8 +825,9 @@ public class DataRegion implements IDataRegionForQuery {
         SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
     if (logFile.exists()) {
       Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
-      try (PartitionLogReader logReader = new PartitionLogReader(logFile)) {
-        fileTimeIndexMap = logReader.read();
+      try {
+        PartitionLogReader logReader = new PartitionLogReader(logFile, dataRegionId, partitionId);
+        logReader.read(fileTimeIndexMap);
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
@@ -858,8 +859,7 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isSeq) {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
-      PartitionLogRecorder.getInstance()
-          .submitTask(dataRegionSysDir, tsFileResource);
+      PartitionLogRecorder.getInstance().submitTask(dataRegionSysDir, tsFileResource);
     }
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId)) {
