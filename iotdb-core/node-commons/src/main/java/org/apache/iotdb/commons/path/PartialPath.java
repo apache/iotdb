@@ -822,22 +822,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return device;
   }
 
+  @Deprecated
   /** This PartialPath represents for full device path */
   public IDeviceID getIDeviceIDAsFullDevice() {
-    if (device != null) {
-      return device;
-    } else {
-      if (nodes.length == 1) {
-        return Factory.DEFAULT_FACTORY.create("");
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
-    }
-    return device;
+    return getIDeviceID();
   }
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly
