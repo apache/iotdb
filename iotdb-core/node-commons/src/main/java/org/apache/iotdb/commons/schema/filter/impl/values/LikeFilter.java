@@ -33,18 +33,18 @@ import java.util.regex.Pattern;
 
 // Does not support escape now
 public class LikeFilter extends SchemaFilter {
-  private final Pattern regex;
+  private final Pattern pattern;
 
   public LikeFilter(final String regex) {
-    this.regex = Pattern.compile(regex);
+    this.pattern = Pattern.compile(regex);
   }
 
   public LikeFilter(final ByteBuffer byteBuffer) {
-    this.regex = Pattern.compile(ReadWriteIOUtils.readString(byteBuffer));
+    this.pattern = Pattern.compile(ReadWriteIOUtils.readString(byteBuffer));
   }
 
-  public Pattern getRegex() {
-    return regex;
+  public Pattern getPattern() {
+    return pattern;
   }
 
   @Override
@@ -59,12 +59,12 @@ public class LikeFilter extends SchemaFilter {
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(regex.pattern(), byteBuffer);
+    ReadWriteIOUtils.write(pattern.pattern(), byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(regex.pattern(), stream);
+    ReadWriteIOUtils.write(pattern.pattern(), stream);
   }
 
   @Override
@@ -76,11 +76,11 @@ public class LikeFilter extends SchemaFilter {
       return false;
     }
     final LikeFilter that = (LikeFilter) o;
-    return Objects.equals(regex.pattern(), that.regex.pattern());
+    return Objects.equals(pattern.pattern(), that.pattern.pattern());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regex);
+    return Objects.hash(pattern);
   }
 }
