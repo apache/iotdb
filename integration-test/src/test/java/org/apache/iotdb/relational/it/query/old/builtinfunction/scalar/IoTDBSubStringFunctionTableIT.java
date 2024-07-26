@@ -181,7 +181,6 @@ public class IoTDBSubStringFunctionTableIT {
             + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
-    // TODO add back after blob support
     // Wrong input type
     tableAssertTestFail(
         "select SUBSTRING(s10 FROM 1 FOR 1) from table1",
