@@ -174,7 +174,7 @@ public class SchemaPredicateUtil {
             StringValueFilterVisitor.getInstance(),
             ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue());
       } else {
-        index2FilterMap.get(index).add(childFilter);
+        index2FilterMap.get(index).add(currentFilter);
       }
     }
     return true;
