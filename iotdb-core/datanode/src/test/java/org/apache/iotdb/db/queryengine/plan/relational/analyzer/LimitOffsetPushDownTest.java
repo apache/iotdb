@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
@@ -60,7 +60,7 @@ public class LimitOffsetPushDownTest {
   LogicalPlanner logicalPlanner;
   LogicalQueryPlan logicalQueryPlan;
   PlanNode rootNode;
-  TableDistributionPlanner distributionPlanner;
+  TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
 
@@ -79,7 +79,7 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 4) instanceof TableScanNode);
 
     // DistributePlan: `Output - Project - Offset - Limit - Collect - TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     CollectNode collectNode =
@@ -119,7 +119,7 @@ public class LimitOffsetPushDownTest {
 
     // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Limit - Project -
     // TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -160,7 +160,7 @@ public class LimitOffsetPushDownTest {
 
     // DistributePlan: `Identity - Output - Offset - Project - TopK - Limit - StreamSort - Project -
     // TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -201,7 +201,7 @@ public class LimitOffsetPushDownTest {
 
     // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -241,7 +241,7 @@ public class LimitOffsetPushDownTest {
 
     // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =

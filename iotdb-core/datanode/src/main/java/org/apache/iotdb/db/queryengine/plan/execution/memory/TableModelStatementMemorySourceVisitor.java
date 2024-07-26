@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -77,7 +77,7 @@ public class TableModelStatementMemorySourceVisitor
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange =
-        new TableDistributionPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
+        new TableDistributedPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
             .generateDistributePlanWithOptimize(planContext);
 
     List<String> lines =

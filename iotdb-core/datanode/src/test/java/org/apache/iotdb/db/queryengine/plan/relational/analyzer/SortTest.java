@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -81,7 +81,7 @@ public class SortTest {
   PlanNode mergeSortNode;
   ProjectNode projectNode;
   StreamSortNode streamSortNode;
-  TableDistributionPlanner distributionPlanner;
+  TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
   List<String> originalDeviceEntries1 =
@@ -129,7 +129,7 @@ public class SortTest {
     // DistributePlan: `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -206,7 +206,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -280,7 +280,7 @@ public class SortTest {
     assertEquals(6, tableScanNode.getDeviceEntries().size());
 
     // DistributePlan: optimize `Output-Project-MergeSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -358,7 +358,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan` to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -434,7 +434,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -602,7 +602,7 @@ public class SortTest {
     assertEquals(isPushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -670,7 +670,7 @@ public class SortTest {
     assertEquals(isPushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =

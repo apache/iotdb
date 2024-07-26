@@ -50,14 +50,14 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 
-public class TableDistributionPlanner {
+public class TableDistributedPlanner {
 
   private final Analysis analysis;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
 
-  public TableDistributionPlanner(
+  public TableDistributedPlanner(
       Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
