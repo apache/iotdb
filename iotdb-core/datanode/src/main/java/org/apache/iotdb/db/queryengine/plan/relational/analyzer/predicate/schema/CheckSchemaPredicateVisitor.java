@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +86,15 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitNotExpression(final NotExpression node, final Context context) {
+    if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
+        LOGGER.info(
+            "Logical expression type encountered in not expression child during id determined checking, will be classified into fuzzy expression. Sql: {}",
+            context.queryContext.getSql());
+        lastLogTime = System.currentTimeMillis();
+      }
+      return false;
+    }
     return node.getValue().accept(this, context);
   }
 
