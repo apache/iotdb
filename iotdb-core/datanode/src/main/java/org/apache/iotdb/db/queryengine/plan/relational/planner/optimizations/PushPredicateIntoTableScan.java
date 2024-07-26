@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
@@ -167,7 +169,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           tableScanNode.setTimePredicate(resultPair.left);
         }
         if (Boolean.TRUE.equals(resultPair.right)) {
-          tableScanNode.setPushDownPredicate(pushDownPredicate);
+          if (pushDownPredicate instanceof LogicalExpression
+              && ((LogicalExpression) pushDownPredicate).getTerms().size() == 1) {
+            tableScanNode.setPushDownPredicate(
+                ((LogicalExpression) pushDownPredicate).getTerms().get(0));
+          } else {
+            tableScanNode.setPushDownPredicate(pushDownPredicate);
+          }
         }
       } else {
         tableScanNode.setPushDownPredicate(null);
@@ -241,6 +249,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitTableScan(TableScanNode node, Void context) {
       tableMetadataIndexScan(node, Collections.emptyList());
+      return node;
+    }
+
+    @Override
+    public PlanNode visitInsertTablet(InsertTabletNode node, Void context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
       return node;
     }
 

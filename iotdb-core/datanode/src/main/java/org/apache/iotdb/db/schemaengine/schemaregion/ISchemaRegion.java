@@ -47,6 +47,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -111,7 +113,7 @@ public interface ISchemaRegion {
    * @param offset
    * @throws MetadataException
    */
-  void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
   /**
    * Create aligned timeseries.
@@ -145,14 +147,16 @@ public interface ISchemaRegion {
       throws SchemaQuotaExceededException;
 
   /**
-   * Construct schema black list via setting matched timeseries to pre deleted.
+   * Construct schema black list via setting matched time series to preDeleted.
    *
-   * @param patternTree
-   * @throws MetadataException
-   * @return preDeletedNum. If there are intersections of patterns in the patternTree, there may be
-   *     more than are actually pre-deleted.
+   * @param patternTree the patterns to construct black list
+   * @throws MetadataException If write to mLog failed
+   * @return {@link Pair}{@literal <}preDeletedNum, isAllLogicalView{@literal >}. If there are
+   *     intersections of patterns in the patternTree, there may be more than are actually
+   *     pre-deleted.
    */
-  long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  Pair<Long, Boolean> constructSchemaBlackList(final PathPatternTree patternTree)
+      throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
@@ -195,7 +199,7 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for timeseries, measurement and schema info Query
+  // region Interfaces for timeSeries, measurement and schema info Query
 
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 

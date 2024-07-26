@@ -25,10 +25,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTagLimitIT extends AbstractSchemaIT {
 
-  public IoTDBTagLimitIT(SchemaTestMode schemaTestMode) {
+  public IoTDBTagLimitIT(final SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
@@ -53,16 +52,18 @@ public class IoTDBTagLimitIT extends AbstractSchemaIT {
         "create database root.turbine",
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTagAttributeTotalSize(50);
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
   }
 
   @Test

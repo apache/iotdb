@@ -62,7 +62,8 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
-          new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0)));
+          new Element(
+              reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0, false)));
     } else {
       reader.close();
     }
@@ -189,20 +190,29 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   public static class MergeReaderPriority implements Comparable<MergeReaderPriority> {
-    long version;
-    long offset;
+    final long version;
+    final long offset;
 
-    public MergeReaderPriority(long version, long offset) {
+    final boolean isSeq;
+
+    public MergeReaderPriority(long version, long offset, boolean isSeq) {
       this.version = version;
       this.offset = offset;
+      this.isSeq = isSeq;
     }
 
     @Override
     public int compareTo(MergeReaderPriority o) {
-      if (version < o.version) {
-        return -1;
+      if (isSeq != o.isSeq) {
+        // one is seq and another is unseq, unseq always win
+        return isSeq ? -1 : 1;
+      } else {
+        // both seq or both unseq, using version + offset to compare
+        if (version < o.version) {
+          return -1;
+        }
+        return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
       }
-      return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
     }
 
     @Override

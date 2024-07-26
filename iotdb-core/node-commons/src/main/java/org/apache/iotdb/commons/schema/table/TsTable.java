@@ -50,7 +50,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @ThreadSafe
 public class TsTable {
 
-  private static final String TIME_COLUMN_NAME = "Time";
+  public static final String TIME_COLUMN_NAME = "time";
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
@@ -223,5 +223,18 @@ public class TsTable {
   @Override
   public int hashCode() {
     return Objects.hash(tableName);
+  }
+
+  @Override
+  public String toString() {
+    return "TsTable{"
+        + "tableName='"
+        + tableName
+        + '\''
+        + ", columnSchemaMap="
+        + columnSchemaMap
+        + ", props="
+        + props
+        + '}';
   }
 }

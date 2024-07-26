@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
@@ -56,11 +57,9 @@ public final class NormalizeOrExpressionRewriter {
           node.getTerms().stream()
               .map(expression -> process(expression, context))
               .collect(toImmutableList());
-
       if (node.getOperator() == AND) {
         return and(terms);
       }
-
       ImmutableList.Builder<InPredicate> inPredicateBuilder = ImmutableList.builder();
       ImmutableSet.Builder<Expression> expressionToSkipBuilder = ImmutableSet.builder();
       ImmutableList.Builder<Expression> othersExpressionBuilder = ImmutableList.builder();
@@ -68,18 +67,15 @@ public final class NormalizeOrExpressionRewriter {
           .forEach(
               (expression, values) -> {
                 if (values.size() > 1) {
-                  // TODO mergeToInListExpression may have more than one value
                   inPredicateBuilder.add(
-                      new InPredicate(expression, mergeToInListExpression(values).get(0)));
+                      new InPredicate(expression, mergeToInListExpression(values)));
                   expressionToSkipBuilder.add(expression);
                 }
               });
-
       Set<Expression> expressionToSkip = expressionToSkipBuilder.build();
       for (Expression expression : terms) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
-
           if (!expressionToSkip.contains(((ComparisonExpression) expression).getLeft())) {
             othersExpressionBuilder.add(expression);
           }
@@ -91,7 +87,6 @@ public final class NormalizeOrExpressionRewriter {
           othersExpressionBuilder.add(expression);
         }
       }
-
       return or(
           ImmutableList.<Expression>builder()
               .addAll(othersExpressionBuilder.build())
@@ -99,21 +94,22 @@ public final class NormalizeOrExpressionRewriter {
               .build());
     }
 
-    private List<Expression> mergeToInListExpression(Collection<Expression> expressions) {
+    private InListExpression mergeToInListExpression(Collection<Expression> expressions) {
       LinkedHashSet<Expression> expressionValues = new LinkedHashSet<>();
       for (Expression expression : expressions) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
           expressionValues.add(((ComparisonExpression) expression).getRight());
-        } else if (expression instanceof InPredicate) {
-          // TODO inPredicate has getValues method
-          expressionValues.add(((InPredicate) expression).getValue());
+        } else if (expression instanceof InPredicate
+            && ((InPredicate) expression).getValueList() instanceof InListExpression) {
+          expressionValues.addAll(
+              ((InListExpression) ((InPredicate) expression).getValueList()).getValues());
         } else {
           throw new IllegalStateException("Unexpected expression: " + expression);
         }
       }
 
-      return ImmutableList.copyOf(expressionValues);
+      return new InListExpression(ImmutableList.copyOf(expressionValues));
     }
 
     private Map<Expression, Collection<Expression>> groupComparisonAndInPredicate(

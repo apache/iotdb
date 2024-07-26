@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -206,7 +206,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     seqResource1
         .getModFile()
         .write(
-            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
+            new Deletion(
+                new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
     seqResource1.getModFile().close();
 
     TsFileResource seqResource2 =
@@ -262,7 +263,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     seqResource1
         .getModFile()
         .write(
-            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
+            new Deletion(
+                new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
     seqResource1.getModFile().close();
 
     TsFileResource seqResource2 =
@@ -375,7 +377,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     seqResources.add(seqResource1);
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 250000));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 250000));
     seqResource1.getModFile().close();
 
     TsFileResource seqResource2 =
@@ -427,7 +429,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     seqResources.add(seqResource1);
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 25000));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 25000));
     seqResource1.getModFile().close();
 
     TsFileResource seqResource2 =
@@ -486,7 +488,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     seqResources.add(seqResource1);
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 15000));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 15000));
     seqResource1.getModFile().close();
 
     TsFileResource seqResource2 =

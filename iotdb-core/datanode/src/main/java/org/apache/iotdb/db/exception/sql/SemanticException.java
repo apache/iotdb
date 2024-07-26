@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-public class SemanticException extends RuntimeException {
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class SemanticException extends IoTDBRuntimeException {
 
   public SemanticException(String message) {
-    super(message);
+    super(message, TSStatusCode.SEMANTIC_ERROR.getStatusCode());
   }
 
   public SemanticException(Throwable cause) {
-    super(cause);
+    super(cause, TSStatusCode.SEMANTIC_ERROR.getStatusCode());
   }
 }

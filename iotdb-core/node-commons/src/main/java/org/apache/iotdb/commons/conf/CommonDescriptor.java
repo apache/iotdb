@@ -276,6 +276,12 @@ public class CommonDescriptor {
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
 
+    config.setPipeRealTimeQueuePollHistoryThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_queue_poll_history_threshold",
+                Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
+
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -391,11 +397,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_all_sinks_rate_limit_bytes_per_second",
                 String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
-    config.setPipeEndPointRateLimiterDropCheckIntervalMs(
+    config.setRateLimiterHotReloadCheckIntervalMs(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_end_point_rate_limiter_drop_check_interval_ms",
-                String.valueOf(config.getPipeEndPointRateLimiterDropCheckIntervalMs()))));
+                "rate_limiter_hot_reload_check_interval_ms",
+                String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -640,6 +646,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionTsFileDeduplicationWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_deduplication_window_seconds",
+                String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -87,18 +89,13 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
+  public Statement visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
+    return new InsertTabletStatement(node);
+  }
+
+  @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
-    final InsertTabletStatement statement = new InsertTabletStatement();
-    statement.setDevicePath(node.getDevicePath());
-    statement.setMeasurements(node.getMeasurements());
-    statement.setTimes(node.getTimes());
-    statement.setColumns(node.getColumns());
-    statement.setBitMaps(node.getBitMaps());
-    statement.setRowCount(node.getRowCount());
-    statement.setDataTypes(node.getDataTypes());
-    statement.setAligned(node.isAligned());
-    statement.setMeasurementSchemas(node.getMeasurementSchemas());
-    return statement;
+    return new InsertTabletStatement(node);
   }
 
   @Override
@@ -146,7 +143,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
       final CreateMultiTimeSeriesNode node, final Void context) {
     final CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
 
-    final List<PartialPath> paths = new ArrayList<>();
+    final List<MeasurementPath> paths = new ArrayList<>();
     final List<TSDataType> dataTypes = new ArrayList<>();
     final List<TSEncoding> encodings = new ArrayList<>();
     final List<CompressionType> compressors = new ArrayList<>();
@@ -176,7 +173,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
               : new ArrayList<>());
       if (Objects.nonNull(group.getMeasurements())) {
         for (int i = 0; i < group.getMeasurements().size(); ++i) {
-          paths.add(path2Group.getKey().concatNode(group.getMeasurements().get(i)));
+          paths.add(path2Group.getKey().concatAsMeasurementPath(group.getMeasurements().get(i)));
         }
       }
     }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -44,10 +44,10 @@ public class ModificationFileTest {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications =
         new Modification[] {
-          new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
-          new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3, 4),
-          new Deletion(new PartialPath(new String[] {"d1", "s41"}), 4, 4, 5)
+          new Deletion(new MeasurementPath(new String[] {"d1", "s1"}), 1, 1),
+          new Deletion(new MeasurementPath(new String[] {"d1", "s2"}), 2, 2),
+          new Deletion(new MeasurementPath(new String[] {"d1", "s3"}), 3, 3, 4),
+          new Deletion(new MeasurementPath(new String[] {"d1", "s41"}), 4, 4, 5)
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       for (int i = 0; i < 2; i++) {
@@ -77,8 +77,8 @@ public class ModificationFileTest {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications =
         new Modification[] {
-          new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2)
+          new Deletion(new MeasurementPath(new String[] {"d1", "s1"}), 1, 1),
+          new Deletion(new MeasurementPath(new String[] {"d1", "s2"}), 2, 2)
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       mFile.write(modifications[0]);
@@ -108,7 +108,7 @@ public class ModificationFileTest {
       while (modificationFile.getSize() < 1024 * 1024) {
         modificationFile.write(
             new Deletion(
-                new PartialPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "sg", "d1"}),
                 1000,
                 Long.MIN_VALUE,
                 time += 5000));
@@ -136,7 +136,7 @@ public class ModificationFileTest {
       while (modificationFile.getSize() < 1024 * 100) {
         modificationFile.write(
             new Deletion(
-                new PartialPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "sg", "d1"}),
                 1000,
                 Long.MIN_VALUE,
                 time += 5000));
@@ -159,7 +159,7 @@ public class ModificationFileTest {
       while (modificationFile.getSize() < 1024 * 1024) {
         modificationFile.write(
             new Deletion(
-                new PartialPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "sg", "d1"}),
                 1000,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE));
@@ -187,13 +187,13 @@ public class ModificationFileTest {
         for (int i = 0; i < 5; i++) {
           modificationFile.write(
               new Deletion(
-                  new PartialPath(new String[] {"root", "sg", "d1"}),
+                  new MeasurementPath(new String[] {"root", "sg", "d1"}),
                   1000,
                   Long.MIN_VALUE,
                   time += 5000));
           modificationFile.write(
               new Deletion(
-                  new PartialPath(new String[] {"root", "sg", "*"}),
+                  new MeasurementPath(new String[] {"root", "sg", "*"}),
                   1000,
                   Long.MIN_VALUE,
                   time += 5000));
@@ -220,13 +220,13 @@ public class ModificationFileTest {
 
       modsFile.write(
           new Deletion(
-              new PartialPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "sg", "d1"}),
               1000,
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       modsSettleFile.write(
           new Deletion(
-              new PartialPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "sg", "d1"}),
               1000,
               Long.MIN_VALUE,
               Long.MAX_VALUE));
@@ -256,7 +256,7 @@ public class ModificationFileTest {
     try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
       modsSettleFile.write(
           new Deletion(
-              new PartialPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "sg", "d1"}),
               1000,
               Long.MIN_VALUE,
               Long.MAX_VALUE));

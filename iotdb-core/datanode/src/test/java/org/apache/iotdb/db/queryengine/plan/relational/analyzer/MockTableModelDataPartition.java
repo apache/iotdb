@@ -46,7 +46,7 @@ public class MockTableModelDataPartition {
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
-  private static final String DB_NAME = "testdb";
+  private static final String DB_NAME = "root.testdb";
 
   static final String DEVICE_1 = "table1.beijing.A1.ZZ";
   static final String DEVICE_2 = "table1.beijing.A2.XX";

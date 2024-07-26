@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -191,6 +192,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -543,10 +545,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    return configManager.getSchemaPartition(dbSlotMap);
+  }
+
+  @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getOrCreateSchemaPartition(patternTree);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    return configManager.getOrCreateSchemaPartition(dbSlotMap);
   }
 
   @Override

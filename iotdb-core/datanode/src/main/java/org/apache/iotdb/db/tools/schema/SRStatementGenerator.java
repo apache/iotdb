@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
@@ -139,7 +140,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         if (node.isDevice() && node.getAsDeviceMNode().isAligned()) {
           final Statement stmt =
               genAlignedTimeseriesStatement(
-                  node, databaseFullPath.getDevicePath().concatPath(node.getPartialPath()));
+                  // skip common database
+                  node, databaseFullPath.concatPath(node.getPartialPath(), 1));
           statements.push(stmt);
         }
         cleanMtreeNode(node);
@@ -164,7 +166,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         }
         final List<Statement> stmts =
             curNode.accept(
-                translater, databaseFullPath.getDevicePath().concatPath(curNode.getPartialPath()));
+                translater,
+                // skip common database
+                databaseFullPath.concatPath(curNode.getPartialPath(), 1));
         if (stmts != null) {
           statements.addAll(stmts);
         }
@@ -312,7 +316,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
-        stmt.setPath(path);
+        stmt.setPath(new MeasurementPath(path.getNodes()));
         stmt.setAlias(node.getAlias());
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());

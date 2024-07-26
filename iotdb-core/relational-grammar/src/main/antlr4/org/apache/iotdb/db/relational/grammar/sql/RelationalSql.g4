@@ -253,8 +253,8 @@ showClusterStatement
     ;
 
 showRegionsStatement
-    : SHOW (SCHEMA | DATA)? REGIONS (OF DATABASE identifier? (',' identifier)*)?
-          (ON NODEID INTEGER_VALUE (',' INTEGER_VALUE)*)?
+    : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
+          // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
 showDataNodesStatement
@@ -442,10 +442,10 @@ timeValue
     ;
 
 dateExpression
-    : datetimeLiteral ((PLUS | MINUS) timeDuration)*
+    : datetime ((PLUS | MINUS) timeDuration)*
     ;
 
-datetimeLiteral
+datetime
     : DATETIME_VALUE
     | NOW '(' ')'
     ;
@@ -543,6 +543,7 @@ valueExpression
 
 primaryExpression
     : literalExpression                                                                   #literal
+    | dateExpression                                                                      #dateTimeExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
@@ -570,6 +571,7 @@ literalExpression
     | number                                                                              #numericLiteral
     | booleanValue                                                                        #booleanLiteral
     | string                                                                              #stringLiteral
+    | datetime                                                                            #datetimeLiteral
     | BINARY_LITERAL                                                                      #binaryLiteral
     | QUESTION_MARK                                                                       #parameter
     ;

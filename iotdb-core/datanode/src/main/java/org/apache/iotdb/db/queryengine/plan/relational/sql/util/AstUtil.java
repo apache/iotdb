@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
 import com.google.common.graph.SuccessorsFunction;
@@ -93,6 +96,13 @@ public final class AstUtil {
     }
 
     return result;
+  }
+
+  public static Object expressionToTsValue(Expression expression) {
+    if (expression instanceof Literal) {
+      return ((Literal) expression).getTsValue();
+    }
+    throw new SemanticException("Unsupported expression: " + expression);
   }
 
   private AstUtil() {}

@@ -162,4 +162,10 @@ public class InsertRowsStatement extends InsertBaseStatement {
     splitResult.setInsertRowStatementList(mergedList);
     return splitResult;
   }
+
+  public List<Object[]> getDeviceIdList() {
+    return insertRowStatementList.stream()
+        .map(s -> s.getTableDeviceID().getSegments())
+        .collect(Collectors.toList());
+  }
 }

@@ -108,7 +108,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
       }
     }
 
-    Expression.serialize(idFuzzyPredicate, byteBuffer);
+    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
+    if (idFuzzyPredicate != null) {
+      Expression.serialize(idFuzzyPredicate, byteBuffer);
+    }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -130,7 +133,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
       }
     }
 
-    Expression.serialize(idFuzzyPredicate, stream);
+    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (idFuzzyPredicate != null) {
+      Expression.serialize(idFuzzyPredicate, stream);
+    }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -152,7 +158,10 @@ public class TableDeviceQueryNode extends TableDeviceSourceNode {
       }
     }
 
-    Expression idFuzzyFilter = Expression.deserialize(buffer);
+    Expression idFuzzyFilter = null;
+    if (buffer.get() == 1) {
+      idFuzzyFilter = Expression.deserialize(buffer);
+    }
 
     size = ReadWriteIOUtils.readInt(buffer);
     List<ColumnHeader> columnHeaderList = new ArrayList<>(size);

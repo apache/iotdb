@@ -326,6 +326,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
+        case RELATIONAL_INSERT_TABLET:
           dataContainers.add(
               new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
           break;

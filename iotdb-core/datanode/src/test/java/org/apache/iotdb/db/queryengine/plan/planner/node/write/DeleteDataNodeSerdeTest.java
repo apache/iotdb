@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -40,9 +40,9 @@ public class DeleteDataNodeSerdeTest {
     PlanNodeId planNodeId = new PlanNodeId("DeleteDataNode");
     long startTime = 1;
     long endTime = 10;
-    List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath("root.sg.d1.s1"));
-    pathList.add(new PartialPath("root.sg.d2.*"));
+    List<MeasurementPath> pathList = new ArrayList<>();
+    pathList.add(new MeasurementPath("root.sg.d1.s1"));
+    pathList.add(new MeasurementPath("root.sg.d2.*"));
     DeleteDataNode deleteDataNode = new DeleteDataNode(planNodeId, pathList, startTime, endTime);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -58,7 +58,7 @@ public class DeleteDataNodeSerdeTest {
     Assert.assertEquals(startTime, deleteDataNode.getDeleteStartTime());
     Assert.assertEquals(endTime, deleteDataNode.getDeleteEndTime());
 
-    List<PartialPath> deserializedPathList = deleteDataNode.getPathList();
+    List<MeasurementPath> deserializedPathList = deleteDataNode.getPathList();
     Assert.assertEquals(pathList.size(), deserializedPathList.size());
     for (int i = 0; i < pathList.size(); i++) {
       Assert.assertEquals(pathList.get(i), deserializedPathList.get(i));

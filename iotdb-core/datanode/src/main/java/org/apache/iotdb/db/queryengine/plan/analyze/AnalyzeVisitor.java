@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -191,6 +190,8 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet.ANALYSIS;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
@@ -243,8 +244,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitExplain(ExplainStatement explainStatement, MPPQueryContext context) {
     Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
-    analysis.setStatement(explainStatement);
+    analysis.setRealStatement(explainStatement);
     analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     return analysis;
   }
 
@@ -253,12 +255,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
     Analysis analysis = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
     context.setExplainAnalyze(true);
-    analysis.setStatement(explainAnalyzeStatement);
+    analysis.setRealStatement(explainAnalyzeStatement);
     analysis.setRespDatasetHeader(
         new DatasetHeader(
             Collections.singletonList(
                 new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT, null)),
             true));
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     return analysis;
   }
 
@@ -408,7 +411,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         (QueryStatement)
             concatPathRewriter.rewrite(
                 queryStatement, new PathPatternTree(queryStatement.useWildcard()), context);
-    analysis.setStatement(queryStatement);
+    analysis.setRealStatement(queryStatement);
 
     // request schema fetch API
     long startTime = System.nanoTime();
@@ -580,8 +583,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setUseLogicalView(useLogicalView);
     if (useLogicalView
-        && analysis.getStatement() instanceof QueryStatement
-        && (((QueryStatement) analysis.getStatement()).isGroupByTag())) {
+        && analysis.getTreeStatement() instanceof QueryStatement
+        && (((QueryStatement) analysis.getTreeStatement()).isGroupByTag())) {
       throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
     }
 
@@ -2174,7 +2177,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (sourceColumn instanceof TimeSeriesOperand) {
           targetMeasurement =
               constructTargetMeasurement(
-                  sourceDevice.concatNode(sourceColumn.getExpressionString()), measurementTemplate);
+                  sourceDevice.concatAsMeasurementPath(sourceColumn.getExpressionString()),
+                  measurementTemplate);
         } else {
           targetMeasurement = measurementTemplate;
         }
@@ -2247,7 +2251,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         targetPath = constructTargetPath(sourcePath, deviceTemplate, measurementTemplate);
       } else {
-        targetPath = deviceTemplate.concatNode(measurementTemplate);
+        targetPath = deviceTemplate.concatAsMeasurementPath(measurementTemplate);
       }
       intoPathDescriptor.specifyTargetPath(sourceColumn, viewPath, targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
@@ -2394,7 +2398,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     Analysis analysis = new Analysis();
-    analysis.setStatement(createTimeSeriesStatement);
+    analysis.setRealStatement(createTimeSeriesStatement);
 
     checkIsTableCompatible(createTimeSeriesStatement.getPath(), context);
     checkIsTemplateCompatible(
@@ -2437,7 +2441,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (int i = 0; i < measurements.size(); i++) {
       Pair<Template, PartialPath> templateInfo =
           schemaFetcher.checkTemplateSetAndPreSetInfo(
-              devicePath.concatNode(measurements.get(i)),
+              devicePath.concatAsMeasurementPath(measurements.get(i)),
               aliasList == null ? null : aliasList.get(i));
       if (templateInfo != null) {
         throw new SemanticException(
@@ -2506,7 +2510,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     Analysis analysis = new Analysis();
-    analysis.setStatement(createAlignedTimeSeriesStatement);
+    analysis.setRealStatement(createAlignedTimeSeriesStatement);
 
     checkIsTableCompatible(createAlignedTimeSeriesStatement.getDevicePath(), context);
     checkIsTemplateCompatible(
@@ -2536,7 +2540,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
 
     Analysis analysis = new Analysis();
-    analysis.setStatement(internalCreateTimeSeriesStatement);
+    analysis.setRealStatement(internalCreateTimeSeriesStatement);
     checkIsTableCompatible(internalCreateTimeSeriesStatement.getDevicePath(), context);
     checkIsTemplateCompatible(
         internalCreateTimeSeriesStatement.getDevicePath(),
@@ -2566,7 +2570,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
 
     Analysis analysis = new Analysis();
-    analysis.setStatement(internalCreateMultiTimeSeriesStatement);
+    analysis.setRealStatement(internalCreateMultiTimeSeriesStatement);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
@@ -2592,11 +2596,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(createMultiTimeSeriesStatement);
+    analysis.setRealStatement(createMultiTimeSeriesStatement);
 
     analyzeSchemaProps(createMultiTimeSeriesStatement.getPropsList());
 
-    List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
+    List<MeasurementPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
 
     DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
@@ -2623,7 +2627,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(alterTimeSeriesStatement);
+    analysis.setRealStatement(alterTimeSeriesStatement);
 
     Pair<Template, PartialPath> templateInfo =
         schemaFetcher.checkTemplateSetAndPreSetInfo(
@@ -2649,34 +2653,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
-    insertTabletStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertTabletStatement, context);
-    InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
-    if (analysis.isFinishQueryAfterAnalyze()) {
-      return analysis;
-    }
-    analysis.setStatement(realStatement);
-
-    if (realStatement instanceof InsertTabletStatement) {
-      InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(
-          realInsertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice());
-      dataPartitionQueryParam.setTimePartitionSlotList(
-          realInsertTabletStatement.getTimePartitionSlots());
-
-      return getAnalysisForWriting(
-          analysis,
-          Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
-    } else {
-      return computeAnalysisForMultiTablets(
-          analysis,
-          (InsertMultiTabletsStatement) realStatement,
-          context.getSession().getUserName());
-    }
+    AnalyzeUtils.analyzeInsert(
+        context,
+        insertTabletStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertTabletStatement, context),
+        partitionFetcher::getOrCreateDataPartition,
+        AnalyzeUtils::computeTreeDataPartitionParams,
+        analysis,
+        true);
+    return analysis;
   }
 
   @Override
@@ -2684,12 +2670,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowStatement, context);
+    validateSchema(
+        analysis,
+        insertRowStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowStatement, context));
     InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-    analysis.setStatement(realInsertStatement);
+    analysis.setRealStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
@@ -2699,36 +2688,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setTimePartitionSlotList(
           Collections.singletonList(realInsertRowStatement.getTimePartitionSlot()));
 
-      return getAnalysisForWriting(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     } else {
-      return computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName());
+      AnalyzeUtils.analyzeDataPartition(
+          analysis,
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     }
-  }
-
-  private Analysis computeAnalysisForInsertRows(
-      Analysis analysis, InsertRowsStatement insertRowsStatement, String userName) {
-    Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-    for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
-      Set<TTimePartitionSlot> timePartitionSlotSet =
-          dataPartitionQueryParamMap.computeIfAbsent(
-              insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(), k -> new HashSet<>());
-      timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
-    }
-
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
-        dataPartitionQueryParamMap.entrySet()) {
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(entry.getKey());
-      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
-      dataPartitionQueryParams.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName);
+    return analysis;
   }
 
   @Override
@@ -2737,40 +2709,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsStatement, context);
+    validateSchema(
+        analysis,
+        insertRowsStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowsStatement, context));
     InsertRowsStatement realInsertRowsStatement =
         (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-    analysis.setStatement(realInsertRowsStatement);
+    analysis.setRealStatement(realInsertRowsStatement);
 
-    return computeAnalysisForInsertRows(
-        analysis, realInsertRowsStatement, context.getSession().getUserName());
-  }
-
-  private Analysis computeAnalysisForMultiTablets(
-      Analysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName) {
-    Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-    for (InsertTabletStatement insertTabletStatement :
-        insertMultiTabletsStatement.getInsertTabletStatementList()) {
-      Set<TTimePartitionSlot> timePartitionSlotSet =
-          dataPartitionQueryParamMap.computeIfAbsent(
-              insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-              k -> new HashSet<>());
-      timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
-    }
-
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
-        dataPartitionQueryParamMap.entrySet()) {
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(entry.getKey());
-      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
-      dataPartitionQueryParams.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName);
+    AnalyzeUtils.analyzeDataPartition(
+        analysis,
+        AnalyzeUtils.computeTreeDataPartitionParams(realInsertRowsStatement, context),
+        context.getSession().getUserName(),
+        partitionFetcher::getOrCreateDataPartition);
+    return analysis;
   }
 
   @Override
@@ -2779,16 +2734,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertMultiTabletsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertMultiTabletsStatement, context);
+    validateSchema(
+        analysis,
+        insertMultiTabletsStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertMultiTabletsStatement, context));
     InsertMultiTabletsStatement realStatement =
         (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-    analysis.setStatement(realStatement);
+    analysis.setRealStatement(realStatement);
 
-    return computeAnalysisForMultiTablets(
-        analysis, realStatement, context.getSession().getUserName());
+    AnalyzeUtils.analyzeDataPartition(
+        analysis,
+        AnalyzeUtils.computeTreeDataPartitionParams(realStatement, context),
+        context.getSession().getUserName(),
+        partitionFetcher::getOrCreateDataPartition);
+    return analysis;
   }
 
   @Override
@@ -2797,13 +2759,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsOfOneDeviceStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsOfOneDeviceStatement, context);
+    validateSchema(
+        analysis,
+        insertRowsOfOneDeviceStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowsOfOneDeviceStatement, context));
     InsertBaseStatement realInsertStatement =
         removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-    analysis.setStatement(realInsertStatement);
+    analysis.setRealStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowsOfOneDeviceStatement) {
       InsertRowsOfOneDeviceStatement realStatement =
@@ -2812,72 +2777,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(realStatement.getTimePartitionSlots());
 
-      return getAnalysisForWriting(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     } else {
-      return computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName());
+      AnalyzeUtils.analyzeDataPartition(
+          analysis,
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     }
+    return analysis;
   }
 
   @Override
   public Analysis visitPipeEnrichedStatement(
       PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
     Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
 
     // statement may be changed because of logical view
-    pipeEnrichedStatement.setInnerStatement(analysis.getStatement());
-    analysis.setStatement(pipeEnrichedStatement);
+    pipeEnrichedStatement.setInnerStatement(analysis.getTreeStatement());
+    analysis.setRealStatement(pipeEnrichedStatement);
     return analysis;
-  }
-
-  private void validateSchema(
-      Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
-    final long startTime = System.nanoTime();
-    try {
-      SchemaValidator.validate(schemaFetcher, insertStatement, context);
-    } catch (SemanticException e) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      if (e.getCause() instanceof IoTDBException) {
-        IoTDBException exception = (IoTDBException) e.getCause();
-        analysis.setFailStatus(
-            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
-      } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-      }
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
-    }
-    boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
-    String partialInsertMessage;
-    if (hasFailedMeasurement) {
-      partialInsertMessage =
-          String.format(
-              "Fail to insert measurements %s caused by %s",
-              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
-      logger.warn(partialInsertMessage);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
-    }
-  }
-
-  private InsertBaseStatement removeLogicalView(
-      Analysis analysis, InsertBaseStatement insertBaseStatement) {
-    try {
-      return insertBaseStatement.removeLogicalView();
-    } catch (SemanticException e) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      if (e.getCause() instanceof IoTDBException) {
-        IoTDBException exception = (IoTDBException) e.getCause();
-        analysis.setFailStatus(
-            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
-      } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-      }
-      return insertBaseStatement;
-    }
   }
 
   @Override
@@ -2903,24 +2827,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
     }
-  }
-
-  /** get analysis according to statement and params */
-  private Analysis getAnalysisForWriting(
-      Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-
-    DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
-    if (dataPartition.isEmpty()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-              "Database not exists and failed to create automatically "
-                  + "because enable_auto_create_schema is FALSE."));
-    }
-    analysis.setDataPartitionInfo(dataPartition);
-    return analysis;
   }
 
   private boolean analyzeTimeseriesRegionScan(
@@ -2995,7 +2901,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowTimeSeries(
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showTimeSeriesStatement);
+    analysis.setRealStatement(showTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
@@ -3052,7 +2958,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowStorageGroup(
       ShowDatabaseStatement showDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showDatabaseStatement);
+    analysis.setRealStatement(showDatabaseStatement);
     analysis.setRespDatasetHeader(
         DatasetHeaderFactory.getShowStorageGroupHeader(showDatabaseStatement.isDetailed()));
     return analysis;
@@ -3061,7 +2967,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showTTLStatement);
+    analysis.setRealStatement(showTTLStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTTLHeader());
     return analysis;
   }
@@ -3102,6 +3008,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.generateGlobalTimeFilter(analysis);
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pattern);
+    patternTree.constructTree();
     ISchemaTree schemaTree =
         schemaFetcher.fetchRawSchemaInDeviceLevel(patternTree, authorityScope, context);
     if (schemaTree.isEmpty()) {
@@ -3129,7 +3036,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showDevicesStatement);
+    analysis.setRealStatement(showDevicesStatement);
 
     if (showDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
@@ -3156,7 +3063,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowCluster(
       ShowClusterStatement showClusterStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showClusterStatement);
+    analysis.setRealStatement(showClusterStatement);
     if (showClusterStatement.isDetails()) {
       analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterDetailsHeader());
     } else {
@@ -3169,7 +3076,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCountStorageGroup(
       CountDatabaseStatement countDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(countDatabaseStatement);
+    analysis.setRealStatement(countDatabaseStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountStorageGroupHeader());
     return analysis;
   }
@@ -3178,7 +3085,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitSeriesSchemaFetch(
       SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(seriesSchemaFetchStatement);
+    analysis.setRealStatement(seriesSchemaFetchStatement);
 
     SchemaPartition schemaPartition =
         partitionFetcher.getSchemaPartition(seriesSchemaFetchStatement.getPatternTree());
@@ -3195,7 +3102,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitDeviceSchemaFetch(
       DeviceSchemaFetchStatement deviceSchemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(deviceSchemaFetchStatement);
+    analysis.setRealStatement(deviceSchemaFetchStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : deviceSchemaFetchStatement.getPaths()) {
@@ -3216,7 +3123,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCountDevices(
       CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(countDevicesStatement);
+    analysis.setRealStatement(countDevicesStatement);
 
     if (countDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
@@ -3241,7 +3148,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCountTimeSeries(
       CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(countTimeSeriesStatement);
+    analysis.setRealStatement(countTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(countTimeSeriesStatement.getPathPattern());
@@ -3277,7 +3184,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCountLevelTimeSeries(
       CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(countLevelTimeSeriesStatement);
+    analysis.setRealStatement(countLevelTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(countLevelTimeSeriesStatement.getPathPattern());
@@ -3294,7 +3201,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(countStatement);
+    analysis.setRealStatement(countStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(countStatement.getPathPattern());
@@ -3339,7 +3246,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowVersion(
       ShowVersionStatement showVersionStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showVersionStatement);
+    analysis.setRealStatement(showVersionStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowVersionHeader());
     analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
@@ -3348,7 +3255,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Analysis visitSchemaNodeManagementPartition(
       Statement statement, PartialPath path, PathPatternTree scope, DatasetHeader header) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(statement);
+    analysis.setRealStatement(statement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
@@ -3373,7 +3280,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(deleteDataStatement);
+    analysis.setRealStatement(deleteDataStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
@@ -3384,7 +3291,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (schemaTree.hasLogicalViewMeasurement()) {
       updateSchemaTreeByViews(analysis, schemaTree, context);
 
-      Set<PartialPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
+      Set<MeasurementPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
       IMeasurementSchema measurementSchema;
       LogicalViewSchema logicalViewSchema;
       PartialPath sourcePathOfAliasSeries;
@@ -3395,7 +3302,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
-            deletePatternSet.add(sourcePathOfAliasSeries);
+            deletePatternSet.add(new MeasurementPath(sourcePathOfAliasSeries.getNodes()));
             deduplicatedDeviceIDs.add(sourcePathOfAliasSeries.getIDeviceID());
           }
           deletePatternSet.remove(measurementPath);
@@ -3446,7 +3353,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           "Measurement under template is not allowed to have the same measurement name");
     }
     Analysis analysis = new Analysis();
-    analysis.setStatement(createTemplateStatement);
+    analysis.setRealStatement(createTemplateStatement);
     return analysis;
   }
 
@@ -3455,7 +3362,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
       MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showNodesInSchemaTemplateStatement);
+    analysis.setRealStatement(showNodesInSchemaTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowNodesInSchemaTemplateHeader());
     return analysis;
   }
@@ -3464,7 +3371,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showSchemaTemplateStatement);
+    analysis.setRealStatement(showSchemaTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowSchemaTemplateHeader());
     return analysis;
   }
@@ -3474,7 +3381,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(setSchemaTemplateStatement);
+    analysis.setRealStatement(setSchemaTemplateStatement);
     return analysis;
   }
 
@@ -3482,7 +3389,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showPathSetTemplateStatement);
+    analysis.setRealStatement(showPathSetTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPathSetTemplateHeader());
     return analysis;
   }
@@ -3492,7 +3399,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(activateTemplateStatement);
+    analysis.setRealStatement(activateTemplateStatement);
 
     PartialPath activatePath = activateTemplateStatement.getPath();
 
@@ -3522,7 +3429,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       BatchActivateTemplateStatement batchActivateTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(batchActivateTemplateStatement);
+    analysis.setRealStatement(batchActivateTemplateStatement);
 
     Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap =
         new HashMap<>(batchActivateTemplateStatement.getDevicePathList().size());
@@ -3541,7 +3448,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
       // the devicePath is a path without wildcard
-      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+      patternTree.appendFullPath(devicePath.concatAsMeasurementPath(ONE_LEVEL_PATH_WILDCARD));
     }
     SchemaPartition partition =
         partitionFetcher.getOrCreateSchemaPartition(
@@ -3558,7 +3465,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(internalBatchActivateTemplateStatement);
+    analysis.setRealStatement(internalBatchActivateTemplateStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath activatePath :
@@ -3579,7 +3486,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showPathsUsingTemplateStatement);
+    analysis.setRealStatement(showPathsUsingTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPathsUsingTemplateHeader());
 
     Pair<Template, List<PartialPath>> templateSetInfo =
@@ -3626,7 +3533,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowQueries(
       ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showQueriesStatement);
+    analysis.setRealStatement(showQueriesStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowQueriesHeader());
     analysis.setVirtualSource(true);
 
@@ -3698,7 +3605,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     context.setQueryType(QueryType.WRITE);
-    analysis.setStatement(createLogicalViewStatement);
+    analysis.setRealStatement(createLogicalViewStatement);
 
     if (createLogicalViewStatement.getViewExpressions() == null) {
       // Analyze query in statement
@@ -3960,7 +3867,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowLogicalViewStatement showLogicalViewStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     Analysis analysis = new Analysis();
-    analysis.setStatement(showLogicalViewStatement);
+    analysis.setRealStatement(showLogicalViewStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showLogicalViewStatement.getPathPattern());
@@ -3977,7 +3884,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(showCurrentTimestampStatement);
+    analysis.setRealStatement(showCurrentTimestampStatement);
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowCurrentTimestampHeader());
     return analysis;

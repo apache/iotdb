@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -121,5 +123,10 @@ public class GenericLiteral extends Literal {
     super(null);
     this.type = ReadWriteIOUtils.readString(byteBuffer);
     this.value = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public Object getTsValue() {
+    return new Binary(value.getBytes(StandardCharsets.UTF_8));
   }
 }

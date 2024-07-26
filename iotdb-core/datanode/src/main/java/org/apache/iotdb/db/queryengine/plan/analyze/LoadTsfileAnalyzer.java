@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -215,7 +216,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
-    analysis.setStatement(loadTsFileStatement);
+    analysis.setRealStatement(loadTsFileStatement);
     return analysis;
   }
 
@@ -327,7 +328,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
                 try {
                   List<PartialPath> paths =
                       Collections.singletonList(
-                          new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+                          new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
                   status =
                       AuthorityChecker.getTSStatus(
                           AuthorityChecker.checkFullPathListPermission(

@@ -204,4 +204,11 @@ public class PathUtils {
     }
     return src.length() == (src.replace("``", "").length() + num);
   }
+
+  public static String qualifyDatabaseName(String databaseName) {
+    if (databaseName != null && !databaseName.startsWith("root.")) {
+      databaseName = "root." + databaseName;
+    }
+    return databaseName;
+  }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -270,11 +271,12 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   @Override
   public Optional<PlanNode> visitDeleteData(
       final DeleteDataNode node, final IoTDBPipePattern pattern) {
-    final List<PartialPath> intersectedPaths =
+    final List<MeasurementPath> intersectedPaths =
         node.getPathList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .distinct()
+            .map(d -> (MeasurementPath) d)
             .collect(Collectors.toList());
     return !intersectedPaths.isEmpty()
         ? Optional.of(

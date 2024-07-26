@@ -197,11 +197,13 @@ public class GlobalTimePredicateExtractVisitor
     boolean isTimeFilter = false;
     if (isTimeIdentifier(firstExpression)) {
       isTimeFilter = checkBetweenConstantSatisfy(secondExpression, thirdExpression);
-    } else if (isTimeIdentifier(secondExpression)) {
+    }
+    // TODO After Constant-Folding introduced
+    /*else if (isTimeIdentifier(secondExpression)) {
       isTimeFilter = checkBetweenConstantSatisfy(firstExpression, thirdExpression);
     } else if (isTimeIdentifier(thirdExpression)) {
       isTimeFilter = checkBetweenConstantSatisfy(secondExpression, firstExpression);
-    }
+    }*/
     if (isTimeFilter) {
       return new Pair<>(node, false);
     }

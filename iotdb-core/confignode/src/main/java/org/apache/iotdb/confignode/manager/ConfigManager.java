@@ -39,9 +39,9 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -682,36 +682,45 @@ public class ConfigManager implements IManager {
   }
 
   private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
-    // The path contains `**`
-    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-      return new ArrayList<>();
-    }
-    List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    if (innerPathList.isEmpty()) {
-      return new ArrayList<>();
-    }
-    PartialPath innerPath = innerPathList.get(0);
-    // The innerPath contains `*` and the only `*` is not in last level
-    if (innerPath.getIDeviceID().toString().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      return new ArrayList<>();
-    }
-    return Collections.singletonList(
-        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID()));
+    //    // The path contains `**`
+    //    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+    //      return new ArrayList<>();
+    //    }
+    //    // with database = root.sg, path = root.*.d1
+    //    // convert path = root.sg.d1
+    //    List<PartialPath> innerPathList = path.alterPrefixPath(database);
+    //    if (innerPathList.isEmpty()) {
+    //      return new ArrayList<>();
+    //    }
+    //    PartialPath innerPath = innerPathList.get(0);
+    //    // root.sg1.*.d1
+    //    // root.sg1.a1.*
+    //    // The innerPath contains `*` and the only `*` is not in last level
+    //    if (innerPath.toString().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+    //      return new ArrayList<>();
+    //    }
+    //    return Collections.singletonList(
+    //        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID()));
+
+    // the previous code has an issue, it cannot be known that whether "path" is a full path,
+    // so it is meaningless to call getIDeviceID()
+    // TODO: how to determine and filter
+    return Collections.emptyList();
   }
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree) {
     // Construct empty response
-    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
+    List<MeasurementPath> relatedPaths = patternTree.getAllPathPatterns(true);
     List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (String database : allDatabases) {
@@ -738,30 +747,40 @@ public class ConfigManager implements IManager {
       }
     }
 
+    Map<String, List<TSeriesPartitionSlot>> databaseSlotMap = new HashMap<>();
+    partitionSlotsMap.forEach((db, slots) -> databaseSlotMap.put(db, new ArrayList<>(slots)));
+    return getSchemaPartition(databaseSlotMap);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
     // Return empty resp if the partitionSlotsMap is empty
-    if (partitionSlotsMap.isEmpty()) {
+    if (dbSlotMap.isEmpty()) {
       return resp.setStatus(StatusUtils.OK).setSchemaPartitionTable(new HashMap<>());
     }
 
     GetSchemaPartitionPlan getSchemaPartitionPlan =
         new GetSchemaPartitionPlan(
-            partitionSlotsMap.entrySet().stream()
+            dbSlotMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
     SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
+    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", dbSlotMap, resp);
 
     return resp;
   }
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    // Construct empty response
-    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Construct empty response
+      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
@@ -769,40 +788,44 @@ public class ConfigManager implements IManager {
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     for (IDeviceID deviceID : devicePaths) {
       for (String database : databases) {
         if (PathUtils.isStartWith(deviceID, database)) {
           partitionSlotsMap
-              .computeIfAbsent(database, key -> new ArrayList<>())
+              .computeIfAbsent(database, key -> new HashSet<>())
               .add(getPartitionManager().getSeriesPartitionSlot(deviceID));
           break;
         }
       }
     }
+
+    Map<String, List<TSeriesPartitionSlot>> partitionSlotListMap = new HashMap<>();
+    partitionSlotsMap.forEach((db, slots) -> partitionSlotListMap.put(db, new ArrayList<>(slots)));
+    return getOrCreateSchemaPartition(partitionSlotListMap);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp;
     GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
-        new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
+        new GetOrCreateSchemaPartitionPlan(dbSlotMap);
 
     SchemaPartitionResp queryResult =
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     if (CONF.isEnablePrintingNewlyCreatedPartition()) {
-      printNewCreatedSchemaPartition(devicePaths, resp);
+      printNewCreatedSchemaPartition(dbSlotMap, resp);
     }
 
     return resp;
   }
 
-  private void printNewCreatedSchemaPartition(
-      List<IDeviceID> deviceIDS, TSchemaPartitionTableResp resp) {
+  private String partitionTableRespToString(TSchemaPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
-    StringBuilder devicePathString = new StringBuilder("{");
-    for (IDeviceID deviceID : deviceIDS) {
-      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
-    }
-    devicePathString.append(lineSeparator).append("}");
-
     StringBuilder schemaPartitionRespString = new StringBuilder("{");
     schemaPartitionRespString
         .append(lineSeparator)
@@ -832,11 +855,36 @@ public class ConfigManager implements IManager {
       schemaPartitionRespString.append(lineSeparator).append("\t},");
     }
     schemaPartitionRespString.append(lineSeparator).append("}");
-    LOGGER.debug(
-        "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
-        lineSeparator,
-        devicePathString,
-        schemaPartitionRespString);
+    return schemaPartitionRespString.toString();
+  }
+
+  private void printNewCreatedSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> databaseNameSlotMap, TSchemaPartitionTableResp resp) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return TSchemaPartitionTableResp: {}",
+          System.lineSeparator(),
+          databaseNameSlotMap,
+          partitionTableRespToString(resp));
+    }
+  }
+
+  private void printNewCreatedSchemaPartition(
+      List<IDeviceID> deviceIDS, TSchemaPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
+    StringBuilder devicePathString = new StringBuilder("{");
+    for (IDeviceID deviceID : deviceIDS) {
+      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
+    }
+    devicePathString.append(lineSeparator).append("}");
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+          lineSeparator,
+          devicePathString,
+          partitionTableRespToString(resp));
+    }
   }
 
   @Override

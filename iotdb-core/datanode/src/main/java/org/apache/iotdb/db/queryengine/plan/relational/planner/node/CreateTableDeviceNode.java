@@ -153,10 +153,9 @@ public class CreateTableDeviceNode extends WritePlanNode {
     if (partitionKeyList == null) {
       List<IDeviceID> tmpPartitionKeyList = new ArrayList<>();
       for (Object[] rawId : deviceIdList) {
-        String[] partitionKey = new String[rawId.length + 1];
-        partitionKey[0] = tableName;
+        String[] partitionKey = new String[rawId.length];
         for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i + 1] = (String) rawId[i];
+          partitionKey[i] = (String) rawId[i];
         }
         tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
       }

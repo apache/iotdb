@@ -98,4 +98,9 @@ public class DoubleLiteral extends Literal {
     super(null);
     this.value = ReadWriteIOUtils.readDouble(byteBuffer);
   }
+
+  @Override
+  public Object getTsValue() {
+    return value;
+  }
 }

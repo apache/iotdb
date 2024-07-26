@@ -116,6 +116,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -511,8 +514,20 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitInsertTablet(InsertTabletNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitRelationalInsertTablet(RelationalInsertTabletNode node, C context) {
+    return visitInsertTablet(node, context);
   }
 
   public R visitInsertRows(InsertRowsNode node, C context) {

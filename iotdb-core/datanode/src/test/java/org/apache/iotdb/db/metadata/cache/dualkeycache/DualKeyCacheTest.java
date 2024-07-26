@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.cache.dualkeycache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
@@ -235,7 +236,7 @@ public class DualKeyCacheTest {
   public void testInvalidPathPattern1() throws IllegalPathException {
     IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
     dualKeyCache.invalidate(
-        Arrays.asList(new PartialPath("root.db2.**"), new PartialPath("root.db1.d1.s1")));
+        Arrays.asList(new MeasurementPath("root.db2.**"), new MeasurementPath("root.db1.d1.s1")));
     Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
     Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
     Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
@@ -268,7 +269,7 @@ public class DualKeyCacheTest {
   public void testInvalidPathPattern2() throws IllegalPathException {
     IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
     dualKeyCache.invalidate(
-        Arrays.asList(new PartialPath("root.db1.**"), new PartialPath("root.db2.d1.*1")));
+        Arrays.asList(new MeasurementPath("root.db1.**"), new MeasurementPath("root.db2.d1.*1")));
     Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
     Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
     Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
@@ -452,15 +453,15 @@ public class DualKeyCacheTest {
     IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
     long memUse = dualKeyCache.stats().memoryUsage();
 
-    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.d1.s1"));
+    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.d1.s1"));
     SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
     Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
 
-    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.d1.*"));
+    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.d1.*"));
     cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
     Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
 
-    dualKeyCache.invalidateLastCache(new PartialPath("root.db2.d1.**"));
+    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db2.d1.**"));
     cacheEntry = dualKeyCache.get(new PartialPath("root.db2.d1"), "s2");
     Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
 
@@ -480,11 +481,11 @@ public class DualKeyCacheTest {
   public void testComplexInvalidate() throws IllegalPathException {
     IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
 
-    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.*.s1"));
+    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.*.s1"));
     SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
     Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
 
-    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.**.s2"));
+    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.**.s2"));
     cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
     Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
   }

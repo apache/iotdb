@@ -174,7 +174,11 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewEx
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -1810,6 +1814,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate pipe plugin before alteration - only validate replace mode
     final String pipeName = alterPipeStatement.getPipeName();
     try {
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+      }
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllProcessorAttributes()) {
         PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
@@ -1835,6 +1843,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               alterPipeStatement.getConnectorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
@@ -2273,6 +2283,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
     final Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
     if (analysis.isFailed()) {
       future.setException(
           new IoTDBException(
@@ -2787,6 +2798,69 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster) {
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    ShowClusterStatement treeStatement = new ShowClusterStatement();
+    treeStatement.setDetails(showCluster.getDetails().orElse(false));
+    return showCluster(treeStatement);
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions) {
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    ShowRegionStatement treeStatement = new ShowRegionStatement();
+    treeStatement.setRegionType(showRegions.getRegionType());
+    treeStatement.setStorageGroups(showRegions.getDatabases());
+    treeStatement.setNodeIds(showRegions.getNodeIds());
+    return showRegion(treeStatement);
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      showDataNodesResp = client.showDataNodes();
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showDataNodesResp.getStatus().message, showDataNodesResp.getStatus().code));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowConfigNodesResp showConfigNodesResp = new TShowConfigNodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      showConfigNodesResp = client.showConfigNodes();
+      if (showConfigNodesResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showConfigNodesResp.getStatus().message, showConfigNodesResp.getStatus().code));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowConfigNodesTask.buildTSBlock(showConfigNodesResp, future);
     return future;
   }
 
