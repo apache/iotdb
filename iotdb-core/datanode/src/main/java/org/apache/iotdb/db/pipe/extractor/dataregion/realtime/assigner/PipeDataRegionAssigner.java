@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -40,10 +41,15 @@ public class PipeDataRegionAssigner implements Closeable {
    */
   private final PipeDataRegionMatcher matcher;
 
+  private int counter;
+
   /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
+
+  private static final int pipeDataRegionAssignerAcknowledgeRate =
+      PipeConfig.getInstance().getPipeDataSynchronizationAcknowledgeRate();
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -73,6 +79,12 @@ public class PipeDataRegionAssigner implements Closeable {
         .forEach(
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+                counter++;
+                if (!(event.getEvent() instanceof PipeTsFileInsertionEvent)
+                    && counter < pipeDataRegionAssignerAcknowledgeRate) {
+                  return;
+                }
+
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
                         extractor.getPipeName(),
@@ -84,6 +96,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
                 extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
+                counter = 0;
                 return;
               }
 

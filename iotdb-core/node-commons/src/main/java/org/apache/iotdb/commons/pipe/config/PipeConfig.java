@@ -30,6 +30,12 @@ public class PipeConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
+  /////////////////////////////// Data Synchronization ///////////////////////////////
+
+  public int getPipeDataSynchronizationAcknowledgeRate() {
+    return COMMON_CONFIG.getPipeDataSynchronizationAcknowledgeRate();
+  }
+
   /////////////////////////////// File ///////////////////////////////
 
   public String getPipeHardlinkBaseDirName() {
@@ -301,6 +307,9 @@ public class PipeConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info(
+        "PipeDataSynchronizationAcknowledgeRate: {}", getPipeDataSynchronizationAcknowledgeRate());
+
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
