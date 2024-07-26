@@ -217,15 +217,6 @@ public class SchemaPredicateUtil {
     if (expressionList.isEmpty()) {
       return null;
     }
-    LogicalExpression andExpression;
-    Expression latestExpression = expressionList.get(0);
-    for (int i = 1; i < expressionList.size(); i++) {
-      andExpression =
-          new LogicalExpression(
-              LogicalExpression.Operator.AND,
-              Arrays.asList(latestExpression, expressionList.get(i)));
-      latestExpression = andExpression;
-    }
-    return latestExpression;
+    return new LogicalExpression(LogicalExpression.Operator.AND, expressionList);
   }
 }
