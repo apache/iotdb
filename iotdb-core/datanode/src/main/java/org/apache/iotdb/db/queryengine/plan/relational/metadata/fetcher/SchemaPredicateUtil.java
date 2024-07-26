@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChildFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -130,6 +131,8 @@ public class SchemaPredicateUtil {
       final Map<Integer, List<SchemaFilter>> index2FilterMap) {
     // We assume that only "not" and "IdFilter" is possible here to be the root filter
     // There won't be any attribute filters here currently
+
+    // First refactor the not filters
     AbstractSingleChildFilter currentFilter = filter;
     boolean isNotFilter = false;
     while (currentFilter.getSchemaFilterType().equals(SchemaFilterType.NOT)) {
@@ -139,6 +142,12 @@ public class SchemaPredicateUtil {
 
     final int index = ((IdFilter) currentFilter).getIndex();
     final SchemaFilter childFilter = currentFilter.getChild();
+
+    // Compress the not filters and put them after idFilter,
+    // to simplify the logics in schema regions
+    if (isNotFilter) {
+      currentFilter.setChild(new NotFilter(childFilter));
+    }
 
     if (!index2FilterMap.containsKey(index)) {
       index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(filter);
@@ -165,7 +174,7 @@ public class SchemaPredicateUtil {
             StringValueFilterVisitor.getInstance(),
             ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue());
       } else {
-        index2FilterMap.get(index).add(filter);
+        index2FilterMap.get(index).add(childFilter);
       }
     }
     return true;

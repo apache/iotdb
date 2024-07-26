@@ -28,7 +28,7 @@ import java.util.Objects;
 
 public abstract class AbstractSingleChildFilter extends SchemaFilter {
 
-  private final SchemaFilter child;
+  private SchemaFilter child;
 
   protected AbstractSingleChildFilter(final SchemaFilter child) {
     // child should not be null
@@ -41,6 +41,10 @@ public abstract class AbstractSingleChildFilter extends SchemaFilter {
 
   public SchemaFilter getChild() {
     return child;
+  }
+
+  public void setChild(final SchemaFilter child) {
+    this.child = child;
   }
 
   @Override
