@@ -116,6 +116,7 @@ public class SubscriptionBrokerAgent {
   public void createBroker(final String consumerGroupId) {
     final SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
   }
 
   /**
@@ -140,6 +141,7 @@ public class SubscriptionBrokerAgent {
       return false;
     }
     consumerGroupIdToSubscriptionBroker.remove(consumerGroupId);
+    LOGGER.info("Subscription: drop broker bound to consumer group [{}]", consumerGroupId);
     return true;
   }
 
