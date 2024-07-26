@@ -457,10 +457,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
-            consumerConfig,
-            messagePayload.getTopicName(),
-            messagePayload.getFileName(),
-            messagePayload.getWritingOffset());
+            consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

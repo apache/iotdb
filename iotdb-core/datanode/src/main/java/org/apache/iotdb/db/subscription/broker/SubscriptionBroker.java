@@ -96,9 +96,9 @@ public class SubscriptionBroker {
 
   public List<SubscriptionEvent> pollTsFile(
       final String consumerId,
-      final String topicName,
-      final String fileName,
+      final SubscriptionCommitContext commitContext,
       final long writingOffset) {
+    final String topicName = commitContext.getTopicName();
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -126,7 +126,7 @@ public class SubscriptionBroker {
     }
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, fileName, writingOffset);
+            .pollTsFile(consumerId, commitContext, writingOffset);
     // Only one SubscriptionEvent polled currently...
     return Collections.singletonList(event);
   }
@@ -158,11 +158,11 @@ public class SubscriptionBroker {
         continue;
       }
       if (!nack) {
-        if (prefetchingQueue.ack(consumerId, commitContext)) {
+        if (Objects.nonNull(prefetchingQueue.ack(consumerId, commitContext))) {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(consumerId, commitContext)) {
+        if (Objects.nonNull(prefetchingQueue.nack(consumerId, commitContext))) {
           successfulCommitContexts.add(commitContext);
         }
       }
