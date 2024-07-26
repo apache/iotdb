@@ -75,7 +75,7 @@ public class TableDistributedPlanner {
   public DistributedQueryPlan plan() {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
-    PlanNode outputNodeWithExchange = generateDistributePlanWithOptimize(planContext);
+    PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
@@ -106,7 +106,7 @@ public class TableDistributedPlanner {
         logicalQueryPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
   }
 
-  public PlanNode generateDistributePlanWithOptimize(
+  public PlanNode generateDistributedPlanWithOptimize(
       TableDistributedPlanGenerator.PlanContext planContext) {
     // generate table model distributed plan
 
