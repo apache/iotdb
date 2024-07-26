@@ -413,15 +413,37 @@ public class TestUtils {
     assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
+  public static void assertTableNonQueryTestFail(String sql, String errMsg, String dbName) {
+    assertTableNonQueryTestFail(
+        sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, dbName);
+  }
+
   public static void assertNonQueryTestFail(
       String sql, String errMsg, String userName, String password) {
     assertNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
+  public static void assertTableNonQueryTestFail(
+      String sql, String errMsg, String userName, String password, String dbName) {
+    assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password, dbName);
   }
 
   public static void assertNonQueryTestFail(
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password, String db) {
+    try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use " + "\"" + db + "\"");
       statement.execute(sql);
       fail("No exception!");
     } catch (SQLException e) {
