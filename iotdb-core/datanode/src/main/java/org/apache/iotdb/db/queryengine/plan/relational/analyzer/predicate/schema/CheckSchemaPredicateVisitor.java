@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -36,9 +37,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 // Return whether input expression has an attribute column predicate
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CheckSchemaPredicateVisitor.class);
+  private static final long LOG_INTERVAL_MS = 60_000L;
+  private long lastLogTime = System.currentTimeMillis();
 
   @Override
   protected Boolean visitInPredicate(final InPredicate node, final Context context) {
@@ -62,12 +70,17 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
-    for (Expression expression : node.getTerms()) {
-      if (Boolean.TRUE.equals(this.process(expression, context))) {
-        return true;
+    if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
+        LOGGER.info(
+            "And expression encountered during id determined checking, will be classified into fuzzy expression. Sql: {}",
+            context.queryContext.getSql());
+        lastLogTime = System.currentTimeMillis();
       }
+      return false;
     }
-    return false;
+    // TODO: separate or concat expressions, e.g. (id1 or id2 or attr) => (id1 or id2) and (attr)
+    return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
   }
 
   @Override
@@ -119,8 +132,12 @@ public class CheckSchemaPredicateVisitor
   public static class Context {
     private final TsTable table;
 
-    public Context(TsTable table) {
+    // For query performance analyze
+    private final MPPQueryContext queryContext;
+
+    public Context(final TsTable table, final MPPQueryContext queryContext) {
       this.table = table;
+      this.queryContext = queryContext;
     }
   }
 }

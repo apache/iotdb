@@ -171,7 +171,8 @@ public class TableDeviceSchemaFetcher {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
     final Pair<List<Expression>, List<Expression>> separatedExpression =
-        SchemaPredicateUtil.separateIdDeterminedPredicate(expressionList, tableInstance);
+        SchemaPredicateUtil.separateIdDeterminedPredicate(
+            expressionList, tableInstance, queryContext);
     final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
     final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
 

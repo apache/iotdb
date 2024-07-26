@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChi
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -53,12 +54,15 @@ public class SchemaPredicateUtil {
   // pair.left is Expressions only contain ID columns
   // pair.right is Expressions contain at least one ATTRIBUTE column
   static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
-      List<Expression> expressionList, TsTable table) {
-    List<Expression> idDeterminedList = new ArrayList<>();
-    List<Expression> idFuzzyList = new ArrayList<>();
-    CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
-    CheckSchemaPredicateVisitor.Context context = new CheckSchemaPredicateVisitor.Context(table);
-    for (Expression expression : expressionList) {
+      final List<Expression> expressionList,
+      final TsTable table,
+      final MPPQueryContext queryContext) {
+    final List<Expression> idDeterminedList = new ArrayList<>();
+    final List<Expression> idFuzzyList = new ArrayList<>();
+    final CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
+    final CheckSchemaPredicateVisitor.Context context =
+        new CheckSchemaPredicateVisitor.Context(table, queryContext);
+    for (final Expression expression : expressionList) {
       if (expression == null) {
         continue;
       }
@@ -126,7 +130,8 @@ public class SchemaPredicateUtil {
   private static boolean handleFilter(
       final AbstractSingleChildFilter filter,
       final Map<Integer, List<SchemaFilter>> index2FilterMap) {
-    // Only "not" and "IdFilter" is possible here to be the root filter
+    // We assume that only "not" and "IdFilter" is possible here to be the root filter
+    // There won't be any attribute filters here currently
     AbstractSingleChildFilter currentFilter = filter;
     boolean isNotFilter = false;
     while (currentFilter.getSchemaFilterType().equals(SchemaFilterType.NOT)) {
