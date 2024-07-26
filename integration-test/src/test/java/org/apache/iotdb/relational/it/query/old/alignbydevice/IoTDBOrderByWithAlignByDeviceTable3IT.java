@@ -31,10 +31,10 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBOrderByWithAlignByDevice2IT extends IoTDBOrderByWithAlignByDeviceTableIT {
+public class IoTDBOrderByWithAlignByDeviceTable3IT extends IoTDBOrderByWithAlignByDeviceTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertData2();
