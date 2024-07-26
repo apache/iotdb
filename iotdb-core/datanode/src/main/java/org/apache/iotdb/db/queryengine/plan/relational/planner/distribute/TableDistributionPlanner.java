@@ -73,7 +73,8 @@ public class TableDistributionPlanner {
   }
 
   public DistributedQueryPlan plan() {
-    TableDistributedPlanGenerator.PlanContext planContext = new TableDistributedPlanGenerator.PlanContext();
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributePlanWithOptimize(planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis

@@ -93,7 +93,8 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitPlan(PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
+  public List<PlanNode> visitPlan(
+      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return Collections.singletonList(node);
     }

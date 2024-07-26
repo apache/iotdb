@@ -74,7 +74,8 @@ public class TableModelStatementMemorySourceVisitor
     }
 
     // generate table model distributed plan
-    TableDistributedPlanGenerator.PlanContext planContext = new TableDistributedPlanGenerator.PlanContext();
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange =
         new TableDistributionPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
             .generateDistributePlanWithOptimize(planContext);

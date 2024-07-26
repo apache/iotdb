@@ -34,7 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
-public class AddExchangeNodes extends PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
+public class AddExchangeNodes
+    extends PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
 
   private final MPPQueryContext queryContext;
 
@@ -42,7 +43,8 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, TableDistributedPlan
     this.queryContext = queryContext;
   }
 
-  public PlanNode addExchangeNodes(PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
+  public PlanNode addExchangeNodes(
+      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     return node.accept(this, context);
   }
 
@@ -89,7 +91,8 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, TableDistributedPlan
   }
 
   @Override
-  public PlanNode visitTableScan(TableScanNode node, TableDistributedPlanGenerator.PlanContext context) {
+  public PlanNode visitTableScan(
+      TableScanNode node, TableDistributedPlanGenerator.PlanContext context) {
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
