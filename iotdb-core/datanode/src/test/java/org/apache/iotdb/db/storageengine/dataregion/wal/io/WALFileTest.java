@@ -162,12 +162,12 @@ public class WALFileTest {
   @Test
   public void testReadMetadataFromBrokenFile() throws IOException {
     ILogWriter walWriter = new WALWriter(walFile);
-    assertThrows(
-        IOException.class,
-        () -> WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath())));
+    final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
+    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
     walWriter.close();
-    WALMetaData walMetaData =
-        WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath()));
+    FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
+    fileChannel2.close();
     assertTrue(walMetaData.getMemTablesId().isEmpty());
   }
 

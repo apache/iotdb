@@ -26,7 +26,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class GcTimeAlerter implements JvmGcMonitorMetrics.GcTimeAlertHandler {
+  @SuppressWarnings("java:S2885")
   private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
   private static final Logger logger = LoggerFactory.getLogger(GcTimeAlerter.class);
 
   /**

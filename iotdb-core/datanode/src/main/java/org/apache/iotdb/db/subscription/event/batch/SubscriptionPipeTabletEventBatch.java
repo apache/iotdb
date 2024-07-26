@@ -24,9 +24,17 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.write.record.Tablet;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +49,8 @@ public class SubscriptionPipeTabletEventBatch {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
+  private final SubscriptionPrefetchingTabletQueue prefetchingQueue;
+
   private final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   private final List<Tablet> tablets = new ArrayList<>();
 
@@ -50,30 +60,67 @@ public class SubscriptionPipeTabletEventBatch {
   private final long maxBatchSizeInBytes;
   private long totalBufferSize = 0;
 
-  public SubscriptionPipeTabletEventBatch(final int maxDelayInMs, final long maxBatchSizeInBytes) {
+  private boolean isSealed = false;
+
+  public SubscriptionPipeTabletEventBatch(
+      final SubscriptionPrefetchingTabletQueue prefetchingQueue,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes) {
+    this.prefetchingQueue = prefetchingQueue;
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  public synchronized List<Tablet> sealTablets() {
-    return tablets;
+  public synchronized List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event) {
+    if (isSealed) {
+      return Collections.emptyList();
+    }
+    if (Objects.nonNull(event)) {
+      constructBatch(event);
+    }
+    if (shouldEmit()) {
+      final List<SubscriptionEvent> events = generateSubscriptionEvents();
+      isSealed = true;
+      return events;
+    }
+    return Collections.emptyList();
   }
 
-  public synchronized boolean shouldEmit() {
-    return totalBufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+  public synchronized void ack() {
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    }
   }
 
-  public synchronized boolean onEvent(final EnrichedEvent event) {
+  public synchronized void cleanup() {
+    // clear the reference count of events
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.clearReferenceCount(this.getClass().getName());
+    }
+  }
+
+  private List<SubscriptionEvent> generateSubscriptionEvents() {
+    final SubscriptionCommitContext commitContext =
+        prefetchingQueue.generateSubscriptionCommitContext();
+    return Collections.singletonList(
+        new SubscriptionEvent(
+            new SubscriptionPipeTabletBatchEvents(this),
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TABLETS.getType(),
+                new TabletsPayload(tablets),
+                commitContext)));
+  }
+
+  private void constructBatch(final EnrichedEvent event) {
     if (event instanceof TabletInsertionEvent) {
       final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
       if (currentTablets.isEmpty()) {
-        return shouldEmit();
+        return;
       }
       tablets.addAll(currentTablets);
       totalBufferSize +=
           currentTablets.stream()
-              .map((PipeMemoryWeightUtil::calculateTabletSizeInBytes))
+              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
       enrichedEvents.add(event);
@@ -90,7 +137,7 @@ public class SubscriptionPipeTabletEventBatch {
         tablets.addAll(currentTablets);
         totalBufferSize +=
             currentTablets.stream()
-                .map((PipeMemoryWeightUtil::calculateTabletSizeInBytes))
+                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
                 .reduce(Long::sum)
                 .orElse(0L);
       }
@@ -99,21 +146,11 @@ public class SubscriptionPipeTabletEventBatch {
         firstEventProcessingTime = System.currentTimeMillis();
       }
     }
-
-    return shouldEmit();
   }
 
-  public synchronized void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
-  }
-
-  public synchronized void cleanup() {
-    // clear the reference count of events
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.clearReferenceCount(this.getClass().getName());
-    }
+  private boolean shouldEmit() {
+    return totalBufferSize >= maxBatchSizeInBytes
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
@@ -131,6 +168,8 @@ public class SubscriptionPipeTabletEventBatch {
     return Collections.emptyList();
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
   public String toString() {
     return "SubscriptionPipeTabletEventBatch{enrichedEvents="
         + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
@@ -144,6 +183,8 @@ public class SubscriptionPipeTabletEventBatch {
         + maxBatchSizeInBytes
         + ", totalBufferSize="
         + totalBufferSize
+        + ", isSealed="
+        + isSealed
         + "}";
   }
 }
