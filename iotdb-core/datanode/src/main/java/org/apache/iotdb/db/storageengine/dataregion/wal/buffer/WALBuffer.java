@@ -197,8 +197,9 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void write(WALEntry walEntry) {
     if (isClosed) {
-      logger.error(
-          "Fail to write WALEntry into wal node-{} because this node is closed.", identifier);
+      logger.warn(
+          "Fail to write WALEntry into wal node-{} because this node is closed. It's ok to see this log during data region deletion.",
+          identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
     }

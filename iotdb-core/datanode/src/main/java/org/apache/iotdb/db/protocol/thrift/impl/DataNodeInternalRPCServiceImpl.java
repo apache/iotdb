@@ -358,6 +358,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
     resp.setNeedRetry(executionResult.isNeedRetry());
+    resp.setStatus(executionResult.getStatus());
     return resp;
   }
 

@@ -38,25 +38,25 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/confignode/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/confignode/src/assembly/resources/conf</directory>
+            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <!--    <fileSet>-->
-        <!--      <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/tools</directory>-->
+        <!--      <directory>${project.basedir}/../confignode/src/assembly/resources/tools</directory>-->
         <!--      <outputDirectory>tools</outputDirectory>-->
         <!--      <fileMode>0755</fileMode>-->
         <!--    </fileSet>-->

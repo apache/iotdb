@@ -46,6 +46,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
@@ -292,5 +293,10 @@ public class AddRegionPeerProcedure
     return this.consensusGroupId.equals(procedure.consensusGroupId)
         && this.destDataNode.equals(procedure.destDataNode)
         && this.coordinator.equals(procedure.coordinator);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(consensusGroupId, destDataNode, coordinator);
   }
 }

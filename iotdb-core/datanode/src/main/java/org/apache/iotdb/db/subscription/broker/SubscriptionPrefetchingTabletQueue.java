@@ -24,14 +24,9 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
-import org.apache.tsfile.write.record.Tablet;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
+public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
@@ -62,7 +57,7 @@ class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
     super(brokerId, topicName, inputPendingQueue);
 
     this.currentBatchRef.set(
-        new SubscriptionPipeTabletEventBatch(BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
+        new SubscriptionPipeTabletEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
   }
 
   @Override
@@ -97,49 +92,32 @@ class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
     return onEventInternal(event);
   }
 
-  private boolean onEventInternal(final EnrichedEvent event) {
-    final AtomicBoolean result = new AtomicBoolean(false);
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (batch.onEvent(event)) {
-            sealBatch(batch);
-            result.set(true);
-            return new SubscriptionPipeTabletEventBatch(
-                BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
-          }
-          return batch;
-        });
-    return result.get();
-  }
-
   @Override
-  protected boolean trySealBatch() {
+  protected boolean onEvent() {
+    return onEventInternal(null);
+  }
+
+  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
-          if (batch.shouldEmit()) {
-            sealBatch(batch);
+          final List<SubscriptionEvent> evs = batch.onEvent(event);
+          if (!evs.isEmpty()) {
+            evs.forEach(
+                (ev) -> {
+                  uncommittedEvents.put(ev.getCommitContext(), ev); // before enqueuing the event
+                  prefetchingQueue.add(ev);
+                });
             result.set(true);
             return new SubscriptionPipeTabletEventBatch(
-                BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+                this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
           }
+          // If onEvent returns an empty list, one possibility is that the batch has already been
+          // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
+          // most recent batch.
           return batch;
         });
     return result.get();
-  }
-
-  private void sealBatch(final SubscriptionPipeTabletEventBatch batch) {
-    final List<Tablet> tablets = batch.sealTablets();
-    final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-    final SubscriptionEvent subscriptionEvent =
-        new SubscriptionEvent(
-            new SubscriptionPipeTabletBatchEvents(batch),
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(tablets),
-                commitContext));
-    uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
-    prefetchingQueue.add(subscriptionEvent);
   }
 
   /**

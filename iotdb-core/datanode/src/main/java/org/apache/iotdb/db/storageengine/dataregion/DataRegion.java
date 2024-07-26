@@ -2698,6 +2698,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       return executeCompaction();
     } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();

@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -200,7 +201,10 @@ public class PipeConsensusReceiver {
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
 
     if (impl == null) {
-      String message = String.format("PipeConsensus: unexpected consensusGroupId %s", groupId);
+      String message =
+          String.format(
+              "PipeConsensus-PipeName-%s: unexpected consensusGroupId %s",
+              consensusPipeName, groupId);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
       }
@@ -210,7 +214,8 @@ public class PipeConsensusReceiver {
     if (impl.isReadOnly()) {
       String message =
           String.format(
-              "PipeConsensus-PipeName-%s: fail to receive because system is read-only.", groupId);
+              "PipeConsensus-PipeName-%s: fail to receive because system is read-only.",
+              consensusPipeName);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
       }
@@ -221,7 +226,7 @@ public class PipeConsensusReceiver {
       String message =
           String.format(
               "PipeConsensus-PipeName-%s: fail to receive because peer is inactive and not ready.",
-              groupId);
+              consensusPipeName);
       if (LOGGER.isWarnEnabled()) {
         LOGGER.warn(message);
       }
@@ -1029,6 +1034,7 @@ public class PipeConsensusReceiver {
       }
     }
 
+    @SuppressWarnings("java:S3655")
     public PipeConsensusTsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
       Optional<PipeConsensusTsFileWriter> diskBuffer =
           pipeConsensusTsFileWriterPool.stream()
@@ -1053,6 +1059,7 @@ public class PipeConsensusReceiver {
           diskBuffer.get().setUsed(true);
           diskBuffer.get().setCommitIdOfCorrespondingHolderEvent(commitId);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           LOGGER.warn(
               "PipeConsensus: receiver thread get interrupted when waiting for borrowing tsFileWriter.");
         } finally {
@@ -1074,6 +1081,7 @@ public class PipeConsensusReceiver {
               try {
                 Thread.sleep(RETRY_WAIT_TIME);
               } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 LOGGER.warn(
                     "PipeConsensus-PipeName-{}: receiver thread get interrupted when exiting.",
                     consensusPipeName.toString());
@@ -1205,8 +1213,8 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
-    private volatile int WALEventCount = 0;
-    private volatile int tsFileEventCount = 0;
+    private AtomicInteger WALEventCount = new AtomicInteger(0);
+    private AtomicInteger tsFileEventCount = new AtomicInteger(0);
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
@@ -1229,10 +1237,10 @@ public class PipeConsensusReceiver {
       onSyncedCommitIndex = nextSyncedCommitIndex;
       // update metric, notice that curMeta is never null.
       if (isTransferTsFileSeal) {
-        tsFileEventCount--;
+        tsFileEventCount.decrementAndGet();
         metric.recordReceiveTsFileTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       } else {
-        WALEventCount--;
+        WALEventCount.decrementAndGet();
         metric.recordReceiveWALTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       }
     }
@@ -1281,10 +1289,10 @@ public class PipeConsensusReceiver {
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
           // only update tsFileEventCount when tsFileEvent is first enqueue.
-          tsFileEventCount++;
+          tsFileEventCount.incrementAndGet();
         }
         if (!isTransferTsFileSeal && !isTransferTsFilePiece) {
-          WALEventCount++;
+          WALEventCount.incrementAndGet();
         }
         reqExecutionOrderBuffer.add(requestMeta);
 
@@ -1373,6 +1381,7 @@ public class PipeConsensusReceiver {
                 return resp;
               }
             } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
               LOGGER.warn(
                   "PipeConsensus-PipeName-{}: current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
                   consensusPipeName,
@@ -1464,11 +1473,11 @@ public class PipeConsensusReceiver {
   }
 
   public int getWALEventCount() {
-    return this.requestExecutor.WALEventCount;
+    return this.requestExecutor.WALEventCount.get();
   }
 
   public int getTsFileEventCount() {
-    return this.requestExecutor.tsFileEventCount;
+    return this.requestExecutor.tsFileEventCount.get();
   }
 
   public String getConsensusGroupIdStr() {

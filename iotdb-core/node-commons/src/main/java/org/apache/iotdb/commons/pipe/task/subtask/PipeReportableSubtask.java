@@ -73,7 +73,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     retryCount.incrementAndGet();
-    if (retryCount.get() <= MAX_RETRY_TIMES) {
+    if (retryCount.get() <= maxRetryTimes) {
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
           taskID,

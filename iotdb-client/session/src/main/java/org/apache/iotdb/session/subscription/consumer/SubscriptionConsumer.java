@@ -102,6 +102,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
@@ -1067,31 +1068,27 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("isClosed", isClosed.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("subscribedTopicNames", subscribedTopics.keySet().toString());
-      }
-    };
+    Map<String, String> result = new HashMap<>(5);
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("isClosed", isClosed.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put("subscribedTopicNames", subscribedTopics.keySet().toString());
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
-        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
-        put("providers", providers.toString());
-        put("isClosed", isClosed.toString());
-        put("isReleased", isReleased.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("fileSaveFsync", String.valueOf(fileSaveFsync));
-        put("subscribedTopics", subscribedTopics.toString());
-      }
-    };
+    Map<String, String> result = new HashMap<>(10);
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+    result.put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+    result.put("providers", providers.toString());
+    result.put("isClosed", isClosed.toString());
+    result.put("isReleased", isReleased.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
+    result.put("subscribedTopics", subscribedTopics.toString());
+    return result;
   }
 }
