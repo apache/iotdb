@@ -1407,7 +1407,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
     return mtree.getTableDeviceReader(
         showTableDevicesPlan.getDevicePattern(),
-        showTableDevicesPlan.getAttributeFilter(),
+        showTableDevicesPlan.getDeviceFilter(),
         (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }
 

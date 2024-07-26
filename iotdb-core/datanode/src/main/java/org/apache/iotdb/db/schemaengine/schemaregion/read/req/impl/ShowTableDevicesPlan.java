@@ -27,18 +27,18 @@ public class ShowTableDevicesPlan {
 
   private final PartialPath devicePattern;
 
-  private final SchemaFilter attributeFilter;
+  private final SchemaFilter deviceFilter;
 
-  public ShowTableDevicesPlan(PartialPath devicePattern, SchemaFilter attributeFilter) {
+  public ShowTableDevicesPlan(final PartialPath devicePattern, final SchemaFilter deviceFilter) {
     this.devicePattern = devicePattern;
-    this.attributeFilter = attributeFilter;
+    this.deviceFilter = deviceFilter;
   }
 
   public PartialPath getDevicePattern() {
     return devicePattern;
   }
 
-  public SchemaFilter getAttributeFilter() {
-    return attributeFilter;
+  public SchemaFilter getDeviceFilter() {
+    return deviceFilter;
   }
 }

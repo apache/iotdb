@@ -1099,7 +1099,7 @@ public class MTreeBelowSGMemoryImpl {
   // used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       PartialPath pattern,
-      SchemaFilter attributeFilter,
+      SchemaFilter deviceFilter,
       BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1145,7 +1145,7 @@ public class MTreeBelowSGMemoryImpl {
       public boolean hasNext() {
         while (next == null && collector.hasNext()) {
           IDeviceSchemaInfo temp = collector.next();
-          if (attributeFilter == null || filterVisitor.process(attributeFilter, temp)) {
+          if (deviceFilter == null || filterVisitor.process(deviceFilter, temp)) {
             next = temp;
           }
         }
