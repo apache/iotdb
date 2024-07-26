@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -101,7 +102,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   private int nodeCount = 0;
 
-  public SRStatementGenerator(File mtreeFile, File tagFile, PartialPath databaseFullPath)
+  public SRStatementGenerator(
+      final File mtreeFile, final File tagFile, final PartialPath databaseFullPath)
       throws IOException {
 
     inputStream = Files.newInputStream(mtreeFile.toPath());
@@ -114,7 +116,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
     this.databaseFullPath = databaseFullPath;
 
-    Byte version = ReadWriteIOUtils.readByte(inputStream);
+    // Read version
+    ReadWriteIOUtils.readByte(inputStream);
     curNode = deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream);
     nodeCount++;
   }
@@ -132,6 +135,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     if (lastExcept != null) {
       return false;
     }
+
     while (!ancestors.isEmpty()) {
       final int childNum = restChildrenNum.pop();
       if (childNum == 0) {
@@ -142,7 +146,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
                   node, databaseFullPath.getDevicePath().concatPath(node.getPartialPath()));
           statements.push(stmt);
         }
-        cleanMtreeNode(node);
+        cleanMTreeNode(node);
         if (!statements.isEmpty()) {
           return true;
         }
@@ -178,7 +182,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       if (tagFileChannel != null) {
         tagFileChannel.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       lastExcept = e;
     }
     return false;
@@ -198,17 +202,17 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
   }
 
-  private void cleanMtreeNode(IMNode node) {
+  private void cleanMTreeNode(final IMNode node) {
     final IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
     nodeCount = nodeCount - children.size();
     node.getChildren().clear();
   }
 
   private static IMemMNode deserializeMNode(
-      Deque<IMemMNode> ancestors,
-      Deque<Integer> restChildrenNum,
-      MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
-      InputStream inputStream)
+      final Deque<IMemMNode> ancestors,
+      final Deque<Integer> restChildrenNum,
+      final MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
+      final InputStream inputStream)
       throws IOException {
     final byte type = ReadWriteIOUtils.readByte(inputStream);
     final int childrenNum;
@@ -294,13 +298,11 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
           alterTimeSeriesStatement.setPath(path);
           try {
-            Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
+            final Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
                 getTagsAndAttributes(node.getOffset());
-            if (tagsAndAttribute != null) {
-              alterTimeSeriesStatement.setTagsMap(tagsAndAttribute.left);
-              alterTimeSeriesStatement.setAttributesMap(tagsAndAttribute.right);
-              statementList.add(alterTimeSeriesStatement);
-            }
+            alterTimeSeriesStatement.setTagsMap(tagsAndAttribute.left);
+            alterTimeSeriesStatement.setAttributesMap(tagsAndAttribute.right);
+            statementList.add(alterTimeSeriesStatement);
           } catch (IOException ioException) {
             lastExcept = ioException;
             LOGGER.warn(
@@ -321,11 +323,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           try {
             final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
                 getTagsAndAttributes(node.getOffset());
-            if (tagsAndAttributes != null) {
-              stmt.setTags(tagsAndAttributes.left);
-              stmt.setAttributes(tagsAndAttributes.right);
-            }
-          } catch (IOException ioException) {
+            stmt.setTags(tagsAndAttributes.left);
+            stmt.setAttributes(tagsAndAttributes.right);
+          } catch (final IOException ioException) {
             lastExcept = ioException;
             LOGGER.warn("Error when parser tag and attributes files", ioException);
           }
@@ -365,13 +365,11 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         stmt.addCompressor(measurement.getAsMeasurementMNode().getSchema().getCompressor());
         if (measurement.getAsMeasurementMNode().getOffset() >= 0) {
           try {
-            Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+            final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
                 getTagsAndAttributes(measurement.getAsMeasurementMNode().getOffset());
-            if (tagsAndAttributes != null) {
-              stmt.addAttributesList(tagsAndAttributes.right);
-              stmt.addTagsList(tagsAndAttributes.left);
-            }
-          } catch (IOException ioException) {
+            stmt.addAttributesList(tagsAndAttributes.right);
+            stmt.addTagsList(tagsAndAttributes.left);
+          } catch (final IOException ioException) {
             lastExcept = ioException;
             LOGGER.warn(
                 "Error when parse tag and attributes file of node path {}", path, ioException);
@@ -387,16 +385,13 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     return null;
   }
 
-  private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(long offset)
+  private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(final long offset)
       throws IOException {
     if (tagFileChannel != null) {
-      ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, offset);
-      Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-          new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
-      return tagsAndAttributes;
+      final ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, offset);
+      return new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
     } else {
-      LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
+      throw new FileNotFoundException("Snapshot file for tags and attributes is not found.");
     }
-    return null;
   }
 }
