@@ -29,8 +29,6 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import java.util.Objects;
 
-import static org.apache.tsfile.utils.RegexUtils.compileRegex;
-
 public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
 
   @Override
@@ -50,7 +48,7 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
 
   @Override
   public boolean visitLikeFilter(final LikeFilter filter, final String context) {
-    return compileRegex(filter.getRegex()).matcher(context).find();
+    return filter.getRegex().matcher(context).find();
   }
 
   @Override

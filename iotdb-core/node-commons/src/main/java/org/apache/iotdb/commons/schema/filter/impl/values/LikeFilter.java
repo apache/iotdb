@@ -29,20 +29,21 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 // Does not support escape now
 public class LikeFilter extends SchemaFilter {
-  private final String regex;
+  private final Pattern regex;
 
   public LikeFilter(final String regex) {
-    this.regex = regex;
+    this.regex = Pattern.compile(regex);
   }
 
   public LikeFilter(final ByteBuffer byteBuffer) {
-    this.regex = ReadWriteIOUtils.readString(byteBuffer);
+    this.regex = Pattern.compile(ReadWriteIOUtils.readString(byteBuffer));
   }
 
-  public String getRegex() {
+  public Pattern getRegex() {
     return regex;
   }
 
@@ -58,12 +59,12 @@ public class LikeFilter extends SchemaFilter {
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(regex, byteBuffer);
+    ReadWriteIOUtils.write(regex.pattern(), byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(regex, stream);
+    ReadWriteIOUtils.write(regex.pattern(), stream);
   }
 
   @Override
@@ -75,7 +76,7 @@ public class LikeFilter extends SchemaFilter {
       return false;
     }
     final LikeFilter that = (LikeFilter) o;
-    return Objects.equals(regex, that.regex);
+    return Objects.equals(regex.pattern(), that.regex.pattern());
   }
 
   @Override
