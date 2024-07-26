@@ -30,8 +30,8 @@ import org.apache.tsfile.utils.BytesUtils;
 
 public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
 
-  private int beginPosition;
-  private int endPosition;
+  private final int beginPosition;
+  private final int endPosition;
   public static final String EMPTY_STRING = "";
 
   public SubStringFunctionColumnTransformer(

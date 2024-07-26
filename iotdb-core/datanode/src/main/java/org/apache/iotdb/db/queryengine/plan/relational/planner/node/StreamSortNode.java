@@ -94,7 +94,7 @@ public class StreamSortNode extends SortNode {
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
     boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
-    int streamCompareKeyEndIndex = ReadWriteIOUtils.read(byteBuffer);
+    int streamCompareKeyEndIndex = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new StreamSortNode(
         planNodeId, null, orderingScheme, partial, false, streamCompareKeyEndIndex);

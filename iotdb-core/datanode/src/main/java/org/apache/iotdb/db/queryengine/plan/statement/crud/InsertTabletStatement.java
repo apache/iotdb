@@ -175,7 +175,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
@@ -466,7 +466,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
 
-    if (bitMaps != null) {
+    if (bitMaps == null) {
+      bitMaps = new BitMap[measurements.length];
+      bitMaps[pos] = new BitMap(rowCount);
+      for (int i = 0; i < rowCount; i++) {
+        bitMaps[pos].mark(i);
+      }
+    } else {
       BitMap[] tmpBitmaps = new BitMap[bitMaps.length + 1];
       System.arraycopy(bitMaps, 0, tmpBitmaps, 0, pos);
       tmpBitmaps[pos] = new BitMap(rowCount);

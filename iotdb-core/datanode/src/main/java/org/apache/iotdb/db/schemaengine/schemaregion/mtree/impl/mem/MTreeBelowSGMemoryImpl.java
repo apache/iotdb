@@ -338,7 +338,8 @@ public class MTreeBelowSGMemoryImpl {
           if (node.isMeasurement()) {
             final IMeasurementMNode<IMemMNode> measurementNode = node.getAsMeasurementMNode();
             if (node.getAsMeasurementMNode().isPreDeleted()) {
-              throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
+              throw new MeasurementInBlackListException(
+                  devicePath.concatAsMeasurementPath(measurements.get(i)));
             } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
               throw new MeasurementAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i),
@@ -475,7 +476,8 @@ public class MTreeBelowSGMemoryImpl {
           if (node.getAsMeasurementMNode().isPreDeleted()) {
             failingMeasurementMap.put(
                 i,
-                new MeasurementInBlackListException(devicePath.concatNode(measurementList.get(i))));
+                new MeasurementInBlackListException(
+                    devicePath.concatAsMeasurementPath(measurementList.get(i))));
           } else {
             failingMeasurementMap.put(
                 i,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /**
@@ -26,31 +27,31 @@ import java.nio.ByteBuffer;
  * limited memory usage. This interface should behave like {@link ByteBuffer} and don't guarantee
  * the concurrent safety.
  */
-public interface IWALByteBufferView {
+public abstract class IWALByteBufferView extends OutputStream {
   /** Like {@link ByteBuffer#put(byte)}. */
-  void put(byte b);
+  public abstract void put(byte b);
 
   /** Like {@link ByteBuffer#put(byte[])}. */
-  void put(byte[] src);
+  public abstract void put(byte[] src);
 
   /** Like {@link ByteBuffer#putChar(char)}. */
-  void putChar(char value);
+  public abstract void putChar(char value);
 
   /** Like {@link ByteBuffer#putShort(short)}. */
-  void putShort(short value);
+  public abstract void putShort(short value);
 
   /** Like {@link ByteBuffer#putInt(int)}. */
-  void putInt(int value);
+  public abstract void putInt(int value);
 
   /** Like {@link ByteBuffer#putLong(long)}. */
-  void putLong(long value);
+  public abstract void putLong(long value);
 
   /** Like {@link ByteBuffer#putFloat(float)}. */
-  void putFloat(float value);
+  public abstract void putFloat(float value);
 
   /** Like {@link ByteBuffer#putDouble(double)}. */
-  void putDouble(double value);
+  public abstract void putDouble(double value);
 
   /** Like {@link ByteBuffer#position()}. */
-  int position();
+  public abstract int position();
 }

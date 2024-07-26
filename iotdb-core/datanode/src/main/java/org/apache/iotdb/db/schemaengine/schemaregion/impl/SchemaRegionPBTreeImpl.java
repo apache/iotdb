@@ -769,7 +769,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
               Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
               Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
-              prefixPath.concatNode(measurements.get(i)));
+              prefixPath.concatAsMeasurementPath(measurements.get(i)));
           if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
             tagOffsets.remove(i);
           }

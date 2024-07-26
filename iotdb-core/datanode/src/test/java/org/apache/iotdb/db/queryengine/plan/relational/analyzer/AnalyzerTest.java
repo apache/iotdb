@@ -631,7 +631,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
-        "((\"tag1\" IN \"tag1\") AND (NOT (\"tag2\" IN \"tag2\")))",
+        "((\"tag1\" IN ('A', 'B')) AND (NOT (\"tag2\" IN ('A', 'C'))))",
         filterNode.getPredicate().toString());
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)

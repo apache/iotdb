@@ -114,7 +114,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -539,6 +541,10 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1008:
         return TopKNode.deserialize(buffer);
+      case 1009:
+        return CollectNode.deserialize(buffer);
+      case 1010:
+        return StreamSortNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
