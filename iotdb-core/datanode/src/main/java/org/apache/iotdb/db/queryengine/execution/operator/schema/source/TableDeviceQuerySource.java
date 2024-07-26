@@ -43,7 +43,6 @@ import org.apache.tsfile.utils.Binary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -235,13 +234,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public boolean hasSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return idDeterminedPredicateList.size() == 1
-        && idDeterminedPredicateList.get(0).isEmpty()
-        && Objects.isNull(idFuzzyPredicate);
+    return false;
   }
 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
+    return 0;
   }
 }
