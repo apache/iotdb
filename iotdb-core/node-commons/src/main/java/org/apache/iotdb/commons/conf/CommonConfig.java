@@ -188,7 +188,7 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
-  private int pipeDataSynchronizationAcknowledgeRate = 100;
+  private int pipeDataSynchronizationProgressReportRate = 100;
 
   private int pipeDataStructureTabletRowSize = 2048;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
@@ -600,13 +600,13 @@ public class CommonConfig {
     return timestampPrecisionCheckEnabled;
   }
 
-  public int getPipeDataSynchronizationAcknowledgeRate() {
-    return pipeDataSynchronizationAcknowledgeRate;
+  public int getPipeDataSynchronizationProgressReportRate() {
+    return pipeDataSynchronizationProgressReportRate;
   }
 
-  public void setPipeDataSynchronizationAcknowledgeRate(
-      int pipeDataSynchronizationAcknowledgeRate) {
-    this.pipeDataSynchronizationAcknowledgeRate = pipeDataSynchronizationAcknowledgeRate;
+  public void setPipeDataSynchronizationProgressReportRate(
+      int pipeDataSynchronizationProgressReportRate) {
+    this.pipeDataSynchronizationProgressReportRate = pipeDataSynchronizationProgressReportRate;
   }
 
   public String getPipeHardlinkBaseDirName() {

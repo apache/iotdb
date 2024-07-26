@@ -32,8 +32,8 @@ public class PipeConfig {
 
   /////////////////////////////// Data Synchronization ///////////////////////////////
 
-  public int getPipeDataSynchronizationAcknowledgeRate() {
-    return COMMON_CONFIG.getPipeDataSynchronizationAcknowledgeRate();
+  public int getPipeDataSynchronizationProgressReportRate() {
+    return COMMON_CONFIG.getPipeDataSynchronizationProgressReportRate();
   }
 
   /////////////////////////////// File ///////////////////////////////
@@ -308,7 +308,8 @@ public class PipeConfig {
 
   public void printAllConfigs() {
     LOGGER.info(
-        "PipeDataSynchronizationAcknowledgeRate: {}", getPipeDataSynchronizationAcknowledgeRate());
+        "PipeDataSynchronizationAcknowledgeRate: {}",
+        getPipeDataSynchronizationProgressReportRate());
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());

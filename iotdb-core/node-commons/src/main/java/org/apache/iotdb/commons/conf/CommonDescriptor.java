@@ -251,11 +251,11 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
-    config.setPipeDataSynchronizationAcknowledgeRate(
+    config.setPipeDataSynchronizationProgressReportRate(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_data_synchronization_acknowledge_rate",
-                Integer.toString(config.getPipeDataSynchronizationAcknowledgeRate()))));
+                "pipe_data_synchronization_progress_report_rate",
+                Integer.toString(config.getPipeDataSynchronizationProgressReportRate()))));
 
     config.setPipeHardlinkBaseDirName(
         properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
