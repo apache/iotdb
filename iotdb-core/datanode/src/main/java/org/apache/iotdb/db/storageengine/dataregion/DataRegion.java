@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.io.FileNotFoundException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -91,11 +90,14 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.ClosedFileScanHandleImpl;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PartitionLogRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -819,19 +821,45 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isSeq) {
 
     // TODO: read partition file
-    File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
     if (logFile.exists()) {
-      try {
-        PartitionLogReader logReader = new PartitionLogReader(logFile);
-      } catch (IOException e) {
+      Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+      try (PartitionLogReader logReader = new PartitionLogReader(logFile)) {
+        fileTimeIndexMap = logReader.read();
+      } catch (Exception e) {
         throw new RuntimeException(e);
       }
+      for (TsFileResource tsFileResource : resourceList) {
+        FileTimeIndex fileTimeIndex = fileTimeIndexMap.get(tsFileResource.getTsFileID());
+        if (fileTimeIndex == null) {
+          continue;
+        }
+        tsFileResource.setTimeIndex(fileTimeIndex);
+      }
 
+    } else {
+      syncRecoverFilesInPartition(partitionId, context, resourceList, isSeq);
     }
+  }
 
+  private void asyncRecoverFilesInPartition(
+      long partitionId,
+      DataRegionRecoveryContext context,
+      List<TsFileResource> resourceList,
+      boolean isSeq) {
+    // TODO: read partition file
+  }
 
+  private void syncRecoverFilesInPartition(
+      long partitionId,
+      DataRegionRecoveryContext context,
+      List<TsFileResource> resourceList,
+      boolean isSeq) {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
+      PartitionLogRecorder.getInstance()
+          .submitTask(dataRegionSysDir, tsFileResource);
     }
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId)) {

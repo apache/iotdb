@@ -25,7 +25,10 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.db.utils.writelog.PartitionLogWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,9 +38,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.utils.writelog.PartitionLogWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PartitionLogRecorder {
 
@@ -76,11 +76,12 @@ public class PartitionLogRecorder {
                 partitionId,
                 k -> {
                   try {
-                    File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
+                    File logFile =
+                        SystemFileFactory.INSTANCE.getFile(
+                            dataRegionSysDir, String.valueOf(partitionId));
                     if (!logFile.createNewFile()) {
                       LOGGER.warn(
-                          "Partition log file has existed，filePath:{}",
-                          logFile.getAbsolutePath());
+                          "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
                     }
                     return new PartitionLogWriter(logFile, false);
                   } catch (IOException e) {

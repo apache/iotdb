@@ -22,12 +22,14 @@ package org.apache.iotdb.db.utils.writelog;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Map;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 
-public class PartitionLogReader {
+public class PartitionLogReader implements AutoCloseable {
 
   private DataInputStream logStream;
   private String filepath;
@@ -35,7 +37,19 @@ public class PartitionLogReader {
   private byte[] buffer;
 
   public PartitionLogReader(File logFile) throws IOException {
-    logStream = new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
+    logStream =
+        new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
     this.filepath = logFile.getPath();
+  }
+
+  public Map<TsFileID, FileTimeIndex> read() throws IOException {
+    // read the log file
+    // return the TsFileProcessor map
+    return null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    logStream.close();
   }
 }
