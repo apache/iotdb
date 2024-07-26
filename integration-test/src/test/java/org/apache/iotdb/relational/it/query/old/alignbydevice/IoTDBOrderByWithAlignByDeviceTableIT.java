@@ -52,7 +52,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBOrderByWithAlignByDeviceIT {
+public class IoTDBOrderByWithAlignByDeviceTableIT {
   protected static final String DATABASE_NAME = "db";
   protected static final String[] places =
       new String[] {

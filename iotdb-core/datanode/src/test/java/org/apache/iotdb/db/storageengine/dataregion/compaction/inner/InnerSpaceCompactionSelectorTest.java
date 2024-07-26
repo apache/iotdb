@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -662,7 +662,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
             seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    mockModiFicationFile.write(new Deletion(new PartialPath("root.a.b"), 1, 1));
+    mockModiFicationFile.write(new Deletion(new MeasurementPath("root.a.b"), 1, 1));
     seqResources.get(0).setModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
@@ -685,7 +685,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
             seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    mockModiFicationFile.write(new Deletion(new PartialPath("root.a.b"), 1, 1));
+    mockModiFicationFile.write(new Deletion(new MeasurementPath("root.a.b"), 1, 1));
     seqResources.get(0).setModFile(mockModiFicationFile);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);
     SizeTieredCompactionSelector selector =

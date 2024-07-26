@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -340,7 +340,7 @@ public class CompactionTaskComparatorTest {
     String targetFileName = "101-101-0-0.tsfile";
     FakedTsFileResource fakedTsFileResource =
         new FakedTsFileResource(new File(targetFileName), 100);
-    fakedTsFileResource.getModFile().write(new Deletion(new PartialPath("root.test.d1"), 1, 1));
+    fakedTsFileResource.getModFile().write(new Deletion(new MeasurementPath("root.test.d1"), 1, 1));
     compactionTaskQueue.put(
         new SettleCompactionTask(
             0,

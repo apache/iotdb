@@ -40,7 +40,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSubStringFunctionIT {
+public class IoTDBSubStringFunctionTableIT {
 
   private static final String DATABASE_NAME = "db";
 

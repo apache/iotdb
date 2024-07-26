@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
@@ -130,9 +130,9 @@ public class PipeTsFileResourceManagerTest {
   private void creatModsFile(String modsFilePath) throws IllegalPathException {
     Modification[] modifications =
         new Modification[] {
-          new Deletion(new PartialPath("root.lemming.device1.sensor1"), 2, 1),
-          new Deletion(new PartialPath("root.lemming.device1.sensor1"), 3, 2, 5),
-          new Deletion(new PartialPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
+          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 2, 1),
+          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 3, 2, 5),
+          new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
         };
 
     try (ModificationFile mFile = new ModificationFile(modsFilePath)) {

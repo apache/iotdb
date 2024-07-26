@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -183,7 +184,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId("0"),
-            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Collections.singletonList(new MeasurementPath(DEVICE2_NAME, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     int fakeMemTableId = 1;

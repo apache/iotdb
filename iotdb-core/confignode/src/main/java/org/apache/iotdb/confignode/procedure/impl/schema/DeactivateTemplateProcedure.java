@@ -348,7 +348,7 @@ public class DeactivateTemplateProcedure
     for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
       for (Template template : entry.getValue()) {
         for (String measurement : template.getSchemaMap().keySet()) {
-          patternTree.appendPathPattern(entry.getKey().concatNode(measurement));
+          patternTree.appendPathPattern(entry.getKey().concatAsMeasurementPath(measurement));
         }
       }
     }

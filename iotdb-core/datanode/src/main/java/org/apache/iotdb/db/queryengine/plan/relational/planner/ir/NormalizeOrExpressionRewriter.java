@@ -57,11 +57,9 @@ public final class NormalizeOrExpressionRewriter {
           node.getTerms().stream()
               .map(expression -> process(expression, context))
               .collect(toImmutableList());
-
       if (node.getOperator() == AND) {
         return and(terms);
       }
-
       ImmutableList.Builder<InPredicate> inPredicateBuilder = ImmutableList.builder();
       ImmutableSet.Builder<Expression> expressionToSkipBuilder = ImmutableSet.builder();
       ImmutableList.Builder<Expression> othersExpressionBuilder = ImmutableList.builder();
@@ -74,12 +72,10 @@ public final class NormalizeOrExpressionRewriter {
                   expressionToSkipBuilder.add(expression);
                 }
               });
-
       Set<Expression> expressionToSkip = expressionToSkipBuilder.build();
       for (Expression expression : terms) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
-
           if (!expressionToSkip.contains(((ComparisonExpression) expression).getLeft())) {
             othersExpressionBuilder.add(expression);
           }
@@ -91,7 +87,6 @@ public final class NormalizeOrExpressionRewriter {
           othersExpressionBuilder.add(expression);
         }
       }
-
       return or(
           ImmutableList.<Expression>builder()
               .addAll(othersExpressionBuilder.build())
