@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.pattern.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.pattern.PipeDataRegionMatcher;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.Closeable;
 
@@ -80,8 +81,8 @@ public class PipeDataRegionAssigner implements Closeable {
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
                 // The frequency of progress reports is limited by the counter, while progress
-                // reports to TsInsertionEvent are not limited.
-                if (!(event.getEvent() instanceof PipeTsFileInsertionEvent)) {
+                // reports to TsFileInsertionEvent are not limited.
+                if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
                   if (counter < nonForwardingEventsProgressReportInterval) {
                     counter++;
                     return;
