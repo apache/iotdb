@@ -443,15 +443,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-    Set<String> topicNames = messagePayload.getTopicNames();
+    final Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
-      // poll all subscribed topics
-      topicNames = subscribedTopicNames;
-    } else {
-      // filter unsubscribed topics
-      topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
+      return Collections.emptyList();
     }
 
+    // filter unsubscribed topics
+    topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
     return SubscriptionAgent.broker().poll(consumerConfig, topicNames);
   }
 

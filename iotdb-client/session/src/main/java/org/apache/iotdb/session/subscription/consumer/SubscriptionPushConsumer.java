@@ -168,6 +168,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       try {
         final List<SubscriptionMessage> messages =
             poll(subscribedTopics.keySet(), autoPollTimeoutMs);
+        if (messages.isEmpty()) {
+          LOGGER.info(
+              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
+              this,
+              subscribedTopics.keySet(),
+              autoPollTimeoutMs);
+          return;
+        }
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);

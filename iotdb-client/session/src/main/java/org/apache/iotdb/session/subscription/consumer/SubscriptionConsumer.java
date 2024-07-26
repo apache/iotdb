@@ -159,6 +159,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
 
+    // TODO: config
     this.topicIterator = new TopicIterator(2);
   }
 
@@ -407,18 +408,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   protected List<SubscriptionMessage> poll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
-    // check topic names
-    if (subscribedTopics.isEmpty()) {
-      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+    if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
-
-    topicNames.stream()
-        .filter(topicName -> !subscribedTopics.containsKey(topicName))
-        .forEach(
-            topicName ->
-                LOGGER.warn(
-                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
 
     final List<SubscriptionMessage> messages = new ArrayList<>();
     final SubscriptionPollTimer timer =
@@ -506,8 +498,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       LockSupport.parkNanos(SLEEP_NS); // wait some time
     } while (timer.notExpired());
 
-    LOGGER.info(
-        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
     return messages;
   }
 
