@@ -38,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -213,7 +212,7 @@ public class SchemaPredicateUtil {
   }
 
   // compact and-concat expression list to one expression
-  static Expression compactDeviceIdFuzzyPredicate(List<Expression> expressionList) {
+  static Expression compactDeviceIdFuzzyPredicate(final List<Expression> expressionList) {
     if (expressionList.isEmpty()) {
       return null;
     }

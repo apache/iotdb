@@ -225,7 +225,7 @@ public class TableDeviceSchemaFetcher {
 
     if (idSingleMatchIndexList.size() < index2FilterMapList.size()
         || !idSingleMatchPredicateNotInCache.isEmpty()) {
-      List<List<SchemaFilter>> idPredicateForFetch =
+      final List<List<SchemaFilter>> idPredicateForFetch =
           new ArrayList<>(
               index2FilterMapList.size()
                   - idSingleMatchIndexList.size()
