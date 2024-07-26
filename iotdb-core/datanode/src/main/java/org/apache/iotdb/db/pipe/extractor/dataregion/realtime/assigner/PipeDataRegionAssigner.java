@@ -35,21 +35,21 @@ import java.io.Closeable;
 
 public class PipeDataRegionAssigner implements Closeable {
 
+  private static final int nonForwardingEventsProgressReportInterval =
+      PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();
+
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
    * pattern.
    */
   private final PipeDataRegionMatcher matcher;
 
-  private int counter = 0;
-
   /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
 
-  private static final int progressReportRate =
-      PipeConfig.getInstance().getPipeDataSynchronizationProgressReportRate();
+  private int counter = 0;
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -82,7 +82,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 // The frequency of progress reports is limited by the counter, while progress
                 // reports to TsInsertionEvent are not limited.
                 if (!(event.getEvent() instanceof PipeTsFileInsertionEvent)) {
-                  if (counter < progressReportRate) {
+                  if (counter < nonForwardingEventsProgressReportInterval) {
                     counter++;
                     return;
                   }
