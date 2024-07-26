@@ -298,23 +298,18 @@ public class IoTConsensusServerImpl {
 
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
-    List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
     StringBuilder allFilesStr = new StringBuilder();
     snapshotPaths.forEach(
-        path -> {
-          try {
-            long fileSize = Files.size(path);
-            snapshotSizeSumAtomic.addAndGet(fileSize);
-            allFilesStr
-                .append("\n")
-                .append(path)
-                .append(" ")
-                .append(humanReadableByteCountSI(fileSize));
-          } catch (IOException e) {
-            logger.error(
-                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
-          }
+        file -> {
+          long fileSize = file.length();
+          snapshotSizeSumAtomic.addAndGet(fileSize);
+          allFilesStr
+              .append("\n")
+              .append(file.getName())
+              .append(" ")
+              .append(humanReadableByteCountSI(fileSize));
         });
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
     long transitedSnapshotSizeSum = 0;
@@ -329,8 +324,9 @@ public class IoTConsensusServerImpl {
         "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
-      for (Path path : snapshotPaths) {
-        SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
+      for (File file : snapshotPaths) {
+        SnapshotFragmentReader reader =
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
         try {
           while (reader.hasNext()) {
             // TODO: zero copy ?
@@ -356,7 +352,7 @@ public class IoTConsensusServerImpl {
               humanReadableByteCountSI(snapshotSizeSum),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   (System.nanoTime() - startTime) / 1_000_000),
-              path);
+              file);
         } finally {
           reader.close();
         }
