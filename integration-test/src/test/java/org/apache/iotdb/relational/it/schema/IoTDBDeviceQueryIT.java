@@ -64,7 +64,7 @@ public class IoTDBDeviceQueryIT {
       statement.execute(
           "create table table0(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1);");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0"),
