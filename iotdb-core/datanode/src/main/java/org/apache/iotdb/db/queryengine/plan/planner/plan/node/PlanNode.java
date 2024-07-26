@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -177,12 +176,7 @@ public abstract class PlanNode implements IConsensusRequest {
    */
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    int capacity = 0;
-    if (this instanceof WALEntryValue) {
-      WALEntryValue node = (WALEntryValue) this;
-      capacity = node.serializedSize();
-    }
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS(capacity + 4096);
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
