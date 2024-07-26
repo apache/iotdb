@@ -166,7 +166,17 @@ public class SnapshotStorage implements StateMachineStorage {
         continue;
       }
       FileInfo fileInfo;
-      fileInfo = new FileInfo(file.toPath(), null);
+      try {
+        if (getSnapshotDir() == null) {
+          fileInfo = new FileInfo(file.toPath(), null);
+        } else {
+
+          fileInfo = new FileInfo(file.toPath().toRealPath(), null);
+        }
+      } catch (IOException e) {
+        logger.warn("{} cannot resolve real path of {} due to ", this, file, e);
+        return null;
+      }
       fileInfos.add(fileInfo);
     }
 
