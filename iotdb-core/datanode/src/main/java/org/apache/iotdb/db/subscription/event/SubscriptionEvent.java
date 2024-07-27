@@ -21,12 +21,16 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -64,6 +68,14 @@ public class SubscriptionEvent {
   private long lastPolledTimestamp = INVALID_TIMESTAMP;
   private long committedTimestamp = INVALID_TIMESTAMP;
 
+  /**
+   * Constructs a {@link SubscriptionEvent} with an initial response.
+   *
+   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
+   * @param initialResponse The initial response which must be of type {@link FileInitPayload}. This
+   *     indicates that subsequent responses need to be fetched using {@link
+   *     SubscriptionEvent#prefetchRemainingResponses()}.
+   */
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final SubscriptionPollResponse initialResponse) {
     this.pipeEvents = pipeEvents;
@@ -76,6 +88,15 @@ public class SubscriptionEvent {
     this.commitContext = initialResponse.getCommitContext();
   }
 
+  /**
+   * Constructs a {@link SubscriptionEvent} with a list of responses.
+   *
+   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
+   * @param responses A list of responses that can be of types {@link TabletsPayload}, {@link
+   *     TerminationPayload}, or {@link ErrorPayload}. All responses are already generated at the
+   *     time of construction, so {@link SubscriptionEvent#prefetchRemainingResponses()} is not
+   *     required.
+   */
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final List<SubscriptionPollResponse> responses) {
     this.pipeEvents = pipeEvents;
