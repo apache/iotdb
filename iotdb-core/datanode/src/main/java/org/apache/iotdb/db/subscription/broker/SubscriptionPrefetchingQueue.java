@@ -329,17 +329,16 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
-   * @return the corresponding event if ack successfully, otherwise {@code null}
+   * @return {@code true} if ack successfully
    */
-  public SubscriptionEvent ack(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
+  public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
-      return null;
+      return false;
     }
 
     if (event.isCommitted()) {
@@ -349,7 +348,7 @@ public abstract class SubscriptionPrefetchingQueue {
           event,
           commitContext,
           this);
-      return null;
+      return false;
     }
 
     if (!event.isCommittable()) {
@@ -358,7 +357,7 @@ public abstract class SubscriptionPrefetchingQueue {
           event,
           commitContext,
           this);
-      return null;
+      return false;
     }
 
     // check if a consumer acks event from another consumer group...
@@ -387,21 +386,20 @@ public abstract class SubscriptionPrefetchingQueue {
           return ev;
         });
 
-    return event;
+    return true;
   }
 
   /**
-   * @return the corresponding event if nack successfully, otherwise {@code null}
+   * @return {@code true} if nack successfully
    */
-  public SubscriptionEvent nack(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
+  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
           commitContext,
           this);
-      return null;
+      return false;
     }
 
     // check if a consumer nacks event from another consumer group...
@@ -427,7 +425,7 @@ public abstract class SubscriptionPrefetchingQueue {
           return ev;
         });
 
-    return event;
+    return true;
   }
 
   public SubscriptionCommitContext generateSubscriptionCommitContext() {

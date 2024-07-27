@@ -174,7 +174,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
+  private synchronized boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
