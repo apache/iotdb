@@ -41,7 +41,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,9 +94,8 @@ public abstract class SubscriptionPrefetchingQueue {
     // in uncommittedEvents
     prefetchingQueue.clear();
 
-    // clean up events in inFlightSubscriptionEventMap
-    // TODO: consider new events after cleaning up
-    inFlightSubscriptionEventMap.values().forEach(SubscriptionEvent::cleanup);
+    // no need to clean up events in inFlightSubscriptionEventMap, since all events in
+    // prefetchingQueue are also in uncommittedEvents
     inFlightSubscriptionEventMap.clear();
 
     // no need to clean up events in inputPendingQueue, see
@@ -131,9 +129,14 @@ public abstract class SubscriptionPrefetchingQueue {
           prefetchingQueue.add(event);
           continue;
         }
-        event.recordLastPolledConsumerId(consumerId);
-        event.recordLastPolledTimestamp();
+
+        // remove stale entry in inFlightSubscriptionEventMap for auto recycled event
+        inFlightSubscriptionEventMap.remove(
+            new Pair<>(event.getLastPolledConsumerId(), event.getCommitContext()));
         inFlightSubscriptionEventMap.put(new Pair<>(consumerId, event.getCommitContext()), event);
+        event.recordLastPolledConsumerId(consumerId);
+
+        event.recordLastPolledTimestamp();
         // Re-enqueue the uncommitted event at the end of the queue.
         // This operation should be performed after recordLastPolledTimestamp to prevent multiple
         // consumers from consuming the same event.
@@ -186,7 +189,7 @@ public abstract class SubscriptionPrefetchingQueue {
             try {
               ev.prefetchRemainingResponses();
               ev.trySerializeRemainingResponses();
-            } catch (final IOException ignored) {
+            } catch (final Exception ignored) {
             }
 
             return ev;
@@ -333,7 +336,17 @@ public abstract class SubscriptionPrefetchingQueue {
     event.ack();
     event.cleanup();
     event.recordCommittedTimestamp();
+
     uncommittedEvents.remove(commitContext);
+    inFlightSubscriptionEventMap.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
+            return null; // remove this entry
+          }
+          return ev;
+        });
+
     return event;
   }
 
@@ -364,6 +377,16 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     event.nack();
+
+    inFlightSubscriptionEventMap.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
+            return null; // remove this entry
+          }
+          return ev;
+        });
+
     return event;
   }
 

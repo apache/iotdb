@@ -217,7 +217,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
-    event.recordLastPolledConsumerId(consumerId);
     event.recordLastPolledTimestamp();
     return event;
   }
@@ -279,50 +278,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           }
         });
     return result.get();
-  }
-
-  /////////////////////////////// commit ///////////////////////////////
-
-  /**
-   * @return the corresponding event if ack successfully, otherwise {@code null}
-   */
-  @Override
-  public SubscriptionEvent ack(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
-    final SubscriptionEvent event = super.ack(consumerId, commitContext);
-    if (Objects.nonNull(event)) {
-      inFlightSubscriptionEventMap.compute(
-          new Pair<>(consumerId, commitContext),
-          (key, ev) -> {
-            if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
-              return null; // remove this entry
-            }
-            return ev;
-          });
-      return event;
-    }
-    return null;
-  }
-
-  /**
-   * @return the corresponding event if nack successfully, otherwise {@code null}
-   */
-  @Override
-  public SubscriptionEvent nack(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
-    final SubscriptionEvent event = super.nack(consumerId, commitContext);
-    if (Objects.nonNull(event)) {
-      inFlightSubscriptionEventMap.compute(
-          new Pair<>(consumerId, commitContext),
-          (key, ev) -> {
-            if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
-              return null; // remove this entry
-            }
-            return ev;
-          });
-      return event;
-    }
-    return null;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

@@ -151,10 +151,9 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     try {
       event.fetchNextResponse();
     } catch (final Exception ignored) {
-
+      // no exceptions will be thrown
     }
 
-    event.recordLastPolledConsumerId(consumerId);
     event.recordLastPolledTimestamp();
     return event;
   }
