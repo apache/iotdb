@@ -44,7 +44,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -68,9 +67,6 @@ public class SubscriptionEvent {
   private String lastPolledConsumerId = null;
   private long lastPolledTimestamp = INVALID_TIMESTAMP;
   private long committedTimestamp = INVALID_TIMESTAMP;
-
-  private final AtomicBoolean isAcked = new AtomicBoolean(false);
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   /**
    * Constructs a {@link SubscriptionEvent} with an initial response.
@@ -284,10 +280,6 @@ public class SubscriptionEvent {
         break;
       }
     }
-  }
-
-  public boolean trySerializeCurrentResponse() {
-    return trySerializeResponse(currentResponseIndex);
   }
 
   /**
