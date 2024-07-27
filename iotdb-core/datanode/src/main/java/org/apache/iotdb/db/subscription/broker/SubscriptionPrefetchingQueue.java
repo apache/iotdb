@@ -157,8 +157,11 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// prefetch ///////////////////////////////
 
   public void executePrefetch() {
-    this.tryPrefetch(false);
+    tryPrefetch(false);
+    prefetchAndSerializeInFlightEvents();
+  }
 
+  private void prefetchAndSerializeInFlightEvents() {
     // Iterate on the snapshot of the key set, NOTE:
     // 1. Ignore entries added during iteration.
     // 2. For entries deleted by other threads during iteration, just check if the value is null.
@@ -198,6 +201,43 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
+   * serialize uncommitted and pollable events in {@link
+   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   */
+  private void serializeEventsInQueue() {
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    try {
+      while (count++ < size // limit control
+          && Objects.nonNull(
+              event =
+                  prefetchingQueue.poll(
+                      SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
+                      TimeUnit.MILLISECONDS))) {
+        if (event.isCommitted()) {
+          event.cleanup();
+          continue;
+        }
+        // Serialize the uncommitted and pollable event.
+        if (event.pollable()) {
+          // No need to concern whether serialization is successful.
+          event.trySerializeCurrentResponse();
+        }
+        // Re-enqueue the uncommitted event at the end of the queue.
+        prefetchingQueue.add(event);
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingTabletQueue {} interrupted while serializing events.",
+          this,
+          e);
+    }
+  }
+
+  /**
    * Prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
    * SubscriptionPrefetchingQueue#prefetchingQueue}.
@@ -209,7 +249,7 @@ public abstract class SubscriptionPrefetchingQueue {
    *     when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
    *     otherwise
    */
-  protected void tryPrefetch(final boolean onEventIfEmpty) {
+  private void tryPrefetch(final boolean onEventIfEmpty) {
     while (!inputPendingQueue.isEmpty()) {
       final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {

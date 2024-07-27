@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -196,43 +195,6 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           return batch;
         });
     return result.get();
-  }
-
-  /**
-   * serialize uncommitted and pollable events in {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
-   */
-  private void serializeEventsInQueue() {
-    final long size = prefetchingQueue.size();
-    long count = 0;
-
-    SubscriptionEvent event;
-    try {
-      while (count++ < size // limit control
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
-        if (event.isCommitted()) {
-          event.cleanup();
-          continue;
-        }
-        // Serialize the uncommitted and pollable event.
-        if (event.pollable()) {
-          // No need to concern whether serialization is successful.
-          event.trySerializeCurrentResponse();
-        }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(event);
-      }
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingTabletQueue {} interrupted while serializing events.",
-          this,
-          e);
-    }
   }
 
   /////////////////////////////// stringify ///////////////////////////////
