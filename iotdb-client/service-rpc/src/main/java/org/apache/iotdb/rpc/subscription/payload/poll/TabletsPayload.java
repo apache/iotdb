@@ -31,8 +31,14 @@ import java.util.Objects;
 
 public class TabletsPayload implements SubscriptionPollPayload {
 
+  /** A batch of tablets. */
   private transient List<Tablet> tablets = new ArrayList<>();
 
+  /**
+   * The field to be filled in the next {@link PollTabletsPayload} request. If negative, it
+   * indicates all tablets have been fetched, and -nextOffset represents the total number of
+   * tablets.
+   */
   private transient int nextOffset;
 
   public TabletsPayload() {}

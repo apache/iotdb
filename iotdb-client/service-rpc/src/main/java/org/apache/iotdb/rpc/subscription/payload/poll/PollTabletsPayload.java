@@ -28,8 +28,10 @@ import java.util.Objects;
 
 public class PollTabletsPayload implements SubscriptionPollPayload {
 
+  /** The commit context associated with the {@link SubscriptionPollResponse}. */
   private transient SubscriptionCommitContext commitContext;
 
+  /** The index for the next batch of tablets. */
   private transient int offset;
 
   public SubscriptionCommitContext getCommitContext() {

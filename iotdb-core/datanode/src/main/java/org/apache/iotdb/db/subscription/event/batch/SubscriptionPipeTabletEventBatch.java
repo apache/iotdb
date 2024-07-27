@@ -104,14 +104,12 @@ public class SubscriptionPipeTabletEventBatch {
   }
 
   private List<SubscriptionEvent> generateSubscriptionEvents() {
-    final int tabletsSize = tablets.size();
     final SubscriptionCommitContext commitContext =
         prefetchingQueue.generateSubscriptionCommitContext();
     final List<SubscriptionPollResponse> responses = new ArrayList<>();
     final List<Tablet> currentTablets = new ArrayList<>();
     long currentTotalBufferSize = 0;
-    for (int i = 0; i < tabletsSize; ++i) {
-      final Tablet tablet = tablets.get(i);
+    for (final Tablet tablet : tablets) {
       final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
         LOGGER.warn("Detect large tablet with size {} in bytes", bufferSize);
@@ -126,13 +124,10 @@ public class SubscriptionPipeTabletEventBatch {
         responses.add(
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(
-                    new ArrayList<>(currentTablets),
-                    (i == tabletsSize - 1) ? -1 : responses.size() + 1),
+                new TabletsPayload(new ArrayList<>(currentTablets), responses.size() + 1),
                 commitContext));
         currentTablets.clear();
         currentTotalBufferSize = 0;
-        continue;
       }
       currentTablets.add(tablet);
       currentTotalBufferSize += bufferSize;
@@ -141,7 +136,7 @@ public class SubscriptionPipeTabletEventBatch {
       responses.add(
           new SubscriptionPollResponse(
               SubscriptionPollResponseType.TABLETS.getType(),
-              new TabletsPayload(new ArrayList<>(currentTablets), -1),
+              new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
               commitContext));
     }
     return Collections.singletonList(

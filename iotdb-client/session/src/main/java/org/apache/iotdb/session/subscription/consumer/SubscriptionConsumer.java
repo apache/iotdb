@@ -681,11 +681,18 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionPollResponse initialResponse) {
     final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
-    LOGGER.info("{} start to poll tablets with commit context {}", this, commitContext);
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      if (nextOffset == -1) {
+      if (nextOffset < 0) {
+        if (!Objects.equals(tablets.size(), -nextOffset)) {
+          final String errorMessage =
+              String.format(
+                  "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
+                  tablets.size(), -nextOffset, this);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
         return Optional.of(new SubscriptionMessage(commitContext, tablets));
       }
 

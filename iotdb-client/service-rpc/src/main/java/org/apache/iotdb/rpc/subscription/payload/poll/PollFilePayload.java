@@ -28,8 +28,10 @@ import java.util.Objects;
 
 public class PollFilePayload implements SubscriptionPollPayload {
 
+  /** The commit context associated with the {@link SubscriptionPollResponse}. */
   private transient SubscriptionCommitContext commitContext;
 
+  /** The offset from which the file content should be read. */
   private transient long writingOffset;
 
   public SubscriptionCommitContext getCommitContext() {
