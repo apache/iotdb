@@ -813,6 +813,9 @@ public class TSDIFFBOSMedianTest {
         int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
+        int final_k_end_value = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
         int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
         decode_pos += 1;
 
@@ -905,7 +908,7 @@ public class TSDIFFBOSMedianTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v = value0;
-        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
+//        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
 
 
         for (int i = 0; i < block_size; i++) {
@@ -1103,8 +1106,8 @@ public class TSDIFFBOSMedianTest {
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
-//                for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                    BOSDecoder(encoded_result);
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
