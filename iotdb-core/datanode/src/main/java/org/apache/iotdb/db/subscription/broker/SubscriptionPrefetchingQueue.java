@@ -56,11 +56,11 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
 
-  protected final String brokerId; // consumer group id
-  protected final String topicName;
+  private final String brokerId; // consumer group id
+  private final String topicName;
 
   /** Contains events coming from the upstream pipeline, corresponding to the pipe sink stage. */
-  protected final SubscriptionBlockingPendingQueue inputPendingQueue;
+  private final SubscriptionBlockingPendingQueue inputPendingQueue;
 
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
@@ -69,12 +69,11 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
 
   /**
-   * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer ID and commit context.
+   * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer id and commit context.
    */
-  protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent>
-      inFlightSubscriptionEventMap;
+  protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent> inFlightEvents;
 
-  private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
+  private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -90,7 +89,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
 
-    this.inFlightSubscriptionEventMap = new ConcurrentHashMap<>();
+    this.inFlightEvents = new ConcurrentHashMap<>();
   }
 
   public void cleanup() {
@@ -102,9 +101,9 @@ public abstract class SubscriptionPrefetchingQueue {
     // in uncommittedEvents
     prefetchingQueue.clear();
 
-    // no need to clean up events in inFlightSubscriptionEventMap, since all events in
-    // inFlightSubscriptionEventMap are also in uncommittedEvents
-    inFlightSubscriptionEventMap.clear();
+    // no need to clean up events in inFlightEvents, since all events in inFlightEvents are also in
+    // uncommittedEvents
+    inFlightEvents.clear();
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
@@ -147,14 +146,14 @@ public abstract class SubscriptionPrefetchingQueue {
           continue;
         }
 
-        // This operation should be performed before updating inFlightSubscriptionEventMap to
-        // prevent multiple consumers from consuming the same event.
+        // This operation should be performed before updating inFlightEvents to prevent multiple
+        // consumers from consuming the same event.
         event.recordLastPolledTimestamp(); // now non-pollable
 
-        // remove potential stale entry in inFlightSubscriptionEventMap for auto recycled event
-        inFlightSubscriptionEventMap.remove(
+        // remove potential stale entry in inFlightEvents for auto recycled event
+        inFlightEvents.remove(
             new Pair<>(event.getLastPolledConsumerId(), event.getCommitContext()));
-        inFlightSubscriptionEventMap.put(new Pair<>(consumerId, event.getCommitContext()), event);
+        inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
         event.recordLastPolledConsumerId(consumerId);
         return event;
       }
@@ -181,8 +180,8 @@ public abstract class SubscriptionPrefetchingQueue {
     // 1. Ignore entries added during iteration.
     // 2. For entries deleted by other threads during iteration, just check if the value is null.
     for (final Pair<String, SubscriptionCommitContext> pair :
-        ImmutableSet.copyOf(inFlightSubscriptionEventMap.keySet())) {
-      inFlightSubscriptionEventMap.compute(
+        ImmutableSet.copyOf(inFlightEvents.keySet())) {
+      inFlightEvents.compute(
           pair,
           (key, ev) -> {
             if (Objects.isNull(ev)) {
@@ -359,7 +358,7 @@ public abstract class SubscriptionPrefetchingQueue {
     event.cleanup();
     event.recordCommittedTimestamp();
 
-    inFlightSubscriptionEventMap.compute(
+    inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
           if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
@@ -399,7 +398,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
     event.nack(); // now pollable
 
-    inFlightSubscriptionEventMap.compute(
+    inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
           if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
@@ -420,7 +419,7 @@ public abstract class SubscriptionPrefetchingQueue {
         PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
-        subscriptionCommitIdGenerator.getAndIncrement());
+        commitIdGenerator.getAndIncrement());
   }
 
   private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
@@ -448,7 +447,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public long getCurrentCommitId() {
-    return subscriptionCommitIdGenerator.get();
+    return commitIdGenerator.get();
   }
 
   /////////////////////////////// termination ///////////////////////////////
@@ -502,7 +501,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
@@ -515,8 +514,8 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("uncommittedEvents", uncommittedEvents.toString());
-    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-    result.put("inFlightSubscriptionEventMap", inFlightSubscriptionEventMap.toString());
+    result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("inFlightEvents", inFlightEvents.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;

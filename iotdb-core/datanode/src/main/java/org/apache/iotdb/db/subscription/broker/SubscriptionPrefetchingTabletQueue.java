@@ -86,7 +86,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
       final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     // 1. Extract current event and check it
     final SubscriptionEvent event =
-        inFlightSubscriptionEventMap.compute(
+        inFlightEvents.compute(
             new Pair<>(consumerId, commitContext),
             (key, ev) -> {
               if (Objects.nonNull(ev) && ev.isCommitted()) {

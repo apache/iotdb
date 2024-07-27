@@ -89,7 +89,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final long writingOffset) {
     // 1. Extract current event and check it
     final SubscriptionEvent event =
-        inFlightSubscriptionEventMap.compute(
+        inFlightEvents.compute(
             new Pair<>(consumerId, commitContext),
             (key, ev) -> {
               if (Objects.nonNull(ev) && ev.isCommitted()) {
