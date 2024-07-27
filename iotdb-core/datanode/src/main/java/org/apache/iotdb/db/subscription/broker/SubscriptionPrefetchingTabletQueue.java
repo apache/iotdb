@@ -67,14 +67,14 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public void cleanup() {
-    super.cleanup();
+  public void cleanUpAll() {
+    super.cleanUpAll();
 
     // clean up batch
     currentBatchRef.getAndUpdate(
         (batch) -> {
           if (Objects.nonNull(batch)) {
-            batch.cleanup();
+            batch.cleanUp();
           }
           return null;
         });
@@ -90,7 +90,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             new Pair<>(consumerId, commitContext),
             (key, ev) -> {
               if (Objects.nonNull(ev) && ev.isCommitted()) {
-                ev.cleanup();
+                cleanUp(ev);
                 return null; // remove this entry
               }
               return ev;

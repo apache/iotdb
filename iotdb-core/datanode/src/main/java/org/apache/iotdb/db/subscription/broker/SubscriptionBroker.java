@@ -257,7 +257,7 @@ public class SubscriptionBroker {
 
     if (doRemove) {
       // clean up events in prefetching queue
-      prefetchingQueue.cleanup();
+      prefetchingQueue.cleanUpAll();
 
       // deregister metrics
       SubscriptionPrefetchingQueueMetrics.getInstance()

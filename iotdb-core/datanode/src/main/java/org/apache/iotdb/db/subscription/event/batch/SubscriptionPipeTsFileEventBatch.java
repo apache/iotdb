@@ -74,7 +74,7 @@ public class SubscriptionPipeTsFileEventBatch {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  public synchronized void cleanup() {
+  public synchronized void cleanUp() {
     // close batch, it includes clearing the reference count of events
     batch.close();
   }

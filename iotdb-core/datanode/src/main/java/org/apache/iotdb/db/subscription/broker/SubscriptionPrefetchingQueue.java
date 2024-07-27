@@ -88,13 +88,12 @@ public abstract class SubscriptionPrefetchingQueue {
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
-
     this.inFlightEvents = new ConcurrentHashMap<>();
   }
 
-  public void cleanup() {
+  public void cleanUpAll() {
     // clean up uncommitted events
-    uncommittedEvents.values().forEach(SubscriptionEvent::cleanup);
+    uncommittedEvents.values().forEach(SubscriptionEvent::cleanUp);
     uncommittedEvents.clear();
 
     // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
@@ -107,6 +106,19 @@ public abstract class SubscriptionPrefetchingQueue {
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
+  }
+
+  /**
+   * NOTE: To ensure idempotency, currently, it is only allowed to call this method within the
+   * {@link ConcurrentHashMap#compute} method of {@link
+   * SubscriptionPrefetchingQueue#inFlightEvents}.
+   */
+  protected void cleanUp(final SubscriptionEvent event) {
+    // clean up committed event
+    event.cleanUp();
+
+    // remove it in uncommittedEvents
+    uncommittedEvents.remove(event.getCommitContext());
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -129,20 +141,20 @@ public abstract class SubscriptionPrefetchingQueue {
                       TimeUnit.MILLISECONDS))) {
         if (event.isCommitted()) {
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), clean up and remove it",
+              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
               this,
               event);
-          event.cleanup();
+          // no need to update inFlightEvents and uncommittedEvents
           continue;
         }
 
         if (!event.pollable()) {
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and re-enqueue it",
+              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
               this,
               event);
           event.nack(); // now pollable
-          prefetchingQueue.add(event);
+          // no need to update inFlightEvents and prefetchingQueue
           continue;
         }
 
@@ -172,10 +184,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public void executePrefetch() {
     tryPrefetch(false);
-    prefetchAndSerializeInFlightEvents();
-  }
 
-  private void prefetchAndSerializeInFlightEvents() {
     // Iterate on the snapshot of the key set, NOTE:
     // 1. Ignore entries added during iteration.
     // 2. For entries deleted by other threads during iteration, just check if the value is null.
@@ -188,13 +197,13 @@ public abstract class SubscriptionPrefetchingQueue {
               return null;
             }
 
-            // clean up committed event
+            // clean up committed event and remove it in uncommittedEvents
             if (ev.isCommitted()) {
-              ev.cleanup();
+              cleanUp(ev);
               return null; // remove this entry
             }
 
-            // nack pollable event
+            // nack pollable event and re-enqueue it to prefetchingQueue
             if (ev.pollable()) {
               ev.nack(); // now pollable
               prefetchingQueue.add(ev);
@@ -324,7 +333,6 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event.isCommitted()) {
-      event.cleanup();
       LOGGER.warn(
           "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
           event,
@@ -355,19 +363,9 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     event.ack();
-    event.cleanup();
-    event.recordCommittedTimestamp();
+    event.recordCommittedTimestamp(); // now committed
 
-    inFlightEvents.compute(
-        new Pair<>(consumerId, commitContext),
-        (key, ev) -> {
-          if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
-            return null; // remove this entry
-          }
-          return ev;
-        });
-    uncommittedEvents.remove(commitContext);
-
+    // no need to update inFlightEvents and uncommittedEvents
     return true;
   }
 
@@ -398,16 +396,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
     event.nack(); // now pollable
 
-    inFlightEvents.compute(
-        new Pair<>(consumerId, commitContext),
-        (key, ev) -> {
-          if (Objects.nonNull(ev) && Objects.equals(commitContext, ev.getCommitContext())) {
-            return null; // remove this entry
-          }
-          return ev;
-        });
-    prefetchingQueue.add(event);
-
+    // no need to update inFlightEvents and prefetchingQueue
     return true;
   }
 

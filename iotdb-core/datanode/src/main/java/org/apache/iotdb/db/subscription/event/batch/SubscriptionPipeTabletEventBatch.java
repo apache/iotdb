@@ -96,7 +96,7 @@ public class SubscriptionPipeTabletEventBatch {
     }
   }
 
-  public synchronized void cleanup() {
+  public synchronized void cleanUp() {
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
