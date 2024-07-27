@@ -59,6 +59,7 @@ public class SubscriptionEvent {
   private final SubscriptionCommitContext
       commitContext; // all responses have the same commit context
 
+  // lastPolledConsumerId is not used as a criterion for determining pollability
   private String lastPolledConsumerId = null;
   private long lastPolledTimestamp = INVALID_TIMESTAMP;
   private long committedTimestamp = INVALID_TIMESTAMP;
@@ -163,20 +164,18 @@ public class SubscriptionEvent {
     if (lastPolledTimestamp == INVALID_TIMESTAMP) {
       return true;
     }
-    if (Objects.nonNull(lastPolledConsumerId)) {
-      return false;
+    if (canRecycle()) {
+      nack();
+      return true;
     }
-    // Recycle events that may not be able to be committed, i.e., those that have been polled but
-    // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    return false;
   }
 
   public void nack() {
     // reset current response index
     currentResponseIndex = 0;
 
-    lastPolledConsumerId = null;
+    // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp = INVALID_TIMESTAMP;
   }
 
@@ -186,6 +185,13 @@ public class SubscriptionEvent {
 
   public String getLastPolledConsumerId() {
     return lastPolledConsumerId;
+  }
+
+  private boolean canRecycle() {
+    // Recycle events that may not be able to be committed, i.e., those that have been polled but
+    // not committed within a certain period of time.
+    return System.currentTimeMillis() - lastPolledTimestamp
+        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
   //////////////////////////// prefetch & fetch ////////////////////////////
