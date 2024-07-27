@@ -102,7 +102,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     if (Objects.isNull(event)) {
       final String errorMessage =
           String.format(
-              "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any TsFile to consumer %s, commit context: %s, writing offset: %s",
+              "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
               this, consumerId, commitContext, writingOffset);
       LOGGER.warn(errorMessage);
       return generateSubscriptionPollErrorResponse(errorMessage);
@@ -205,14 +205,14 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       event.fetchNextResponse();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring TsFile (with event {}) to consumer {}",
+          "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring file (with event {}) to consumer {}",
           this,
           event,
           consumerId,
           e);
       final String errorMessage =
           String.format(
-              "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
+              "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring file (with event %s) to consumer %s: %s",
               this, event, consumerId, e);
       return generateSubscriptionPollErrorResponse(errorMessage);
     }

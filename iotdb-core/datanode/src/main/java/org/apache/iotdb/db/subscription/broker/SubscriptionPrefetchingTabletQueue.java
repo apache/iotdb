@@ -99,7 +99,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     if (Objects.isNull(event)) {
       final String errorMessage =
           String.format(
-              "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any TsFile to consumer %s, commit context: %s, offset: %s",
+              "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
               this, consumerId, commitContext, offset);
       LOGGER.warn(errorMessage);
       return generateSubscriptionPollErrorResponse(errorMessage);

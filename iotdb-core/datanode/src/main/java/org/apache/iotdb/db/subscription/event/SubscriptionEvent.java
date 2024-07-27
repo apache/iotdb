@@ -185,11 +185,14 @@ public class SubscriptionEvent {
     if (lastPolledTimestamp == INVALID_TIMESTAMP) {
       return true;
     }
-    if (canRecycle()) {
-      nack();
-      return true;
-    }
-    return false;
+    return canRecycle();
+  }
+
+  private boolean canRecycle() {
+    // Recycle events that may not be able to be committed, i.e., those that have been polled but
+    // not committed within a certain period of time.
+    return System.currentTimeMillis() - lastPolledTimestamp
+        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
   public void nack() {
@@ -206,13 +209,6 @@ public class SubscriptionEvent {
 
   public String getLastPolledConsumerId() {
     return lastPolledConsumerId;
-  }
-
-  private boolean canRecycle() {
-    // Recycle events that may not be able to be committed, i.e., those that have been polled but
-    // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
   //////////////////////////// prefetch & fetch ////////////////////////////

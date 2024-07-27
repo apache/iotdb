@@ -58,15 +58,23 @@ public abstract class SubscriptionPrefetchingQueue {
 
   protected final String brokerId; // consumer group id
   protected final String topicName;
+
+  /** Contains events coming from the upstream pipeline, corresponding to the pipe sink stage. */
   protected final SubscriptionBlockingPendingQueue inputPendingQueue;
+
+  /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
+  /** A map recording all currently prefetched but uncommitted {@link SubscriptionEvent}. */
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
-  private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
-  // <consumer id, commit context> -> event
+  /**
+   * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer ID and commit context.
+   */
   protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent>
       inFlightSubscriptionEventMap;
+
+  private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -95,7 +103,7 @@ public abstract class SubscriptionPrefetchingQueue {
     prefetchingQueue.clear();
 
     // no need to clean up events in inFlightSubscriptionEventMap, since all events in
-    // prefetchingQueue are also in uncommittedEvents
+    // inFlightSubscriptionEventMap are also in uncommittedEvents
     inFlightSubscriptionEventMap.clear();
 
     // no need to clean up events in inputPendingQueue, see
@@ -121,26 +129,33 @@ public abstract class SubscriptionPrefetchingQueue {
                       SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
                       TimeUnit.MILLISECONDS))) {
         if (event.isCommitted()) {
+          LOGGER.warn(
+              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), clean up and remove it",
+              this,
+              event);
           event.cleanup();
           continue;
         }
+
         if (!event.pollable()) {
-          // Re-enqueue the uncommitted event at the end of the queue.
+          LOGGER.warn(
+              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and re-enqueue it",
+              this,
+              event);
+          event.nack(); // now pollable
           prefetchingQueue.add(event);
           continue;
         }
 
-        // remove stale entry in inFlightSubscriptionEventMap for auto recycled event
+        // This operation should be performed before updating inFlightSubscriptionEventMap to
+        // prevent multiple consumers from consuming the same event.
+        event.recordLastPolledTimestamp(); // now non-pollable
+
+        // remove potential stale entry in inFlightSubscriptionEventMap for auto recycled event
         inFlightSubscriptionEventMap.remove(
             new Pair<>(event.getLastPolledConsumerId(), event.getCommitContext()));
         inFlightSubscriptionEventMap.put(new Pair<>(consumerId, event.getCommitContext()), event);
         event.recordLastPolledConsumerId(consumerId);
-
-        event.recordLastPolledTimestamp();
-        // Re-enqueue the uncommitted event at the end of the queue.
-        // This operation should be performed after recordLastPolledTimestamp to prevent multiple
-        // consumers from consuming the same event.
-        prefetchingQueue.add(event);
         return event;
       }
     } catch (final InterruptedException e) {
@@ -182,7 +197,12 @@ public abstract class SubscriptionPrefetchingQueue {
 
             // nack pollable event
             if (ev.pollable()) {
-              ev.nack();
+              ev.nack(); // now pollable
+              prefetchingQueue.add(ev);
+              LOGGER.warn(
+                  "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
+                  this,
+                  ev);
               return null; // remove this entry
             }
 
@@ -197,43 +217,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
             return ev;
           });
-    }
-  }
-
-  /**
-   * serialize uncommitted and pollable events in {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
-   */
-  private void serializeEventsInQueue() {
-    final long size = prefetchingQueue.size();
-    long count = 0;
-
-    SubscriptionEvent event;
-    try {
-      while (count++ < size // limit control
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
-        if (event.isCommitted()) {
-          event.cleanup();
-          continue;
-        }
-        // Serialize the uncommitted and pollable event.
-        if (event.pollable()) {
-          // No need to concern whether serialization is successful.
-          event.trySerializeCurrentResponse();
-        }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(event);
-      }
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingTabletQueue {} interrupted while serializing events.",
-          this,
-          e);
     }
   }
 
@@ -376,7 +359,6 @@ public abstract class SubscriptionPrefetchingQueue {
     event.cleanup();
     event.recordCommittedTimestamp();
 
-    uncommittedEvents.remove(commitContext);
     inFlightSubscriptionEventMap.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
@@ -385,6 +367,7 @@ public abstract class SubscriptionPrefetchingQueue {
           }
           return ev;
         });
+    uncommittedEvents.remove(commitContext);
 
     return true;
   }
@@ -414,7 +397,7 @@ public abstract class SubscriptionPrefetchingQueue {
           this);
     }
 
-    event.nack();
+    event.nack(); // now pollable
 
     inFlightSubscriptionEventMap.compute(
         new Pair<>(consumerId, commitContext),
@@ -424,6 +407,7 @@ public abstract class SubscriptionPrefetchingQueue {
           }
           return ev;
         });
+    prefetchingQueue.add(event);
 
     return true;
   }
@@ -514,7 +498,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    Map<String, String> result = new HashMap<>(6);
+    final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
@@ -525,7 +509,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected Map<String, String> allReportMessage() {
-    Map<String, String> result = new HashMap<>(8);
+    final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));

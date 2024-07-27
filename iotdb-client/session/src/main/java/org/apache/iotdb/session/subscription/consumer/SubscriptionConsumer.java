@@ -1181,7 +1181,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    final Map<String, String> result = new HashMap<>(5);
+    final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
@@ -1191,7 +1191,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   protected Map<String, String> allReportMessage() {
-    final Map<String, String> result = new HashMap<>(10);
+    final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
