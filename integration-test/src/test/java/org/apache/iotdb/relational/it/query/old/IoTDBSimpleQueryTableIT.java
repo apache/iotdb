@@ -664,7 +664,7 @@ public class IoTDBSimpleQueryTableIT {
         statement.execute(
             String.format(
                 "insert into table1(time, device, s4, s5, s6, s7) values(%d, 'd1', '%s', %d, %s, '%s')",
-                i, LocalDate.of(2024, 5, i % 31 + 1), i, "'X''cafebabe'''", i));
+                i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("select * from table1")) {

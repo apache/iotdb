@@ -48,15 +48,8 @@ public class IoTDBSubStringFunctionTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        //          "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32
-        // MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6
-        // BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING
-        // MEASUREMENT, s10 BLOB MEASUREMENT)",
-        //          "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1,
-        // 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
-
-        "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT)",
-        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd')",
+        "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'test')",
         "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'abcdefg')",
         "INSERT INTO table1(Time,device_id,s9) values(2, 'd1', 'test')",
@@ -188,14 +181,12 @@ public class IoTDBSubStringFunctionTableIT {
             + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
         DATABASE_NAME);
 
-    // TODO add back after blob support
     // Wrong input type
-    //    tableAssertTestFail(
-    //        "select SUBSTRING(s10 FROM 1 FOR 1) from table1",
-    //        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-    //            + ": Scalar function substring only accepts two or three arguments and first must
-    // be text or string data type, second and third must be numeric data types [INT32, INT64]",
-    //        DATABASE_NAME);
+    tableAssertTestFail(
+        "select SUBSTRING(s10 FROM 1 FOR 1) from table1",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Scalar function substring only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]",
+        DATABASE_NAME);
 
     // Using substring with float start position
     tableAssertTestFail(
