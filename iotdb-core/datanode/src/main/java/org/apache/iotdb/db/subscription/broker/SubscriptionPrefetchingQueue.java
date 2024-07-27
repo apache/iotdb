@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -65,15 +66,22 @@ public abstract class SubscriptionPrefetchingQueue {
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
-  /** A map recording all currently prefetched but uncommitted {@link SubscriptionEvent}. */
-  protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
-
   /**
    * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer id and commit context.
    */
   protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent> inFlightEvents;
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
+
+  /**
+   * A reentrant read-write lock with fairness policy enabled. This lock ensures mutual exclusion
+   * between the {@link SubscriptionPrefetchingQueue#cleanUpAll} and {@link
+   * SubscriptionPrefetchingQueue#poll} operations with the {@link
+   * SubscriptionPrefetchingQueue#executePrefetch} operation. It does not enforce mutual exclusion
+   * between the {@link SubscriptionPrefetchingQueue#poll} and {@link
+   * SubscriptionPrefetchingQueue#executePrefetch} operations.
+   */
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -87,43 +95,61 @@ public abstract class SubscriptionPrefetchingQueue {
     this.inputPendingQueue = inputPendingQueue;
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
-    this.uncommittedEvents = new ConcurrentHashMap<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
   }
 
   public void cleanUpAll() {
-    // clean up uncommitted events
-    uncommittedEvents.values().forEach(SubscriptionEvent::cleanUp);
-    uncommittedEvents.clear();
+    acquireWriteLock();
+    try {
+      cleanUpAllInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
 
-    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
-    // in uncommittedEvents
+  private void cleanUpAllInternal() {
+    // clean up events in prefetchingQueue
+    prefetchingQueue.forEach(SubscriptionEvent::cleanUp);
     prefetchingQueue.clear();
 
-    // no need to clean up events in inFlightEvents, since all events in inFlightEvents are also in
-    // uncommittedEvents
+    // clean up events in inFlightEvents
+    inFlightEvents.values().forEach(SubscriptionEvent::cleanUp);
     inFlightEvents.clear();
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
   }
 
-  /**
-   * NOTE: To ensure idempotency, currently, it is only allowed to call this method within the
-   * {@link ConcurrentHashMap#compute} method of {@link
-   * SubscriptionPrefetchingQueue#inFlightEvents}.
-   */
-  protected void cleanUp(final SubscriptionEvent event) {
-    // clean up committed event
-    event.cleanUp();
+  /////////////////////////////////  lock  /////////////////////////////////
 
-    // remove it in uncommittedEvents
-    uncommittedEvents.remove(event.getCommitContext());
+  public void acquireReadLock() {
+    lock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    lock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    lock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    lock.writeLock().unlock();
   }
 
   /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent poll(final String consumerId) {
+    acquireReadLock();
+    try {
+      return isClosed ? null : pollInternal(consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public SubscriptionEvent pollInternal(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
       tryPrefetch(true);
     }
@@ -144,7 +170,7 @@ public abstract class SubscriptionPrefetchingQueue {
               "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
               this,
               event);
-          // no need to update inFlightEvents and uncommittedEvents
+          // no need to update inFlightEvents
           continue;
         }
 
@@ -162,9 +188,6 @@ public abstract class SubscriptionPrefetchingQueue {
         // consumers from consuming the same event.
         event.recordLastPolledTimestamp(); // now non-pollable
 
-        // remove potential stale entry in inFlightEvents for auto recycled event
-        inFlightEvents.remove(
-            new Pair<>(event.getLastPolledConsumerId(), event.getCommitContext()));
         inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
         event.recordLastPolledConsumerId(consumerId);
         return event;
@@ -183,6 +206,18 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// prefetch ///////////////////////////////
 
   public void executePrefetch() {
+    acquireReadLock();
+    try {
+      if (isClosed) {
+        return;
+      }
+      executePrefetchInternal();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void executePrefetchInternal() {
     tryPrefetch(false);
 
     // Iterate on the snapshot of the key set, NOTE:
@@ -197,9 +232,9 @@ public abstract class SubscriptionPrefetchingQueue {
               return null;
             }
 
-            // clean up committed event and remove it in uncommittedEvents
+            // clean up committed event
             if (ev.isCommitted()) {
-              cleanUp(ev);
+              ev.cleanUp();
               return null; // remove this entry
             }
 
@@ -323,7 +358,7 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if ack successfully
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
-    final SubscriptionEvent event = uncommittedEvents.get(commitContext);
+    final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
@@ -365,7 +400,7 @@ public abstract class SubscriptionPrefetchingQueue {
     event.ack();
     event.recordCommittedTimestamp(); // now committed
 
-    // no need to update inFlightEvents and uncommittedEvents
+    // no need to update inFlightEvents
     return true;
   }
 
@@ -373,7 +408,7 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if nack successfully
    */
   public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
-    final SubscriptionEvent event = uncommittedEvents.get(commitContext);
+    final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
     if (Objects.isNull(event)) {
       LOGGER.warn(
           "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
@@ -432,7 +467,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public long getUncommittedEventCount() {
-    return uncommittedEvents.size();
+    return inFlightEvents.size();
   }
 
   public long getCurrentCommitId() {
@@ -489,7 +524,9 @@ public abstract class SubscriptionPrefetchingQueue {
     final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
-    result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+    result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+    result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+    result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
@@ -501,10 +538,9 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
-    result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
-    result.put("uncommittedEvents", uncommittedEvents.toString());
-    result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("prefetchingQueue", prefetchingQueue.toString());
     result.put("inFlightEvents", inFlightEvents.toString());
+    result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;

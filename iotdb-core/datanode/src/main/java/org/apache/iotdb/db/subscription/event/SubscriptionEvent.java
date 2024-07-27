@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -44,6 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -162,6 +164,11 @@ public class SubscriptionEvent {
     pipeEvents.ack();
   }
 
+  /**
+   * NOTE: To ensure idempotency, currently, it is only allowed to call this method within the
+   * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
+   * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUpAll}.
+   */
   public void cleanUp() {
     // reset serialized responses
     resetResponseByteBuffer(true);

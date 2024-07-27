@@ -90,7 +90,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             new Pair<>(consumerId, commitContext),
             (key, ev) -> {
               if (Objects.nonNull(ev) && ev.isCommitted()) {
-                cleanUp(ev);
+                ev.cleanUp();
                 return null; // remove this entry
               }
               return ev;
@@ -180,11 +180,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         (batch) -> {
           final List<SubscriptionEvent> evs = batch.onEvent(event);
           if (!evs.isEmpty()) {
-            evs.forEach(
-                (ev) -> {
-                  uncommittedEvents.put(ev.getCommitContext(), ev); // before enqueuing the event
-                  prefetchingQueue.add(ev);
-                });
+            prefetchingQueue.addAll(evs);
             result.set(true);
             return new SubscriptionPipeTabletEventBatch(
                 this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
