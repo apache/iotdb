@@ -73,7 +73,7 @@ public class SubscriptionPipeEventBatches {
 
   private void reconstructBatch(final int index) {
     if (Objects.nonNull(batches[index]) && !batches[index].isSealed()) {
-      LOGGER.warn("Construct batch for non-sealed batch {}", batches[index]);
+      LOGGER.warn("Reconstruct batch for non-sealed batch {}", batches[index]);
     }
 
     if (prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue) {
@@ -118,6 +118,7 @@ public class SubscriptionPipeEventBatches {
 
       // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
       // this time.
+      segmentLocks[index].lock();
       try {
         final List<SubscriptionEvent> evs = batches[index].onEvent(event);
         if (!evs.isEmpty()) {
