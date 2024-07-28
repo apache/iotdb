@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
@@ -45,19 +44,16 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
 
-  private static final int BATCH_MAX_DELAY_IN_MS =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs();
-  private static final long BATCH_MAX_SIZE_IN_BYTES =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
-
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
-
-    this.batches =
-        new SubscriptionPipeEventBatches(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+    super(
+        brokerId,
+        topicName,
+        inputPendingQueue,
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs(),
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -167,7 +163,11 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   private boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final List<SubscriptionEvent> events = batches.onEvent(event);
     if (!events.isEmpty()) {
-      prefetchingQueue.addAll(events);
+      events.forEach(
+          ev -> {
+            ev.trySerializeCurrentResponse();
+            prefetchingQueue.add(ev);
+          });
       return true;
     }
     return false;

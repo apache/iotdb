@@ -72,6 +72,8 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent> inFlightEvents;
 
+  protected final SubscriptionPipeEventBatches batches;
+
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
   /**
@@ -86,21 +88,23 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-  protected SubscriptionPipeEventBatches batches;
-
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
+
+    this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
   }
 
   public void cleanUp() {
@@ -114,9 +118,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   protected void cleanUpInternal() {
     // clean up events in batches
-    if (Objects.nonNull(batches)) {
-      batches.cleanUp();
-    }
+    batches.cleanUp();
 
     // clean up events in prefetchingQueue
     prefetchingQueue.forEach(SubscriptionEvent::cleanUp);

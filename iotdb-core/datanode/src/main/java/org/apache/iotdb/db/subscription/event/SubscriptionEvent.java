@@ -289,6 +289,10 @@ public class SubscriptionEvent {
     }
   }
 
+  public boolean trySerializeCurrentResponse() {
+    return trySerializeResponse(currentResponseIndex);
+  }
+
   /**
    * @param index the index of response to be serialized
    * @return {@code true} if a serialization operation was actually performed

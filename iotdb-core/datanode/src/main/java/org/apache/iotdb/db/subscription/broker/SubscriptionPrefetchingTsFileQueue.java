@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -47,19 +46,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
-  private static final int BATCH_MAX_DELAY_IN_MS =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxDelayInMs();
-  private static final long BATCH_MAX_SIZE_IN_BYTES =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxSizeInBytes();
-
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
-
-    this.batches =
-        new SubscriptionPipeEventBatches(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+    super(
+        brokerId,
+        topicName,
+        inputPendingQueue,
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxDelayInMs(),
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -224,14 +220,15 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   @Override
   protected boolean onEvent(final PipeTsFileInsertionEvent event) {
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-    final SubscriptionEvent subscriptionEvent =
+    final SubscriptionEvent ev =
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent(event),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.FILE_INIT.getType(),
                 new FileInitPayload(event.getTsFile().getName()),
                 commitContext));
-    prefetchingQueue.add(subscriptionEvent);
+    ev.trySerializeCurrentResponse();
+    prefetchingQueue.add(ev);
     return true;
   }
 
@@ -243,7 +240,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
     final List<SubscriptionEvent> events = batches.onEvent((EnrichedEvent) event);
     if (!events.isEmpty()) {
-      prefetchingQueue.addAll(events);
+      events.forEach(
+          ev -> {
+            ev.trySerializeCurrentResponse();
+            prefetchingQueue.add(ev);
+          });
       return true;
     }
     return false;
