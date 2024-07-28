@@ -61,7 +61,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       return Collections.emptyList();
     }
     if (Objects.nonNull(event) && event instanceof TabletInsertionEvent) {
-      batch.onEvent((TabletInsertionEvent) event);
+      batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
     }
     if (batch.shouldEmit()) {
       final List<SubscriptionEvent> events = generateSubscriptionEvents();

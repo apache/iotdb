@@ -140,6 +140,24 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   private void constructBatch(final EnrichedEvent event) {
+    // The deduplication logic here is to avoid the accumulation of
+    // the same event in a batch when retrying.
+    if (enrichedEvents.isEmpty()
+        || !Objects.equals(enrichedEvents.get(enrichedEvents.size() - 1), event)) {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (event.increaseReferenceCount(SubscriptionPipeTabletEventBatch.class.getName())) {
+        constructBatchInternal(event);
+        enrichedEvents.add(event);
+        if (firstEventProcessingTime == Long.MIN_VALUE) {
+          firstEventProcessingTime = System.currentTimeMillis();
+        }
+      } else {
+        event.decreaseReferenceCount(SubscriptionPipeTabletEventBatch.class.getName(), false);
+      }
+    }
+  }
+
+  private void constructBatchInternal(final EnrichedEvent event) {
     if (event instanceof TabletInsertionEvent) {
       final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
       if (currentTablets.isEmpty()) {
@@ -151,10 +169,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
-      enrichedEvents.add(event);
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
-      }
     } else if (event instanceof PipeTsFileInsertionEvent) {
       for (final TabletInsertionEvent tabletInsertionEvent :
           ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
@@ -168,10 +182,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
                 .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
                 .reduce(Long::sum)
                 .orElse(0L);
-      }
-      enrichedEvents.add(event);
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
       }
     }
   }
