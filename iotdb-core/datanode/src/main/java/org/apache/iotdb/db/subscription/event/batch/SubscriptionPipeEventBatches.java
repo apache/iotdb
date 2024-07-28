@@ -40,6 +40,7 @@ public class SubscriptionPipeEventBatches {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatches.class);
 
+  // TODO: config
   private static final int SEGMENT_LOCK_COUNT = 4;
 
   protected final SubscriptionPrefetchingQueue prefetchingQueue;

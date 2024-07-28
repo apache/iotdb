@@ -54,7 +54,6 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   @Override
   public void cleanUp() {
     if (referenceCount.decrementAndGet() == 0) {
-      // close batch, it includes clearing the reference count of events
       batch.cleanUp();
     }
   }
