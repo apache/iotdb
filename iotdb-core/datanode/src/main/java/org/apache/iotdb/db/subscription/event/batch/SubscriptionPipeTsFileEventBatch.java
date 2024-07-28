@@ -30,7 +30,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -44,8 +44,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   private final PipeTabletEventTsFileBatch batch;
 
-  private boolean isSealed = false;
-
   public SubscriptionPipeTsFileEventBatch(
       final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
       final int maxDelayInMs,
@@ -55,17 +53,26 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event)
-      throws Exception {
-    if (isSealed) {
-      return Collections.emptyList();
+  public synchronized List<SubscriptionEvent> onEvent() throws Exception {
+    if (batch.shouldEmit()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
+      return events;
     }
-    if (Objects.nonNull(event) && event instanceof TabletInsertionEvent) {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event)
+      throws Exception {
+    if (event instanceof TabletInsertionEvent) {
       batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
     }
     if (batch.shouldEmit()) {
-      final List<SubscriptionEvent> events = generateSubscriptionEvents();
-      isSealed = true;
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
       return events;
     }
     return Collections.emptyList();

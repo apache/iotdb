@@ -35,7 +35,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,16 +68,23 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event) {
-    if (isSealed) {
-      return Collections.emptyList();
-    }
-    if (Objects.nonNull(event)) {
-      onEventInternal(event);
-    }
+  public synchronized List<SubscriptionEvent> onEvent() {
     if (shouldEmit()) {
-      final List<SubscriptionEvent> events = generateSubscriptionEvents();
-      isSealed = true;
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
+      return events;
+    }
+    return Collections.emptyList();
+  }
+
+  @Override
+  public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
+    onEventInternal(event);
+    if (shouldEmit()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
       return events;
     }
     return Collections.emptyList();

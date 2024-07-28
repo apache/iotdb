@@ -29,8 +29,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,7 +41,7 @@ public class SubscriptionPipeEventBatches {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatches.class);
 
   // TODO: config
-  private static final int SEGMENT_LOCK_COUNT = 2;
+  private static final int SEGMENT_LOCK_COUNT = 4;
 
   protected final SubscriptionPrefetchingQueue prefetchingQueue;
   protected final int maxDelayInMs;
@@ -72,7 +72,7 @@ public class SubscriptionPipeEventBatches {
   }
 
   private void reconstructBatch(final int index) {
-    if (Objects.nonNull(batches[index]) && !batches[index].isSealed) {
+    if (Objects.nonNull(batches[index]) && !batches[index].isSealed()) {
       LOGGER.warn("Construct batch for non-sealed batch {}", batches[index]);
     }
 
@@ -96,20 +96,42 @@ public class SubscriptionPipeEventBatches {
         Objects.isNull(event) ? pseudoCommitIdGenerator.getAndIncrement() : event.getCommitId();
     final int index = (int) (commitId % SEGMENT_LOCK_COUNT);
 
-    final List<SubscriptionEvent> events;
-    segmentLocks[index].lock();
-    try {
-      events = batches[index].onEvent(event);
-      if (batches[index].isSealed) {
-        reconstructBatch(index);
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    while (true) {
+      segmentLocks[index].lock();
+      try {
+        final List<SubscriptionEvent> evs = batches[index].onEvent();
+        if (!evs.isEmpty()) {
+          events.addAll(evs);
+          reconstructBatch(index);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+        continue;
+      } finally {
+        segmentLocks[index].unlock();
       }
-      return events;
-    } catch (final Exception e) {
-      LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
-      return Collections.emptyList();
-    } finally {
-      segmentLocks[index].unlock();
+
+      if (Objects.isNull(event)) {
+        break;
+      }
+
+      try {
+        final List<SubscriptionEvent> evs = batches[index].onEvent(event);
+        if (!evs.isEmpty()) {
+          events.addAll(evs);
+          reconstructBatch(index);
+        }
+        break;
+      } catch (final Exception e) {
+        LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+        break;
+      } finally {
+        segmentLocks[index].unlock();
+      }
     }
+
+    return events;
   }
 
   public void cleanUp() {

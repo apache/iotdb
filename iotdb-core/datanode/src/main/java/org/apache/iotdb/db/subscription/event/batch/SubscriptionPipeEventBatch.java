@@ -23,11 +23,10 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public abstract class SubscriptionPipeEventBatch {
 
@@ -35,7 +34,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  protected boolean isSealed = false;
+  protected List<SubscriptionEvent> events = null;
 
   protected SubscriptionPipeEventBatch(
       final SubscriptionPrefetchingQueue prefetchingQueue,
@@ -46,10 +45,15 @@ public abstract class SubscriptionPipeEventBatch {
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  public abstract List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event)
-      throws Exception;
+  public abstract List<SubscriptionEvent> onEvent() throws Exception;
+
+  public abstract List<SubscriptionEvent> onEvent(final EnrichedEvent event) throws Exception;
 
   public abstract void cleanUp();
+
+  public boolean isSealed() {
+    return Objects.nonNull(events);
+  }
 
   /////////////////////////////// stringify ///////////////////////////////
 
@@ -58,7 +62,6 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
-    result.put("isSealed", String.valueOf(isSealed));
     return result;
   }
 }
