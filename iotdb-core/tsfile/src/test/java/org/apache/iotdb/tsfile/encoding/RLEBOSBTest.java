@@ -593,36 +593,36 @@ public class RLEBOSBTest {
                 }
             }
 
-            end_value_i = unique_value_count - 1;
-            for(int gamma = 1; gamma <= beta_max; gamma++){
-                for (; end_value_i > start_value_i; end_value_i--) {
-                    int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
-                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
-                    k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
-                    if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
-                        cur_bits = 0;
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-
-                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
-                        cur_bits += cur_k1 * getBitWith(k_start_value);
-                        if (cur_k1 + cur_k2 != block_size)
-                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
-                        if (cur_k2 != 0)
-                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
-
-
-                        if (cur_bits < min_bits) {
-                            min_bits = cur_bits;
-                            final_k_start_value = k_start_value;
-                            final_x_l_plus = x_l_plus_value;
-                            final_k_end_value = k_end_value;
-                            final_x_u_minus = x_u_minus_value;
-                        }
-                    } else if (x_u_minus_value <= x_u_plus_pow_beta && k_end_value <= x_u_plus_pow_beta) {
-                        break;
-                    }
-                }
-            }
+//            end_value_i = unique_value_count - 1;
+//            for(int gamma = 1; gamma <= beta_max; gamma++){
+//                for (; end_value_i > start_value_i; end_value_i--) {
+//                    int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
+//                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+//                    k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+//                    if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
+//                        cur_bits = 0;
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+//
+//                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+//                        cur_bits += cur_k1 * getBitWith(k_start_value);
+//                        if (cur_k1 + cur_k2 != block_size)
+//                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
+//                        if (cur_k2 != 0)
+//                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
+//
+//
+//                        if (cur_bits < min_bits) {
+//                            min_bits = cur_bits;
+//                            final_k_start_value = k_start_value;
+//                            final_x_l_plus = x_l_plus_value;
+//                            final_k_end_value = k_end_value;
+//                            final_x_u_minus = x_u_minus_value;
+//                        }
+//                    } else if (x_u_minus_value <= x_u_plus_pow_beta && k_end_value <= x_u_plus_pow_beta) {
+//                        break;
+//                    }
+//                }
+//            }
 
 
         }
