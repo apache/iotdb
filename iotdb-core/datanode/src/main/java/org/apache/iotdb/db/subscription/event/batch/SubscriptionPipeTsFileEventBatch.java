@@ -68,6 +68,9 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       throws Exception {
     if (event instanceof TabletInsertionEvent) {
       batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      event.decreaseReferenceCount(
+          SubscriptionPipeTsFileEventBatch.class.getName(),
+          false); // missing releaseLastEvent decreases reference count
     }
     if (batch.shouldEmit()) {
       if (Objects.isNull(events)) {
