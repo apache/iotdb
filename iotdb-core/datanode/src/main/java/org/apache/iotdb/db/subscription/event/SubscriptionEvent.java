@@ -167,7 +167,7 @@ public class SubscriptionEvent {
   /**
    * NOTE: To ensure idempotency, currently, it is only allowed to call this method within the
    * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
-   * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUpAll}.
+   * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
   public void cleanUp() {
     // reset serialized responses

@@ -127,8 +127,11 @@ public class SubscriptionBroker {
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, commitContext, writingOffset);
-    // only one SubscriptionEvent polled currently
-    return Collections.singletonList(event);
+    if (Objects.nonNull(event)) {
+      // only one SubscriptionEvent polled currently
+      return Collections.singletonList(event);
+    }
+    return Collections.emptyList();
   }
 
   public List<SubscriptionEvent> pollTablets(
@@ -162,8 +165,11 @@ public class SubscriptionBroker {
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTabletQueue) prefetchingQueue)
             .pollTablets(consumerId, commitContext, offset);
-    // only one SubscriptionEvent polled currently
-    return Collections.singletonList(event);
+    if (Objects.nonNull(event)) {
+      // only one SubscriptionEvent polled currently
+      return Collections.singletonList(event);
+    }
+    return Collections.emptyList();
   }
 
   /**
@@ -257,7 +263,7 @@ public class SubscriptionBroker {
 
     if (doRemove) {
       // clean up events in prefetching queue
-      prefetchingQueue.cleanUpAll();
+      prefetchingQueue.cleanUp();
 
       // deregister metrics
       SubscriptionPrefetchingQueueMetrics.getInstance()

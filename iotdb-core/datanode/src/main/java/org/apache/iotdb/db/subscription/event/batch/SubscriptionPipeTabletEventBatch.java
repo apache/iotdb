@@ -42,10 +42,11 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SubscriptionPipeTabletEventBatch {
+public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
@@ -53,28 +54,20 @@ public class SubscriptionPipeTabletEventBatch {
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
-  private final SubscriptionPrefetchingTabletQueue prefetchingQueue;
-
   private final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   private final List<Tablet> tablets = new ArrayList<>();
 
-  private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
-
-  private final long maxBatchSizeInBytes;
   private long totalBufferSize = 0;
-
-  private boolean isSealed = false;
 
   public SubscriptionPipeTabletEventBatch(
       final SubscriptionPrefetchingTabletQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
-    this.prefetchingQueue = prefetchingQueue;
-    this.maxDelayInMs = maxDelayInMs;
-    this.maxBatchSizeInBytes = maxBatchSizeInBytes;
+    super(prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
   }
 
+  @Override
   public synchronized List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event) {
     if (isSealed) {
       return Collections.emptyList();
@@ -90,18 +83,21 @@ public class SubscriptionPipeTabletEventBatch {
     return Collections.emptyList();
   }
 
-  public synchronized void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
-  }
-
+  @Override
   public synchronized void cleanUp() {
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
   }
+
+  public synchronized void ack() {
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    }
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() {
     final SubscriptionCommitContext commitContext =
@@ -202,21 +198,23 @@ public class SubscriptionPipeTabletEventBatch {
 
   /////////////////////////////// stringify ///////////////////////////////
 
+  @Override
   public String toString() {
-    return "SubscriptionPipeTabletEventBatch{enrichedEvents="
-        + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
-        + ", size of tablets="
-        + tablets.size()
-        + ", maxDelayInMs="
-        + maxDelayInMs
-        + ", firstEventProcessingTime="
-        + firstEventProcessingTime
-        + ", maxBatchSizeInBytes="
-        + maxBatchSizeInBytes
-        + ", totalBufferSize="
-        + totalBufferSize
-        + ", isSealed="
-        + isSealed
-        + "}";
+    return "SubscriptionPipeTabletEventBatch" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put(
+        "enrichedEvents",
+        enrichedEvents.stream()
+            .map(EnrichedEvent::coreReportMessage)
+            .collect(Collectors.toList())
+            .toString());
+    coreReportMessage.put("size of tablets", String.valueOf(tablets.size()));
+    coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
+    coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
+    return coreReportMessage;
   }
 }

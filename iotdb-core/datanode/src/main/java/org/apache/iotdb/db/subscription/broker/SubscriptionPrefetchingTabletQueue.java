@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
@@ -38,10 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
@@ -53,36 +50,29 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   private static final long BATCH_MAX_SIZE_IN_BYTES =
       SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
 
-  private final AtomicReference<SubscriptionPipeTabletEventBatch> currentBatchRef =
-      new AtomicReference<>();
-
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
-    this.currentBatchRef.set(
-        new SubscriptionPipeTabletEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
-  }
-
-  @Override
-  public void cleanUpAll() {
-    super.cleanUpAll();
-
-    // clean up batch
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (Objects.nonNull(batch)) {
-            batch.cleanUp();
-          }
-          return null;
-        });
+    this.batches =
+        new SubscriptionPipeEventBatches(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
   }
 
   /////////////////////////////// poll ///////////////////////////////
 
-  public @NonNull SubscriptionEvent pollTablets(
+  public SubscriptionEvent pollTablets(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    acquireReadLock();
+    try {
+      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private @NonNull SubscriptionEvent pollTabletsInternal(
       final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     // 1. Extract current event and check it
     final SubscriptionEvent event =
@@ -174,23 +164,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private synchronized boolean onEventInternal(@Nullable final EnrichedEvent event) {
-    final AtomicBoolean result = new AtomicBoolean(false);
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          final List<SubscriptionEvent> evs = batch.onEvent(event);
-          if (!evs.isEmpty()) {
-            prefetchingQueue.addAll(evs);
-            result.set(true);
-            return new SubscriptionPipeTabletEventBatch(
-                this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
-          }
-          // If onEvent returns an empty list, one possibility is that the batch has already been
-          // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
-          // most recent batch.
-          return batch;
-        });
-    return result.get();
+  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
+    final List<SubscriptionEvent> events = batches.onEvent(event);
+    if (!events.isEmpty()) {
+      prefetchingQueue.addAll(events);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -198,12 +178,5 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   @Override
   public String toString() {
     return "SubscriptionPrefetchingTabletQueue" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> allReportMessage() {
-    final Map<String, String> allReportMessage = super.allReportMessage();
-    allReportMessage.put("currentBatch", currentBatchRef.toString());
-    return allReportMessage;
   }
 }

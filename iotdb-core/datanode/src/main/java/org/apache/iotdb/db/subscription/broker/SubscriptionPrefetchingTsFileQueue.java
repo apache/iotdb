@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -39,10 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
@@ -54,36 +52,31 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final long BATCH_MAX_SIZE_IN_BYTES =
       SubscriptionConfig.getInstance().getSubscriptionPrefetchTsFileBatchMaxSizeInBytes();
 
-  private final AtomicReference<SubscriptionPipeTsFileEventBatch> currentBatchRef =
-      new AtomicReference<>();
-
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
-    this.currentBatchRef.set(
-        new SubscriptionPipeTsFileEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
-  }
-
-  @Override
-  public void cleanUpAll() {
-    super.cleanUpAll();
-
-    // clean up batch
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (Objects.nonNull(batch)) {
-            batch.cleanUp();
-          }
-          return null;
-        });
+    this.batches =
+        new SubscriptionPipeEventBatches(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
   }
 
   /////////////////////////////// poll ///////////////////////////////
 
-  public @NonNull SubscriptionEvent pollTsFile(
+  public SubscriptionEvent pollTsFile(
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final long writingOffset) {
+    acquireReadLock();
+    try {
+      return isClosed() ? null : pollTsFileInternal(consumerId, commitContext, writingOffset);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public @NonNull SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {
@@ -247,32 +240,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private synchronized boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
-    final AtomicBoolean result = new AtomicBoolean(false);
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          try {
-            final List<SubscriptionEvent> evs = batch.onEvent(event);
-            if (!evs.isEmpty()) {
-              prefetchingQueue.addAll(evs);
-              result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(
-                  this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
-            }
-            // If onEvent returns an empty list, one possibility is that the batch has already been
-            // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
-            // most recent batch.
-            return batch;
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFiles from batch {}",
-                this,
-                batch,
-                e);
-            return batch;
-          }
-        });
-    return result.get();
+  private boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
+    final List<SubscriptionEvent> events = batches.onEvent((EnrichedEvent) event);
+    if (!events.isEmpty()) {
+      prefetchingQueue.addAll(events);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -280,12 +254,5 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   @Override
   public String toString() {
     return "SubscriptionPrefetchingTsFileQueue" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> allReportMessage() {
-    final Map<String, String> allReportMessage = super.allReportMessage();
-    allReportMessage.put("currentBatch", currentBatchRef.toString());
-    return allReportMessage;
   }
 }

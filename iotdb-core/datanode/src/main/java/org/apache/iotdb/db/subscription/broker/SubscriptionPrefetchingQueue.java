@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -74,14 +75,18 @@ public abstract class SubscriptionPrefetchingQueue {
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
   /**
-   * A reentrant read-write lock with fairness policy enabled. This lock ensures mutual exclusion
-   * between the {@link SubscriptionPrefetchingQueue#cleanUpAll} and {@link
-   * SubscriptionPrefetchingQueue#poll} operations with the {@link
-   * SubscriptionPrefetchingQueue#executePrefetch} operation. It does not enforce mutual exclusion
-   * between the {@link SubscriptionPrefetchingQueue#poll} and {@link
-   * SubscriptionPrefetchingQueue#executePrefetch} operations.
+   * A ReentrantReadWriteLock to ensure thread-safe operations. This lock is used to guarantee
+   * mutual exclusion between the {@link SubscriptionPrefetchingQueue#cleanUp} operation and other
+   * operations such as {@link SubscriptionPrefetchingQueue#poll}, {@link
+   * SubscriptionPrefetchingQueue#ack}, etc. However, it does not enforce mutual exclusion among the
+   * other operations themselves.
+   *
+   * <p>This lock is created with fairness set to true, which means threads acquire the lock in the
+   * order they requested it, to avoid thread starvation.
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+
+  protected SubscriptionPipeEventBatches batches;
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -98,16 +103,21 @@ public abstract class SubscriptionPrefetchingQueue {
     this.inFlightEvents = new ConcurrentHashMap<>();
   }
 
-  public void cleanUpAll() {
+  public void cleanUp() {
     acquireWriteLock();
     try {
-      cleanUpAllInternal();
+      cleanUpInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void cleanUpAllInternal() {
+  protected void cleanUpInternal() {
+    // clean up events in batches
+    if (Objects.nonNull(batches)) {
+      batches.cleanUp();
+    }
+
     // clean up events in prefetchingQueue
     prefetchingQueue.forEach(SubscriptionEvent::cleanUp);
     prefetchingQueue.clear();
@@ -122,19 +132,19 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////////  lock  /////////////////////////////////
 
-  public void acquireReadLock() {
+  protected void acquireReadLock() {
     lock.readLock().lock();
   }
 
-  public void releaseReadLock() {
+  protected void releaseReadLock() {
     lock.readLock().unlock();
   }
 
-  public void acquireWriteLock() {
+  protected void acquireWriteLock() {
     lock.writeLock().lock();
   }
 
-  public void releaseWriteLock() {
+  protected void releaseWriteLock() {
     lock.writeLock().unlock();
   }
 
@@ -143,7 +153,7 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      return isClosed ? null : pollInternal(consumerId);
+      return isClosed() ? null : pollInternal(consumerId);
     } finally {
       releaseReadLock();
     }
@@ -208,7 +218,7 @@ public abstract class SubscriptionPrefetchingQueue {
   public void executePrefetch() {
     acquireReadLock();
     try {
-      if (isClosed) {
+      if (isClosed()) {
         return;
       }
       executePrefetchInternal();
@@ -358,6 +368,19 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if ack successfully
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      return !isClosed() && ackInternal(consumerId, commitContext);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
+   * @return {@code true} if ack successfully
+   */
+  private boolean ackInternal(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -408,6 +431,19 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if nack successfully
    */
   public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      return !isClosed() && nackInternal(consumerId, commitContext);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
+   * @return {@code true} if nack successfully
+   */
+  public boolean nackInternal(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -520,7 +556,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// stringify ///////////////////////////////
 
-  protected Map<String, String> coreReportMessage() {
+  public Map<String, String> coreReportMessage() {
     final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
@@ -533,7 +569,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return result;
   }
 
-  protected Map<String, String> allReportMessage() {
+  public Map<String, String> allReportMessage() {
     final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);

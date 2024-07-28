@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -35,12 +36,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SubscriptionPipeTsFileEventBatch {
-
-  private final SubscriptionPrefetchingTsFileQueue prefetchingQueue;
+public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
 
@@ -48,19 +48,20 @@ public class SubscriptionPipeTsFileEventBatch {
 
   public SubscriptionPipeTsFileEventBatch(
       final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
-      final int maxDelayInMs,
-      final long requestMaxBatchSizeInBytes) {
-    this.prefetchingQueue = prefetchingQueue;
-    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
+      int maxDelayInMs,
+      long maxBatchSizeInBytes) {
+    super(prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 
-  public synchronized List<SubscriptionEvent> onEvent(@Nullable final TabletInsertionEvent event)
+  @Override
+  public synchronized List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event)
       throws Exception {
     if (isSealed) {
       return Collections.emptyList();
     }
-    if (Objects.nonNull(event)) {
-      batch.onEvent(event);
+    if (Objects.nonNull(event) && event instanceof TabletInsertionEvent) {
+      batch.onEvent((TabletInsertionEvent) event);
     }
     if (batch.shouldEmit()) {
       final List<SubscriptionEvent> events = generateSubscriptionEvents();
@@ -70,14 +71,17 @@ public class SubscriptionPipeTsFileEventBatch {
     return Collections.emptyList();
   }
 
-  public synchronized void ack() {
-    batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
-  }
-
+  @Override
   public synchronized void cleanUp() {
     // close batch, it includes clearing the reference count of events
     batch.close();
   }
+
+  public synchronized void ack() {
+    batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
     final List<SubscriptionEvent> events = new ArrayList<>();
@@ -99,7 +103,15 @@ public class SubscriptionPipeTsFileEventBatch {
 
   /////////////////////////////// stringify ///////////////////////////////
 
+  @Override
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + ", isSealed=" + isSealed + "}";
+    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("batch", batch.toString());
+    return coreReportMessage;
   }
 }
