@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +49,8 @@ public abstract class SubscriptionPipeEventBatch {
 
   public abstract List<SubscriptionEvent> onEvent() throws Exception;
 
-  public abstract List<SubscriptionEvent> onEvent(final EnrichedEvent event) throws Exception;
+  public abstract List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event)
+      throws Exception;
 
   public abstract void cleanUp();
 

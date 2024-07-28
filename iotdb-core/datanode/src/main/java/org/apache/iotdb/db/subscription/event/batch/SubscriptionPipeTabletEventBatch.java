@@ -80,7 +80,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
-    onEventInternal(event);
+    onEventInternal(event); // no exceptions will be thrown
     if (shouldEmit()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();

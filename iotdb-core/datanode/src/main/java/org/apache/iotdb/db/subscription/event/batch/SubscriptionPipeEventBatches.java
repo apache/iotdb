@@ -107,7 +107,7 @@ public class SubscriptionPipeEventBatches {
         }
       } catch (final Exception e) {
         LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
-        continue;
+        continue; // try to seal again
       } finally {
         segmentLocks[index].unlock();
       }
@@ -116,6 +116,8 @@ public class SubscriptionPipeEventBatches {
         break;
       }
 
+      // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
+      // this time.
       try {
         final List<SubscriptionEvent> evs = batches[index].onEvent(event);
         if (!evs.isEmpty()) {
@@ -125,7 +127,7 @@ public class SubscriptionPipeEventBatches {
         break;
       } catch (final Exception e) {
         LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
-        break;
+        break; // can be guaranteed that the event is calculated into the batch, seal it next time
       } finally {
         segmentLocks[index].unlock();
       }
