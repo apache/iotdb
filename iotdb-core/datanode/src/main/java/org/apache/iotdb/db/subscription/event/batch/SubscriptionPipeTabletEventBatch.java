@@ -73,7 +73,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return Collections.emptyList();
     }
     if (Objects.nonNull(event)) {
-      constructBatch(event);
+      onEventInternal(event);
     }
     if (shouldEmit()) {
       final List<SubscriptionEvent> events = generateSubscriptionEvents();
@@ -139,14 +139,14 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
 
-  private void constructBatch(final EnrichedEvent event) {
+  private void onEventInternal(final EnrichedEvent event) {
     // The deduplication logic here is to avoid the accumulation of
     // the same event in a batch when retrying.
     if (enrichedEvents.isEmpty()
         || !Objects.equals(enrichedEvents.get(enrichedEvents.size() - 1), event)) {
       // We increase the reference count for this event to determine if the event may be released.
       if (event.increaseReferenceCount(SubscriptionPipeTabletEventBatch.class.getName())) {
-        constructBatchInternal(event);
+        constructBatch(event);
         enrichedEvents.add(event);
         if (firstEventProcessingTime == Long.MIN_VALUE) {
           firstEventProcessingTime = System.currentTimeMillis();
@@ -157,7 +157,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
   }
 
-  private void constructBatchInternal(final EnrichedEvent event) {
+  private void constructBatch(final EnrichedEvent event) {
     if (event instanceof TabletInsertionEvent) {
       final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
       if (currentTablets.isEmpty()) {
