@@ -141,10 +141,18 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
                   group.getDataTypes().get(index),
                   group.getEncodings().get(index),
                   group.getCompressors().get(index));
-              targetMeasurementGroup.addTags(group.getTagsList().get(index));
-              targetMeasurementGroup.addAttributes(group.getAttributesList().get(index));
-              targetMeasurementGroup.addAlias(group.getAliasList().get(index));
-              targetMeasurementGroup.addProps(group.getPropsList().get(index));
+              if (Objects.nonNull(group.getTagsList())) {
+                targetMeasurementGroup.addTags(group.getTagsList().get(index));
+              }
+              if (Objects.nonNull(group.getAttributesList())) {
+                targetMeasurementGroup.addAttributes(group.getAttributesList().get(index));
+              }
+              if (Objects.nonNull(group.getAliasList())) {
+                targetMeasurementGroup.addAlias(group.getAliasList().get(index));
+              }
+              if (Objects.nonNull(group.getPropsList())) {
+                targetMeasurementGroup.addProps(group.getPropsList().get(index));
+              }
             });
     return targetMeasurementGroup;
   }
