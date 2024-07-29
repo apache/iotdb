@@ -119,9 +119,9 @@ public class TransformSortToStreamSort implements PlanOptimizer {
           return false;
         }
       }
-      return orderingScheme.getOrderings().size() <= streamSortIndex
+      return orderingScheme.getOrderings().size() == streamSortIndex + 1
           || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-              orderingScheme.getOrderBy().get(streamSortIndex).getName());
+              orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
     }
 
     @Override

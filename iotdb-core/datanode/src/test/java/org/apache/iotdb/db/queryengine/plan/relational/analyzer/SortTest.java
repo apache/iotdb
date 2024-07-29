@@ -360,7 +360,7 @@ public class SortTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
     streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
-    assertEquals(2, streamSortNode.getStreamCompareKeyEndIndex());
+    assertEquals(1, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);
@@ -440,7 +440,7 @@ public class SortTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
     streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
-    assertEquals(3, streamSortNode.getStreamCompareKeyEndIndex());
+    assertEquals(2, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);

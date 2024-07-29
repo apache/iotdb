@@ -249,7 +249,6 @@ public class TestUtils {
           int cnt = 0;
           while (resultSet.next()) {
             StringBuilder builder = new StringBuilder();
-
             for (int i = 1; i <= expectedHeader.length; i++) {
               builder.append(resultSet.getString(i)).append(",");
             }
