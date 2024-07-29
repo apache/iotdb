@@ -202,7 +202,8 @@ public class TableHeaderSchemaValidator {
         tsTable.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
         break;
       case TIME:
-        break;
+        throw new SemanticException(
+            "Create table statement shall not specify column category TIME");
       case MEASUREMENT:
         tsTable.addColumnSchema(
             new MeasurementColumnSchema(
