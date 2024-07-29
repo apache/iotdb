@@ -66,9 +66,9 @@ public class SubscriptionEvent {
       commitContext; // all responses have the same commit context
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
-  private String lastPolledConsumerId = null;
-  private long lastPolledTimestamp = INVALID_TIMESTAMP;
-  private long committedTimestamp = INVALID_TIMESTAMP;
+  private volatile String lastPolledConsumerId = null;
+  private volatile long lastPolledTimestamp = INVALID_TIMESTAMP;
+  private volatile long committedTimestamp = INVALID_TIMESTAMP;
 
   /**
    * Constructs a {@link SubscriptionEvent} with an initial response.

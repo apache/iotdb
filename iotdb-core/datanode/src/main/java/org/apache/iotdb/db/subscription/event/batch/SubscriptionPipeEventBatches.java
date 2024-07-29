@@ -100,35 +100,34 @@ public class SubscriptionPipeEventBatches {
     while (true) {
       segmentLocks[index].lock();
       try {
-        final List<SubscriptionEvent> evs = batches[index].onEvent();
-        if (!evs.isEmpty()) {
-          events.addAll(evs);
-          reconstructBatch(index);
+        try {
+          final List<SubscriptionEvent> evs = batches[index].onEvent();
+          if (!evs.isEmpty()) {
+            events.addAll(evs);
+            reconstructBatch(index);
+          }
+        } catch (final Exception e) {
+          LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+          continue; // try to seal again
         }
-      } catch (final Exception e) {
-        LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
-        continue; // try to seal again
-      } finally {
-        segmentLocks[index].unlock();
-      }
 
-      if (Objects.isNull(event)) {
-        break;
-      }
-
-      // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
-      // this time.
-      segmentLocks[index].lock();
-      try {
-        final List<SubscriptionEvent> evs = batches[index].onEvent(event);
-        if (!evs.isEmpty()) {
-          events.addAll(evs);
-          reconstructBatch(index);
+        if (Objects.isNull(event)) {
+          break;
         }
-        break;
-      } catch (final Exception e) {
-        LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
-        break; // can be guaranteed that the event is calculated into the batch, seal it next time
+
+        // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
+        // this time.
+        try {
+          final List<SubscriptionEvent> evs = batches[index].onEvent(event);
+          if (!evs.isEmpty()) {
+            events.addAll(evs);
+            reconstructBatch(index);
+          }
+          break;
+        } catch (final Exception e) {
+          LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+          break; // can be guaranteed that the event is calculated into the batch, seal it next time
+        }
       } finally {
         segmentLocks[index].unlock();
       }
