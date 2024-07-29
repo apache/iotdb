@@ -412,7 +412,7 @@ public class CreateTableProcedure
 
   @Override
   protected CreateTableState getInitialState() {
-    return CreateTableState.PRE_CREATE;
+    return CreateTableState.CHECK_TABLE_EXISTENCE;
   }
 
   public String getDatabase() {
