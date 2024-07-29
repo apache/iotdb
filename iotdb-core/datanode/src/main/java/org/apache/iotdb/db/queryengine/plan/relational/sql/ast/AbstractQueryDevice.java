@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collections;
@@ -43,14 +45,12 @@ public abstract class AbstractQueryDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<Expression>> idDeterminedPredicateList;
+  private List<List<SchemaFilter>> idDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   private Expression idFuzzyPredicate;
 
-  private boolean isIdDetermined = false;
-
-  private transient List<IDeviceID> partitionKeyList;
+  private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
   protected AbstractQueryDevice(final String tableName, final Expression rawExpression) {
@@ -63,13 +63,15 @@ public abstract class AbstractQueryDevice extends Statement {
   protected AbstractQueryDevice(
       final String database,
       final String tableName,
-      final List<List<Expression>> idDeterminedPredicateList,
-      final Expression idFuzzyFilterList) {
+      final List<List<SchemaFilter>> idDeterminedFilterList,
+      final Expression idFuzzyFilterList,
+      final List<IDeviceID> partitionKeyList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idDeterminedFilterList = idDeterminedFilterList;
     this.idFuzzyPredicate = idFuzzyFilterList;
+    this.partitionKeyList = partitionKeyList;
   }
 
   public String getDatabase() {
@@ -84,11 +86,11 @@ public abstract class AbstractQueryDevice extends Statement {
     return rawExpression;
   }
 
-  public List<List<Expression>> getIdDeterminedPredicateList() {
-    if (idDeterminedPredicateList == null) {
-      idDeterminedPredicateList = Collections.singletonList(Collections.emptyList());
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
+    if (idDeterminedFilterList == null) {
+      idDeterminedFilterList = Collections.singletonList(Collections.emptyList());
     }
-    return idDeterminedPredicateList;
+    return idDeterminedFilterList;
   }
 
   public Expression getIdFuzzyPredicate() {
@@ -96,17 +98,10 @@ public abstract class AbstractQueryDevice extends Statement {
   }
 
   public boolean isIdDetermined() {
-    return isIdDetermined;
-  }
-
-  public void setIdDetermined(final boolean idDetermined) {
-    isIdDetermined = idDetermined;
+    return Objects.nonNull(partitionKeyList);
   }
 
   public List<IDeviceID> getPartitionKeyList() {
-    if (partitionKeyList == null) {
-      // TODO table metadata: parse idDeterminedFilterList to IDeviceID list
-    }
     return partitionKeyList;
   }
 
@@ -123,14 +118,14 @@ public abstract class AbstractQueryDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)
-        && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
+        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
         && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        database, tableName, rawExpression, idDeterminedPredicateList, idFuzzyPredicate);
+        database, tableName, rawExpression, idDeterminedFilterList, idFuzzyPredicate);
   }
 
   protected String toStringContent() {
@@ -144,7 +139,7 @@ public abstract class AbstractQueryDevice extends Statement {
         + ", rawExpression="
         + rawExpression
         + ", idDeterminedFilterList="
-        + idDeterminedPredicateList
+        + idDeterminedFilterList
         + ", idFuzzyFilter="
         + idFuzzyPredicate
         + '}';
