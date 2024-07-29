@@ -97,15 +97,6 @@ public class IoTDBStreamSortIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  public static void main(String[] args) {
-    for (String s : sql1) {
-      System.out.println(s + ";");
-    }
-    for (String s : sql2) {
-      System.out.println(s + ";");
-    }
-  }
-
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
@@ -124,7 +115,10 @@ public class IoTDBStreamSortIT {
 
   @Test
   public void sortAttributeTest() {
-    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2", "s3", "s4"};
+    String[] expectedHeader =
+        new String[] {
+          "time", "device", "level", "attr1", "attr2", "num", "bignum", "floatnum", "str", "bool"
+        };
     String[] retArray =
         new String[] {
           "1970-01-01T08:00:00.000+08:00,d1,l1,c,d,3,2947483648,231.2121,coconut,false",
@@ -134,7 +128,7 @@ public class IoTDBStreamSortIT {
           "1970-01-01T08:00:00.000+08:00,d2,l1,d,c,3,2947483648,231.2121,coconut,false"
         };
     tableResultSetEqualTest(
-        "select * from table0 order by attr1 offset 8 limit 5",
+        "select * from table0 order by attr1, time asc offset 8 limit 5",
         expectedHeader,
         retArray,
         DATABASE_NAME);
