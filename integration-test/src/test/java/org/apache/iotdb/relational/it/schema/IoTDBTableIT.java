@@ -99,7 +99,28 @@ public class IoTDBTableIT {
       String[] tableNames = new String[] {"table1"};
       String[] ttls = new String[] {"INF"};
 
+      statement.execute("use test2");
+
+      // show tables by specifying another database
       // Check duplicate create table won't affect table state
+      // using SHOW tables in
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables in test1")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
+
+      // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
         int cnt = 0;
         final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -118,8 +139,6 @@ public class IoTDBTableIT {
 
       statement.execute(
           "create table if not exists test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
-
-      statement.execute("use test2");
 
       try {
         statement.execute(
@@ -163,44 +182,6 @@ public class IoTDBTableIT {
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
-        int cnt = 0;
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
-        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
-          assertEquals(
-              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
-        }
-        while (resultSet.next()) {
-          assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getString(2));
-          cnt++;
-        }
-        assertEquals(tableNames.length, cnt);
-      }
-
-      // show tables by specifying another database
-      tableNames = new String[] {"table1"};
-      ttls = new String[] {"3600000"};
-
-      // using SHOW tables in
-      try (final ResultSet resultSet = statement.executeQuery("SHOW tables in test1")) {
-        int cnt = 0;
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
-        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
-          assertEquals(
-              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
-        }
-        while (resultSet.next()) {
-          assertEquals(tableNames[cnt], resultSet.getString(1));
-          assertEquals(ttls[cnt], resultSet.getString(2));
-          cnt++;
-        }
-        assertEquals(tableNames.length, cnt);
-      }
-
-      // using SHOW tables from
-      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
