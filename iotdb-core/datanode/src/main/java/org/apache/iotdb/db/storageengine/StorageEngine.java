@@ -134,7 +134,7 @@ public class StorageEngine implements IService {
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
-  private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
+  private AtomicBoolean isReadyForReadAndWrite = new AtomicBoolean(false);
 
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
@@ -178,16 +178,16 @@ public class StorageEngine implements IService {
     }
   }
 
-  public boolean isAllSgReady() {
-    return isAllSgReady.get();
+  public boolean isReadyForReadAndWrite() {
+    return isReadyForReadAndWrite.get();
   }
 
-  public void setAllSgReady(boolean allSgReady) {
-    isAllSgReady.set(allSgReady);
+  public void setReadyForReadAndWrite(boolean isReadyForReadAndWrite) {
+    this.isReadyForReadAndWrite.set(isReadyForReadAndWrite);
   }
 
   public void asyncRecover() throws StartupException {
-    setAllSgReady(false);
+    setReadyForReadAndWrite(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
 
@@ -209,7 +209,7 @@ public class StorageEngine implements IService {
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               recoverRepairData();
-              setAllSgReady(true);
+              setReadyForReadAndWrite(true);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
