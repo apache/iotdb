@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -153,25 +152,6 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public IDeviceID getIDeviceID() {
-    if (device != null) {
-      return device;
-    } else {
-      if (nodes.length == 1) {
-        device = Factory.DEFAULT_FACTORY.create("");
-        return device;
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
-    }
-    return device;
-  }
-
-  @Override
   public String getMeasurement() {
     throw new UnsupportedOperationException("AlignedPath doesn't have measurement name!");
   }
@@ -185,7 +165,7 @@ public class AlignedPath extends PartialPath {
   }
 
   public PartialPath getPathWithMeasurement(int index) {
-    return new PartialPath(nodes).concatNode(measurementList.get(index));
+    return new MeasurementPath(nodes).concatAsMeasurementPath(measurementList.get(index));
   }
 
   public void setMeasurementList(List<String> measurementList) {
@@ -393,8 +373,8 @@ public class AlignedPath extends PartialPath {
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
     alignedPath.nodes = partialPath.getNodes();
-    alignedPath.device = partialPath.getIDeviceID();
-    alignedPath.fullPath = partialPath.getFullPath();
+    alignedPath.device = alignedPath.getIDeviceID();
+    alignedPath.fullPath = alignedPath.getFullPath();
     return alignedPath;
   }
 
@@ -403,7 +383,7 @@ public class AlignedPath extends PartialPath {
     if (measurementList.size() != 1) {
       throw new UnsupportedOperationException();
     }
-    return getDevicePath().concatNode(measurementList.get(0));
+    return getDevicePath().concatAsMeasurementPath(measurementList.get(0));
   }
 
   public MeasurementPath getMeasurementPath() {
@@ -423,5 +403,10 @@ public class AlignedPath extends PartialPath {
 
   public String getFormattedString() {
     return getDevicePath().toString() + "[" + String.join(",", measurementList) + "]";
+  }
+
+  @Override
+  protected PartialPath createPartialPath(String[] newPathNodes) {
+    return new AlignedPath(newPathNodes, measurementList, schemaList);
   }
 }

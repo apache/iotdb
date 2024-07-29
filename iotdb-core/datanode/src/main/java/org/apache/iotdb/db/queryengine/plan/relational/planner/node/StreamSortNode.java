@@ -43,8 +43,9 @@ public class StreamSortNode extends SortNode {
       PlanNode child,
       OrderingScheme scheme,
       boolean partial,
+      boolean orderByAllIdsAndTime,
       int streamCompareKeyEndIndex) {
-    super(id, child, scheme, partial);
+    super(id, child, scheme, partial, orderByAllIdsAndTime);
     this.streamCompareKeyEndIndex = streamCompareKeyEndIndex;
   }
 
@@ -59,6 +60,7 @@ public class StreamSortNode extends SortNode {
         Iterables.getOnlyElement(newChildren),
         orderingScheme,
         partial,
+        orderByAllIdsAndTime,
         streamCompareKeyEndIndex);
   }
 
@@ -69,14 +71,14 @@ public class StreamSortNode extends SortNode {
 
   @Override
   public PlanNode clone() {
-    return new StreamSortNode(id, null, orderingScheme, partial, streamCompareKeyEndIndex);
+    return new StreamSortNode(
+        id, null, orderingScheme, partial, orderByAllIdsAndTime, streamCompareKeyEndIndex);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);
-    ReadWriteIOUtils.write(partial, byteBuffer);
     ReadWriteIOUtils.write(streamCompareKeyEndIndex, byteBuffer);
   }
 
@@ -84,16 +86,15 @@ public class StreamSortNode extends SortNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_STREAM_SORT_NODE.serialize(stream);
     orderingScheme.serialize(stream);
-    ReadWriteIOUtils.write(partial, stream);
     ReadWriteIOUtils.write(streamCompareKeyEndIndex, stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
-    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
-    int streamCompareKeyEndIndex = ReadWriteIOUtils.read(byteBuffer);
+    int streamCompareKeyEndIndex = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new StreamSortNode(planNodeId, null, orderingScheme, partial, streamCompareKeyEndIndex);
+    return new StreamSortNode(
+        planNodeId, null, orderingScheme, false, false, streamCompareKeyEndIndex);
   }
 
   @Override

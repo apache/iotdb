@@ -179,7 +179,7 @@ public class CreateTableProcedure
     try {
       path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
       patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
     } catch (final IOException e) {
       LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);

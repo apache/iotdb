@@ -97,6 +97,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
             node.getIdAndAttributeIndexMap(),
             node.getScanOrder(),
             node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate()));
+            node.getPushDownPredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice()));
   }
 }

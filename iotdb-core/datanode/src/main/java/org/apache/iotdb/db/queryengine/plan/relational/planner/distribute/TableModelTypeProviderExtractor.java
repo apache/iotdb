@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.read.common.type.BooleanType;
@@ -117,6 +118,12 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitSort(SortNode node, Void context) {
       node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitTopK(TopKNode node, Void context) {
+      node.getChildren().forEach(c -> c.accept(this, context));
       return null;
     }
 

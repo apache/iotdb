@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -171,7 +173,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
 
   public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath path;
+    MeasurementPath path;
     AlterType alterType;
     String alias = null;
     Map<String, String> alterMap = null;
@@ -182,7 +184,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
     try {
-      path = new PartialPath(new String(bytes));
+      path = new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Can not deserialize AlterTimeSeriesNode", e);
     }

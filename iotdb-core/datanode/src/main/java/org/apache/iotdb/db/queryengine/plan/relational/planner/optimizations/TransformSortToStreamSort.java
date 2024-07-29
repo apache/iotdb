@@ -33,12 +33,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+
 /**
  * <b>Optimization phase:</b> Logical plan planning.
  *
  * <p>This optimize rule implement the rules below.
  * <li>When the sort order is `IDColumns,Time` or `IDColumns,Others` in SortNode, SortNode can be
  *     transformed to StreamSortNode.
+ * <li>Set value to `orderByAllIdsAndTime`.
  */
 public class TransformSortToStreamSort implements PlanOptimizer {
 
@@ -91,15 +94,34 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
 
       if (streamSortIndex > 0) {
+        boolean orderByAllIdsAndTime =
+            isOrderByAllIdsAndTime(tableColumnSchema, orderingScheme, streamSortIndex);
+
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
             child,
             node.getOrderingScheme(),
             node.isPartial(),
+            orderByAllIdsAndTime,
             streamSortIndex);
       }
 
       return node;
+    }
+
+    private boolean isOrderByAllIdsAndTime(
+        Map<Symbol, ColumnSchema> tableColumnSchema,
+        OrderingScheme orderingScheme,
+        int streamSortIndex) {
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
+        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
+            && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
+          return false;
+        }
+      }
+      return orderingScheme.getOrderings().size() <= streamSortIndex
+          || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
+              orderingScheme.getOrderBy().get(streamSortIndex).getName());
     }
 
     @Override

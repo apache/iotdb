@@ -52,7 +52,7 @@ public class SelectIntoUtils {
       PartialPath sourcePath, PartialPath deviceTemplate, String measurementTemplate) {
     PartialPath targetDevice = constructTargetDevice(sourcePath.getDevicePath(), deviceTemplate);
     String targetMeasurement = constructTargetMeasurement(sourcePath, measurementTemplate);
-    return targetDevice.concatNode(targetMeasurement);
+    return targetDevice.concatAsMeasurementPath(targetMeasurement);
   }
 
   public static PartialPath constructTargetDevice(

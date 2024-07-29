@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification.io;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -39,10 +39,10 @@ import static org.junit.Assert.fail;
 public class LocalTextModificationAccessorTest {
   private static Modification[] modifications =
       new Modification[] {
-        new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-        new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
-        new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3),
-        new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
+        new Deletion(new MeasurementPath(new String[] {"d1", "s1"}), 1, 1),
+        new Deletion(new MeasurementPath(new String[] {"d1", "s2"}), 2, 2),
+        new Deletion(new MeasurementPath(new String[] {"d1", "s3"}), 3, 3),
+        new Deletion(new MeasurementPath(new String[] {"d1", "s4"}), 4, 4),
       };
 
   @AfterClass

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -111,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -143,6 +145,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -427,6 +430,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 zoneId);
       }
     }
+    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
     insertRowStatement.setTime(timestamp);
     insertRowStatement.setMeasurements(columnNames);
 
@@ -503,13 +507,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return super.visitShowDevicesStatement(ctx);
+  public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
+    if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
+      throw new UnsupportedOperationException(
+          "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
+    }
+    return new ShowDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 
   @Override
-  public Node visitCountDevicesStatement(RelationalSqlParser.CountDevicesStatementContext ctx) {
-    return super.visitCountDevicesStatement(ctx);
+  public Node visitCountDevicesStatement(
+      final RelationalSqlParser.CountDevicesStatementContext ctx) {
+    if (ctx.WHERE() != null) {
+      throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
+    }
+    return new CountDevice(getQualifiedName(ctx.tableName).toString(), null);
   }
 
   @Override

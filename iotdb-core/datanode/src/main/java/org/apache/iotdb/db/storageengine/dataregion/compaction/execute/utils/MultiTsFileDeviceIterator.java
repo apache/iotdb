@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -407,7 +408,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
       ttlDeletion =
           new Deletion(
-              CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+              new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
               Long.MAX_VALUE,
               Long.MIN_VALUE,
               timeLowerBoundForCurrentDevice);
@@ -633,7 +634,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new Deletion(
-                  CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+                  new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
                   Long.MAX_VALUE,
                   Long.MIN_VALUE,
                   timeLowerBoundForCurrentDevice);

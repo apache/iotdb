@@ -18,6 +18,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
@@ -25,6 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 
 import com.google.common.collect.ImmutableList;
@@ -51,7 +56,8 @@ public class OptimizeFactory {
             new PruneOutputSourceColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
-            new PruneTableScanColumns(plannerContext.getMetadata()));
+            new PruneTableScanColumns(plannerContext.getMetadata()),
+            new PruneTopKColumns());
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules);
 
@@ -62,6 +68,20 @@ public class OptimizeFactory {
             ImmutableSet.of(
                 new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()));
 
+    IterativeOptimizer limitPushdownOptimizer =
+        new IterativeOptimizer(
+            plannerContext,
+            new RuleStatsRecorder(),
+            ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject()));
+
+    PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
+
+    IterativeOptimizer topKOptimizer =
+        new IterativeOptimizer(
+            plannerContext,
+            new RuleStatsRecorder(),
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort()));
+
     this.planOptimizers =
         ImmutableList.of(
             simplifyExpressionOptimizer,
@@ -71,7 +91,10 @@ public class OptimizeFactory {
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
             columnPruningOptimizer,
             inlineProjectionsOptimizer,
-            transformSortToStreamSortOptimizer);
+            limitPushdownOptimizer,
+            pushLimitOffsetIntoTableScanOptimizer,
+            transformSortToStreamSortOptimizer,
+            topKOptimizer);
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {

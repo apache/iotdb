@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -48,6 +49,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -63,7 +65,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath() {}
 
   public PartialPath(IDeviceID device) throws IllegalPathException {
-    this(device.toString());
+    // the first segment is the table name, which may contain multiple levels
+    String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
+    nodes = new String[device.segmentNum() - 1 + tableNameSegments.length];
+    System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+    // copy non-table-name segments
+    for (int i = 0; i < device.segmentNum() - 1; i++) {
+      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+    }
+    this.fullPath = getFullPath();
   }
 
   /**
@@ -85,11 +95,20 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.fullPath = getFullPath();
   }
 
-  public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(device.toString(), measurement);
+  protected PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
+    // the first segment is the table name, which may contain multiple levels
+    String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
+    nodes = new String[device.segmentNum() + tableNameSegments.length];
+    System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+    // copy non-table-name segments
+    for (int i = 0; i < device.segmentNum() - 1; i++) {
+      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+    }
+    nodes[device.segmentNum() + tableNameSegments.length - 1] = measurement;
+    this.fullPath = getFullPath();
   }
 
-  public PartialPath(String device, String measurement) throws IllegalPathException {
+  protected PartialPath(String device, String measurement) throws IllegalPathException {
     String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
     this.fullPath = getFullPath();
@@ -163,10 +182,40 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @return new partial path
    */
   public PartialPath concatPath(PartialPath partialPath) {
+    return concatPath(partialPath, 0);
+  }
+
+  /**
+   * it will return a new partial path
+   *
+   * @param partialPath the path you want to concat
+   * @return new partial path
+   */
+  public PartialPath concatPath(PartialPath partialPath, int offset) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length - offset);
+    System.arraycopy(partialPath.nodes, offset, newNodes, len, partialPath.nodes.length - offset);
+    return createPartialPath(newNodes);
+  }
+
+  /**
+   * it will return a new partial path
+   *
+   * @param partialPath the path you want to concat
+   * @return new partial path
+   */
+  public MeasurementPath concatAsMeasurementPath(PartialPath partialPath) {
     int len = nodes.length;
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
     System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
-    return new PartialPath(newNodes);
+    return new MeasurementPath(newNodes);
+  }
+
+  public MeasurementPath concatAsMeasurementPath(String measurement) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + 1);
+    newNodes[len] = measurement;
+    return new MeasurementPath(newNodes);
   }
 
   /**
@@ -188,6 +237,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;
+    return createPartialPath(newPathNodes);
+  }
+
+  protected PartialPath createPartialPath(String[] newPathNodes) {
     return new PartialPath(newPathNodes);
   }
 
@@ -238,7 +291,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     alterPrefixPathInternal(
         Arrays.asList(prefix.getNodes()), Arrays.asList(nodes), new ArrayList<>(), results);
     return results.stream()
-        .map(r -> new PartialPath(r.toArray(new String[0])))
+        .map(r -> createPartialPath(r.toArray(new String[0])))
         .collect(Collectors.toList());
   }
 
@@ -275,7 +328,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @param results The final results.
    * @return True if the search should be stopped, else false.
    */
-  private boolean alterPrefixPathInternal(
+  boolean alterPrefixPathInternal(
       List<String> prefix, List<String> path, List<String> current, List<List<String>> results) {
     if (prefix.isEmpty()) {
       current.addAll(path);
@@ -332,7 +385,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
-    return matchPath(devicePath.concatNode(measurement).getNodes(), 0, 0, false, false);
+    return matchPath(
+        devicePath.concatAsMeasurementPath(measurement).getNodes(), 0, 0, false, false);
   }
 
   /**
@@ -675,19 +729,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     // It can be pruned if the remaining nodes start with **.
     List<PartialPath> res = new ArrayList<>();
     if (matchIndex[thisLength - 1] && nodes[thisLength - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      res.add(new PartialPath(ArrayUtils.addAll(prefixFullPath, nodes[thisLength - 1])));
+      res.add(createPartialPath(ArrayUtils.addAll(prefixFullPath, nodes[thisLength - 1])));
     } else {
       for (int j = thisLength - 2; j > 0; j--) {
         if (matchIndex[j]) {
           res.add(
-              new PartialPath(
+              createPartialPath(
                   ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j + 1, thisLength))));
           if (nodes[j + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
             break;
           }
           if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
             res.add(
-                new PartialPath(
+                createPartialPath(
                     ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j, thisLength))));
             break;
           }
@@ -763,36 +817,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     if (device != null) {
       return device;
     } else {
-      if (nodes.length == 1) {
-        device = Factory.DEFAULT_FACTORY.create("");
-        return device;
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length - 1; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
+      device = toDeviceID(nodes);
     }
     return device;
   }
 
+  @Deprecated
   /** This PartialPath represents for full device path */
   public IDeviceID getIDeviceIDAsFullDevice() {
-    if (device != null) {
-      return device;
-    } else {
-      if (nodes.length == 1) {
-        return Factory.DEFAULT_FACTORY.create("");
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
-    }
-    return device;
+    return getIDeviceID();
   }
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly
@@ -855,16 +888,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath getDevicePath() {
-    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+    return this;
   }
 
   public List<PartialPath> getDevicePathPattern() {
-    List<PartialPath> result = new ArrayList<>();
-    result.add(getDevicePath());
-    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      result.add(new PartialPath(nodes));
-    }
-    return result;
+    return Collections.singletonList(this);
   }
 
   @TestOnly
@@ -909,14 +937,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public ByteBuffer serialize() throws IOException {
     PublicBAOS publicBAOS = new PublicBAOS();
-    serialize((OutputStream) publicBAOS);
+    serialize(publicBAOS);
     return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
-  }
-
-  @Override
-  public void serialize(OutputStream stream) throws IOException {
-    PathType.Partial.serialize(stream);
-    serializeWithoutType(stream);
   }
 
   @Override
@@ -926,7 +948,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public void serialize(PublicBAOS stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     PathType.Partial.serialize(stream);
     serializeWithoutType(stream);
   }
@@ -1013,5 +1035,36 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   private static int estimateStringSize(String string) {
     // each char takes 2B in Java
     return string == null ? 0 : 32 + 2 * string.length();
+  }
+
+  protected IDeviceID toDeviceID(String[] nodes) {
+    String tableName;
+    int segmentCnt = nodes.length;
+    // assuming DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3
+    String[] segments;
+    if (segmentCnt <= 1) {
+      // "root" -> {"root"}
+      segments = nodes;
+    } else if (segmentCnt < TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME + 1) {
+      // "root.a" -> {"root", "a"}
+      // "root.a.b" -> {"root.a", "b"}
+      tableName = String.join(PATH_SEPARATOR, Arrays.copyOfRange(nodes, 0, segmentCnt - 1));
+      segments = new String[2];
+      segments[0] = tableName;
+      segments[1] = nodes[segmentCnt - 1];
+    } else {
+      // "root.a.b.c" -> {"root.a.b", "c"}
+      // "root.a.b.c.d" -> {"root.a.b", "c", "d"}
+      tableName =
+          String.join(
+              PATH_SEPARATOR,
+              Arrays.copyOfRange(nodes, 0, TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME));
+      int newSegmentCnt = nodes.length - TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME + 1;
+      segments = new String[newSegmentCnt];
+      segments[0] = tableName;
+      System.arraycopy(
+          nodes, TSFileConfig.DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME, segments, 1, newSegmentCnt - 1);
+    }
+    return Factory.DEFAULT_FACTORY.create(segments);
   }
 }

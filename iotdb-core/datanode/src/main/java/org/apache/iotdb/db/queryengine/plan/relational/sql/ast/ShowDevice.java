@@ -19,136 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
-
 import java.util.List;
-import java.util.Objects;
 
-public class ShowDevice extends Statement {
+public class ShowDevice extends AbstractQueryDevice {
 
-  private final String database;
-
-  private final String tableName;
-
-  private Expression rawExpression;
-
-  /**
-   * The outer list represents the OR relation between different expression lists.
-   *
-   * <p>The inner list represents the AND between different expression.
-   *
-   * <p>Each inner list represents a device pattern and each expression of it represents one
-   * condition on some id column.
-   */
-  private List<List<SchemaFilter>> idDeterminedFilterList;
-
-  /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyPredicate;
-
-  private transient List<IDeviceID> partitionKeyList;
-
-  // for sql-input show device usage
-  public ShowDevice(String database, String tableName, Expression rawExpression) {
-    super(null);
-    this.database = database;
-    this.tableName = tableName;
-    this.rawExpression = rawExpression;
+  // For sql-input show device usage
+  public ShowDevice(final String tableName, final Expression rawExpression) {
+    super(tableName, rawExpression);
   }
 
-  // for device fetch serving data query
+  // For device fetch serving data query
   public ShowDevice(
-      String database,
-      String tableName,
-      List<List<SchemaFilter>> idDeterminedFilterList,
-      Expression idFuzzyFilterList,
-      List<IDeviceID> partitionKeyList) {
-    super(null);
-    this.database = database;
-    this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyPredicate = idFuzzyFilterList;
-    this.partitionKeyList = partitionKeyList;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
-  }
-
-  public Expression getRawExpression() {
-    return rawExpression;
-  }
-
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    if (idDeterminedFilterList == null) {
-      // TODO table metadata: process raw expression input by show device sql
-    }
-    return idDeterminedFilterList;
-  }
-
-  public Expression getIdFuzzyPredicate() {
-    if (idFuzzyPredicate == null) {
-      // TODO table metadata: process raw expression input by show device sql
-    }
-    return idFuzzyPredicate;
-  }
-
-  public boolean isIdDetermined() {
-    return Objects.nonNull(partitionKeyList);
-  }
-
-  public List<IDeviceID> getPartitionKeyList() {
-    return partitionKeyList;
+      final String database,
+      final String tableName,
+      final List<List<Expression>> idDeterminedPredicateList,
+      final Expression idFuzzyFilterList) {
+    super(database, tableName, idDeterminedPredicateList, idFuzzyFilterList);
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitShowDevice(this, context);
   }
 
   @Override
-  public List<? extends Node> getChildren() {
-    return null;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ShowDevice that = (ShowDevice) o;
-    return Objects.equals(database, that.database)
-        && Objects.equals(tableName, that.tableName)
-        && Objects.equals(rawExpression, that.rawExpression)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        database, tableName, rawExpression, idDeterminedFilterList, idFuzzyPredicate);
-  }
-
-  @Override
   public String toString() {
-    return "ShowDevice{"
-        + "database='"
-        + database
-        + '\''
-        + ", tableName='"
-        + tableName
-        + '\''
-        + ", rawExpression="
-        + rawExpression
-        + ", idDeterminedFilterList="
-        + idDeterminedFilterList
-        + ", idFuzzyFilter="
-        + idFuzzyPredicate
-        + '}';
+    return "ShowDevice" + toStringContent();
   }
 }

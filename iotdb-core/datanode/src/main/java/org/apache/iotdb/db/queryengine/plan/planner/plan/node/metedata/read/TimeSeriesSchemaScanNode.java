@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -109,7 +110,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
     PartialPath path;
     try {
-      path = new PartialPath(fullPath);
+      path = new MeasurementPath(fullPath);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
     }

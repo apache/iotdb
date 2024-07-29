@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
@@ -322,7 +323,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateAlignedTimeseries(IoTDBSqlParser.CreateAlignedTimeseriesContext ctx) {
     CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
         new CreateAlignedTimeSeriesStatement();
-    createAlignedTimeSeriesStatement.setDevicePath(parseFullPath(ctx.fullPath()));
+    createAlignedTimeSeriesStatement.setDevicePath(parseAlignedDevice(ctx.fullPath()));
     parseAlignedMeasurements(ctx.alignedMeasurements(), createAlignedTimeSeriesStatement);
     return createAlignedTimeSeriesStatement;
   }
@@ -1999,7 +2000,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Common Parsers. */
 
   // IoTDB Objects ========================================================================
-  private PartialPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
+  private MeasurementPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCard(nodeNameWithoutStar);
+    }
+    return new MeasurementPath(path);
+  }
+
+  // IoTDB Objects ========================================================================
+  private PartialPath parseAlignedDevice(IoTDBSqlParser.FullPathContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
     String[] path = new String[nodeNamesWithoutStar.size() + 1];
@@ -2633,9 +2650,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitDeleteStatement(IoTDBSqlParser.DeleteStatementContext ctx) {
     DeleteDataStatement statement = new DeleteDataStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPaths = ctx.prefixPath();
-    List<PartialPath> pathList = new ArrayList<>();
+    List<MeasurementPath> pathList = new ArrayList<>();
     for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPaths) {
-      pathList.add(parsePrefixPath(prefixPath));
+      pathList.add(new MeasurementPath(parsePrefixPath(prefixPath).getNodes()));
     }
     statement.setPathList(pathList);
     if (ctx.whereClause() != null) {

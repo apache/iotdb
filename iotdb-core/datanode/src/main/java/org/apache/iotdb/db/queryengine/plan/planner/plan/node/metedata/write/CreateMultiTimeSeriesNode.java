@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -61,7 +62,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   public CreateMultiTimeSeriesNode(
       PlanNodeId id,
-      List<PartialPath> paths,
+      List<MeasurementPath> paths,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,

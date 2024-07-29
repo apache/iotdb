@@ -197,7 +197,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("describe table1");
       } catch (final SQLException e) {
-        assertEquals("550: Table test2.table1 not exists.", e.getMessage());
+        assertEquals("550: Table 'test2.table1' does not exist.", e.getMessage());
       }
 
       String[] columnNames =
@@ -250,7 +250,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("describe test3.table3");
       } catch (final SQLException e) {
-        assertEquals("550: Table test3.table3 not exists.", e.getMessage());
+        assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
       }
 
       statement.execute("drop database test1");

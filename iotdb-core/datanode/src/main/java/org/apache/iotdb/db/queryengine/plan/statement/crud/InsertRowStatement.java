@@ -45,6 +45,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -90,7 +91,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
@@ -228,7 +229,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        if (values[i] != null) {
+        // if the type is binary and the value is already binary, do not convert
+        if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {
