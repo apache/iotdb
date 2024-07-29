@@ -112,7 +112,7 @@ public class SchemaSourceFactory {
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceQuerySource(
       String database,
       String tableName,
-      List<List<Expression>> idDeterminedFilterList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
       Expression idFuzzyFilter,
       List<ColumnHeader> columnHeaderList) {
     return new TableDeviceQuerySource(

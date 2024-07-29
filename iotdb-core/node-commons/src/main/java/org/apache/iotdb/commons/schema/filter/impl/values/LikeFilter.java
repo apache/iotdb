@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -28,49 +29,42 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
-public class TemplateFilter extends SchemaFilter {
-  private final String templateName;
-  private final boolean isEqual;
+// Does not support escape now
+public class LikeFilter extends SchemaFilter {
+  private final Pattern pattern;
 
-  public TemplateFilter(final String templateName, final boolean isEqual) {
-    this.templateName = templateName;
-    this.isEqual = isEqual;
+  public LikeFilter(final String regex) {
+    this.pattern = Pattern.compile(regex);
   }
 
-  public TemplateFilter(final ByteBuffer byteBuffer) {
-    this.templateName = ReadWriteIOUtils.readString(byteBuffer);
-    this.isEqual = ReadWriteIOUtils.readBool(byteBuffer);
+  public LikeFilter(final ByteBuffer byteBuffer) {
+    this.pattern = Pattern.compile(ReadWriteIOUtils.readString(byteBuffer));
   }
 
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public boolean isEqual() {
-    return isEqual;
+  public Pattern getPattern() {
+    return pattern;
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTemplateFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitLikeFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TEMPLATE_FILTER;
+    return SchemaFilterType.LIKE;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(templateName, byteBuffer);
-    ReadWriteIOUtils.write(isEqual, byteBuffer);
+    ReadWriteIOUtils.write(pattern.pattern(), byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(templateName, stream);
-    ReadWriteIOUtils.write(isEqual, stream);
+    ReadWriteIOUtils.write(pattern.pattern(), stream);
   }
 
   @Override
@@ -81,12 +75,12 @@ public class TemplateFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final TemplateFilter that = (TemplateFilter) o;
-    return Objects.equals(templateName, that.templateName) && Objects.equals(isEqual, that.isEqual);
+    final LikeFilter that = (LikeFilter) o;
+    return Objects.equals(pattern.pattern(), that.pattern.pattern());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName, isEqual);
+    return Objects.hash(pattern);
   }
 }

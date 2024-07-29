@@ -16,61 +16,71 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
-public class TemplateFilter extends SchemaFilter {
-  private final String templateName;
-  private final boolean isEqual;
+/**
+ * This class can be seen as a combination of {@link PreciseFilter} & {@link OrFilter}. Here we
+ * construct a new filter to avoid too deep stack and to ensure performance.
+ */
+public class InFilter extends SchemaFilter {
 
-  public TemplateFilter(final String templateName, final boolean isEqual) {
-    this.templateName = templateName;
-    this.isEqual = isEqual;
+  private final Set<String> values;
+
+  public InFilter(Set<String> values) {
+    this.values = values;
   }
 
-  public TemplateFilter(final ByteBuffer byteBuffer) {
-    this.templateName = ReadWriteIOUtils.readString(byteBuffer);
-    this.isEqual = ReadWriteIOUtils.readBool(byteBuffer);
+  public InFilter(final ByteBuffer byteBuffer) {
+    final int length = ReadWriteIOUtils.readInt(byteBuffer);
+    this.values = new HashSet<>();
+    for (int i = 0; i < length; ++i) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
   }
 
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public boolean isEqual() {
-    return isEqual;
+  public Set<String> getValues() {
+    return values;
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTemplateFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitInFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TEMPLATE_FILTER;
+    return SchemaFilterType.IN;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(templateName, byteBuffer);
-    ReadWriteIOUtils.write(isEqual, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(templateName, stream);
-    ReadWriteIOUtils.write(isEqual, stream);
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (final String value : values) {
+      ReadWriteIOUtils.write(value, stream);
+    }
   }
 
   @Override
@@ -81,12 +91,12 @@ public class TemplateFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final TemplateFilter that = (TemplateFilter) o;
-    return Objects.equals(templateName, that.templateName) && Objects.equals(isEqual, that.isEqual);
+    final InFilter that = (InFilter) o;
+    return Objects.equals(values, that.values);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName, isEqual);
+    return Objects.hash(values);
   }
 }

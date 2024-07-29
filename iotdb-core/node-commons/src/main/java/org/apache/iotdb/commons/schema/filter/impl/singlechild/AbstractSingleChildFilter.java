@@ -17,52 +17,44 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.filter.impl;
+package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.view.ViewType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ViewTypeFilter extends SchemaFilter {
+public abstract class AbstractSingleChildFilter extends SchemaFilter {
 
-  private final ViewType viewType;
+  private SchemaFilter child;
 
-  public ViewTypeFilter(final ViewType viewType) {
-    this.viewType = viewType;
+  protected AbstractSingleChildFilter(final SchemaFilter child) {
+    // child should not be null
+    this.child = child;
   }
 
-  public ViewTypeFilter(final ByteBuffer byteBuffer) {
-    this.viewType = ViewType.deserializeFrom(byteBuffer);
+  protected AbstractSingleChildFilter(final ByteBuffer byteBuffer) {
+    this.child = SchemaFilter.deserialize(byteBuffer);
   }
 
-  public ViewType getViewType() {
-    return viewType;
+  public SchemaFilter getChild() {
+    return child;
   }
 
-  @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitViewTypeFilter(this, node);
-  }
-
-  @Override
-  public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.VIEW_TYPE;
+  public void setChild(final SchemaFilter child) {
+    this.child = child;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    viewType.serializeTo(byteBuffer);
+    SchemaFilter.serialize(child, byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    viewType.serializeTo(stream);
+    SchemaFilter.serialize(child, stream);
   }
 
   @Override
@@ -73,12 +65,12 @@ public class ViewTypeFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final ViewTypeFilter that = (ViewTypeFilter) o;
-    return Objects.equals(viewType, that.viewType);
+    final AbstractSingleChildFilter that = (AbstractSingleChildFilter) o;
+    return Objects.equals(child, that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(viewType);
+    return Objects.hash(child);
   }
 }

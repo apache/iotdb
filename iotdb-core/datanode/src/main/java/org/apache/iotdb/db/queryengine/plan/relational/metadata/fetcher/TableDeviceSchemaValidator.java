@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
@@ -83,34 +84,31 @@ public class TableDeviceSchemaValidator {
   }
 
   private ValidateResult validateDeviceSchemaInCache(
-      ITableDeviceSchemaValidation schemaValidation) {
-    ValidateResult result = new ValidateResult();
-    String database = schemaValidation.getDatabase();
-    String tableName = schemaValidation.getTableName();
-    List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
-    List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
-    List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
+      final ITableDeviceSchemaValidation schemaValidation) {
+    final ValidateResult result = new ValidateResult();
+    final String database = schemaValidation.getDatabase();
+    final String tableName = schemaValidation.getTableName();
+    final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
+    final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
+    final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
-      Map<String, String> attributeMap =
+      final Map<String, String> attributeMap =
           fetcher
               .getTableDeviceCache()
               .getDeviceAttribute(database, tableName, parseDeviceIdArray(deviceIdList.get(i)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
-        Object[] deviceAttributeValueList = attributeValueList.get(i);
+        final Object[] deviceAttributeValueList = attributeValueList.get(i);
         for (int j = 0, attributeSize = attributeKeyList.size(); j < attributeSize; j++) {
-          if (deviceAttributeValueList[j] != null) {
-            String key = attributeKeyList.get(j);
-            String value = attributeMap.get(key);
-            if (value == null) {
-              result.attributeMissingInCacheDeviceIndexList.add(i);
-              break;
-            } else if (!value.equals(deviceAttributeValueList[j])) {
-              result.attributeUpdateDeviceIndexList.add(i);
-              break;
-            }
+          final String key = attributeKeyList.get(j);
+          if (!attributeMap.containsKey(key)) {
+            result.attributeMissingInCacheDeviceIndexList.add(i);
+            break;
+          } else if (!Objects.equals(attributeMap.get(key), deviceAttributeValueList[j])) {
+            result.attributeUpdateDeviceIndexList.add(i);
+            break;
           }
         }
       }

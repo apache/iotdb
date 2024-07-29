@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -29,48 +30,48 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class TemplateFilter extends SchemaFilter {
-  private final String templateName;
-  private final boolean isEqual;
+/**
+ * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
+ * their values. {@link IdFilter} and {@link AttributeFilter} just indicates that how to get the
+ * id/attribute value from the device entry.
+ */
+public class IdFilter extends AbstractSingleChildFilter {
+  private final int index;
 
-  public TemplateFilter(final String templateName, final boolean isEqual) {
-    this.templateName = templateName;
-    this.isEqual = isEqual;
+  public IdFilter(final SchemaFilter child, final int index) {
+    super(child);
+    this.index = index;
   }
 
-  public TemplateFilter(final ByteBuffer byteBuffer) {
-    this.templateName = ReadWriteIOUtils.readString(byteBuffer);
-    this.isEqual = ReadWriteIOUtils.readBool(byteBuffer);
+  public IdFilter(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
+    index = ReadWriteIOUtils.readInt(byteBuffer);
   }
 
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public boolean isEqual() {
-    return isEqual;
+  public int getIndex() {
+    return index;
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTemplateFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitIdFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TEMPLATE_FILTER;
+    return SchemaFilterType.ID;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(templateName, byteBuffer);
-    ReadWriteIOUtils.write(isEqual, byteBuffer);
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(index, byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(templateName, stream);
-    ReadWriteIOUtils.write(isEqual, stream);
+    super.serialize(stream);
+    ReadWriteIOUtils.write(index, stream);
   }
 
   @Override
@@ -81,12 +82,12 @@ public class TemplateFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final TemplateFilter that = (TemplateFilter) o;
-    return Objects.equals(templateName, that.templateName) && Objects.equals(isEqual, that.isEqual);
+    final IdFilter that = (IdFilter) o;
+    return super.equals(o) && Objects.equals(index, that.index);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName, isEqual);
+    return Objects.hash(index, super.hashCode());
   }
 }

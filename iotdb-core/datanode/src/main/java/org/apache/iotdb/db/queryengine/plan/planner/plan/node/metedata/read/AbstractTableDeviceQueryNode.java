@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -44,7 +45,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  protected final List<List<Expression>> idDeterminedPredicateList;
+  protected final List<List<SchemaFilter>> idDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   protected final Expression idFuzzyPredicate;
@@ -53,7 +54,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
-      final List<List<Expression>> idDeterminedPredicateList,
+      final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet schemaRegionReplicaSet) {
@@ -62,7 +63,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     this.idFuzzyPredicate = idFuzzyPredicate;
   }
 
-  public List<List<Expression>> getIdDeterminedPredicateList() {
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
     return idDeterminedPredicateList;
   }
 
@@ -77,10 +78,10 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
     ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
-    for (final List<Expression> filterList : idDeterminedPredicateList) {
+    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), byteBuffer);
-      for (final Expression expression : filterList) {
-        Expression.serialize(expression, byteBuffer);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, byteBuffer);
       }
     }
 
@@ -102,10 +103,10 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(tableName, stream);
 
     ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
-    for (final List<Expression> filterList : idDeterminedPredicateList) {
+    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
-      for (final Expression expression : filterList) {
-        Expression.serialize(expression, stream);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, stream);
       }
     }
 
@@ -125,12 +126,12 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     final String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    final List<List<Expression>> idDeterminedFilterList = new ArrayList<>(size);
+    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final int singleSize = ReadWriteIOUtils.readInt(buffer);
       idDeterminedFilterList.add(new ArrayList<>(singleSize));
       for (int k = 0; k < singleSize; k++) {
-        idDeterminedFilterList.get(i).add(Expression.deserialize(buffer));
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
       }
     }
 

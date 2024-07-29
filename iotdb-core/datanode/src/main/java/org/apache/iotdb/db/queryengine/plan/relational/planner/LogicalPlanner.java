@@ -262,7 +262,7 @@ public class LogicalPlanner {
         queryContext.getQueryId().genPlanNodeId(),
         database,
         statement.getTableName(),
-        statement.getIdDeterminedPredicateList(),
+        statement.getIdDeterminedFilterList(),
         statement.getIdFuzzyPredicate(),
         columnHeaderList,
         null);
@@ -279,7 +279,7 @@ public class LogicalPlanner {
             queryContext.getQueryId().genPlanNodeId(),
             database,
             statement.getTableName(),
-            statement.getIdDeterminedPredicateList(),
+            statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
             columnHeaderList,
             null);

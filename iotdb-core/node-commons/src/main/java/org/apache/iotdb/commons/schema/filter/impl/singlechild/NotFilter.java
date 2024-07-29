@@ -15,30 +15,33 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
+package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
-public class ShowTableDevicesPlan {
+import java.nio.ByteBuffer;
 
-  private final PartialPath devicePattern;
+public class NotFilter extends AbstractSingleChildFilter {
 
-  private final SchemaFilter deviceFilter;
-
-  public ShowTableDevicesPlan(final PartialPath devicePattern, final SchemaFilter deviceFilter) {
-    this.devicePattern = devicePattern;
-    this.deviceFilter = deviceFilter;
+  public NotFilter(final SchemaFilter child) {
+    super(child);
   }
 
-  public PartialPath getDevicePattern() {
-    return devicePattern;
+  public NotFilter(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
-  public SchemaFilter getDeviceFilter() {
-    return deviceFilter;
+  @Override
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitNotFilter(this, node);
+  }
+
+  @Override
+  public SchemaFilterType getSchemaFilterType() {
+    return SchemaFilterType.NOT;
   }
 }

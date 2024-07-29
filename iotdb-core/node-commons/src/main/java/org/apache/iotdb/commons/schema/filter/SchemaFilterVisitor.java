@@ -16,17 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter;
 
-import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 /**
  * This class provides a visitor of {@link SchemaFilter}, which can be extended to create a visitor
@@ -69,19 +74,35 @@ public abstract class SchemaFilterVisitor<C> {
     return visitFilter(templateFilter, context);
   }
 
-  public boolean visitAndFilter(AndFilter andFilter, C context) {
-    return andFilter.getLeft().accept(this, context) && andFilter.getRight().accept(this, context);
+  public final boolean visitAndFilter(final AndFilter andFilter, final C context) {
+    return andFilter.getChildren().stream().allMatch(child -> child.accept(this, context));
   }
 
-  public boolean visitOrFilter(OrFilter orFilter, C context) {
-    return orFilter.getLeft().accept(this, context) || orFilter.getRight().accept(this, context);
+  public final boolean visitOrFilter(final OrFilter orFilter, final C context) {
+    return orFilter.getChildren().stream().anyMatch(child -> child.accept(this, context));
   }
 
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, C context) {
+  public final boolean visitNotFilter(final NotFilter notFilter, final C context) {
+    return !notFilter.getChild().accept(this, context);
+  }
+
+  public boolean visitIdFilter(final IdFilter filter, final C context) {
     return visitFilter(filter, context);
   }
 
-  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, C context) {
+  public boolean visitAttributeFilter(final AttributeFilter filter, final C context) {
+    return visitFilter(filter, context);
+  }
+
+  public boolean visitPreciseFilter(final PreciseFilter filter, final C context) {
+    return visitFilter(filter, context);
+  }
+
+  public boolean visitInFilter(final InFilter filter, final C context) {
+    return visitFilter(filter, context);
+  }
+
+  public boolean visitLikeFilter(final LikeFilter filter, final C context) {
     return visitFilter(filter, context);
   }
 }

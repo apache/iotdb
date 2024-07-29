@@ -16,61 +16,54 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.multichildren;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-public class TemplateFilter extends SchemaFilter {
-  private final String templateName;
-  private final boolean isEqual;
+public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
 
-  public TemplateFilter(final String templateName, final boolean isEqual) {
-    this.templateName = templateName;
-    this.isEqual = isEqual;
+  private final List<SchemaFilter> children;
+
+  protected AbstractMultiChildrenFilter(final List<SchemaFilter> children) {
+    this.children = children;
   }
 
-  public TemplateFilter(final ByteBuffer byteBuffer) {
-    this.templateName = ReadWriteIOUtils.readString(byteBuffer);
-    this.isEqual = ReadWriteIOUtils.readBool(byteBuffer);
+  protected AbstractMultiChildrenFilter(final ByteBuffer byteBuffer) {
+    final int num = ReadWriteIOUtils.readInt(byteBuffer);
+    children = new ArrayList<>();
+    for (int i = 0; i < num; ++i) {
+      this.children.add(SchemaFilter.deserialize(byteBuffer));
+    }
   }
 
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public boolean isEqual() {
-    return isEqual;
-  }
-
-  @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTemplateFilter(this, node);
-  }
-
-  @Override
-  public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TEMPLATE_FILTER;
+  public List<SchemaFilter> getChildren() {
+    return children;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(templateName, byteBuffer);
-    ReadWriteIOUtils.write(isEqual, byteBuffer);
+    ReadWriteIOUtils.write(children.size(), byteBuffer);
+    for (final SchemaFilter child : children) {
+      SchemaFilter.serialize(child, byteBuffer);
+    }
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(templateName, stream);
-    ReadWriteIOUtils.write(isEqual, stream);
+    ReadWriteIOUtils.write(children.size(), stream);
+    for (final SchemaFilter child : children) {
+      SchemaFilter.serialize(child, stream);
+    }
   }
 
   @Override
@@ -81,12 +74,12 @@ public class TemplateFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final TemplateFilter that = (TemplateFilter) o;
-    return Objects.equals(templateName, that.templateName) && Objects.equals(isEqual, that.isEqual);
+    final AbstractMultiChildrenFilter that = (AbstractMultiChildrenFilter) o;
+    return Objects.equals(children, that.children);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName, isEqual);
+    return Objects.hash(children);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -36,7 +37,7 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
-      final List<List<Expression>> idDeterminedPredicateList,
+      final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet schemaRegionReplicaSet) {

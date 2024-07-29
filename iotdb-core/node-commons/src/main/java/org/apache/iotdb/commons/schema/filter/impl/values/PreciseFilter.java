@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.values;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -27,28 +28,22 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class DeviceIdFilter extends SchemaFilter {
+public class PreciseFilter extends SchemaFilter {
 
   // id column index
   // when used in partialPath, the index of node in path shall be [this.index + 3]
   // since a partialPath start with {root, db, table}
-  private final int index;
 
   private final String value;
 
-  public DeviceIdFilter(int index, String value) {
-    this.index = index;
+  public PreciseFilter(final String value) {
     this.value = value;
   }
 
-  public DeviceIdFilter(ByteBuffer byteBuffer) {
-    this.index = ReadWriteIOUtils.readInt(byteBuffer);
+  public PreciseFilter(final ByteBuffer byteBuffer) {
     this.value = ReadWriteIOUtils.readString(byteBuffer);
-  }
-
-  public int getIndex() {
-    return index;
   }
 
   public String getValue() {
@@ -56,24 +51,39 @@ public class DeviceIdFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceIdFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitPreciseFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ID;
+    return SchemaFilterType.PRECISE;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(index, byteBuffer);
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(index, stream);
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(value, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PreciseFilter that = (PreciseFilter) o;
+    return Objects.equals(value, that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value);
   }
 }

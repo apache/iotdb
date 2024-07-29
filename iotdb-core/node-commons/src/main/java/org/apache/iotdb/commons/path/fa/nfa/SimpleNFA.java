@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.path.fa.nfa;
 
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.path.fa.IFAState;
@@ -27,9 +28,11 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -58,7 +61,7 @@ public class SimpleNFA implements IPatternFA {
   private final boolean isPrefixMatch;
 
   // raw nodes of pathPattern
-  private final String[] rawNodes;
+  private final PartialPath pathPattern;
 
   // initial state of this NFA and the only transition from this state is "root"
   private final SinglePathPatternNode initialState = new InitialNode();
@@ -67,8 +70,8 @@ public class SimpleNFA implements IPatternFA {
 
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
     this.isPrefixMatch = isPrefixMatch;
-    this.rawNodes = pathPattern.getNodes();
-    patternNodes = new SinglePathPatternNode[this.rawNodes.length + 1];
+    this.pathPattern = pathPattern;
+    patternNodes = new SinglePathPatternNode[pathPattern.getNodeLength() + 1];
   }
 
   @Override
@@ -117,9 +120,10 @@ public class SimpleNFA implements IPatternFA {
   }
 
   private SinglePathPatternNode getNextNode(SinglePathPatternNode currentNode) {
-    if (currentNode.patternIndex == rawNodes.length) {
+    if (currentNode.patternIndex == pathPattern.getNodeLength()) {
       return currentNode;
     }
+    final String[] rawNodes = pathPattern.getNodes();
     int nextIndex = currentNode.getIndex() + 1;
     if (patternNodes[nextIndex] == null) {
       if (nextIndex == rawNodes.length) {
@@ -130,7 +134,12 @@ public class SimpleNFA implements IPatternFA {
         patternNodes[nextIndex] = new MultiLevelWildcardMatchNode(nextIndex);
       } else if (rawNodes[nextIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
         patternNodes[nextIndex] =
-            new OneLevelWildcardMatchNode(nextIndex, currentNode.getTracebackNode());
+            new OneLevelWildcardMatchNode(
+                nextIndex,
+                currentNode.getTracebackNode(),
+                pathPattern instanceof ExtendedPartialPath
+                    ? ((ExtendedPartialPath) pathPattern).getMatchFunctions(nextIndex)
+                    : Collections.emptyList());
       } else if (PathPatternUtil.hasWildcard(rawNodes[nextIndex])) {
         patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
       } else {
@@ -161,7 +170,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public boolean isFinal() {
-      return patternIndex >= rawNodes.length - 1;
+      return patternIndex >= pathPattern.getNodeLength() - 1;
     }
 
     @Override
@@ -171,7 +180,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public String getAcceptEvent() {
-      return rawNodes[patternIndex];
+      return pathPattern.getNodes()[patternIndex];
     }
 
     public SinglePathPatternNode getTracebackNode() {
@@ -347,13 +356,20 @@ public class SimpleNFA implements IPatternFA {
   /** The patternNode of the rawNode *. */
   private class OneLevelWildcardMatchNode extends SinglePathPatternNode {
 
-    private OneLevelWildcardMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
+    private final List<Function<String, Boolean>> matchFunctions;
+
+    // Currently one level wildcard match supports an extra matchFunction
+    private OneLevelWildcardMatchNode(
+        final int patternIndex,
+        final SinglePathPatternNode tracebackNode,
+        final List<Function<String, Boolean>> matchFunctions) {
       super(patternIndex, tracebackNode);
+      this.matchFunctions = matchFunctions;
     }
 
     @Override
-    public boolean isMatch(String event) {
-      return true;
+    public boolean isMatch(final String event) {
+      return matchFunctions.stream().allMatch(function -> function.apply(event));
     }
 
     @Override
@@ -397,7 +413,7 @@ public class SimpleNFA implements IPatternFA {
     @Override
     public boolean isMatch(String event) {
       if (regexPattern == null) {
-        regexPattern = Pattern.compile(rawNodes[patternIndex].replace("*", ".*"));
+        regexPattern = Pattern.compile(pathPattern.getNodes()[patternIndex].replace("*", ".*"));
       }
       return regexPattern.matcher(event).matches();
     }
@@ -442,13 +458,14 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public boolean isMatch(String event) {
-      return Objects.equals(rawNodes[patternIndex], event);
+      return Objects.equals(pathPattern.getNodes()[patternIndex], event);
     }
 
     @Override
     protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
       if (preNodePreciseMatchTransitionMap == null) {
-        preNodePreciseMatchTransitionMap = Collections.singletonMap(rawNodes[patternIndex], this);
+        preNodePreciseMatchTransitionMap =
+            Collections.singletonMap(pathPattern.getNodes()[patternIndex], this);
       }
       return preNodePreciseMatchTransitionMap;
     }

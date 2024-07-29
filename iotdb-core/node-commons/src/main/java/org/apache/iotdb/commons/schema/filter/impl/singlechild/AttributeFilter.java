@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.filter.impl;
+
+package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
@@ -27,50 +28,66 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class DeviceAttributeFilter extends SchemaFilter {
-
+/**
+ * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
+ * their values. {@link IdFilter} and {@link AttributeFilter} just indicates that how to get the
+ * id/attribute value from the device entry.
+ */
+public class AttributeFilter extends AbstractSingleChildFilter {
   private final String key;
 
-  private final String value;
-
-  public DeviceAttributeFilter(String key, String value) {
+  public AttributeFilter(final SchemaFilter child, final String key) {
+    super(child);
     this.key = key;
-    this.value = value;
   }
 
-  public DeviceAttributeFilter(ByteBuffer byteBuffer) {
-    this.key = ReadWriteIOUtils.readString(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
+  public AttributeFilter(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
+    key = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public String getKey() {
     return key;
   }
 
-  public String getValue() {
-    return value;
-  }
-
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitDeviceAttributeFilter(this, node);
+  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+    return visitor.visitAttributeFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.DEVICE_ATTRIBUTE;
+    return SchemaFilterType.ATTRIBUTE;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
     ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AttributeFilter that = (AttributeFilter) o;
+    return super.equals(o) && Objects.equals(key, that.key);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(key, super.hashCode());
   }
 }

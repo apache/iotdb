@@ -809,7 +809,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
-            node.getIdDeterminedPredicateList(),
+            node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
   }
@@ -830,7 +830,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
-            node.getIdDeterminedPredicateList(),
+            node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
   }
