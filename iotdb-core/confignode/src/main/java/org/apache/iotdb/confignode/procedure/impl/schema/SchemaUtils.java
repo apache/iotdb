@@ -256,4 +256,27 @@ public class SchemaUtils {
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
+
+  public static Map<Integer, TSStatus> rollbackPreRelease(
+      final String database, final String tableName, final ConfigManager configManager) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(database, outputStream);
+      ReadWriteIOUtils.write(tableName, outputStream);
+    } catch (final IOException ignore) {
+      // ByteArrayOutputStream will not throw IOException
+    }
+    req.setTableInfo(outputStream.toByteArray());
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
 }

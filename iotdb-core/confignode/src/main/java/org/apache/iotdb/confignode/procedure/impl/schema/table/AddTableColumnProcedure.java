@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -38,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -46,7 +40,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -211,35 +204,19 @@ public class AddTableColumnProcedure
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, outputStream);
-      ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (final IOException ignore) {
-      // ByteArrayOutputStream will not throw IOException
-    }
-    req.setTableInfo(outputStream.toByteArray());
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to rollback pre-release column extension info of table {}.{} rollback-create info to DataNode {}",
-            database,
-            table.getTableName(),
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(
-            new ProcedureException(
-                new MetadataException("Rollback pre-release table column extension info failed")));
-        return;
-      }
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to rollback pre-release column extension info of table {}.{} info to DataNode, failure results: {}",
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Rollback pre-release table column extension info failed")));
     }
   }
 
