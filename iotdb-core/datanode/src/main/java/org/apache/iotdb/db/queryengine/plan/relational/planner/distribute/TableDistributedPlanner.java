@@ -28,11 +28,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+
+import com.google.common.collect.ImmutableSet;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,51 +50,32 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 
-public class TableDistributionPlanner {
+public class TableDistributedPlanner {
 
   private final Analysis analysis;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
 
-  public TableDistributionPlanner(
+  public TableDistributedPlanner(
       Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = mppQueryContext;
-    this.optimizers = Arrays.asList(new PushLimitOffsetIntoTableScan(), new SortElimination());
+    this.optimizers =
+        Arrays.asList(
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
+                ImmutableSet.of(
+                    new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort())),
+            new SortElimination());
   }
 
   public DistributedQueryPlan plan() {
-
-    // generate table model distributed plan
-    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
-    List<PlanNode> distributedPlanResult =
-        new DistributedPlanGenerator(mppQueryContext, analysis)
-            .genResult(logicalQueryPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
-
-    // distribute plan optimize rule
-    PlanNode distributedPlan = distributedPlanResult.get(0);
-    for (PlanOptimizer optimizer : optimizers) {
-      distributedPlan =
-          optimizer.optimize(
-              distributedPlan,
-              new PlanOptimizer.Context(
-                  null,
-                  analysis,
-                  null,
-                  mppQueryContext,
-                  mppQueryContext.getTypeProvider(),
-                  new SymbolAllocator(),
-                  mppQueryContext.getQueryId(),
-                  NOOP,
-                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
-    }
-
-    // add exchange node for distributed plan
-    PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
+    PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
@@ -116,6 +104,40 @@ public class TableDistributionPlanner {
 
     return new DistributedQueryPlan(
         logicalQueryPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+  }
+
+  public PlanNode generateDistributedPlanWithOptimize(
+      TableDistributedPlanGenerator.PlanContext planContext) {
+    // generate table model distributed plan
+
+    List<PlanNode> distributedPlanResult =
+        new TableDistributedPlanGenerator(mppQueryContext, analysis)
+            .genResult(logicalQueryPlan.getRootNode(), planContext);
+    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+
+    // distribute plan optimize rule
+    PlanNode distributedPlan = distributedPlanResult.get(0);
+
+    if (analysis.getStatement() instanceof Query) {
+      for (PlanOptimizer optimizer : optimizers) {
+        distributedPlan =
+            optimizer.optimize(
+                distributedPlan,
+                new PlanOptimizer.Context(
+                    null,
+                    analysis,
+                    null,
+                    mppQueryContext,
+                    mppQueryContext.getTypeProvider(),
+                    new SymbolAllocator(),
+                    mppQueryContext.getQueryId(),
+                    NOOP,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
+    }
+
+    // add exchange node for distributed plan
+    return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }
 
   public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
@@ -152,7 +174,7 @@ public class TableDistributionPlanner {
     rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
-  private void adjustUpStream(PlanNode root, DistributedPlanGenerator.PlanContext context) {
+  private void adjustUpStream(PlanNode root, TableDistributedPlanGenerator.PlanContext context) {
     if (!context.hasExchangeNode) {
       return;
     }
@@ -162,7 +184,7 @@ public class TableDistributionPlanner {
 
   private void adjustUpStreamHelper(
       PlanNode root,
-      DistributedPlanGenerator.PlanContext context,
+      TableDistributedPlanGenerator.PlanContext context,
       Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
     for (PlanNode child : root.getChildren()) {
       adjustUpStreamHelper(child, context, regionNodeMap);

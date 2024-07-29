@@ -52,7 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -122,7 +123,7 @@ public class AnalyzerTest {
   LogicalPlanner logicalPlanner;
   LogicalQueryPlan logicalQueryPlan;
   PlanNode rootNode;
-  TableDistributionPlanner distributionPlanner;
+  TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
 
@@ -195,7 +196,7 @@ public class AnalyzerTest {
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
 
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     assertTrue(
@@ -236,7 +237,7 @@ public class AnalyzerTest {
     assertNull(tableScanNode.getPushDownPredicate());
     assertEquals(ASC, tableScanNode.getScanOrder());
 
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -293,7 +294,7 @@ public class AnalyzerTest {
             .map(Symbol::toString)
             .collect(Collectors.toSet()));
 
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -444,7 +445,7 @@ public class AnalyzerTest {
     tableScanNode =
         (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertEquals(Arrays.asList("tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -699,7 +700,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -784,11 +785,11 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    assertTrue(rootNode.getChildren().get(0) instanceof LimitNode);
-    LimitNode limitNode = (LimitNode) rootNode.getChildren().get(0);
-    assertEquals(5, limitNode.getCount());
-    OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+    assertTrue(rootNode.getChildren().get(0) instanceof OffsetNode);
+    OffsetNode offsetNode = (OffsetNode) rootNode.getChildren().get(0);
     assertEquals(3, offsetNode.getCount());
+    LimitNode limitNode = (LimitNode) offsetNode.getChild();
+    assertEquals(8, limitNode.getCount());
 
     sql =
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
@@ -800,11 +801,11 @@ public class AnalyzerTest {
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof LimitNode);
-    limitNode = (LimitNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals(5, limitNode.getCount());
-    offsetNode = (OffsetNode) limitNode.getChild();
+    assertTrue(getChildrenNode(rootNode, 2) instanceof OffsetNode);
+    offsetNode = (OffsetNode) getChildrenNode(rootNode, 2);
     assertEquals(3, offsetNode.getCount());
+    limitNode = (LimitNode) offsetNode.getChild();
+    assertEquals(8, limitNode.getCount());
   }
 
   @Test
@@ -930,7 +931,7 @@ public class AnalyzerTest {
     assertArrayEquals(columns, insertTabletNode.getColumns());
     assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
 
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getInstances().size());
   }
@@ -972,7 +973,7 @@ public class AnalyzerTest {
     assertArrayEquals(columns, insertNode.getValues());
     assertEquals(StatementTestUtils.genTimestamps()[0], insertNode.getTime());
 
-    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(1, distributedQueryPlan.getInstances().size());
   }

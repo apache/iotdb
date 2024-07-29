@@ -20,10 +20,15 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -866,6 +871,54 @@ public class PartialPathTest {
     assertEquals("c", deviceID.segment(1));
     assertEquals("d", deviceID.segment(2));
     assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testSerialization() throws IllegalPathException, IOException {
+    PartialPath partialPath = new PartialPath("root.a.b.c.d.s1");
+    ByteBuffer buffer = partialPath.serialize();
+    PartialPath deserialized = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(partialPath, deserialized);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      partialPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserialized = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(partialPath, deserialized);
+    }
+
+    MeasurementPath measurementPath = new MeasurementPath("root.a.b.c.d.s1");
+    measurementPath.setMeasurementAlias("ss1");
+    measurementPath.setMeasurementSchema(new MeasurementSchema("s1", TSDataType.DOUBLE));
+    measurementPath.setTagMap(Collections.singletonMap("tag1", "tagValue1"));
+    buffer = measurementPath.serialize();
+    MeasurementPath deserializedMeasurementPath =
+        (MeasurementPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(measurementPath, deserializedMeasurementPath);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      measurementPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserializedMeasurementPath = (MeasurementPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(measurementPath, deserializedMeasurementPath);
+    }
+
+    AlignedPath alignedPath = new AlignedPath("root.a.b.c.d");
+    alignedPath.setMeasurementList(Arrays.asList("s1", "s2"));
+    alignedPath.setSchemaList(
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.DOUBLE),
+            new MeasurementSchema("s2", TSDataType.TEXT)));
+    buffer = alignedPath.serialize();
+    AlignedPath deserializedAlignedPath = (AlignedPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(alignedPath, deserializedAlignedPath);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      alignedPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserializedAlignedPath = (AlignedPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(alignedPath, deserializedAlignedPath);
+    }
   }
 
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {

@@ -33,7 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyze
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -141,7 +141,7 @@ public class PlanTester {
 
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
-      distributedQueryPlan = new TableDistributionPlanner(analysis, plan, plan.getContext()).plan();
+      distributedQueryPlan = new TableDistributedPlanner(analysis, plan, plan.getContext()).plan();
     }
     checkState(
         distributedQueryPlan != null,

@@ -25,8 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -63,15 +66,16 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator.parseDeviceIdArray;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
-public class DistributedPlanGenerator
-    extends PlanVisitor<List<PlanNode>, DistributedPlanGenerator.PlanContext> {
+public class TableDistributedPlanGenerator
+    extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
   private final QueryId queryId;
   private final Analysis analysis;
   Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
 
-  public DistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
+  public TableDistributedPlanGenerator(MPPQueryContext queryContext, Analysis analysis) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
   }
@@ -81,8 +85,8 @@ public class DistributedPlanGenerator
     if (res.size() == 1) {
       return res;
     } else if (res.size() > 1) {
-      CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
-      collectNode.setOutputSymbols(res.get(0).getOutputSymbols());
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
@@ -91,7 +95,8 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitPlan(PlanNode node, DistributedPlanGenerator.PlanContext context) {
+  public List<PlanNode> visitPlan(
+      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return Collections.singletonList(node);
     }
@@ -194,9 +199,41 @@ public class DistributedPlanGenerator
   }
 
   @Override
+  public List<PlanNode> visitTopK(TopKNode node, PlanContext context) {
+    context.expectedOrderingScheme = node.getOrderingScheme();
+    context.hasSortProperty = true;
+    nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
+
+    checkArgument(
+        node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
+    List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChildren(Collections.singletonList(childrenNodes.get(0)));
+      return Collections.singletonList(node);
+    }
+
+    TopKNode newTopKNode = (TopKNode) node.clone();
+    for (int i = 0; i < childrenNodes.size(); i++) {
+      PlanNode child = childrenNodes.get(i);
+      TopKNode subTopKNode =
+          new TopKNode(
+              queryId.genPlanNodeId(),
+              Collections.singletonList(child),
+              node.getOrderingScheme(),
+              node.getCount(),
+              node.getOutputSymbols(),
+              node.isChildrenDataInOrder());
+      newTopKNode.addChild(subTopKNode);
+    }
+    nodeOrderingMap.put(newTopKNode.getPlanNodeId(), newTopKNode.getOrderingScheme());
+
+    return Collections.singletonList(newTopKNode);
+  }
+
+  @Override
   public List<PlanNode> visitSort(SortNode node, PlanContext context) {
     context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortNode = true;
+    context.hasSortProperty = true;
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -211,7 +248,7 @@ public class DistributedPlanGenerator
             queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
       SortNode subSortNode =
-          new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false);
+          new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
       mergeSortNode.addChild(subSortNode);
     }
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
@@ -222,7 +259,7 @@ public class DistributedPlanGenerator
   @Override
   public List<PlanNode> visitStreamSort(StreamSortNode node, PlanContext context) {
     context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortNode = true;
+    context.hasSortProperty = true;
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -242,6 +279,7 @@ public class DistributedPlanGenerator
               child,
               node.getOrderingScheme(),
               false,
+              node.isOrderByAllIdsAndTime(),
               node.getStreamCompareKeyEndIndex());
       mergeSortNode.addChild(subSortNode);
     }
@@ -309,7 +347,10 @@ public class DistributedPlanGenerator
                           node.getIdAndAttributeIndexMap(),
                           node.getScanOrder(),
                           node.getTimePredicate().orElse(null),
-                          node.getPushDownPredicate());
+                          node.getPushDownPredicate(),
+                          node.getPushDownLimit(),
+                          node.getPushDownOffset(),
+                          node.isPushLimitToEachDevice());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -333,9 +374,9 @@ public class DistributedPlanGenerator
         maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
       }
     }
-    context.mostUsedDataRegion = mostUsedDataRegion;
+    context.mostUsedRegion = mostUsedDataRegion;
 
-    if (!context.hasSortNode) {
+    if (!context.hasSortProperty) {
       return resultTableScanNodeList;
     }
 
@@ -357,8 +398,8 @@ public class DistributedPlanGenerator
     }
 
     // children has no sort property, use CollectNode to merge children
-    CollectNode collectNode = new CollectNode(queryId.genPlanNodeId());
-    collectNode.setOutputSymbols(firstChild.getOutputSymbols());
+    CollectNode collectNode =
+        new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
   }
@@ -445,9 +486,21 @@ public class DistributedPlanGenerator
 
   // ------------------- schema related interface ---------------------------------------------
   @Override
-  public List<PlanNode> visitTableDeviceQuery(TableDeviceQueryNode node, PlanContext context) {
-    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
-    Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
+  public List<PlanNode> visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final PlanContext context) {
+    return visitAbstractTableDeviceQuery(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitTableDeviceQueryCount(
+      final TableDeviceQueryCountNode node, final PlanContext context) {
+    return visitAbstractTableDeviceQuery(node, context);
+  }
+
+  private List<PlanNode> visitAbstractTableDeviceQuery(
+      final AbstractTableDeviceQueryNode node, final PlanContext context) {
+    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
@@ -455,14 +508,15 @@ public class DistributedPlanGenerator
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
-    context.mostUsedDataRegion = schemaRegionSet.iterator().next();
+    context.mostUsedRegion = schemaRegionSet.iterator().next();
     if (schemaRegionSet.size() == 1) {
       node.setRegionReplicaSet(schemaRegionSet.iterator().next());
       return Collections.singletonList(node);
     } else {
-      List<PlanNode> res = new ArrayList<>(schemaRegionSet.size());
-      for (TRegionReplicaSet schemaRegion : schemaRegionSet) {
-        TableDeviceQueryNode clonedChild = (TableDeviceQueryNode) node.clone();
+      final List<PlanNode> res = new ArrayList<>(schemaRegionSet.size());
+      for (final TRegionReplicaSet schemaRegion : schemaRegionSet) {
+        final AbstractTableDeviceQueryNode clonedChild =
+            (AbstractTableDeviceQueryNode) node.clone();
         clonedChild.setPlanNodeId(queryId.genPlanNodeId());
         clonedChild.setRegionReplicaSet(schemaRegion);
         res.add(clonedChild);
@@ -472,27 +526,28 @@ public class DistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTableDeviceFetch(TableDeviceFetchNode node, PlanContext context) {
-    String database = PathUtils.qualifyDatabaseName(node.getDatabase());
-    Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
-    SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
-    Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =
+  public List<PlanNode> visitTableDeviceFetch(
+      final TableDeviceFetchNode node, final PlanContext context) {
+    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
+    final SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
+    final Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =
         schemaPartition.getSchemaPartitionMap().get(database);
 
     databaseMap.forEach(
         (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
     if (schemaRegionSet.size() == 1) {
-      context.mostUsedDataRegion = schemaRegionSet.iterator().next();
-      node.setRegionReplicaSet(context.mostUsedDataRegion);
+      context.mostUsedRegion = schemaRegionSet.iterator().next();
+      node.setRegionReplicaSet(context.mostUsedRegion);
       return Collections.singletonList(node);
     } else {
-      Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
+      final Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
 
-      for (Object[] deviceIdArray : node.getDeviceIdList()) {
-        IDeviceID deviceID =
+      for (final Object[] deviceIdArray : node.getDeviceIdList()) {
+        final IDeviceID deviceID =
             IDeviceID.Factory.DEFAULT_FACTORY.create(parseDeviceIdArray(deviceIdArray));
-        TRegionReplicaSet regionReplicaSet =
+        final TRegionReplicaSet regionReplicaSet =
             databaseMap.get(schemaPartition.calculateDeviceGroupId(deviceID));
         tableDeviceFetchMap
             .computeIfAbsent(
@@ -508,13 +563,13 @@ public class DistributedPlanGenerator
             .addDeviceId(deviceIdArray);
       }
 
-      List<PlanNode> res = new ArrayList<>();
+      final List<PlanNode> res = new ArrayList<>();
       TRegionReplicaSet mostUsedDataRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
-      for (Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
+      for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
           tableDeviceFetchMap.entrySet()) {
-        TRegionReplicaSet regionReplicaSet = entry.getKey();
-        TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
+        final TRegionReplicaSet regionReplicaSet = entry.getKey();
+        final TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
         res.add(subTableDeviceFetchNode);
 
         if (subTableDeviceFetchNode.getDeviceIdList().size() > maxDeviceEntrySizeOfTableScan) {
@@ -522,7 +577,7 @@ public class DistributedPlanGenerator
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedDataRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedDataRegion;
       return res;
     }
   }
@@ -530,9 +585,9 @@ public class DistributedPlanGenerator
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
     boolean hasExchangeNode = false;
-    boolean hasSortNode = false;
+    boolean hasSortProperty = false;
     OrderingScheme expectedOrderingScheme;
-    TRegionReplicaSet mostUsedDataRegion;
+    TRegionReplicaSet mostUsedRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

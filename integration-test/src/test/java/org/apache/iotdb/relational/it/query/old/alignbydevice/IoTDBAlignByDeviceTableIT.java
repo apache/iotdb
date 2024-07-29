@@ -226,7 +226,7 @@ public class IoTDBAlignByDeviceTableIT {
           "1970-01-01T00:00:01.000Z,d0,22222,22222,55555,",
         };
     tableResultSetEqualTest(
-        "select time, device_id, s0,s0,s1 from vehicle order by device_id offset 1 limit 10",
+        "select time, device_id, s0,s0,s1 from vehicle order by device_id,time offset 1 limit 10",
         expectedHeader,
         retArray,
         DATABASE_NAME);
