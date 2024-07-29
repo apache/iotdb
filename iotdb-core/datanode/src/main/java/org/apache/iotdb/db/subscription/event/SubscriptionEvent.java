@@ -69,7 +69,7 @@ public class SubscriptionEvent {
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
   private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
-  private volatile long committedTimestamp = INVALID_TIMESTAMP;
+  private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
   /**
    * Constructs a {@link SubscriptionEvent} with an initial response.
@@ -142,7 +142,7 @@ public class SubscriptionEvent {
   //////////////////////////// commit ////////////////////////////
 
   public void recordCommittedTimestamp() {
-    committedTimestamp = System.currentTimeMillis();
+    committedTimestamp.set(System.currentTimeMillis());
   }
 
   public boolean isCommitted() {
@@ -150,7 +150,7 @@ public class SubscriptionEvent {
       // event with invalid commit id is committed
       return true;
     }
-    return committedTimestamp != INVALID_TIMESTAMP;
+    return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {

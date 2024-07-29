@@ -39,13 +39,13 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
 
-  private final Cache<Integer, Integer> polledTsFiles;
+  private final Cache<Integer, Boolean> hashCodeToIsGeneratedByHistoricalExtractor;
 
   public TsFileDeduplicationBlockingPendingQueue(
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(inputPendingQueue);
 
-    this.polledTsFiles =
+    this.hashCodeToIsGeneratedByHistoricalExtractor =
         Caffeine.newBuilder()
             .expireAfterWrite(
                 SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
@@ -91,13 +91,21 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
   private boolean isDuplicated(final PipeTsFileInsertionEvent event) {
     final int hashCode = event.getTsFile().hashCode();
-    if (Objects.nonNull(polledTsFiles.getIfPresent(hashCode))) {
-      LOGGER.info(
-          "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
-          event.coreReportMessage());
-      return true;
+    final boolean isGeneratedByHistoricalExtractor = event.isGeneratedByHistoricalExtractor();
+    final Boolean existedIsGeneratedByHistoricalExtractor =
+        hashCodeToIsGeneratedByHistoricalExtractor.getIfPresent(hashCode);
+    if (Objects.isNull(existedIsGeneratedByHistoricalExtractor)) {
+      hashCodeToIsGeneratedByHistoricalExtractor.put(hashCode, isGeneratedByHistoricalExtractor);
+      return false;
     }
-    polledTsFiles.put(hashCode, hashCode);
-    return false;
+    // Multiple PipeRawTabletInsertionEvents parsed from the same PipeTsFileInsertionEvent (i.e.,
+    // with the same isGeneratedByHistoricalExtractor field) are not considered duplicates.
+    if (Objects.equals(existedIsGeneratedByHistoricalExtractor, isGeneratedByHistoricalExtractor)) {
+      return false;
+    }
+    LOGGER.info(
+        "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
+        event.coreReportMessage());
+    return true;
   }
 }
