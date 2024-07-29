@@ -31,14 +31,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -115,66 +110,6 @@ public class IoTDBStreamSortIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  // ordinal data
-  public static final String[][] RES =
-      new String[][] {
-        {"0", "3", "2947483648", "231.2121", "coconut", "false"},
-        {"20", "2", "2147483648", "434.12", "pineapple", "true"},
-        {"40", "1", "2247483648", "12.123", "apricot", "true"},
-        {"80", "9", "2147483646", "43.12", "apple", "false"},
-        {"100", "8", "2147483964", "4654.231", "papaya", "true"},
-        {"31536000000", "6", "2147483650", "1231.21", "banana", "true"},
-        {"31536000100", "10", "3147483648", "231.55", "pumelo", "false"},
-        {"31536000500", "4", "2147493648", "213.1", "peach", "false"},
-        {"31536001000", "5", "2149783648", "56.32", "orange", "false"},
-        {"31536010000", "7", "2147983648", "213.112", "lemon", "true"},
-        {"31536100000", "11", "2147468648", "54.121", "pitaya", "false"},
-        {"41536000000", "12", "2146483648", "45.231", "strawberry", "false"},
-        {"41536000020", "14", "2907483648", "231.34", "cherry", "false"},
-        {"41536900000", "13", "2107483648", "54.12", "lychee", "true"},
-        {"51536000000", "15", "3147483648", "235.213", "watermelon", "true"},
-      };
-
-  private void checkHeader(ResultSetMetaData resultSetMetaData, String[] title)
-      throws SQLException {
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      assertEquals(title[i - 1], resultSetMetaData.getColumnName(i));
-    }
-  }
-
-  private void testNormalOrderBy(String sql, int[] ans) {
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(USE_DB);
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        checkHeader(metaData, new String[] {"Time", "num", "bigNum", "floatNum", "str", "bool"});
-        int i = 0;
-        while (resultSet.next()) {
-
-          long actualTime = resultSet.getLong(1);
-          String actualNum = resultSet.getString(2);
-          String actualBigNum = resultSet.getString(3);
-          double actualFloatNum = resultSet.getDouble(4);
-          String actualStr = resultSet.getString(5);
-          String actualBool = resultSet.getString(6);
-
-          assertEquals(Long.parseLong(RES[ans[i]][0]), actualTime);
-          assertEquals(RES[ans[i]][1], actualNum);
-          assertEquals(RES[ans[i]][2], actualBigNum);
-          assertEquals(Double.parseDouble(RES[ans[i]][3]), actualFloatNum, 0.0001);
-          assertEquals(RES[ans[i]][4], actualStr);
-          assertEquals(RES[ans[i]][5], actualBool);
-          i++;
-        }
-        assertEquals(i, ans.length);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
     }
   }
 
