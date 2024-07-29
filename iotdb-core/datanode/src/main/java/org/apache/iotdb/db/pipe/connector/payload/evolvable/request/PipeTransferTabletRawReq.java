@@ -42,6 +42,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
+
 public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletRawReq.class);
@@ -61,7 +63,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
-      if (tablet == null || tablet.rowSize == 0) {
+      if (isTabletEmpty(tablet)) {
         // Empty statement, will be filtered after construction
         return new InsertTabletStatement();
       }

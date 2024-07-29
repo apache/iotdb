@@ -242,13 +242,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       providers.releaseWriteLock();
     }
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
     // submit heartbeat worker
     submitHeartbeatWorker();
 
     // submit endpoints syncer
     submitEndpointsSyncer();
-
-    isClosed.set(false);
   }
 
   @Override
