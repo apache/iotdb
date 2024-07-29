@@ -142,10 +142,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
               commitContext));
     }
-    LOGGER.info(
-        "generate subscription events with commit context {} for enriched events {}",
-        commitContext,
-        enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList()));
     return Collections.singletonList(
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
