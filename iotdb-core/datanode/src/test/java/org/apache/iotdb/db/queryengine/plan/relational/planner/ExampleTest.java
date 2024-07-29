@@ -63,7 +63,6 @@ public class ExampleTest {
         "SELECT time, tag3, substring(tag1, 1), cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5";
 
-    // If you want to verify DistributionPlan later, set `createDistributedPlan` true here
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
     PlanMatchPattern tableScan =
@@ -73,7 +72,7 @@ public class ExampleTest {
             ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "s1", "s2", "s3"));
 
     // Verify full LogicalPlan
-    // Output - Limit - Offset -Project - MergeSort - Sort - Project - Filter - TableScan
+    // Output - Offset -Project - MergeSort - Sort - Project - Filter - TableScan
     assertPlan(
         logicalQueryPlan,
         output(
