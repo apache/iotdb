@@ -34,7 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
-public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGenerator.PlanContext> {
+public class AddExchangeNodes
+    extends PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
 
   private final MPPQueryContext queryContext;
 
@@ -42,12 +43,13 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
     this.queryContext = queryContext;
   }
 
-  public PlanNode addExchangeNodes(PlanNode node, DistributedPlanGenerator.PlanContext context) {
+  public PlanNode addExchangeNodes(
+      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     return node.accept(this, context);
   }
 
   @Override
-  public PlanNode visitPlan(PlanNode node, DistributedPlanGenerator.PlanContext context) {
+  public PlanNode visitPlan(PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return node;
     }
@@ -89,7 +91,8 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
   }
 
   @Override
-  public PlanNode visitTableScan(TableScanNode node, DistributedPlanGenerator.PlanContext context) {
+  public PlanNode visitTableScan(
+      TableScanNode node, TableDistributedPlanGenerator.PlanContext context) {
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
@@ -98,18 +101,18 @@ public class AddExchangeNodes extends PlanVisitor<PlanNode, DistributedPlanGener
 
   @Override
   public PlanNode visitTableDeviceFetch(
-      TableDeviceFetchNode node, DistributedPlanGenerator.PlanContext context) {
+      TableDeviceFetchNode node, TableDistributedPlanGenerator.PlanContext context) {
     return processTableDeviceSourceNode(node, context);
   }
 
   @Override
   public PlanNode visitTableDeviceQuery(
-      TableDeviceQueryNode node, DistributedPlanGenerator.PlanContext context) {
+      TableDeviceQueryNode node, TableDistributedPlanGenerator.PlanContext context) {
     return processTableDeviceSourceNode(node, context);
   }
 
   private PlanNode processTableDeviceSourceNode(
-      TableDeviceSourceNode node, DistributedPlanGenerator.PlanContext context) {
+      TableDeviceSourceNode node, TableDistributedPlanGenerator.PlanContext context) {
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));

@@ -121,7 +121,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
           "1970-01-01T00:00:00.002Z,d1,2.2,false,2,", "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 order by device_id OFFSET 1 LIMIT 2",
+        "SELECT * FROM table1 order by device_id, time OFFSET 1 LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -201,7 +201,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
           "1970-01-01T00:00:00.002Z,d1,2,2.2,", "1970-01-01T00:00:00.001Z,d2,11,11.1,",
         };
     tableResultSetEqualTest(
-        "SELECT time, device_id, s3,s1 FROM table1 order by device_id OFFSET 1 LIMIT 2",
+        "SELECT time, device_id, s3,s1 FROM table1 order by device_id,time OFFSET 1 LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -299,7 +299,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
           "1970-01-01T00:00:00.001Z,d2,11.1,false,11,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE time < 5 ORDER BY device_id DESC LIMIT 4",
+        "SELECT * FROM table1 WHERE time < 5 ORDER BY device_id DESC, time LIMIT 4",
         expectedHeader,
         retArray,
         DATABASE_NAME);

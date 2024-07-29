@@ -149,6 +149,10 @@ public final class Patterns {
     return typeOf(SortNode.class);
   }
 
+  public static Pattern<MergeSortNode> mergeSort() {
+    return typeOf(MergeSortNode.class);
+  }
+
   /*
       public static Pattern<TableFinishNode> tableFinish()
       {
@@ -160,14 +164,13 @@ public final class Patterns {
     return typeOf(TableScanNode.class);
   }
 
+  public static Pattern<TopKNode> topK() {
+    return typeOf(TopKNode.class);
+  }
+
   /*public static Pattern<TableWriterNode> tableWriterNode()
   {
       return typeOf(TableWriterNode.class);
-  }
-
-  public static Pattern<TopNNode> topN()
-  {
-      return typeOf(TopNNode.class);
   }
 
   public static Pattern<UnionNode> union()

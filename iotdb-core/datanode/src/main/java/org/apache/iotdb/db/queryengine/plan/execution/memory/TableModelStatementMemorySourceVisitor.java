@@ -26,13 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.AddExchangeNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.DistributedPlanGenerator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushLimitOffsetIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -40,11 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
@@ -81,38 +74,11 @@ public class TableModelStatementMemorySourceVisitor
     }
 
     // generate table model distributed plan
-    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
-    List<PlanNode> distributedPlanResult =
-        new DistributedPlanGenerator(context.getQueryContext(), context.getAnalysis())
-            .genResult(logicalPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
-
-    // Notice: when change the optimizers in TableDistributionPlanner, these code also need to be
-    // adapted
-    List<PlanOptimizer> optimizers =
-        Arrays.asList(new PushLimitOffsetIntoTableScan(), new SortElimination());
-    // distribute plan optimize rule
-    PlanNode distributedPlan = distributedPlanResult.get(0);
-    for (PlanOptimizer optimizer : optimizers) {
-      distributedPlan =
-          optimizer.optimize(
-              distributedPlan,
-              new PlanOptimizer.Context(
-                  null,
-                  context.getAnalysis(),
-                  null,
-                  context.getQueryContext(),
-                  context.getQueryContext().getTypeProvider(),
-                  new SymbolAllocator(),
-                  context.getQueryContext().getQueryId(),
-                  NOOP,
-                  PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
-    }
-
-    // add exchange node for distributed plan
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(context.getQueryContext())
-            .addExchangeNodes(distributedPlan, planContext);
+        new TableDistributedPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
+            .generateDistributedPlanWithOptimize(planContext);
 
     List<String> lines =
         outputNodeWithExchange.accept(

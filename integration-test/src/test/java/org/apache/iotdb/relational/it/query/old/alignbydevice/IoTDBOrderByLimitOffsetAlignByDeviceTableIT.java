@@ -70,7 +70,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceTableIT {
     // 3. time filter, can push down LIMIT
     retArray = new String[] {"1970-01-01T00:00:00.002Z,d3,33,", "1970-01-01T00:00:00.002Z,d2,22,"};
     tableResultSetEqualTest(
-        "SELECT * FROM table1 WHERE time>1 and time<3 ORDER BY device_id DESC LIMIT 2",
+        "SELECT * FROM table1 WHERE time>1 and time<3 ORDER BY device_id DESC,time LIMIT 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
