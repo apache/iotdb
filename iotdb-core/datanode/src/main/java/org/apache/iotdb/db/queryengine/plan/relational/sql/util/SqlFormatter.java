@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTableAddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -508,16 +509,16 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateTable(CreateTable node, Integer indent) {
+    protected Void visitCreateTable(final CreateTable node, final Integer indent) {
       builder.append("CREATE TABLE ");
       if (node.isIfNotExists()) {
         builder.append("IF NOT EXISTS ");
       }
-      String tableName = formatName(node.getName());
+      final String tableName = formatName(node.getName());
       builder.append(tableName).append(" (\n");
 
-      String elementIndent = indentString(indent + 1);
-      String columnList =
+      final String elementIndent = indentString(indent + 1);
+      final String columnList =
           node.getElements().stream()
               .map(
                   element -> {
@@ -532,6 +533,26 @@ public final class SqlFormatter {
       builder.append("\n").append(")");
 
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitAlterTableAddColumn(final AlterTableAddColumn node, final Integer indent) {
+      builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+      final String tableName = formatName(node.getName());
+      builder.append(tableName);
+
+      builder.append("ADD COLUMN ");
+      if (node.columnIfNotExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
+      builder.append("\n");
+      builder.append(formatColumnDefinition(node.getElement()));
 
       return null;
     }

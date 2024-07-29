@@ -223,7 +223,7 @@ public class TableHeaderSchemaValidator {
       MPPQueryContext context) {
     AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
-            database, tableName, inputColumnList, context.getQueryId().getId());
+            database, tableName, inputColumnList, context.getQueryId().getId(), true, true);
     try {
       ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       ConfigTaskResult result = future.get();

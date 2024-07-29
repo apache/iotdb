@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTableAddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
@@ -284,13 +285,19 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateTable(CreateTable node, Optional<Scope> context) {
+    protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropTable(DropTable node, Optional<Scope> context) {
+    protected Scope visitAlterTableAddColumn(
+        final AlterTableAddColumn node, final Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 

@@ -42,10 +42,10 @@ public final class ColumnDefinition extends Node {
   @Nullable private final String charsetName;
 
   public ColumnDefinition(
-      Identifier name,
-      DataType type,
-      TsTableColumnCategory columnCategory,
-      @Nullable String charsetName) {
+      final Identifier name,
+      final DataType type,
+      final TsTableColumnCategory columnCategory,
+      final @Nullable String charsetName) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.type = requireNonNull(type, "type is null");
@@ -54,16 +54,17 @@ public final class ColumnDefinition extends Node {
   }
 
   public ColumnDefinition(
-      NodeLocation location,
-      Identifier name,
+      final NodeLocation location,
+      final Identifier name,
       DataType type,
-      TsTableColumnCategory columnCategory,
-      @Nullable String charsetName) {
+      final TsTableColumnCategory columnCategory,
+      final @Nullable String charsetName) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
     if ((columnCategory == TsTableColumnCategory.ID
-        || columnCategory == TsTableColumnCategory.ATTRIBUTE) && (Objects.isNull(type))) {
+            || columnCategory == TsTableColumnCategory.ATTRIBUTE)
+        && (Objects.isNull(type))) {
       type = new GenericDataType(new Identifier("string"), new ArrayList<>());
     }
     this.type = requireNonNull(type, "type is null");
@@ -87,7 +88,7 @@ public final class ColumnDefinition extends Node {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, C context) {
     return visitor.visitColumnDefinition(this, context);
   }
 
@@ -97,14 +98,14 @@ public final class ColumnDefinition extends Node {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ColumnDefinition that = (ColumnDefinition) o;
+    final ColumnDefinition that = (ColumnDefinition) o;
     return Objects.equals(name, that.name)
         && Objects.equals(type, that.type)
         && columnCategory == that.columnCategory

@@ -51,24 +51,37 @@ public class AlterTableAddColumnTask implements IConfigTask {
 
   private final String queryId;
 
+  private final boolean tableIfExists;
+
+  private final boolean columnIfExists;
+
   public AlterTableAddColumnTask(
-      String database, String tableName, List<ColumnSchema> columnList, String queryId) {
+      String database,
+      final String tableName,
+      List<ColumnSchema> columnList,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
     database = PathUtils.qualifyDatabaseName(database);
     this.database = database;
     this.tableName = tableName;
     this.columnList = parseInputColumnSchema(columnList);
     this.queryId = queryId;
+    this.tableIfExists = tableIfExists;
+    this.columnIfExists = columnIfExists;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.alterTableAddColumn(database, tableName, columnList, queryId);
+    return configTaskExecutor.alterTableAddColumn(
+        database, tableName, columnList, queryId, tableIfExists, columnIfExists);
   }
 
-  private List<TsTableColumnSchema> parseInputColumnSchema(List<ColumnSchema> inputColumnList) {
-    List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(inputColumnList.size());
-    for (ColumnSchema inputColumn : inputColumnList) {
+  private List<TsTableColumnSchema> parseInputColumnSchema(
+      final List<ColumnSchema> inputColumnList) {
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(inputColumnList.size());
+    for (final ColumnSchema inputColumn : inputColumnList) {
       switch (inputColumn.getColumnCategory()) {
         case ID:
           if (!inputColumn.getType().equals(StringType.STRING)) {

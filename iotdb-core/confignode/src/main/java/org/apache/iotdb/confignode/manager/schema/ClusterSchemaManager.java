@@ -1124,7 +1124,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table %s.%s not exist", database, tableName)),
+              String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
 

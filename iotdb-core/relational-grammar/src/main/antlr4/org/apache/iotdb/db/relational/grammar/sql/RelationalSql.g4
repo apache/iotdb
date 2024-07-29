@@ -172,7 +172,7 @@ alterOptions
     | tableName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier    #renameColumn
     | tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
-    | ALTER TABLE tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
 
