@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -79,7 +80,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
   private final String sql3 = "select count(s_0) from " + databasePrefix + "3.d_0";
   private final String sql4 = "select count(s_0) from " + databasePrefix + "4.d_0";
 
-  private final List<MeasurementSchema> schemaList = new ArrayList<>(2);
+  private final List<IMeasurementSchema> schemaList = new ArrayList<>(2);
   private final List<SubscriptionPushConsumer> consumers = new ArrayList<>(10);
 
   private void createTopic(
