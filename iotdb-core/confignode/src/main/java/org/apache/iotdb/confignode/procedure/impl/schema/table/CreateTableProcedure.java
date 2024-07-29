@@ -314,15 +314,13 @@ public class CreateTableProcedure
       throws IOException, InterruptedException, ProcedureException {
     final long startTime = System.currentTimeMillis();
     try {
-      switch (state) {
-        case PRE_CREATE:
-          LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
-          rollbackCreate(env);
-          break;
-        case PRE_RELEASE:
-          LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
-          rollbackPreRelease(env);
-          break;
+      if (state == CreateTableState.PRE_RELEASE) {
+        // There is no need to rollback at the preCreate state
+        // Because if preCreate fails, ratis and preCreate impl will guarantee that
+        // The state machine's state won't be changed
+        LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
+        rollbackCreate(env);
+        rollbackPreRelease(env);
       }
     } finally {
       LOGGER.info(
