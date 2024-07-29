@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Iterables;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,16 +33,25 @@ import java.util.List;
 public class SortNode extends SingleChildProcessNode {
   protected final OrderingScheme orderingScheme;
   protected final boolean partial;
+  // when order by all ids and time, this sort node can be eliminated in a way, no need serialize
+  // initialize in construction method of StreamSortNode
+  protected boolean orderByAllIdsAndTime;
 
-  public SortNode(PlanNodeId id, PlanNode child, OrderingScheme scheme, boolean partial) {
+  public SortNode(
+      PlanNodeId id,
+      PlanNode child,
+      OrderingScheme scheme,
+      boolean partial,
+      boolean orderByAllIdsAndTime) {
     super(id, child);
     this.orderingScheme = scheme;
     this.partial = partial;
+    this.orderByAllIdsAndTime = orderByAllIdsAndTime;
   }
 
   @Override
   public PlanNode clone() {
-    return new SortNode(id, null, orderingScheme, partial);
+    return new SortNode(id, null, orderingScheme, partial, orderByAllIdsAndTime);
   }
 
   @Override
@@ -60,21 +68,18 @@ public class SortNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_SORT_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);
-    ReadWriteIOUtils.write(partial, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_SORT_NODE.serialize(stream);
     orderingScheme.serialize(stream);
-    ReadWriteIOUtils.write(partial, stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
-    boolean partial = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SortNode(planNodeId, null, orderingScheme, partial);
+    return new SortNode(planNodeId, null, orderingScheme, false, false);
   }
 
   @Override
@@ -84,7 +89,8 @@ public class SortNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    return new SortNode(id, Iterables.getOnlyElement(newChildren), orderingScheme, partial);
+    return new SortNode(
+        id, Iterables.getOnlyElement(newChildren), orderingScheme, partial, orderByAllIdsAndTime);
   }
 
   public OrderingScheme getOrderingScheme() {
@@ -93,6 +99,10 @@ public class SortNode extends SingleChildProcessNode {
 
   public boolean isPartial() {
     return this.partial;
+  }
+
+  public boolean isOrderByAllIdsAndTime() {
+    return orderByAllIdsAndTime;
   }
 
   @Override

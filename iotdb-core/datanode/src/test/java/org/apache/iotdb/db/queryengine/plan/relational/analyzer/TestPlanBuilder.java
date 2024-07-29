@@ -81,7 +81,10 @@ public class TestPlanBuilder {
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
-      Expression pushDownPredicate) {
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice) {
     this.root =
         new TableScanNode(
             new PlanNodeId(id),
@@ -92,7 +95,10 @@ public class TestPlanBuilder {
             idAndAttributeIndexMap,
             scanOrder,
             timePredicate,
-            pushDownPredicate);
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice);
     return this;
   }
 }

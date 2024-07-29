@@ -49,6 +49,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
+import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -59,12 +60,12 @@ public class IoTDBOrderByTableIT {
 
   // the data can be viewed in
   // https://docs.google.com/spreadsheets/d/1OWA1bKraArCwWVnuTjuhJ5yLG0PFLdD78gD6FjquepI/edit#gid=0
-  private static final String[] sql =
+  private static final String[] sql1 =
       new String[] {
-        "CREATE DATABASE sg",
-        "USE sg",
+        "CREATE DATABASE db",
+        "USE db",
         "CREATE TABLE table0 (device string id, attr1 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement);",
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -114,11 +115,22 @@ public class IoTDBOrderByTableIT {
   }
 
   private static void insertData() {
-    insertData1();
-    insertData2();
-  }
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
 
-  private static String USE_DB = "use db0";
+      for (String sql : sql1) {
+        statement.execute(sql);
+      }
+      for (String sql : sql2) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    // sessionInsertData1();
+    // sessionInsertData2();
+  }
 
   // ordinal data
   public static final String[][] RES =
@@ -1452,7 +1464,7 @@ public class IoTDBOrderByTableIT {
           41536900000L,
           51536000000L);
 
-  protected static void insertData1() {
+  protected static void sessionInsertData1() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
 
       session.open();
@@ -1509,7 +1521,7 @@ public class IoTDBOrderByTableIT {
     }
   }
 
-  protected static void insertData2() {
+  protected static void sessionInsertData2() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
 
       session.open();
