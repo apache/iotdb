@@ -273,7 +273,7 @@ public class WALInsertNodeCache {
         // batch load when wal file is sealed
         long position = 0;
         try (final WALByteBufReader walByteBufReader =
-            new WALByteBufReader(walEntryPosition.getWalFile())) {
+            new WALByteBufReader(walEntryPosition.getWALFileWithRetry())) {
           while (walByteBufReader.hasNext()) {
             // see WALInfoEntry#serialize, entry type + memtable id + plan node type
             final ByteBuffer buffer = walByteBufReader.next();
