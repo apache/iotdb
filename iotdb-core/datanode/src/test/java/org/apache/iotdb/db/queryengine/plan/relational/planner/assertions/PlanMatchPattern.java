@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -468,6 +469,14 @@ public final class PlanMatchPattern {
                 limit,
                 tiesResolvers,
                 preSortedInputs.stream().map(SymbolAlias::new).collect(toImmutableList())));
+  }
+
+  public static PlanMatchPattern mergeSort(PlanMatchPattern... sources) {
+    return node(MergeSortNode.class, sources);
+  }
+
+  public static PlanMatchPattern exchange() {
+    return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
   }
 
   public PlanMatchPattern(List<PlanMatchPattern> sourcePatterns) {

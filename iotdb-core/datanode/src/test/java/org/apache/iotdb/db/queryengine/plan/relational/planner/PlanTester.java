@@ -24,13 +24,16 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -42,11 +45,12 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
+import static org.glassfish.jersey.internal.guava.Preconditions.checkState;
 import static org.junit.Assert.fail;
 
 public class PlanTester {
-  QueryId queryId = new QueryId("test_query");
-  SessionInfo sessionInfo =
+  private final QueryId queryId = new QueryId("test_query");
+  private final SessionInfo sessionInfo =
       new SessionInfo(
           1L,
           "iotdb-user",
@@ -54,7 +58,13 @@ public class PlanTester {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
+  private final Metadata metadata = new TestMatadata();
+
+  private DistributedQueryPlan distributedQueryPlan;
+
+  private Analysis analysis;
+
+  private LogicalQueryPlan plan;
 
   public LogicalQueryPlan createPlan(String sql) {
     return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
@@ -72,11 +82,14 @@ public class PlanTester {
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
     Analysis analysis = analyze(sql, metadata);
+    this.analysis = analysis;
 
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
 
-    return logicalPlanner.plan(analysis);
+    plan = logicalPlanner.plan(analysis);
+
+    return plan;
   }
 
   public LogicalQueryPlan createPlan(
@@ -124,6 +137,16 @@ public class PlanTester {
     }
     fail();
     return null;
+  }
+
+  public PlanNode getFragmentPlan(int index) {
+    if (distributedQueryPlan == null) {
+      distributedQueryPlan = new TableDistributionPlanner(analysis, plan, plan.getContext()).plan();
+    }
+    checkState(
+        distributedQueryPlan != null,
+        "You have to set `createDistributedPlan` to true when create plan");
+    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree();
   }
 
   private static class NopAccessControl implements AccessControl {}
