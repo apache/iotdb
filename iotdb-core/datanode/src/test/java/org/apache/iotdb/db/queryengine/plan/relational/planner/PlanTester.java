@@ -43,9 +43,9 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
-import static org.glassfish.jersey.internal.guava.Preconditions.checkState;
 import static org.junit.Assert.fail;
 
 public class PlanTester {
