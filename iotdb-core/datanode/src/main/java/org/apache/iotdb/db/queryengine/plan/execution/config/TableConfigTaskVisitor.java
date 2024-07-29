@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTableAddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -67,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -186,9 +189,36 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       final TSDataType dataType = getDataType(columnDefinition.getType());
-      TableHeaderSchemaValidator.generateColumnSchema(table, category, columnName, dataType);
+      table.addColumnSchema(
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitAlterTableAddColumn(
+      final AlterTableAddColumn node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    String database = clientSession.getDatabaseName();
+    if (node.getName().getPrefix().isPresent()) {
+      database = node.getName().getPrefix().get().toString();
+    }
+    if (database == null) {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+
+    final ColumnDefinition definition = node.getElement();
+    return new AlterTableAddColumnTask(
+        database,
+        node.getName().getSuffix(),
+        Collections.singletonList(
+            TableHeaderSchemaValidator.generateColumnSchema(
+                definition.getColumnCategory(),
+                definition.getName().getValue(),
+                getDataType(definition.getType()))),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfNotExists());
   }
 
   private TSDataType getDataType(DataType dataType) {

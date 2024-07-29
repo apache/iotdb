@@ -1139,28 +1139,39 @@ public class ClusterSchemaManager {
           return true;
         });
 
+    if (columnSchemaList.isEmpty()) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_ALREADY_EXISTS,
+              String.format("Column '%s' already exist", columnSchemaList)),
+          null);
+    }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
   public synchronized TSStatus addTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    AddTableColumnPlan addTableColumnPlan =
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, false);
     try {
       return getConsensusManager().write(addTableColumnPlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
   }
 
   public synchronized TSStatus rollbackAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    AddTableColumnPlan addTableColumnPlan =
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, true);
     try {
       return getConsensusManager().write(addTableColumnPlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }

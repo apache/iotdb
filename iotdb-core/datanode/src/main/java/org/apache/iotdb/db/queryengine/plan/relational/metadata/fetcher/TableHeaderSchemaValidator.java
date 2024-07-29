@@ -37,12 +37,14 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,62 +173,63 @@ public class TableHeaderSchemaValidator {
     }
   }
 
-  private void addColumnSchema(List<ColumnSchema> columnSchemas, TsTable tsTable) {
-    for (ColumnSchema columnSchema : columnSchemas) {
-      TsTableColumnCategory category = columnSchema.getColumnCategory();
-      String columnName = columnSchema.getName();
+  private void addColumnSchema(final List<ColumnSchema> columnSchemas, final TsTable tsTable) {
+    for (final ColumnSchema columnSchema : columnSchemas) {
+      final TsTableColumnCategory category = columnSchema.getColumnCategory();
+      final String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      TSDataType dataType = getTSDataType(columnSchema.getType());
-      generateColumnSchema(tsTable, category, columnName, dataType);
+      final TSDataType dataType = getTSDataType(columnSchema.getType());
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
     }
   }
 
-  public static void generateColumnSchema(
-      TsTable tsTable, TsTableColumnCategory category, String columnName, TSDataType dataType) {
+  public static TsTableColumnSchema generateColumnSchema(
+      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
     switch (category) {
       case ID:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of ID Column should only be STRING, current is " + dataType);
         }
-        tsTable.addColumnSchema(new IdColumnSchema(columnName, dataType));
-        break;
+        return new IdColumnSchema(columnName, dataType);
       case ATTRIBUTE:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of ATTRIBUTE Column should only be STRING, current is " + dataType);
         }
-        tsTable.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
-        break;
+        return new AttributeColumnSchema(columnName, dataType);
       case TIME:
-        break;
+        return null;
       case MEASUREMENT:
-        tsTable.addColumnSchema(
-            new MeasurementColumnSchema(
-                columnName,
-                dataType,
-                getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor()));
-        break;
+        return new MeasurementColumnSchema(
+            columnName,
+            dataType,
+            getDefaultEncoding(dataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor());
       default:
         throw new IllegalArgumentException();
     }
   }
 
   private void autoCreateColumn(
-      String database,
-      String tableName,
-      List<ColumnSchema> inputColumnList,
-      MPPQueryContext context) {
-    AlterTableAddColumnTask task =
+      final String database,
+      final String tableName,
+      final List<ColumnSchema> inputColumnList,
+      final MPPQueryContext context) {
+    final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
-            database, tableName, inputColumnList, context.getQueryId().getId(), true, true);
+            database,
+            tableName,
+            parseInputColumnSchema(inputColumnList),
+            context.getQueryId().getId(),
+            true,
+            true);
     try {
-      ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
-      ConfigTaskResult result = future.get();
+      final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
+      final ConfigTaskResult result = future.get();
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             new IoTDBException(
@@ -235,9 +238,43 @@ public class TableHeaderSchemaValidator {
                     database, tableName, inputColumnList),
                 result.getStatusCode().getStatusCode()));
       }
-    } catch (ExecutionException | InterruptedException e) {
+    } catch (final ExecutionException | InterruptedException e) {
       LOGGER.warn("Auto add table column failed.", e);
       throw new RuntimeException(e);
     }
+  }
+
+  private List<TsTableColumnSchema> parseInputColumnSchema(
+      final List<ColumnSchema> inputColumnList) {
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(inputColumnList.size());
+    for (final ColumnSchema inputColumn : inputColumnList) {
+      switch (inputColumn.getColumnCategory()) {
+        case ID:
+          if (!inputColumn.getType().equals(StringType.STRING)) {
+            throw new SemanticException("Id column only support data type STRING.");
+          }
+          columnSchemaList.add(new IdColumnSchema(inputColumn.getName(), TSDataType.STRING));
+          break;
+        case ATTRIBUTE:
+          if (!inputColumn.getType().equals(StringType.STRING)) {
+            throw new SemanticException("Attribute column only support data type STRING.");
+          }
+          columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.STRING));
+          break;
+        case MEASUREMENT:
+          final TSDataType dataType = InternalTypeManager.getTSDataType(inputColumn.getType());
+          columnSchemaList.add(
+              new MeasurementColumnSchema(
+                  inputColumn.getName(),
+                  dataType,
+                  getDefaultEncoding(dataType),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor()));
+          break;
+        default:
+          throw new IllegalStateException(
+              "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());
+      }
+    }
+    return columnSchemaList;
   }
 }
