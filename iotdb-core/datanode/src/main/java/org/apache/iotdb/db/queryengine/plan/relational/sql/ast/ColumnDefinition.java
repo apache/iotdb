@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,8 +61,12 @@ public final class ColumnDefinition extends Node {
       @Nullable String charsetName) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
-    this.type = requireNonNull(type, "type is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+    if (columnCategory == TsTableColumnCategory.ID
+        || columnCategory == TsTableColumnCategory.ATTRIBUTE && (Objects.isNull(type))) {
+      type = new GenericDataType(new Identifier("string"), new ArrayList<>());
+    }
+    this.type = requireNonNull(type, "type is null");
     this.charsetName = charsetName;
   }
 
