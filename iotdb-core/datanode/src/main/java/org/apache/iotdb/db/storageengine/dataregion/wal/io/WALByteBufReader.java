@@ -58,6 +58,7 @@ public class WALByteBufReader implements Closeable {
       this.sizeIterator = metaData.getBuffersSize().iterator();
     } catch (Exception e) {
       walInputStream.close();
+      throw e;
     }
   }
 
