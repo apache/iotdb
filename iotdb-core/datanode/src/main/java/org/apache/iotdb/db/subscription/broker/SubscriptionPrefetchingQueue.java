@@ -325,12 +325,6 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTsFileInsertionEvent) {
-        final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-        final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
-        LOGGER.info(
-            "PipeTsFileInsertionEvent with file {} with hash code {}",
-            pipeTsFileInsertionEvent.getTsFile().getAbsoluteFile(),
-            hashcode);
         if (onEvent((PipeTsFileInsertionEvent) event)) {
           return;
         }
