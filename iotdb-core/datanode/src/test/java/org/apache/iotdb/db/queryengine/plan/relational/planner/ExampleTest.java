@@ -112,13 +112,7 @@ public class ExampleTest {
                             filter(filterPredicate, tableScan)))))));
 
     // You can use anyTree() to match any partial(at least one Node) of Plan
-    assertPlan(
-        logicalQueryPlan,
-        output(
-            anyTree(
-                project(
-                    filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        filterPredicate, tableScan)))));
+    assertPlan(logicalQueryPlan, output(anyTree(project(filter(filterPredicate, tableScan)))));
 
     // Verify DistributionPlan
 
@@ -140,12 +134,7 @@ public class ExampleTest {
         anyTree(
             project(
                 mergeSort(
-                    exchange(),
-                    sort(
-                        project(
-                            filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                                filterPredicate, tableScan))),
-                    exchange()))));
+                    exchange(), sort(project(filter(filterPredicate, tableScan))), exchange()))));
 
     /*
      * IdentitySinkNode-31
@@ -157,10 +146,7 @@ public class ExampleTest {
     assertPlan(
         planTester.getFragmentPlan(1),
         any( // use any() to match any one node
-            sort(
-                project(
-                    filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        filterPredicate, tableScan)))));
+            sort(project(filter(filterPredicate, tableScan)))));
 
     /* IdentitySinkNode-31
      *   └──SortNode-26
@@ -169,11 +155,6 @@ public class ExampleTest {
      *                   └──TableScanNode-13
      */
     assertPlan(
-        planTester.getFragmentPlan(2),
-        any(
-            sort(
-                project(
-                    filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        filterPredicate, tableScan)))));
+        planTester.getFragmentPlan(2), any(sort(project(filter(filterPredicate, tableScan)))));
   }
 }
