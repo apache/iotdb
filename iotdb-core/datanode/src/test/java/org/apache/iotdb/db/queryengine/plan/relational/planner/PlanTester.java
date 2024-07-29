@@ -43,7 +43,6 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
 import static org.junit.Assert.fail;
@@ -143,9 +142,6 @@ public class PlanTester {
     if (distributedQueryPlan == null) {
       distributedQueryPlan = new TableDistributedPlanner(analysis, plan, plan.getContext()).plan();
     }
-    checkState(
-        distributedQueryPlan != null,
-        "You have to set `createDistributedPlan` to true when create plan");
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree();
   }
 
