@@ -38,6 +38,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
@@ -326,15 +327,76 @@ public class WritableMemChunk implements IWritableMemChunk {
     return out.toString();
   }
 
+  public Object newArrayByType(TSDataType type, int length) {
+    switch (type) {
+      case BOOLEAN:
+        return new boolean[length];
+      case INT32:
+      case DATE:
+        return new int[length];
+      case INT64:
+      case TIMESTAMP:
+        return new long[length];
+      case FLOAT:
+        return new float[length];
+      case DOUBLE:
+        return new double[length];
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return new Binary[length];
+      default:
+        return null;
+    }
+  }
+
+  private void flushBatchToWriter(ChunkWriterImpl writer, long[] times, Object values, int length) {
+    switch (schema.getType()) {
+      case BOOLEAN:
+        writer.write(times, (boolean[]) values, length);
+        break;
+      case INT32:
+      case DATE:
+        writer.write(times, (int[]) values, length);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        writer.write(times, (long[]) values, length);
+        break;
+      case FLOAT:
+        writer.write(times, (float[]) values, length);
+        break;
+      case DOUBLE:
+        writer.write(times, (double[]) values, length);
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        writer.write(times, (Binary[]) values, length);
+        break;
+      default:
+        LOGGER.error("WritableMemChunk does not support data type: {}", schema.getType());
+        break;
+    }
+  }
+
+  @FunctionalInterface
+  interface Exec<T extends TSDataType, V> {
+    void run(T type, Callable<Void> func, V args) throws Exception;
+  }
+
   @Override
   public void encode(IChunkWriter chunkWriter) {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+    int batchSize = Math.min(512, list.rowCount());
+    Object values = newArrayByType(schema.getType(), batchSize);
+    long[] times = new long[batchSize];
+    int idx = 0;
+    TSDataType tsDataType = schema.getType();
 
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
-
-      TSDataType tsDataType = schema.getType();
 
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
@@ -345,34 +407,44 @@ public class WritableMemChunk implements IWritableMemChunk {
       if (sortedRowIndex + 1 == list.rowCount()) {
         chunkWriterImpl.setLastPoint(true);
       }
-
+      times[idx] = time;
       switch (tsDataType) {
         case BOOLEAN:
-          chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
+          ((boolean[]) values)[idx++] = list.getBoolean(sortedRowIndex);
           break;
         case INT32:
         case DATE:
-          chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
+          ((int[]) values)[idx++] = list.getInt(sortedRowIndex);
           break;
         case INT64:
         case TIMESTAMP:
-          chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
+          ((long[]) values)[idx++] = list.getLong(sortedRowIndex);
           break;
         case FLOAT:
-          chunkWriterImpl.write(time, list.getFloat(sortedRowIndex));
+          ((float[]) values)[idx++] = list.getFloat(sortedRowIndex);
           break;
         case DOUBLE:
-          chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
+          ((double[]) values)[idx++] = list.getDouble(sortedRowIndex);
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
+          ((Binary[]) values)[idx++] = list.getBinary(sortedRowIndex);
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
           break;
       }
+
+      // batch write, the code is redundant, we can use lambda to reduce the redundant codes
+      // exec.run(tsDataType, () -> {});
+      if (idx == batchSize || sortedRowIndex + 1 == list.rowCount()) {
+        flushBatchToWriter(chunkWriterImpl, times, values, idx);
+        idx = 0;
+      }
+    }
+    if (idx > 0) {
+      flushBatchToWriter(chunkWriterImpl, times, values, idx);
     }
   }
 

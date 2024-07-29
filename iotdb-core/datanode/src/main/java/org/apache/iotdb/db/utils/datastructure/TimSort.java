@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 /**
  * The interface refers to TimSort.java, and is used for sort the TVList Functions for tim_sort like
  * merge, sort, binary_sort is implemented here as default, reuse code whenever possible.
@@ -65,9 +68,22 @@ public interface TimSort {
       return;
     }
     int mid = (lo + hi) >>> 1;
-    sort(lo, mid);
+    if (hi - lo <= 1000) {
+      sort(lo, mid);
+      sort(mid, hi);
+      merge(lo, mid, hi);
+      return;
+    }
+    CompletableFuture<?> future = CompletableFuture.runAsync(() -> sort(lo, mid));
     sort(mid, hi);
-    merge(lo, mid, hi);
+    try {
+      future.get();
+      merge(lo, mid, hi);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   default int countRunAndMakeAscending(int lo, int hi) {
