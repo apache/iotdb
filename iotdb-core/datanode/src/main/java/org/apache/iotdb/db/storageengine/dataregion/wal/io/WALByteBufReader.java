@@ -40,15 +40,15 @@ public class WALByteBufReader implements Closeable {
 
   public WALByteBufReader(File logFile) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
-    this.metaData = walInputStream.getWALMetaData();
     this.logStream = new DataInputStream(walInputStream);
+    this.metaData = walInputStream.getWALMetaData();
     this.sizeIterator = metaData.getBuffersSize().iterator();
   }
 
   public WALByteBufReader(WALEntryPosition walEntryPosition) throws IOException {
     WALInputStream walInputStream = walEntryPosition.openReadFileStream();
-    this.metaData = walInputStream.getWALMetaData();
     this.logStream = new DataInputStream(walInputStream);
+    this.metaData = walInputStream.getWALMetaData();
     this.sizeIterator = metaData.getBuffersSize().iterator();
   }
 
