@@ -31,6 +31,7 @@ import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -324,6 +325,12 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTsFileInsertionEvent) {
+        final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+        final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
+        LOGGER.info(
+            "PipeTsFileInsertionEvent with file {} with hash code {}",
+            pipeTsFileInsertionEvent.getTsFile().getAbsoluteFile(),
+            hashcode);
         if (onEvent((PipeTsFileInsertionEvent) event)) {
           return;
         }
@@ -357,7 +364,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if a new event has been prefetched.
    */
-  protected abstract boolean onEvent(final PipeTsFileInsertionEvent event);
+  protected abstract boolean onEvent(final TsFileInsertionEvent event);
 
   /**
    * @return {@code true} if a new event has been prefetched.

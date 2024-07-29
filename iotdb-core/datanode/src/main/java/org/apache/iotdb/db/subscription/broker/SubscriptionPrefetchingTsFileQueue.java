@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -214,18 +215,18 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TabletInsertionEvent event) {
-    return onEventInternal(event);
+    return onEventInternal((EnrichedEvent) event);
   }
 
   @Override
-  protected boolean onEvent(final PipeTsFileInsertionEvent event) {
+  protected boolean onEvent(final TsFileInsertionEvent event) {
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
     final SubscriptionEvent ev =
         new SubscriptionEvent(
-            new SubscriptionPipeTsFilePlainEvent(event),
+            new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.FILE_INIT.getType(),
-                new FileInitPayload(event.getTsFile().getName()),
+                new FileInitPayload(((PipeTsFileInsertionEvent) event).getTsFile().getName()),
                 commitContext));
     ev.trySerializeCurrentResponse();
     prefetchingQueue.add(ev);
@@ -237,8 +238,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
-    final List<SubscriptionEvent> events = batches.onEvent((EnrichedEvent) event);
+  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
+    final List<SubscriptionEvent> events = batches.onEvent(event);
     if (!events.isEmpty()) {
       events.forEach(
           ev -> {

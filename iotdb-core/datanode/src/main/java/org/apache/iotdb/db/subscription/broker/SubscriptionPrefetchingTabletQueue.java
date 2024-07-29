@@ -21,9 +21,9 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -151,8 +151,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  protected boolean onEvent(final PipeTsFileInsertionEvent event) {
-    return onEventInternal(event);
+  protected boolean onEvent(final TsFileInsertionEvent event) {
+    return onEventInternal((EnrichedEvent) event);
   }
 
   @Override

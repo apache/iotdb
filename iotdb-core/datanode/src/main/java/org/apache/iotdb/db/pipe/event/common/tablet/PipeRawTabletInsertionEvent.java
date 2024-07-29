@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 
 import org.apache.tsfile.write.record.Tablet;
 
@@ -278,12 +279,22 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public String coreReportMessage() {
     return String.format(
             "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s}",
-            tablet,
+            formatTablet(tablet),
             isAligned,
             sourceEvent == null ? "null" : sourceEvent.coreReportMessage(),
             needToReport,
             allocatedMemoryBlock)
         + " - "
         + super.coreReportMessage();
+  }
+
+  private static String formatTablet(final Tablet tablet) {
+    final StringBuilder sb = new StringBuilder();
+    final SubscriptionSessionDataSet dataSet = new SubscriptionSessionDataSet(tablet);
+    while (dataSet.hasNext()) {
+      sb.append(dataSet.next());
+      sb.append(System.lineSeparator());
+    }
+    return sb.toString();
   }
 }

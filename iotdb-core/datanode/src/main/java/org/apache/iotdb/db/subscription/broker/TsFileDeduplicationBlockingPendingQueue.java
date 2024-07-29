@@ -64,6 +64,10 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
+      LOGGER.info(
+          "PipeTsFileInsertionEvent with file {} with hash code {}",
+          pipeTsFileInsertionEvent.getTsFile().getAbsoluteFile(),
+          hashcode);
       if (Objects.nonNull(polledTsFiles.getIfPresent(hashcode))) {
         LOGGER.info(
             "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",

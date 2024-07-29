@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -142,6 +142,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
               commitContext));
     }
+    LOGGER.info(
+        "generate subscription events with commit context {} for enriched events {}",
+        commitContext,
+        enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList()));
     return Collections.singletonList(
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
@@ -166,9 +170,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
-    } else if (event instanceof PipeTsFileInsertionEvent) {
+    } else if (event instanceof TsFileInsertionEvent) {
       for (final TabletInsertionEvent tabletInsertionEvent :
-          ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
+          ((TsFileInsertionEvent) event).toTabletInsertionEvents()) {
         final List<Tablet> currentTablets = convertToTablets(tabletInsertionEvent);
         if (Objects.isNull(currentTablets)) {
           continue;
