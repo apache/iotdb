@@ -298,8 +298,8 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
-    measurementPath.device = partialPath.getIDeviceID();
-    measurementPath.fullPath = partialPath.getFullPath();
+    measurementPath.device = measurementPath.getIDeviceID();
+    measurementPath.fullPath = measurementPath.getFullPath();
     return measurementPath;
   }
 

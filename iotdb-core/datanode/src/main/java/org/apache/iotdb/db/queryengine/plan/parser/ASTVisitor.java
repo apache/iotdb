@@ -323,7 +323,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateAlignedTimeseries(IoTDBSqlParser.CreateAlignedTimeseriesContext ctx) {
     CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
         new CreateAlignedTimeSeriesStatement();
-    createAlignedTimeSeriesStatement.setDevicePath(parseFullPath(ctx.fullPath()));
+    createAlignedTimeSeriesStatement.setDevicePath(parseAlignedDevice(ctx.fullPath()));
     parseAlignedMeasurements(ctx.alignedMeasurements(), createAlignedTimeSeriesStatement);
     return createAlignedTimeSeriesStatement;
   }
@@ -2013,6 +2013,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       path[i] = parseNodeNameWithoutWildCard(nodeNameWithoutStar);
     }
     return new MeasurementPath(path);
+  }
+
+  // IoTDB Objects ========================================================================
+  private PartialPath parseAlignedDevice(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCard(nodeNameWithoutStar);
+    }
+    return new PartialPath(path);
   }
 
   private PartialPath parseFullPathInExpression(
