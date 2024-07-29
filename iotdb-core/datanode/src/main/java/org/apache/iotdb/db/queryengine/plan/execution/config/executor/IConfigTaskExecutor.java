@@ -91,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IConfigTaskExecutor {
 
@@ -290,4 +291,11 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists);
+
+  SettableFuture<ConfigTaskResult> alterTableSetProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean ifExists);
 }

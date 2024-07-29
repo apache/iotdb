@@ -602,14 +602,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitSetProperties(SetProperties node, Integer context) {
-      SetProperties.Type type = node.getType();
+    protected Void visitSetProperties(final SetProperties node, final Integer context) {
+      final SetProperties.Type type = node.getType();
       builder.append("ALTER ");
       switch (type) {
         case TABLE:
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+      }
+      if (node.ifExists()) {
+        builder.append("IF EXISTS ");
       }
 
       builder

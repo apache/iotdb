@@ -20,11 +20,12 @@
 package org.apache.iotdb.commons.schema.table;
 
 public enum AlterTableOperationType {
-  ADD_COLUMN((byte) 0);
+  ADD_COLUMN((byte) 0),
+  SET_PROPERTIES((byte) 1);
 
   private final byte type;
 
-  AlterTableOperationType(byte type) {
+  AlterTableOperationType(final byte type) {
     this.type = type;
   }
 
@@ -32,10 +33,12 @@ public enum AlterTableOperationType {
     return type;
   }
 
-  public static AlterTableOperationType getType(byte value) {
+  public static AlterTableOperationType getType(final byte value) {
     switch (value) {
       case 0:
         return ADD_COLUMN;
+      case 1:
+        return SET_PROPERTIES;
       default:
         throw new IllegalArgumentException();
     }

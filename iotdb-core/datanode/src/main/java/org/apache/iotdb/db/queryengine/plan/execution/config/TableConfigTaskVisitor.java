@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -55,6 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -68,9 +71,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -161,32 +166,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    String database = clientSession.getDatabaseName();
-    if (node.getName().getPrefix().isPresent()) {
-      database = node.getName().getPrefix().get().toString();
-    }
-    if (database == null) {
-      throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
-    final TsTable table = new TsTable(node.getName().getSuffix());
-    final Map<String, String> map = new HashMap<>();
-    for (final Property property : node.getProperties()) {
-      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
-        if (!property.isSetToDefault()) {
-          final Expression value = property.getNonDefaultValue();
-          if (!(value instanceof LongLiteral)) {
-            throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is: " + value.toString());
-          }
-          map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
-        }
-      } else {
-        throw new SemanticException("Table property " + key + " is currently not allowed.");
-      }
-    }
-    table.setProps(map);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
 
+    final TsTable table = new TsTable(databaseTablePair.getRight());
+
+    table.setProps(convertPropertiesToMap(node.getProperties()));
+
+    // TODO: Place the check at statement analyzer
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
@@ -198,24 +184,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       table.addColumnSchema(
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
-    return new CreateTableTask(table, database, node.isIfNotExists());
+    return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
   }
 
   @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    String database = clientSession.getDatabaseName();
-    if (node.getTableName().getPrefix().isPresent()) {
-      database = node.getTableName().getPrefix().get().toString();
-    }
-    if (database == null) {
-      throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
 
     final ColumnDefinition definition = node.getColumn();
     return new AlterTableAddColumnTask(
-        database,
-        node.getTableName().getSuffix(),
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
         Collections.singletonList(
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),
@@ -226,10 +206,55 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.columnIfNotExists());
   }
 
-  private TSDataType getDataType(DataType dataType) {
+  @Override
+  protected IConfigTask visitSetProperties(
+      final SetProperties node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+
+    return new AlterTableSetPropertiesTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        convertPropertiesToMap(node.getProperties()),
+        context.getQueryId().getId(),
+        node.ifExists());
+  }
+
+  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
+    String database = clientSession.getDatabaseName();
+    if (name.getPrefix().isPresent()) {
+      database = name.getPrefix().get().toString();
+    }
+    if (database == null) {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    return new Pair<>(database, name.getSuffix());
+  }
+
+  private Map<String, String> convertPropertiesToMap(final List<Property> propertyList) {
+    final Map<String, String> map = new HashMap<>();
+    for (final Property property : propertyList) {
+      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
+        if (!property.isSetToDefault()) {
+          final Expression value = property.getNonDefaultValue();
+          if (!(value instanceof LongLiteral)) {
+            throw new SemanticException(
+                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+          }
+          map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+        }
+      } else {
+        throw new SemanticException("Table property '" + key + "' is currently not allowed.");
+      }
+    }
+    return map;
+  }
+
+  private TSDataType getDataType(final DataType dataType) {
     try {
       return getTSDataType(metadata.getType(toTypeSignature(dataType)));
-    } catch (TypeNotFoundException e) {
+    } catch (final TypeNotFoundException e) {
       throw new SemanticException(String.format("Unknown type: %s", dataType));
     }
   }
