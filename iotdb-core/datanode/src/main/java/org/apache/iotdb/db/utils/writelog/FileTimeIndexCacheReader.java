@@ -29,14 +29,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 
-public class PartitionLogReader {
+public class FileTimeIndexCacheReader {
 
   private final File logFile;
   private final long fileLength;
   private final int dataRegionId;
   private final long partitionId;
 
-  public PartitionLogReader(File logFile, String dataRegionId, long partitionId)
+  public FileTimeIndexCacheReader(File logFile, String dataRegionId, long partitionId)
       throws IOException {
     this.logFile = logFile;
     this.fileLength = logFile.length();

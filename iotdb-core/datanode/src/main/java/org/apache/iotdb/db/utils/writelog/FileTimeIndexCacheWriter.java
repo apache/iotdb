@@ -29,19 +29,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 
-/**
- * LogWriter writes the binary logs into a file using FileChannel together with check sums of each
- * log calculated using CRC32.
- */
-public class PartitionLogWriter implements ILogWriter {
-  private static final Logger logger = LoggerFactory.getLogger(PartitionLogWriter.class);
+public class FileTimeIndexCacheWriter implements ILogWriter {
+  private static final Logger logger = LoggerFactory.getLogger(FileTimeIndexCacheWriter.class);
 
   private final File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private final boolean forceEachWrite;
 
-  public PartitionLogWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
+  public FileTimeIndexCacheWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
     this.logFile = logFile;
     this.forceEachWrite = forceEachWrite;
 
@@ -51,12 +47,6 @@ public class PartitionLogWriter implements ILogWriter {
 
   @Override
   public void write(ByteBuffer logBuffer) throws IOException {
-    if (channel == null) {
-      fileOutputStream = new FileOutputStream(logFile, true);
-      channel = fileOutputStream.getChannel();
-    }
-
-    logBuffer.flip();
 
     try {
       channel.write(logBuffer);

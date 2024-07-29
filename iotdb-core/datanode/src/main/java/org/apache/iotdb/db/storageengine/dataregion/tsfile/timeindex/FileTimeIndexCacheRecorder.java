@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.writelog.PartitionLogWriter;
+import org.apache.iotdb.db.utils.writelog.FileTimeIndexCacheWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,22 +39,26 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class PartitionLogRecorder {
+public class FileTimeIndexCacheRecorder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionLogRecorder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileTimeIndexCacheRecorder.class);
+
+  private final static int VERSION = 0;
+
+  protected final static String FILE_NAME = "FileTimeIndexCache_" + VERSION;
 
   private final ScheduledExecutorService recordFileIndexThread;
 
   private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
-  private final Map<Integer, Map<Long, PartitionLogWriter>> writerMap = new HashMap<>();
+  private final Map<Integer, Map<Long, FileTimeIndexCacheWriter>> writerMap = new HashMap<>();
 
-  private PartitionLogRecorder() {
+  private FileTimeIndexCacheRecorder() {
     recordFileIndexThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.FILE_TIMEINDEX_RECORD.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        recordFileIndexThread, this::executeTasks, 0, 1, TimeUnit.SECONDS);
+        recordFileIndexThread, this::executeTasks, 1, 1, TimeUnit.SECONDS);
   }
 
   private void executeTasks() {
@@ -69,21 +73,27 @@ public class PartitionLogRecorder {
     int dataRegionId = tsFileID.regionId;
     long partitionId = tsFileID.timePartitionId;
 
-    PartitionLogWriter writer =
+    FileTimeIndexCacheWriter writer =
         writerMap
             .computeIfAbsent(dataRegionId, k -> new HashMap<>())
             .computeIfAbsent(
                 partitionId,
                 k -> {
+                  File partitionDir =
+                      SystemFileFactory.INSTANCE.getFile(
+                          dataRegionSysDir, String.valueOf(partitionId));
+                  File logFile =
+                      SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
                   try {
-                    File logFile =
-                        SystemFileFactory.INSTANCE.getFile(
-                            dataRegionSysDir, String.valueOf(partitionId));
+                    if (!partitionDir.exists() && !partitionDir.mkdirs()) {
+                      LOGGER.warn(
+                          "Partition directory has existed，filePath:{}", partitionDir.getAbsolutePath());
+                    }
                     if (!logFile.createNewFile()) {
                       LOGGER.warn(
                           "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
                     }
-                    return new PartitionLogWriter(logFile, false);
+                    return new FileTimeIndexCacheWriter(logFile, false);
                   } catch (IOException e) {
                     throw new RuntimeException(e);
                   }
@@ -92,19 +102,20 @@ public class PartitionLogRecorder {
         () -> {
           try {
             writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+            writer.force();
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
         });
   }
 
-  public static PartitionLogRecorder getInstance() {
-    return PartitionLogRecorder.InstanceHolder.INSTANCE;
+  public static FileTimeIndexCacheRecorder getInstance() {
+    return FileTimeIndexCacheRecorder.InstanceHolder.INSTANCE;
   }
 
   private static class InstanceHolder {
     private InstanceHolder() {}
 
-    private static final PartitionLogRecorder INSTANCE = new PartitionLogRecorder();
+    private static final FileTimeIndexCacheRecorder INSTANCE = new FileTimeIndexCacheRecorder();
   }
 }
