@@ -60,10 +60,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
-    fileSize = channel.size();
     this.logFile = logFile;
-    analyzeFileVersion();
-    getEndOffset();
+    try {
+      fileSize = channel.size();
+      analyzeFileVersion();
+      getEndOffset();
+    } catch (Exception e) {
+      channel.close();
+      throw e;
+    }
   }
 
   private void getEndOffset() throws IOException {

@@ -34,22 +34,31 @@ import java.util.Iterator;
  * {@link Iterator}.
  */
 public class WALByteBufReader implements Closeable {
-  private final WALMetaData metaData;
-  private final DataInputStream logStream;
-  private final Iterator<Integer> sizeIterator;
+  private WALMetaData metaData;
+  private DataInputStream logStream;
+  private Iterator<Integer> sizeIterator;
 
   public WALByteBufReader(File logFile) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
-    this.logStream = new DataInputStream(walInputStream);
-    this.metaData = walInputStream.getWALMetaData();
-    this.sizeIterator = metaData.getBuffersSize().iterator();
+    try {
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = walInputStream.getWALMetaData();
+      this.sizeIterator = metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+      throw e;
+    }
   }
 
   public WALByteBufReader(WALEntryPosition walEntryPosition) throws IOException {
     WALInputStream walInputStream = walEntryPosition.openReadFileStream();
-    this.logStream = new DataInputStream(walInputStream);
-    this.metaData = walInputStream.getWALMetaData();
-    this.sizeIterator = metaData.getBuffersSize().iterator();
+    try {
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = walInputStream.getWALMetaData();
+      this.sizeIterator = metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+    }
   }
 
   /** Like {@link Iterator#hasNext()}. */
