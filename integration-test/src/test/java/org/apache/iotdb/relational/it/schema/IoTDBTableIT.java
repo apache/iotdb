@@ -86,8 +86,10 @@ public class IoTDBTableIT {
       }
 
       // or use full qualified table name
+      // "MEASUREMENT" can be omitted when type is specified
+      // "STRING" can be omitted when id/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE) with (TTL=3600000)");
 
       statement.execute("use test2");
 

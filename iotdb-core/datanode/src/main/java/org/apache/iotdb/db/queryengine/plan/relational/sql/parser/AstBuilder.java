@@ -267,11 +267,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitColumnDefinition(RelationalSqlParser.ColumnDefinitionContext ctx) {
+  public Node visitColumnDefinition(final RelationalSqlParser.ColumnDefinitionContext ctx) {
     return new ColumnDefinition(
         getLocation(ctx),
         lowerIdentifier((Identifier) visit(ctx.identifier())),
-        (DataType) visit(ctx.type()),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null

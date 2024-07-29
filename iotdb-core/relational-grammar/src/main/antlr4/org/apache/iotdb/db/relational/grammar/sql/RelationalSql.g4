@@ -139,8 +139,8 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
-    | identifier columnCategory=(ID | ATTRIBUTE) charsetName?
+    : identifier columnCategory=(ID | ATTRIBUTE) charsetName?
+    | identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
     ;
 
 charsetName
