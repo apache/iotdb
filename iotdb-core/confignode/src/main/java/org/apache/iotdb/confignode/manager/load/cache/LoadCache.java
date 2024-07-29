@@ -669,6 +669,24 @@ public class LoadCache {
   }
 
   /**
+   * Safely get the latest RegionLeaderMap.
+   *
+   * @param consensusGroupType DataRegion or SchemaRegion
+   * @return Map<RegionGroupId, leaderId>, leaderId will be -1 if the RegionGroup has no leader yet.
+   */
+  public Map<TConsensusGroupId, Integer> getRegionLeaderMap(
+      TConsensusGroupType consensusGroupType) {
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new ConcurrentHashMap<>();
+    consensusGroupCacheMap.forEach(
+        (regionGroupId, consensusGroupCache) -> {
+          if (regionGroupId.getType().equals(consensusGroupType)) {
+            regionLeaderMap.put(regionGroupId, consensusGroupCache.getLeaderId());
+          }
+        });
+    return regionLeaderMap;
+  }
+
+  /**
    * Wait for the specified RegionGroups to finish leader election.
    *
    * @param regionGroupIds Specified RegionGroupIds

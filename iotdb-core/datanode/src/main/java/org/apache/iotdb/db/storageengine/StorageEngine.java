@@ -545,6 +545,8 @@ public class StorageEngine implements IService {
     try {
       repairDataTaskManager.markRepairTaskStopping();
       repairDataTaskManager.abortRepairTask();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (IOException ignored) {
     }
   }
@@ -625,6 +627,9 @@ public class StorageEngine implements IService {
     try {
       ConfigurationFileUtils.updateConfigurationFile(new File(configFileUrl.getFile()), properties);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
 

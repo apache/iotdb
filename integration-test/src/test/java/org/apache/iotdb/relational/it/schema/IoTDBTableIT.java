@@ -93,6 +93,21 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT, time2 INT64 TIME) with (TTL=3600000)");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: Create table statement shall not specify column category TIME", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (UNKNOWN=3600000)");
+      } catch (final SQLException e) {
+        assertEquals("701: Table property unknown is currently not allowed.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
             "create table table2(region_id TEXT ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
       } catch (final SQLException e) {
         assertEquals(

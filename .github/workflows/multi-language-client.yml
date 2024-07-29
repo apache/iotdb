@@ -40,21 +40,22 @@ jobs:
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: sudo apt-get update && sudo apt-get install libboost-all-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libboost-all-dev
       - name: Install CPP Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           brew install boost
           brew install bison
-          echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.bash_profile
-          source ~/.bash_profile && export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
       - name: Install CPP Dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           choco install winflexbison3
-          choco install boost-msvc-14.3 --version=1.84.0.1
-          echo C:\\local\\boost_1_84_0 >> $env:GITHUB_PATH
+          choco install boost-msvc-14.3
+          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
+          echo $boost_path >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:

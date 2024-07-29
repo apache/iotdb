@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSort
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
@@ -51,8 +53,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -753,9 +757,26 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitCountMerge(
+      final CountSchemaMergeNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CountMergeOperator.class.getSimpleName());
+    final List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (final PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+    return new CountMergeOperator(operatorContext, children);
+  }
+
+  @Override
   public Operator visitTableDeviceFetch(
-      TableDeviceFetchNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final TableDeviceFetchNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -773,9 +794,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
-  public Operator visitTableDeviceQuery(
-      TableDeviceQueryNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+  public Operator visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -788,7 +809,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
-            node.getIdDeterminedPredicateList(),
+            node.getIdDeterminedFilterList(),
+            node.getIdFuzzyPredicate(),
+            node.getColumnHeaderList()));
+  }
+
+  @Override
+  public Operator visitTableDeviceQueryCount(
+      final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaCountOperator.class.getSimpleName());
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getTableDeviceQuerySource(
+            node.getDatabase(),
+            node.getTableName(),
+            node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
   }

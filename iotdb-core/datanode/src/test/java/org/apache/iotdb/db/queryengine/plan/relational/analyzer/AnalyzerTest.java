@@ -594,8 +594,9 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0);
-    assertEquals(
-        "((\"tag1\" IS NOT NULL) AND (\"s1\" IS NULL))", filterNode.getPredicate().toString());
+
+    // Is not null is pushed to schema region
+    assertEquals("(\"s1\" IS NULL)", filterNode.getPredicate().toString());
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
     TableScanNode tableScanNode =
         (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
@@ -610,11 +611,11 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
-    filterNode = (FilterNode) rootNode.getChildren().get(0);
-    assertEquals("(\"tag1\" LIKE '%m')", filterNode.getPredicate().toString());
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+
+    // Like is pushed to schema region
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertNull(tableScanNode.getPushDownPredicate());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
 
@@ -628,16 +629,11 @@ public class AnalyzerTest {
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
-    filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals(
-        "((\"tag1\" IN ('A', 'B')) AND (NOT (\"tag2\" IN ('A', 'C'))))",
-        filterNode.getPredicate().toString());
-    assertTrue(
-        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof TableScanNode);
-    tableScanNode =
-        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+
+    // In and NotIn are pushed to schema region
+    assertFalse(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertNull(tableScanNode.getPushDownPredicate());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
 
@@ -749,9 +745,8 @@ public class AnalyzerTest {
 
   @Test
   public void predicatePushDownTest() {
-    // `is null expression`, `not expression` cannot be pushed down into TableScanOperator
     sql =
-        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
+        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' and tag3 is not null and attr1 like '_'"
             + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -763,8 +758,8 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertTrue(filterNode.getPredicate() instanceof LogicalExpression);
-    assertEquals(3, ((LogicalExpression) filterNode.getPredicate()).getTerms().size());
+    // s2 is null
+    assertFalse(filterNode.getPredicate() instanceof LogicalExpression);
     assertTrue(
         rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof TableScanNode);

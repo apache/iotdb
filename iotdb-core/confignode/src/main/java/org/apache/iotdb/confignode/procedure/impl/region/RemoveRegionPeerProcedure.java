@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
@@ -229,5 +230,10 @@ public class RemoveRegionPeerProcedure
     return this.consensusGroupId.equals(procedure.consensusGroupId)
         && this.targetDataNode.equals(procedure.targetDataNode)
         && this.coordinator.equals(procedure.coordinator);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(consensusGroupId, targetDataNode, coordinator);
   }
 }

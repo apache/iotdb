@@ -234,14 +234,14 @@ loadTsFileStatement
 
 // -------------------------------------------- Show Statement ---------------------------------------------------------
 showDevicesStatement
-    : SHOW DEVICES (FROM tableName=qualifiedName)?
+    : SHOW DEVICES FROM tableName=qualifiedName
         (WHERE where=booleanExpression)?
         (OFFSET offset=rowCount (ROW | ROWS)?)?
         (LIMIT limit=limitRowCount)?
     ;
 
 countDevicesStatement
-    : COUNT DEVICES (FROM tableName=qualifiedName)? (WHERE where=booleanExpression)?
+    : COUNT DEVICES FROM tableName=qualifiedName (WHERE where=booleanExpression)?
     ;
 
 // show timeseries and count timeseries have no meaning in relational model

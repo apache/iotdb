@@ -90,6 +90,11 @@ public abstract class ProgressIndex {
     return this.equals((ProgressIndex) obj);
   }
 
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
   /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.

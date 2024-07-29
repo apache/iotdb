@@ -202,7 +202,8 @@ public class TableHeaderSchemaValidator {
         }
         return new AttributeColumnSchema(columnName, dataType);
       case TIME:
-        return null;
+        throw new SemanticException(
+            "Create table statement shall not specify column category TIME");
       case MEASUREMENT:
         return new MeasurementColumnSchema(
             columnName,
@@ -270,6 +271,11 @@ public class TableHeaderSchemaValidator {
                   getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor()));
           break;
+        case TIME:
+          throw new SemanticException(
+                  "Adding column for column category "
+                          + inputColumn.getColumnCategory()
+                          + " is not supported");
         default:
           throw new IllegalStateException(
               "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());

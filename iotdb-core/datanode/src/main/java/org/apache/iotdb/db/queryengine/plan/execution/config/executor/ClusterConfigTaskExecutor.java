@@ -243,6 +243,7 @@ import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -2016,14 +2017,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String topicName = createTopicStatement.getTopicName();
     final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
 
+    // Replace now value with current time (raw timestamp based on system timestamp precision)
+    final long currentTime =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            System.currentTimeMillis(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    topicAttributes.computeIfPresent(
+        TopicConstant.START_TIME_KEY,
+        (k, v) -> {
+          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
+            return String.valueOf(currentTime);
+          }
+          return v;
+        });
+    topicAttributes.computeIfPresent(
+        TopicConstant.END_TIME_KEY,
+        (k, v) -> {
+          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
+            return String.valueOf(currentTime);
+          }
+          return v;
+        });
+
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
-        new TopicMeta(
-            topicName,
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                System.currentTimeMillis(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
-            topicAttributes);
+        new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
       PipeDataNodeAgent.plugin()
           .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());

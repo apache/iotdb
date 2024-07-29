@@ -711,6 +711,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  @SuppressWarnings("java:S2095") // close() do nothing
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
       IDeviceID deviceID,

@@ -168,6 +168,7 @@ public class LocalTextModificationAccessor
   }
 
   @Override
+  @SuppressWarnings("java:S2259")
   public void writeWithOutSync(Modification mod) throws IOException {
     if (fos == null) {
       fos = new FileOutputStream(filePath, true);

@@ -14,7 +14,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
@@ -44,6 +47,37 @@ public final class IrUtils {
 
   public static List<Expression> extractPredicates(LogicalExpression expression) {
     return extractPredicates(expression.getOperator(), expression);
+  }
+
+  // Use for table device fetching
+  // Expand the inPredicates to better check the in list and hit device cache
+  public static List<Expression> extractOrPredicatesWithInExpanded(final Expression expression) {
+    ImmutableList.Builder<Expression> resultBuilder = ImmutableList.builder();
+    extractOrPredicatesWithInExpanded(expression, resultBuilder);
+    return resultBuilder.build();
+  }
+
+  private static void extractOrPredicatesWithInExpanded(
+      final Expression expression, final ImmutableList.Builder<Expression> resultBuilder) {
+    if (expression instanceof LogicalExpression) {
+      if (((LogicalExpression) expression).getOperator() == LogicalExpression.Operator.OR) {
+        for (final Expression term : ((LogicalExpression) expression).getTerms()) {
+          extractOrPredicatesWithInExpanded(term, resultBuilder);
+        }
+      }
+    } else if (expression instanceof InPredicate) {
+      ((InListExpression) ((InPredicate) expression).getValueList())
+          .getValues().stream()
+              .map(
+                  value ->
+                      new ComparisonExpression(
+                          ComparisonExpression.Operator.EQUAL,
+                          ((InPredicate) expression).getValue(),
+                          value))
+              .forEach(resultBuilder::add);
+    } else {
+      resultBuilder.add(expression);
+    }
   }
 
   public static List<Expression> extractPredicates(

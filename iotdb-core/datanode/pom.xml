@@ -380,7 +380,7 @@
                 <configuration>
                     <skipTests>${iotdb.ut.skip}</skipTests>
                     <systemProperties>
-                        <IOTDB_CONF>src/test/resources</IOTDB_CONF>
+                        <IOTDB_CONF>${project.basedir}/src/test/resources</IOTDB_CONF>
                     </systemProperties>
                     <reuseForks>false</reuseForks>
                     <runOrder>random</runOrder>
