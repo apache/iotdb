@@ -1130,6 +1130,12 @@ public class ClusterSchemaManager {
 
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
 
+    final String errorMsg =
+        String.format(
+            "Column '%s' already exist",
+            columnSchemaList.stream()
+                .map(TsTableColumnSchema::getColumnName)
+                .collect(Collectors.joining(", ")));
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
@@ -1140,11 +1146,7 @@ public class ClusterSchemaManager {
         });
 
     if (columnSchemaList.isEmpty()) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_ALREADY_EXISTS,
-              String.format("Column '%s' already exist", columnSchemaList)),
-          null);
+      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }

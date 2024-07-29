@@ -86,43 +86,44 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   private final Metadata metadata;
 
-  public TableConfigTaskVisitor(IClientSession clientSession, Metadata metadata) {
+  public TableConfigTaskVisitor(final IClientSession clientSession, final Metadata metadata) {
     this.clientSession = clientSession;
     this.metadata = metadata;
   }
 
   @Override
-  protected IConfigTask visitNode(Node node, MPPQueryContext context) {
+  protected IConfigTask visitNode(final Node node, final MPPQueryContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + node.getClass().getName());
   }
 
   @Override
-  protected IConfigTask visitCreateDB(CreateDB node, MPPQueryContext context) {
+  protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new CreateDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitUse(Use node, MPPQueryContext context) {
+  protected IConfigTask visitUse(final Use node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new UseDBTask(node, clientSession);
   }
 
   @Override
-  protected IConfigTask visitDropDB(DropDB node, MPPQueryContext context) {
+  protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DropDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowDB(ShowDB node, MPPQueryContext context) {
+  protected IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowCluster(ShowCluster showCluster, MPPQueryContext context) {
+  protected IConfigTask visitShowCluster(
+      final ShowCluster showCluster, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
@@ -132,7 +133,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowRegions(ShowRegions showRegions, MPPQueryContext context) {
+  protected IConfigTask visitShowRegions(
+      final ShowRegions showRegions, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
@@ -145,13 +147,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitShowDataNodes(
-      ShowDataNodes showDataNodesStatement, MPPQueryContext context) {
+      final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDataNodesTask(showDataNodesStatement);
   }
 
   protected IConfigTask visitShowConfigNodes(
-      ShowConfigNodes showConfigNodesStatement, MPPQueryContext context) {
+      final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowConfigNodesTask(showConfigNodesStatement);
   }
