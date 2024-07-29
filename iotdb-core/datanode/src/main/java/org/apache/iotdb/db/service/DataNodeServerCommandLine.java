@@ -196,6 +196,8 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       // In the other case, we expect it to be a numeric value referring to the node-id
       if (NumberUtils.isCreatable(nodeId)) {
         nodeIdCoordinates.add(new NodeCoordinateNodeId(Integer.parseInt(nodeId)));
+      } else {
+        LOGGER.error("Invalid format. Expected a numeric node id, but got: {}", nodeId);
       }
     }
     return nodeIdCoordinates;
