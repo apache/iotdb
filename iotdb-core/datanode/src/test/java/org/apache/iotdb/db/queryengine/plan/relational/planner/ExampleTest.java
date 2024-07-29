@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryE
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -65,6 +66,21 @@ public class ExampleTest {
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
+    // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
+    Expression filterPredicate =
+        new LogicalExpression(
+            AND,
+            ImmutableList.of(
+                new ComparisonExpression(
+                    GREATER_THAN,
+                    new ArithmeticBinaryExpression(
+                        ADD, new SymbolReference("s1"), new SymbolReference("s3")),
+                    new LongLiteral("0")),
+                new ComparisonExpression(
+                    GREATER_THAN,
+                    new Cast(new SymbolReference("s1"), dataType("double")),
+                    new DoubleLiteral("1.0"))));
+
     PlanMatchPattern tableScan =
         tableScan(
             "testdb.table1",
@@ -93,22 +109,7 @@ public class ExampleTest {
                                         ADD,
                                         new SymbolReference("s1"),
                                         new SymbolReference("s2")))),
-                            filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                                new LogicalExpression(
-                                    AND,
-                                    ImmutableList.of(
-                                        new ComparisonExpression(
-                                            GREATER_THAN,
-                                            new ArithmeticBinaryExpression(
-                                                ADD,
-                                                new SymbolReference("s1"),
-                                                new SymbolReference("s3")),
-                                            new LongLiteral("0")),
-                                        new ComparisonExpression(
-                                            GREATER_THAN,
-                                            new Cast(new SymbolReference("s1"), dataType("double")),
-                                            new DoubleLiteral("1.0")))),
-                                tableScan)))))));
+                            filter(filterPredicate, tableScan)))))));
 
     // You can use anyTree() to match any partial(at least one Node) of Plan
     assertPlan(
@@ -117,19 +118,7 @@ public class ExampleTest {
             anyTree(
                 project(
                     filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        new LogicalExpression(
-                            AND,
-                            ImmutableList.of(
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new ArithmeticBinaryExpression(
-                                        ADD, new SymbolReference("s1"), new SymbolReference("s3")),
-                                    new LongLiteral("0")),
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new Cast(new SymbolReference("s1"), dataType("double")),
-                                    new DoubleLiteral("1.0")))),
-                        tableScan)))));
+                        filterPredicate, tableScan)))));
 
     // Verify DistributionPlan
 
@@ -155,21 +144,7 @@ public class ExampleTest {
                     sort(
                         project(
                             filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                                new LogicalExpression(
-                                    AND,
-                                    ImmutableList.of(
-                                        new ComparisonExpression(
-                                            GREATER_THAN,
-                                            new ArithmeticBinaryExpression(
-                                                ADD,
-                                                new SymbolReference("s1"),
-                                                new SymbolReference("s3")),
-                                            new LongLiteral("0")),
-                                        new ComparisonExpression(
-                                            GREATER_THAN,
-                                            new Cast(new SymbolReference("s1"), dataType("double")),
-                                            new DoubleLiteral("1.0")))),
-                                tableScan))),
+                                filterPredicate, tableScan))),
                     exchange()))));
 
     /*
@@ -185,19 +160,7 @@ public class ExampleTest {
             sort(
                 project(
                     filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        new LogicalExpression(
-                            AND,
-                            ImmutableList.of(
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new ArithmeticBinaryExpression(
-                                        ADD, new SymbolReference("s1"), new SymbolReference("s3")),
-                                    new LongLiteral("0")),
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new Cast(new SymbolReference("s1"), dataType("double")),
-                                    new DoubleLiteral("1.0")))),
-                        tableScan)))));
+                        filterPredicate, tableScan)))));
 
     /* IdentitySinkNode-31
      *   └──SortNode-26
@@ -211,18 +174,6 @@ public class ExampleTest {
             sort(
                 project(
                     filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                        new LogicalExpression(
-                            AND,
-                            ImmutableList.of(
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new ArithmeticBinaryExpression(
-                                        ADD, new SymbolReference("s1"), new SymbolReference("s3")),
-                                    new LongLiteral("0")),
-                                new ComparisonExpression(
-                                    GREATER_THAN,
-                                    new Cast(new SymbolReference("s1"), dataType("double")),
-                                    new DoubleLiteral("1.0")))),
-                        tableScan)))));
+                        filterPredicate, tableScan)))));
   }
 }
