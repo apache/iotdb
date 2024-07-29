@@ -273,9 +273,9 @@ public class TableHeaderSchemaValidator {
           break;
         case TIME:
           throw new SemanticException(
-                  "Adding column for column category "
-                          + inputColumn.getColumnCategory()
-                          + " is not supported");
+              "Adding column for column category "
+                  + inputColumn.getColumnCategory()
+                  + " is not supported");
         default:
           throw new IllegalStateException(
               "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());
