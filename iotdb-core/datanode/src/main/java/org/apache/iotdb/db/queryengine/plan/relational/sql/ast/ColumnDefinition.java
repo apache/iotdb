@@ -62,8 +62,8 @@ public final class ColumnDefinition extends Node {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
-    if (columnCategory == TsTableColumnCategory.ID
-        || columnCategory == TsTableColumnCategory.ATTRIBUTE && (Objects.isNull(type))) {
+    if ((columnCategory == TsTableColumnCategory.ID
+        || columnCategory == TsTableColumnCategory.ATTRIBUTE) && (Objects.isNull(type))) {
       type = new GenericDataType(new Identifier("string"), new ArrayList<>());
     }
     this.type = requireNonNull(type, "type is null");
