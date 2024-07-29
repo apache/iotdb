@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -67,7 +68,7 @@ public class SubscriptionEvent {
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
-  private volatile long lastPolledTimestamp = INVALID_TIMESTAMP;
+  private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
   private volatile long committedTimestamp = INVALID_TIMESTAMP;
 
   /**
@@ -180,14 +181,20 @@ public class SubscriptionEvent {
   //////////////////////////// pollable ////////////////////////////
 
   public void recordLastPolledTimestamp() {
-    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
+    long currentTimestamp;
+    long newTimestamp;
+
+    do {
+      currentTimestamp = lastPolledTimestamp.get();
+      newTimestamp = Math.max(currentTimestamp, System.currentTimeMillis());
+    } while (!lastPolledTimestamp.compareAndSet(currentTimestamp, newTimestamp));
   }
 
   public boolean pollable() {
     if (isCommitted()) {
       return false;
     }
-    if (lastPolledTimestamp == INVALID_TIMESTAMP) {
+    if (lastPolledTimestamp.get() == INVALID_TIMESTAMP) {
       return true;
     }
     return canRecycle();
@@ -196,7 +203,7 @@ public class SubscriptionEvent {
   private boolean canRecycle() {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp
+    return System.currentTimeMillis() - lastPolledTimestamp.get()
         > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
@@ -205,7 +212,7 @@ public class SubscriptionEvent {
     currentResponseIndex = 0;
 
     // reset lastPolledTimestamp makes this event pollable
-    lastPolledTimestamp = INVALID_TIMESTAMP;
+    lastPolledTimestamp.set(INVALID_TIMESTAMP);
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {
