@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -88,6 +89,20 @@ public class LogicalPlanner {
     this.planOptimizers =
         new OptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
             .getPlanOptimizers();
+  }
+
+  @TestOnly
+  public LogicalPlanner(
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      WarningCollector warningCollector,
+      List<PlanOptimizer> planOptimizers) {
+    this.queryContext = queryContext;
+    this.metadata = metadata;
+    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.planOptimizers = planOptimizers;
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
