@@ -41,6 +41,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -69,12 +70,12 @@ public class IoTDBTableIT {
       // should specify database before create table
       try {
         statement.execute(
-            "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+            "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
       } catch (final SQLException e) {
         assertEquals("701: database is not specified", e.getMessage());
       }
 
-      // Show tables shall succeed in a newly created database
+      // Show tables shall succeed in a newly created database with no tables
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
@@ -87,7 +88,38 @@ public class IoTDBTableIT {
 
       // or use full qualified table name
       statement.execute(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+
+      try {
+        statement.execute(
+            "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+      } catch (final SQLException e) {
+        assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
+      }
+
+      String[] tableNames = new String[] {"table1"};
+      String[] ttls = new String[] {"INF"};
+
+      // Check duplicate create table won't affect table state
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
+        int cnt = 0;
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertTrue(resultSet.next());
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
+
+      statement.execute(
+          "create table if not exists test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
 
       statement.execute("use test2");
 
@@ -128,8 +160,8 @@ public class IoTDBTableIT {
       statement.execute(
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
-      String[] tableNames = new String[] {"table2"};
-      String[] ttls = new String[] {"6600000"};
+      tableNames = new String[] {"table2"};
+      ttls = new String[] {"6600000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
