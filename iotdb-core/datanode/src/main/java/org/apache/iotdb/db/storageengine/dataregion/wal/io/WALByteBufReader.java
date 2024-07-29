@@ -83,6 +83,7 @@ public class WALByteBufReader implements Closeable {
 
   @Override
   public void close() throws IOException {
+    logStream.close();
     channel.close();
   }
 
