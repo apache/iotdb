@@ -136,24 +136,6 @@ public class WALEntryPosition {
     }
   }
 
-  public File getWALFileWithRetry() throws IOException {
-    if (isInSealedFile()) {
-      walFile = walNode.getWALFile(walFileVersionId);
-    } else {
-      try {
-        walFile = walNode.getWALFile(walFileVersionId);
-      } catch (IOException e) {
-        // unsealed file may be renamed after sealed, so we should try again
-        if (isInSealedFile()) {
-          walFile = walNode.getWALFile(walFileVersionId);
-        } else {
-          throw e;
-        }
-      }
-    }
-    return walFile;
-  }
-
   public WALInputStream openReadFileStream() throws IOException {
     // TODO: Refactor this part of code
     if (isInSealedFile()) {
