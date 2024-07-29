@@ -17,16 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class CountDevice extends AbstractQueryDevice {
 
-public class TableNotExistsException extends MetadataException {
+  // For sql-input show device usage
+  public CountDevice(final String tableName, final Expression rawExpression) {
+    super(tableName, rawExpression);
+  }
 
-  public TableNotExistsException(String database, String tableName) {
-    super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+  @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitCountDevice(this, context);
+  }
+
+  @Override
+  public String toString() {
+    return "CountDevice" + toStringContent();
   }
 }
