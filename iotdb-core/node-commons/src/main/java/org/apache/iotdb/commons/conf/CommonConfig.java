@@ -188,6 +188,8 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
+  private int pipeNonForwardingEventsProgressReportInterval = 100;
+
   private int pipeDataStructureTabletRowSize = 2048;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
@@ -599,6 +601,16 @@ public class CommonConfig {
 
   public boolean isTimestampPrecisionCheckEnabled() {
     return timestampPrecisionCheckEnabled;
+  }
+
+  public int getPipeNonForwardingEventsProgressReportInterval() {
+    return pipeNonForwardingEventsProgressReportInterval;
+  }
+
+  public void setPipeNonForwardingEventsProgressReportInterval(
+      int pipeNonForwardingEventsProgressReportInterval) {
+    this.pipeNonForwardingEventsProgressReportInterval =
+        pipeNonForwardingEventsProgressReportInterval;
   }
 
   public String getPipeHardlinkBaseDirName() {
