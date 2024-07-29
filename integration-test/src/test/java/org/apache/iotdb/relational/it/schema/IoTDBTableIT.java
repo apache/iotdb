@@ -109,7 +109,6 @@ public class IoTDBTableIT {
           assertEquals(
               showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
-        assertTrue(resultSet.next());
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
