@@ -43,9 +43,9 @@ public class FileTimeIndexCacheRecorder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileTimeIndexCacheRecorder.class);
 
-  private final static int VERSION = 0;
+  private static final int VERSION = 0;
 
-  protected final static String FILE_NAME = "FileTimeIndexCache_" + VERSION;
+  protected static final String FILE_NAME = "FileTimeIndexCache_" + VERSION;
 
   private final ScheduledExecutorService recordFileIndexThread;
 
@@ -82,12 +82,12 @@ public class FileTimeIndexCacheRecorder {
                   File partitionDir =
                       SystemFileFactory.INSTANCE.getFile(
                           dataRegionSysDir, String.valueOf(partitionId));
-                  File logFile =
-                      SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
+                  File logFile = SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
                   try {
                     if (!partitionDir.exists() && !partitionDir.mkdirs()) {
                       LOGGER.warn(
-                          "Partition directory has existed，filePath:{}", partitionDir.getAbsolutePath());
+                          "Partition directory has existed，filePath:{}",
+                          partitionDir.getAbsolutePath());
                     }
                     if (!logFile.createNewFile()) {
                       LOGGER.warn(

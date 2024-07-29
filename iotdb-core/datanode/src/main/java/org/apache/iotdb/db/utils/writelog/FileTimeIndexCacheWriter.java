@@ -37,7 +37,8 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   private FileChannel channel;
   private final boolean forceEachWrite;
 
-  public FileTimeIndexCacheWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
+  public FileTimeIndexCacheWriter(File logFile, boolean forceEachWrite)
+      throws FileNotFoundException {
     this.logFile = logFile;
     this.forceEachWrite = forceEachWrite;
 
