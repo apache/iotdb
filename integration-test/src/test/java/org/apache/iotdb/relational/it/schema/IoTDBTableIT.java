@@ -89,6 +89,13 @@ public class IoTDBTableIT {
       statement.execute(
           "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
 
+      try {
+        statement.execute(
+            "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+      } catch (final SQLException e) {
+        assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
+      }
+
       statement.execute("use test2");
 
       try {
@@ -126,7 +133,25 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT) with (TTL=6600000)");
+
+      statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+
+      try {
+        statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+      } catch (final SQLException e) {
+        assertEquals("552: Column 'speed' already exist", e.getMessage());
+      }
+
+      statement.execute("alter table table2 add column if not exists speed DOUBLE MEASUREMENT");
+
+      try {
+        statement.execute("alter table table3 add column speed DOUBLE MEASUREMENT");
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'test2.table3' does not exist", e.getMessage());
+      }
+
+      statement.execute("alter table if exists table3 add column speed DOUBLE MEASUREMENT");
 
       String[] tableNames = new String[] {"table2"};
       String[] ttls = new String[] {"6600000"};
@@ -197,7 +222,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("describe table1");
       } catch (final SQLException e) {
-        assertEquals("550: Table test2.table1 not exists.", e.getMessage());
+        assertEquals("550: Table 'test2.table1' does not exist.", e.getMessage());
       }
 
       String[] columnNames =
@@ -250,7 +275,7 @@ public class IoTDBTableIT {
       try {
         statement.executeQuery("describe test3.table3");
       } catch (final SQLException e) {
-        assertEquals("550: Table test3.table3 not exists.", e.getMessage());
+        assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
       }
 
       statement.execute("drop database test1");

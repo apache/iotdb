@@ -24,9 +24,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TableNotExistsException extends MetadataException {
 
-  public TableNotExistsException(String database, String tableName) {
+  public TableNotExistsException(final String database, final String tableName) {
     super(
-        String.format("Table %s.%s not exists.", database, tableName),
+        String.format("Table '%s.%s' does not exist.", database, tableName),
         TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
   }
 }
