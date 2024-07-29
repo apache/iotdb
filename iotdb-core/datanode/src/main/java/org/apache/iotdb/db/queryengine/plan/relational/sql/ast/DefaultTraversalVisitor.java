@@ -397,13 +397,6 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitAlterTableAddColumn(final AlterTableAddColumn node, final C context) {
-    process(node.getElement(), context);
-
-    return null;
-  }
-
-  @Override
   protected Void visitProperty(Property node, C context) {
     process(node.getName(), context);
     if (!node.isSetToDefault()) {

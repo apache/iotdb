@@ -40,7 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTableAddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -196,21 +196,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAlterTableAddColumn(
-      final AlterTableAddColumn node, final MPPQueryContext context) {
+  protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     String database = clientSession.getDatabaseName();
-    if (node.getName().getPrefix().isPresent()) {
-      database = node.getName().getPrefix().get().toString();
+    if (node.getTableName().getPrefix().isPresent()) {
+      database = node.getTableName().getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
 
-    final ColumnDefinition definition = node.getElement();
+    final ColumnDefinition definition = node.getColumn();
     return new AlterTableAddColumnTask(
         database,
-        node.getName().getSuffix(),
+        node.getTableName().getSuffix(),
         Collections.singletonList(
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),

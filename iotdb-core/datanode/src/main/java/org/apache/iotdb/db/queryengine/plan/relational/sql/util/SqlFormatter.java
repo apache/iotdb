@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTableAddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -537,26 +536,6 @@ public final class SqlFormatter {
       return null;
     }
 
-    @Override
-    protected Void visitAlterTableAddColumn(final AlterTableAddColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
-      if (node.tableIfExists()) {
-        builder.append("IF EXISTS ");
-      }
-      final String tableName = formatName(node.getName());
-      builder.append(tableName);
-
-      builder.append("ADD COLUMN ");
-      if (node.columnIfNotExists()) {
-        builder.append("IF NOT EXISTS ");
-      }
-
-      builder.append("\n");
-      builder.append(formatColumnDefinition(node.getElement()));
-
-      return null;
-    }
-
     private String formatPropertiesMultiLine(List<Property> properties) {
       if (properties.isEmpty()) {
         return "";
@@ -675,10 +654,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitAddColumn(AddColumn node, Integer indent) {
+    protected Void visitAddColumn(final AddColumn node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
 
       builder.append(formatName(node.getTableName())).append(" ADD COLUMN ");
+      if (node.columnIfNotExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
       builder.append(formatColumnDefinition(node.getColumn()));
 
       return null;
