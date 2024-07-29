@@ -327,7 +327,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
+  // missing synchronization can cause IoTDBSubscriptionSharingIT to lose data
+  private synchronized boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {

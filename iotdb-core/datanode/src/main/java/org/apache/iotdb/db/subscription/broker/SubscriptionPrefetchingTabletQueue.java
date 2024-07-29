@@ -97,7 +97,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     return onEventInternal(null);
   }
 
-  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
+  // missing synchronization can cause IoTDBSubscriptionSharingIT to lose data
+  private synchronized boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
