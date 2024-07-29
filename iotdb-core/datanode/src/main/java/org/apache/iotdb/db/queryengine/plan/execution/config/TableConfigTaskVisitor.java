@@ -167,13 +167,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES.contains(key) && !property.isSetToDefault()) {
-        final Expression value = property.getNonDefaultValue();
-        if (!(value instanceof LongLiteral)) {
-          throw new SemanticException(
-              "TTL' value must be a LongLiteral, but now is: " + value.toString());
+      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
+        if (!property.isSetToDefault()) {
+          final Expression value = property.getNonDefaultValue();
+          if (!(value instanceof LongLiteral)) {
+            throw new SemanticException(
+                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+          }
+          map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
         }
-        map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+      } else {
+        throw new SemanticException("Table property " + key + " is currently not allowed.");
       }
     }
     table.setProps(map);
