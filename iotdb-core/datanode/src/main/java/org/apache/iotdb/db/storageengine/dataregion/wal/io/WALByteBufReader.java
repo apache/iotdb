@@ -26,8 +26,6 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
 /**
@@ -35,23 +33,15 @@ import java.util.Iterator;
  * {@link Iterator}.
  */
 public class WALByteBufReader implements Closeable {
-  private final File logFile;
-  private final FileChannel channel;
   private final WALMetaData metaData;
   private final DataInputStream logStream;
   private final Iterator<Integer> sizeIterator;
 
   public WALByteBufReader(File logFile) throws IOException {
-    this(logFile, FileChannel.open(logFile.toPath(), StandardOpenOption.READ));
-  }
-
-  public WALByteBufReader(File logFile, FileChannel channel) throws IOException {
-    this.logFile = logFile;
-    this.channel = channel;
-    this.logStream = new DataInputStream(new WALInputStream(logFile));
-    this.metaData = WALMetaData.readFromWALFile(logFile, channel);
+    WALInputStream walInputStream = new WALInputStream(logFile);
+    this.metaData = walInputStream.getWALMetaData();
+    this.logStream = new DataInputStream(walInputStream);
     this.sizeIterator = metaData.getBuffersSize().iterator();
-    channel.position(0);
   }
 
   /** Like {@link Iterator#hasNext()}. */
@@ -84,7 +74,6 @@ public class WALByteBufReader implements Closeable {
   @Override
   public void close() throws IOException {
     logStream.close();
-    channel.close();
   }
 
   public long getFirstSearchIndex() {

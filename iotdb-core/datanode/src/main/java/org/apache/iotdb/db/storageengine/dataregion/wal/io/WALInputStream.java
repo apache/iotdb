@@ -324,6 +324,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     return channel.position();
   }
 
+  public WALMetaData getWALMetaData() throws IOException {
+    long position = channel.position();
+    channel.position(0);
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(logFile, channel);
+    channel.position(position);
+    return walMetaData;
+  }
+
   private SegmentInfo getNextSegmentInfo() throws IOException {
     segmentHeaderWithoutCompressedSizeBuffer.clear();
     channel.read(segmentHeaderWithoutCompressedSizeBuffer);
