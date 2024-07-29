@@ -180,6 +180,7 @@ public class SPRINTZBOSBTest {
 
     // -----------------------------------------------------------------
 
+
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -343,8 +344,8 @@ public class SPRINTZBOSBTest {
                 k1++;
 
 
-            } else if (cur_value >= final_k_end_value) {
-                final_right_outlier.add(cur_value - final_k_end_value);
+            } else if (cur_value > final_k_end_value) {
+                final_right_outlier.add(cur_value - final_x_u_minus);
                 final_right_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
                     index_bitmap_outlier <<= 2;
@@ -401,7 +402,7 @@ public class SPRINTZBOSBTest {
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max
-        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
+        int right_bit_width = getBitWith(max_delta_value - final_x_u_minus);//final_right_min
         intByte2Bytes(left_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
         intByte2Bytes(right_bit_width,encode_pos,cur_byte);
@@ -435,6 +436,7 @@ public class SPRINTZBOSBTest {
 
         block_size = remaining-1;
         int max_delta_value = min_delta[2];
+
         int[] value_list = new int[block_size];
         int unique_value_count = 0;
         int[] value_count_list = new int[max_delta_value+1];
@@ -531,15 +533,16 @@ public class SPRINTZBOSBTest {
             int beta_max = getBitWith(max_delta_value - x_l_plus_value);
             int end_value_i = start_value_i + 1;
             for(int beta = 1; beta <= beta_max; beta++){
-                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta));
+                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta)) - 1;
 
                 for (; end_value_i < unique_value_count; end_value_i++) {
+                    long k_end_valueL = sorted_value_list[end_value_i-1];
 
-                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+                    x_u_minus_value = getUniqueValue(k_end_valueL, left_shift);
                     k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
                     if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
                         cur_bits = 0;
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+                        cur_k2 = block_size - getCount(k_end_valueL,mask);
 
                         cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
                         cur_bits += cur_k1 * getBitWith(k_start_value);

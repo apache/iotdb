@@ -180,6 +180,7 @@ public class SPRINTZBOSVTest {
 
     // -----------------------------------------------------------------
 
+
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -215,7 +216,6 @@ public class SPRINTZBOSVTest {
 
         return ts_block_delta;
     }
-
     public static int encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
             int bit_width,
@@ -343,8 +343,8 @@ public class SPRINTZBOSVTest {
                 k1++;
 
 
-            } else if (cur_value >= final_k_end_value) {
-                final_right_outlier.add(cur_value - final_k_end_value);
+            } else if (cur_value > final_k_end_value) {
+                final_right_outlier.add(cur_value - final_x_u_minus);
                 final_right_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
                     index_bitmap_outlier <<= 2;
@@ -401,7 +401,7 @@ public class SPRINTZBOSVTest {
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max
-        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
+        int right_bit_width = getBitWith(max_delta_value - final_x_u_minus);//final_right_min
         intByte2Bytes(left_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
         intByte2Bytes(right_bit_width,encode_pos,cur_byte);
@@ -435,6 +435,7 @@ public class SPRINTZBOSVTest {
 
         block_size = remaining-1;
         int max_delta_value = min_delta[2];
+
         int[] value_list = new int[block_size];
         int unique_value_count = 0;
         int[] value_count_list = new int[max_delta_value+1];
