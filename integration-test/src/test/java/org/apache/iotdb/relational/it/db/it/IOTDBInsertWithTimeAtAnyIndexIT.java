@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -57,15 +58,42 @@ public class IOTDBInsertWithTimeAtAnyIndexIT {
 
   @Test
   public void testInsertTimeAtAnyIndex() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.addBatch("create database test");
-      statement.addBatch("use \"test\"");
+      statement.execute("create database IF NOT EXISTS test");
+      statement.execute("use \"test\"");
       statement.addBatch(
-          "create table (id1 string id, s1 int32 measurement, s2 int32 measurement)");
-      statement.addBatch("insert into db(id, s1, s2, time) ('d1', 2, 3, 1)");
-      statement.addBatch("insert into db(id, s1, time, s2) values ('d1', 20, 10, 30)");
-      statement.addBatch("insert into db(id, `time`, s1, s2) values ('d1', 100, 200, 300)");
+          "create table IF NOT EXISTS db(id1 string id, s1 int32 measurement, s2 int32 measurement)");
+      statement.addBatch("insert into db(id1, s1, s2, time) values ('d1', 2, 3, 1)");
+      statement.addBatch("insert into db(id1, s1, time, s2) values ('d1', 20, 10, 30)");
+      statement.addBatch("insert into db(id1, \"time\", s1, s2) values ('d1', 100, 200, 300)");
+      statement.executeBatch();
+
+      try (ResultSet resultSet = statement.executeQuery("select time, s1 from db")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(2, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals(10, resultSet.getLong(1));
+        assertEquals(20, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals(100, resultSet.getLong(1));
+        assertEquals(200, resultSet.getInt(2));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  public static void main(String[] args) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database IF NOT EXISTS test");
+      statement.execute("use \"test\"");
+      statement.addBatch(
+          "create table IF NOT EXISTS db(id1 string id, s1 int32 measurement, s2 int32 measurement)");
+      statement.addBatch("insert into db(id1, s1, s2, time) values ('d1', 2, 3, 1)");
+      statement.addBatch("insert into db(id1, s1, time, s2) values ('d1', 20, 10, 30)");
+      statement.addBatch("insert into db(id1, \"time\", s1, s2) values ('d1', 100, 200, 300)");
       statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select time, s1 from db")) {
@@ -85,7 +113,7 @@ public class IOTDBInsertWithTimeAtAnyIndexIT {
 
   @Test
   public void testInsertMultiTime() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       try {
         statement.addBatch("create database test");

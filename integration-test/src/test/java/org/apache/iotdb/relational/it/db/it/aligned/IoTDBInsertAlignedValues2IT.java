@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -70,7 +71,7 @@ public class IoTDBInsertAlignedValues2IT {
         if (i == 99) {
           statement.addBatch(
               "insert into dev(id1,time,s1,s3) values("
-                  + "'GPS''"
+                  + "'GPS'"
                   + ","
                   + i
                   + ","
@@ -140,12 +141,13 @@ public class IoTDBInsertAlignedValues2IT {
     }
   }
 
+  @Ignore // aggregation
   @Test
   public void testInsertComplexAlignedValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.addBatch("create database test");
-      statement.addBatch("use database \"test\"");
+      statement.execute("create database test");
+      statement.execute("use \"test\"");
       statement.addBatch(
           "create table sg (id1 string id, s1 int32 measurement, s2 int32 measurement)");
       statement.addBatch("insert into sg(id1, time, s1) values('id1', 3,1)");

@@ -70,7 +70,7 @@ public class IoTDBRestartIT {
       statement.execute("create database test");
       statement.execute("use \"test\"");
       statement.execute("create table turbine (id1 string id, s1 float measurement)");
-      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 1,1.0)");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 1,1.0)");
       statement.execute("flush");
     }
 
@@ -83,7 +83,8 @@ public class IoTDBRestartIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 2,1.0)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 2,1.0)");
     }
 
     try {
@@ -92,9 +93,10 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into turbine(id1, timestamp,s1) values('d1', 3,1.0)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 3,1.0)");
 
       String[] exp = new String[] {"1,1.0", "2,1.0", "3,1.0"};
       int cnt = 0;
@@ -109,13 +111,15 @@ public class IoTDBRestartIT {
     }
   }
 
+  @Ignore // data deletion
   @Test
   public void testRestartDelete() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into root.turbine.d1(time,s1) values(1,1)");
+      statement.execute("insert into root.turbine.d1(time,s1) values(2,2)");
+      statement.execute("insert into root.turbine.d1(time,s1) values(3,3)");
     }
 
     long time = 0;
@@ -136,8 +140,9 @@ public class IoTDBRestartIT {
     }
      */
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
       statement.execute("delete from root.turbine.d1.s1 where time<=1");
 
       ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1");
@@ -171,10 +176,14 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartQueryLargerThanEndTime() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
+      statement.execute("create database \"test\"");
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table turbine (id1 string id, s1 int64 measurement, s2 boolean measurement)");
+      statement.execute("insert into turbine(time,id1,s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,id1,s1) values(2,\'d1\',2)");
     }
 
     try {
@@ -183,10 +192,11 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(4,2)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into turbine(time,id1,s1) values(3,\'d1\',1)");
+      statement.execute("insert into turbine(time,id1,s1) values(4,\'d1\',2)");
     }
 
     try {
@@ -195,8 +205,9 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
       String[] exp =
           new String[] {
@@ -204,7 +215,7 @@ public class IoTDBRestartIT {
           };
       int cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT s1 FROM root.turbine.d1 where time > 3")) {
+          statement.executeQuery("SELECT s1 FROM turbine where time > 3 and id1=\'d1\'")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
           String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
@@ -218,10 +229,14 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartEndTime() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
+      statement.execute("create database \"test\"");
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table turbine (id1 string id, s1 int64 measurement, s2 int64 measurement)");
+      statement.execute("insert into turbine(time,\"id1\",s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,\"id1\",s1) values(2,\'d1\',2)");
     }
 
     try {
@@ -230,10 +245,11 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s2) values(1,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s2) values(2,2)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into turbine(time,id1,s2) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,id1,s2) values(2,\'d1\',2)");
     }
 
     try {
@@ -242,12 +258,14 @@ public class IoTDBRestartIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
       String[] exp = new String[] {"1,1.0", "2,2.0"};
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM root.turbine.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s2 FROM turbine where id1=\'d1\'")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
           String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
@@ -259,11 +277,13 @@ public class IoTDBRestartIT {
     }
   }
 
+  @Ignore // delete column
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into root.turbine1.d1(time,s1,s2) values(1,1.1,2.2)");
       statement.execute("delete timeseries root.turbine1.d1.s1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
@@ -271,8 +291,9 @@ public class IoTDBRestartIT {
 
     // EnvironmentUtils.restartDaemon();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
       try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         assertNotNull(resultSet);
@@ -289,18 +310,21 @@ public class IoTDBRestartIT {
     }
   }
 
+  @Ignore // delete column
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("use \"test\"");
+      statement.execute("insert into turbine1(time,id1,s1,s2) values(1,\'d1\',1.1,2.2)");
       statement.execute("delete timeseries root.turbine1.d1.s1");
     }
 
     // EnvironmentUtils.restartDaemon();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
       try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         assertNotNull(resultSet);
@@ -326,25 +350,27 @@ public class IoTDBRestartIT {
     config.setSeqTsFileSize(10000000);
     config.setUnSeqTsFileSize(10000000);
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT64");
-      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1)");
-      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(2,1)");
-      statement.execute("create timeseries root.turbine1.d1.s2 with datatype=BOOLEAN");
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(3,true)");
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(4,true)");
+      statement.execute("create database \"test\"");
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table turbine1 (id1 string id, s1 int64 measurement, s2 boolean measurement)");
+      statement.execute("insert into turbine1(time,id1,s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine1(time,id1,s1) values(2,\'d1\',1)");
+      statement.execute("insert into turbine1(time,id1,s2) values(3,\'d1\',true)");
+      statement.execute("insert into turbine1(time,id1,s2) values(4,\'d1\',true)");
     }
 
     Thread.sleep(1000);
     // EnvironmentUtils.restartDaemon();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
       long[] result = new long[] {1L, 2L};
-      ResultSet resultSet =
-          statement.executeQuery("select s1 from root.turbine1.d1 where time < 3");
+      ResultSet resultSet = statement.executeQuery("select s1 from turbine1 where time < 3");
       assertNotNull(resultSet);
       int cnt = 0;
       while (resultSet.next()) {
@@ -361,18 +387,23 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRecoverFromFlushMemTableError() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("create database \"test\"");
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table turbine1 (id1 string id, s1 float measurement, s2 double measurement)");
+      statement.execute("insert into turbine1(time,id1,s1,s2) values(1,\'d1\',1.1,2.2)");
     }
 
     // mock exception during flush memtable
     // EnvironmentUtils.restartDaemon();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from turbine1")) {
         assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {

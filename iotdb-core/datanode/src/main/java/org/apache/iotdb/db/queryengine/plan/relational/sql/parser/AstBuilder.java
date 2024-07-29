@@ -380,8 +380,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
       if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
-        timeColumnIndex = i;
-        break;
+        if (timeColumnIndex == -1) {
+          timeColumnIndex = i;
+        } else {
+          throw new SemanticException("One row should only have one time value");
+        }
       }
     }
     if (timeColumnIndex != -1) {
@@ -390,6 +393,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String[] columnNameArray = columnNames.toArray(new String[0]);
 
     List<Expression> rows = queryBody.getRows();
+    if (timeColumnIndex == -1 && rows.size() > 1) {
+      throw new SemanticException("need timestamps when insert multi rows");
+    }
     int finalTimeColumnIndex = timeColumnIndex;
     List<InsertRowStatement> rowStatements =
         rows.stream()

@@ -141,6 +141,13 @@ public abstract class InsertBaseStatement extends Statement {
     return dataTypes;
   }
 
+  public TSDataType getDataType(int i) {
+    if (dataTypes == null) {
+      return null;
+    }
+    return dataTypes[i];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
   }
@@ -263,6 +270,13 @@ public abstract class InsertBaseStatement extends Statement {
 
   public TsTableColumnCategory[] getColumnCategories() {
     return columnCategories;
+  }
+
+  public TsTableColumnCategory getColumnCategory(int i) {
+    if (columnCategories == null) {
+      return null;
+    }
+    return columnCategories[i];
   }
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {

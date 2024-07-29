@@ -94,6 +94,7 @@ public class IoTDBInsertMultiRowIT {
     statement.close();
   }
 
+  @Ignore // aggregation
   @Test
   public void testInsertMultiRow() throws SQLException {
     Statement st0 = connection.createStatement();

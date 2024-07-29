@@ -82,14 +82,14 @@ public class IoTDBPartialInsertionIT {
         statement.execute("INSERT INTO sg1(id1, timestamp, s0) VALUES ('id', 1, 1)");
         fail();
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Path [root.sg1.s0] does not exist"));
+        assertTrue(e.getMessage().contains("Unknown column category"));
       }
     }
   }
 
   @Test
   public void testPartialInsertionRestart() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE DATABASE test");

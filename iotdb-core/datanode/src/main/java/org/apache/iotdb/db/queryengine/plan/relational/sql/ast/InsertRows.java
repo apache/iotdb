@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -82,10 +83,19 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public void validateTableSchema(TableSchema realSchema) {
+  public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    String databaseName = context.getSession().getDatabaseName().orElse(null);
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
+      final TableSchema realSchema =
+          metadata
+              .validateTableHeaderSchema(databaseName, incomingTableSchema, context)
+              .orElse(null);
+      if (realSchema == null) {
+        throw new SemanticException(
+            "Schema validation failed, table cannot be created: " + incomingTableSchema);
+      }
       validateTableSchema(realSchema, incomingTableSchema, insertRowStatement);
     }
   }

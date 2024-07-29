@@ -68,7 +68,7 @@ public class IoTDBInsertAlignedValues3IT {
         if (i >= 49) {
           statement.addBatch(
               "insert into dev(id1,time,s1,s2,s3) values("
-                  + "GPS"
+                  + "\'GPS\'"
                   + ","
                   + i
                   + ","
@@ -80,8 +80,8 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         } else {
           statement.addBatch(
-              "insert into root.lz.dev.GPS(id1,time,s1,s2) values("
-                  + "GPS"
+              "insert into dev(id1,time,s1,s2) values("
+                  + "\'GPS\'"
                   + ","
                   + i
                   + ","
@@ -96,7 +96,7 @@ public class IoTDBInsertAlignedValues3IT {
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select s3 from dev")) {
         while (resultSet.next()) {
-          assertEquals(rowCount + 49, resultSet.getInt(2));
+          assertEquals(rowCount + 49, resultSet.getInt(1));
           rowCount++;
         }
         assertEquals(51, rowCount);
@@ -105,7 +105,7 @@ public class IoTDBInsertAlignedValues3IT {
       try (ResultSet resultSet = statement.executeQuery("select s2 from dev")) {
         rowCount = 0;
         while (resultSet.next()) {
-          assertEquals(rowCount, resultSet.getInt(2));
+          assertEquals(rowCount, resultSet.getInt(1));
           rowCount++;
         }
         assertEquals(100, rowCount);
@@ -114,7 +114,7 @@ public class IoTDBInsertAlignedValues3IT {
       try (ResultSet resultSet = statement.executeQuery("select s1 from dev")) {
         rowCount = 0;
         while (resultSet.next()) {
-          assertEquals(rowCount, resultSet.getInt(2));
+          assertEquals(rowCount, resultSet.getInt(1));
           rowCount++;
         }
         assertEquals(100, rowCount);

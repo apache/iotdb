@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,6 +50,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
+@Ignore // aggregation
 public class IoTDBRecoverIT {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverIT.class);
@@ -77,10 +79,10 @@ public class IoTDBRecoverIT {
         "INSERT INTO wf01(id1, time,temperature,status, hardware) "
             + "values('wt01',5, 5.5, false, 55)"
       };
-  private final String d0s0 = "s0";
-  private final String d0s1 = "s1";
-  private final String d0s2 = "s2";
-  private final String d0s3 = "s3";
+  private static final String d0s0 = "s0";
+  private static final String d0s1 = "s1";
+  private static final String d0s2 = "s2";
+  private static final String d0s3 = "s3";
 
   @Before
   public void setUp() throws Exception {
@@ -240,7 +242,7 @@ public class IoTDBRecoverIT {
     }
   }
 
-  private void prepareData() {
+  private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 

@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,6 +52,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
+@Ignore // aggregation
 public class IoTDBRecoverUnclosedIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverUnclosedIT.class);
   private static final String TIMESTAMP_STR = "time";

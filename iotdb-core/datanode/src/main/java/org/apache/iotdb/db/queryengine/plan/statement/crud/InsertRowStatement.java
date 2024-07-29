@@ -358,10 +358,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSDataType getDataType(int index) {
-    if (isNeedInferType) {
+    if (isNeedInferType && dataTypes == null) {
       return TypeInferenceUtils.getPredictedDataType(values[index], true);
     } else {
-      return dataTypes[index];
+      return dataTypes != null ? dataTypes[index] : null;
     }
   }
 

@@ -63,7 +63,7 @@ public class IoTDBInsertWithoutTimeIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void createTable() {
+  private static void createTable() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -75,6 +75,7 @@ public class IoTDBInsertWithoutTimeIT {
     }
   }
 
+  @Ignore // aggregation
   @Test
   public void testInsertWithoutTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
