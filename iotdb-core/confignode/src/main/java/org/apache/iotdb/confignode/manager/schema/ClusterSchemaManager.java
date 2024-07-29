@@ -1106,7 +1106,7 @@ public class ClusterSchemaManager {
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public TsTable getTable(String database, String tableName) {
+  public TsTable getTable(final String database, final String tableName) {
     return clusterSchemaInfo.getTsTable(database, tableName);
   }
 
