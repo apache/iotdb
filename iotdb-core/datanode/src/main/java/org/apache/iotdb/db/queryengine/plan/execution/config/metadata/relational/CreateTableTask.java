@@ -35,7 +35,7 @@ public class CreateTableTask implements IConfigTask {
 
   private final boolean ifNotExists;
 
-  public CreateTableTask(TsTable table, String database, boolean ifNotExists) {
+  public CreateTableTask(final TsTable table, String database, final boolean ifNotExists) {
     database = PathUtils.qualifyDatabaseName(database);
     this.table = table;
     this.database = database;
@@ -43,7 +43,7 @@ public class CreateTableTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createTable(table, database, ifNotExists);
   }
