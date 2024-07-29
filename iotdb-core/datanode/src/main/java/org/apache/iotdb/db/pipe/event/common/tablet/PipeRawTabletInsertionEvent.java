@@ -260,7 +260,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
-    return !shouldParseTimeOrPattern() && tablet.rowSize == 0;
+    return !shouldParseTimeOrPattern() && isTabletEmpty(tablet);
+  }
+
+  public static boolean isTabletEmpty(final Tablet tablet) {
+    return Objects.isNull(tablet)
+        || tablet.rowSize == 0
+        || Objects.isNull(tablet.getSchemas())
+        || tablet.getSchemas().isEmpty();
   }
 
   /////////////////////////// Object ///////////////////////////
