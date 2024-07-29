@@ -437,7 +437,7 @@ public class SPRINTZBOSMedianTest {
         encode_pos += 4;
 //        int2Bytes(final_k_start_value,encode_pos,cur_byte);
 //        encode_pos += 4;
-        int bit_width_final = getBitWith(final_k_end_value - final_x_l_plus);
+        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max

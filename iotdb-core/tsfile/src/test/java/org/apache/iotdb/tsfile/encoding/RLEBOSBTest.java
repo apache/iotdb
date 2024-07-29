@@ -364,8 +364,8 @@ public class RLEBOSBTest {
                 k1++;
 
 
-            } else if (cur_value > final_k_end_value) {
-                final_right_outlier.add(cur_value - final_x_u_minus);
+            } else if (cur_value >= final_k_end_value) {
+                final_right_outlier.add(cur_value - final_k_end_value);
                 final_right_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
                     index_bitmap_outlier <<= 2;
@@ -422,11 +422,11 @@ public class RLEBOSBTest {
         int2Bytes(final_k_end_value,encode_pos,cur_byte);
         encode_pos += 4;
 
-        int bit_width_final = getBitWith(final_k_end_value - final_x_l_plus);
+        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);
-        int right_bit_width = getBitWith(max_delta_value - final_x_u_minus);
+        int right_bit_width = getBitWith(max_delta_value - final_k_end_value );
         intByte2Bytes(left_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
         intByte2Bytes(right_bit_width,encode_pos,cur_byte);
