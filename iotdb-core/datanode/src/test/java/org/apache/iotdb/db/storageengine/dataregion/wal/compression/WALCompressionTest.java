@@ -178,6 +178,7 @@ public class WALCompressionTest {
       writer.write(buffer);
       buffer.clear();
     }
+    writer.close();
 
     try (WALInputStream stream = new WALInputStream(walFile)) {
       stream.skipToGivenLogicalPosition(positionAndEntryPairList.get(0).left);
