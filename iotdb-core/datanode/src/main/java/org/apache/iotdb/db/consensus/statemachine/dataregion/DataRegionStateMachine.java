@@ -52,10 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -92,7 +90,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public boolean takeSnapshot(File snapshotDir) {
     try {
-      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      SnapshotTaker snapshotTaker = new SnapshotTaker(region);
+      snapshotTaker.cleanSnapshot();
+      return snapshotTaker.takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
@@ -118,6 +118,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
           e);
       return false;
     }
+  }
+
+  @Override
+  public boolean clearSnapshot() {
+    return SnapshotTaker.clearSnapshotOfDataRegion(region);
   }
 
   @Override
@@ -233,13 +238,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+          .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",

@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
 
@@ -91,6 +90,15 @@ public interface IStateMachine {
   }
 
   /**
+   * Clear snapshot of current statemachine.
+   *
+   * @return true if all snapshot dir delete successfully
+   */
+  default boolean clearSnapshot() {
+    throw new UnsupportedOperationException("not implemented yet");
+  }
+
+  /**
    * Load the latest snapshot from given dir.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
@@ -108,7 +116,7 @@ public interface IStateMachine {
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    * @return List of real snapshot files.
    */
-  default List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 

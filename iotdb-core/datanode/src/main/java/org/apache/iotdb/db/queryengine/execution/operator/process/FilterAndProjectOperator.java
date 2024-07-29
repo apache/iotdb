@@ -116,8 +116,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
     long inputRowCount = input.getPositionCount();
     TsBlock filterResult = getFilterTsBlock(input);
-    filteredRowCount +=
-        filterResult == null ? inputRowCount : inputRowCount - filterResult.getPositionCount();
+    filteredRowCount += inputRowCount - filterResult.getPositionCount();
     operatorContext.recordSpecifiedInfo("Filtered Rows", Long.toString(filteredRowCount));
 
     // contains non-mappable udf, we leave calculation for TransformOperator

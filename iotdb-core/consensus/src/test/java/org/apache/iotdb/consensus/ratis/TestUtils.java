@@ -51,6 +51,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -251,7 +252,7 @@ public class TestUtils {
       this.servers = new ArrayList<>();
 
       for (int i = 0; i < replicas; i++) {
-        peers.add(new Peer(gid, i, new TEndPoint("127.0.0.1", 6001 + i)));
+        peers.add(new Peer(gid, i, new TEndPoint("127.0.0.1", randomFreePort())));
 
         final File storage = storageProvider.apply(i);
         FileUtils.deleteFileQuietly(storage);
@@ -491,6 +492,14 @@ public class TestUtils {
 
     MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
+    }
+  }
+
+  private static int randomFreePort() {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to find free server socket port.", e);
     }
   }
 }

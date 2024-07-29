@@ -188,6 +188,8 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
+  private int pipeNonForwardingEventsProgressReportInterval = 100;
+
   private int pipeDataStructureTabletRowSize = 2048;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
@@ -269,6 +271,9 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
 
+  // default to SessionConfig.DEFAULT_MAX_FRAME_SIZE
+  private long subscriptionPollPayloadMaxSize = 64 * MB;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -281,7 +286,7 @@ public class CommonConfig {
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
-  private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+  private long datanodeTokenTimeoutMS = 180 * 1000L; // 3 minutes
 
   // timeseries and device limit
   private long seriesLimitThreshold = -1;
@@ -596,6 +601,16 @@ public class CommonConfig {
 
   public boolean isTimestampPrecisionCheckEnabled() {
     return timestampPrecisionCheckEnabled;
+  }
+
+  public int getPipeNonForwardingEventsProgressReportInterval() {
+    return pipeNonForwardingEventsProgressReportInterval;
+  }
+
+  public void setPipeNonForwardingEventsProgressReportInterval(
+      int pipeNonForwardingEventsProgressReportInterval) {
+    this.pipeNonForwardingEventsProgressReportInterval =
+        pipeNonForwardingEventsProgressReportInterval;
   }
 
   public String getPipeHardlinkBaseDirName() {
@@ -1229,6 +1244,14 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionPollPayloadMaxSize() {
+    return subscriptionPollPayloadMaxSize;
+  }
+
+  public void setSubscriptionPollPayloadMaxSize(long subscriptionPollPayloadMaxSize) {
+    this.subscriptionPollPayloadMaxSize = subscriptionPollPayloadMaxSize;
   }
 
   public String getSchemaEngineMode() {

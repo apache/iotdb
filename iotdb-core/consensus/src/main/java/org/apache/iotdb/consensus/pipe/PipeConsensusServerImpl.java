@@ -138,6 +138,7 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  @SuppressWarnings("java:S2276")
   public synchronized void start(boolean startConsensusPipes) throws IOException {
     stateMachine.start();
     MetricService.getInstance().addMetricSet(this.pipeConsensusServerMetrics);
@@ -275,6 +276,10 @@ public class PipeConsensusServerImpl {
                   consensusGroupId,
                   existedName,
                   expectedStatus);
+              if (expectedStatus.equals(PipeStatus.RUNNING)) {
+                // Do nothing. Because Pipe framework's metaSync will do that.
+                return;
+              }
               consensusPipeManager.updateConsensusPipe(existedName, expectedStatus);
             } catch (Exception e) {
               LOGGER.warn(
