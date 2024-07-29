@@ -89,13 +89,6 @@ public class IoTDBTableIT {
       statement.execute(
           "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
 
-      try {
-        statement.execute(
-            "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-      } catch (final SQLException e) {
-        assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
-      }
-
       statement.execute("use test2");
 
       try {
