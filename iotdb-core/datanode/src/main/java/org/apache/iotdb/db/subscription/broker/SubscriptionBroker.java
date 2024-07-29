@@ -64,10 +64,10 @@ public class SubscriptionBroker {
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
-        LOGGER.warn(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
-            topicName,
-            brokerId);
+        // There are two reasons for not printing logs here:
+        // 1. There will be a delay in the creation of the prefetching queue after subscription.
+        // 2. There is no corresponding prefetching queue on this DN (currently the consumer is
+        // fully connected to all DNs).
         continue;
       }
       // check if completed before closed
@@ -174,9 +174,7 @@ public class SubscriptionBroker {
 
   public void bindPrefetchingQueue(
       final String topicName, final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
-    final SubscriptionPrefetchingQueue prefetchingQueue =
-        topicNameToPrefetchingQueue.get(topicName);
-    if (Objects.nonNull(prefetchingQueue)) {
+    if (Objects.nonNull(topicNameToPrefetchingQueue.get(topicName))) {
       LOGGER.warn(
           "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] has already existed",
           topicName,
@@ -184,19 +182,22 @@ public class SubscriptionBroker {
       return;
     }
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue;
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
-      final SubscriptionPrefetchingQueue queue =
+      prefetchingQueue =
           new SubscriptionPrefetchingTsFileQueue(
               brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
-      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
-      topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
-      final SubscriptionPrefetchingQueue queue =
+      prefetchingQueue =
           new SubscriptionPrefetchingTabletQueue(
               brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
-      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
-      topicNameToPrefetchingQueue.put(topicName, queue);
     }
+    SubscriptionPrefetchingQueueMetrics.getInstance().register(prefetchingQueue);
+    topicNameToPrefetchingQueue.put(topicName, prefetchingQueue);
+    LOGGER.info(
+        "Subscription: create prefetching queue bound to topic [{}] for consumer group [{}]",
+        topicName,
+        brokerId);
   }
 
   public void unbindPrefetchingQueue(final String topicName, final boolean doRemove) {
@@ -230,6 +231,10 @@ public class SubscriptionBroker {
 
       // remove prefetching queue
       topicNameToPrefetchingQueue.remove(topicName);
+      LOGGER.info(
+          "Subscription: drop prefetching queue bound to topic [{}] for consumer group [{}]",
+          topicName,
+          brokerId);
     }
   }
 

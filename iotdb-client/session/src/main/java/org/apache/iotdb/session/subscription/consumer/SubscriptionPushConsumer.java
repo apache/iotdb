@@ -51,6 +51,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
 
+  // avoid interval less than or equal to zero
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
 
@@ -115,8 +116,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     super.open();
-    submitAutoPollWorker();
+
+    // set isClosed to false before submitting workers
     isClosed.set(false);
+
+    // submit auto poll worker
+    submitAutoPollWorker();
   }
 
   @Override
@@ -289,6 +294,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     public Builder autoPollIntervalMs(final long autoPollIntervalMs) {
+      // avoid interval less than or equal to zero
       this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
       return this;
     }

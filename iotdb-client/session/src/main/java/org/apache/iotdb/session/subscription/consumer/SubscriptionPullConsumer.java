@@ -111,12 +111,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     super.open();
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
+    // submit auto poll worker if enabling auto commit
     if (autoCommit) {
       uncommittedMessages = new ConcurrentSkipListMap<>();
       submitAutoCommitWorker();
     }
-
-    isClosed.set(false);
   }
 
   @Override
