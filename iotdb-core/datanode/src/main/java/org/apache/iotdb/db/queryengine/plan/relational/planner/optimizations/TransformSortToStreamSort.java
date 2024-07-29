@@ -81,7 +81,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
           analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      int streamSortIndex = 0;
+      int streamSortIndex = -1;
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (!tableColumnSchema.containsKey(orderBy)
             || tableColumnSchema.get(orderBy).getColumnCategory()
@@ -93,7 +93,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
         }
       }
 
-      if (streamSortIndex > 0) {
+      if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
             isOrderByAllIdsAndTime(tableColumnSchema, orderingScheme, streamSortIndex);
 
@@ -119,9 +119,9 @@ public class TransformSortToStreamSort implements PlanOptimizer {
           return false;
         }
       }
-      return orderingScheme.getOrderings().size() <= streamSortIndex
+      return orderingScheme.getOrderings().size() == streamSortIndex + 1
           || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-              orderingScheme.getOrderBy().get(streamSortIndex).getName());
+              orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
     }
 
     @Override

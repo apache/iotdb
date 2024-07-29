@@ -173,6 +173,25 @@ public class SortTest {
         0,
         0,
         false);
+
+    sql = "SELECT * FROM table1 order by tag2 desc, tag3 asc offset 5 limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    // LogicalPlan: `Output-Offset-Limit-StreamSort-TableScan`
+    assertTrue(getChildrenNode(rootNode, 3) instanceof StreamSortNode);
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    // DistributedPlan: `Output-Offset-TopK-Limit-StreamSort-TableScan`
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TopKNode);
+    topKNode = (TopKNode) getChildrenNode(identitySinkNode, 3);
+    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(getChildrenNode(topKNode.getChildren().get(1), 1) instanceof StreamSortNode);
   }
 
   // order by all_ids, time, others
@@ -341,7 +360,7 @@ public class SortTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
     streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
-    assertEquals(2, streamSortNode.getStreamCompareKeyEndIndex());
+    assertEquals(1, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);
@@ -421,7 +440,7 @@ public class SortTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
     streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
-    assertEquals(3, streamSortNode.getStreamCompareKeyEndIndex());
+    assertEquals(2, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);

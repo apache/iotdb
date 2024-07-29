@@ -447,26 +447,38 @@ public class TableDistributedPlanGenerator
     if (newSortOrders.get(0).isNullsFirst()) {
       comparator =
           newSortOrders.get(0).isAscending()
-              ? Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0)))
-              : Comparator.nullsFirst(Comparator.comparing(orderingRules.get(0))).reversed();
+              ? Comparator.comparing(
+                  orderingRules.get(0), Comparator.nullsFirst(Comparator.naturalOrder()))
+              : Comparator.comparing(
+                      orderingRules.get(0), Comparator.nullsFirst(Comparator.naturalOrder()))
+                  .reversed();
     } else {
       comparator =
           newSortOrders.get(0).isAscending()
-              ? Comparator.nullsLast(Comparator.comparing(orderingRules.get(0)))
-              : Comparator.nullsLast(Comparator.comparing(orderingRules.get(0))).reversed();
+              ? Comparator.comparing(
+                  orderingRules.get(0), Comparator.nullsLast(Comparator.naturalOrder()))
+              : Comparator.comparing(
+                      orderingRules.get(0), Comparator.nullsLast(Comparator.naturalOrder()))
+                  .reversed();
     }
     for (int i = 1; i < orderingRules.size(); i++) {
       Comparator<DeviceEntry> thenComparator;
       if (newSortOrders.get(i).isNullsFirst()) {
         thenComparator =
             newSortOrders.get(i).isAscending()
-                ? Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i)))
-                : Comparator.nullsFirst(Comparator.comparing(orderingRules.get(i))).reversed();
+                ? Comparator.comparing(
+                    orderingRules.get(i), Comparator.nullsFirst(Comparator.naturalOrder()))
+                : Comparator.comparing(
+                        orderingRules.get(i), Comparator.nullsFirst(Comparator.naturalOrder()))
+                    .reversed();
       } else {
         thenComparator =
             newSortOrders.get(i).isAscending()
-                ? Comparator.nullsLast(Comparator.comparing(orderingRules.get(i)))
-                : Comparator.nullsLast(Comparator.comparing(orderingRules.get(i))).reversed();
+                ? Comparator.comparing(
+                    orderingRules.get(i), Comparator.nullsLast(Comparator.naturalOrder()))
+                : Comparator.comparing(
+                        orderingRules.get(i), Comparator.nullsLast(Comparator.naturalOrder()))
+                    .reversed();
       }
       comparator = comparator.thenComparing(thenComparator);
     }
