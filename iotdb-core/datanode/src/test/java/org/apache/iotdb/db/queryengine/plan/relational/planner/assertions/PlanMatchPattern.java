@@ -115,6 +115,18 @@ public final class PlanMatchPattern {
   }
 
   public static PlanMatchPattern tableScan(
+      String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
+    PlanMatchPattern pattern =
+        node(TableScanNode.class)
+            .with(
+                new TableScanMatcher(
+                    expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
+  }
+
+  public static PlanMatchPattern tableScan(
       String expectedTableName, Map<String, String> columnReferences) {
     PlanMatchPattern result = tableScan(expectedTableName);
     return result.addColumnReferences(expectedTableName, columnReferences);

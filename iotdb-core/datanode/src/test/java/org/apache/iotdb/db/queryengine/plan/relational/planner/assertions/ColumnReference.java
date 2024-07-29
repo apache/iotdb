@@ -44,7 +44,7 @@ public class ColumnReference implements RvalueMatcher {
 
     if (node instanceof TableScanNode) {
       TableScanNode tableScanNode = (TableScanNode) node;
-      actualTableName = tableScanNode.getQualifiedObjectName().getObjectName();
+      actualTableName = tableScanNode.getQualifiedObjectName().toString();
       assignments = tableScanNode.getAssignments();
     }
     /*else if (node instanceof IndexSourceNode indexSourceNode) {

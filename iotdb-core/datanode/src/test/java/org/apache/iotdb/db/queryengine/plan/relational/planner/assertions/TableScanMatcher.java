@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
@@ -32,15 +33,15 @@ public final class TableScanMatcher implements Matcher {
   private final String expectedTableName;
   private final Optional<Boolean> hasTableLayout;
   // this field empty means no need to match
-  private final List<Symbol> outputSymbols;
+  private final List<String> outputSymbols;
   // this field empty means no need to match
-  private Set<Symbol> assignmentsKeys;
+  private Set<String> assignmentsKeys;
 
   public TableScanMatcher(
       String expectedTableName,
       Optional<Boolean> hasTableLayout,
-      List<Symbol> outputSymbols,
-      Set<Symbol> assignmentsKeys) {
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys) {
     this.expectedTableName = requireNonNull(expectedTableName, "expectedTableName is null");
     this.hasTableLayout = requireNonNull(hasTableLayout, "hasTableLayout is null");
     this.outputSymbols = requireNonNull(outputSymbols, "outputSymbols is null");
@@ -68,12 +69,19 @@ public final class TableScanMatcher implements Matcher {
       return NO_MATCH;
     }
 
-    if (!outputSymbols.isEmpty() && !outputSymbols.equals(tableScanNode.getOutputSymbols())) {
+    if (!outputSymbols.isEmpty()
+        && !outputSymbols.equals(
+            tableScanNode.getOutputSymbols().stream()
+                .map(Symbol::getName)
+                .collect(Collectors.toList()))) {
       return NO_MATCH;
     }
 
     if (!assignmentsKeys.isEmpty()
-        && !assignmentsKeys.equals(tableScanNode.getAssignments().keySet())) {
+        && !assignmentsKeys.equals(
+            tableScanNode.getAssignments().keySet().stream()
+                .map(Symbol::getName)
+                .collect(Collectors.toSet()))) {
       return NO_MATCH;
     }
 
