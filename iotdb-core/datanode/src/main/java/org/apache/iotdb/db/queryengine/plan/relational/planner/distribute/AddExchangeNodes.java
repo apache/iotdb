@@ -107,13 +107,15 @@ public class AddExchangeNodes
 
   @Override
   public PlanNode visitTableDeviceQueryScan(
-      final TableDeviceQueryScanNode node, final TableDistributedPlanGenerator.PlanContext context) {
+      final TableDeviceQueryScanNode node,
+      final TableDistributedPlanGenerator.PlanContext context) {
     return processTableDeviceSourceNode(node, context);
   }
 
   @Override
   public PlanNode visitTableDeviceQueryCount(
-      final TableDeviceQueryCountNode node, final TableDistributedPlanGenerator.PlanContext context) {
+      final TableDeviceQueryCountNode node,
+      final TableDistributedPlanGenerator.PlanContext context) {
     return processTableDeviceSourceNode(node, context);
   }
 
