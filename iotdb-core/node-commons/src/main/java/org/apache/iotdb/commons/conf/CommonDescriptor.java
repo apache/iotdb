@@ -651,6 +651,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionPollPayloadMaxSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_poll_payload_max_size",
+                String.valueOf(config.getSubscriptionPollPayloadMaxSize()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

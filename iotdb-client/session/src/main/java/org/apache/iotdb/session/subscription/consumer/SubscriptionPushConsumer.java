@@ -184,7 +184,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           final ConsumeResult consumeResult;
           try {
             consumeResult = consumeListener.onReceive(message);
-            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
+            if (Objects.equals(consumeResult, ConsumeResult.SUCCESS)) {
               messagesToAck.add(message);
             } else {
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
