@@ -41,7 +41,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.expression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.offset;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
@@ -56,15 +55,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.O
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
 public class ExampleTest {
-
-  // You can see the same name test in SortTest as a contrast
   @Test
-  public void timeOthersSomeIDColumnSortTest() {
+  public void exampleTest() {
     PlanTester planTester = new PlanTester();
 
     String sql =
         "SELECT time, tag3, substring(tag1, 1), cast(s2 as double), s2+s3, attr1 FROM table1 "
-            + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5 limit 10";
+            + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5";
 
     // If you want to verify DistributionPlan later, set `createDistributedPlan` true here
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -80,42 +77,39 @@ public class ExampleTest {
     assertPlan(
         logicalQueryPlan,
         output(
-            limit(
-                10,
-                offset(
-                    5,
-                    project(
-                        sort(
-                            ImmutableList.of(
-                                sort("time", DESCENDING, LAST),
-                                sort("expr_1", ASCENDING, LAST),
-                                sort("tag2", ASCENDING, LAST),
-                                sort("tag1", DESCENDING, LAST)),
-                            project( // We need to indicate alias of expr_1 for parent
-                                ImmutableMap.of(
-                                    "expr_1",
-                                    expression(
-                                        new ArithmeticBinaryExpression(
-                                            ADD,
-                                            new SymbolReference("s1"),
-                                            new SymbolReference("s2")))),
-                                filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
-                                    new LogicalExpression(
-                                        AND,
-                                        ImmutableList.of(
-                                            new ComparisonExpression(
-                                                GREATER_THAN,
-                                                new ArithmeticBinaryExpression(
-                                                    ADD,
-                                                    new SymbolReference("s1"),
-                                                    new SymbolReference("s3")),
-                                                new LongLiteral("0")),
-                                            new ComparisonExpression(
-                                                GREATER_THAN,
-                                                new Cast(
-                                                    new SymbolReference("s1"), dataType("double")),
-                                                new DoubleLiteral("1.0")))),
-                                    tableScan))))))));
+            offset(
+                5,
+                project(
+                    sort(
+                        ImmutableList.of(
+                            sort("time", DESCENDING, LAST),
+                            sort("expr_1", ASCENDING, LAST),
+                            sort("tag2", ASCENDING, LAST),
+                            sort("tag1", DESCENDING, LAST)),
+                        project( // We need to indicate alias of expr_1 for parent
+                            ImmutableMap.of(
+                                "expr_1",
+                                expression(
+                                    new ArithmeticBinaryExpression(
+                                        ADD,
+                                        new SymbolReference("s1"),
+                                        new SymbolReference("s2")))),
+                            filter( // (("s1" + "s3") > 0) AND (CAST("s1" AS double) > 1E0)
+                                new LogicalExpression(
+                                    AND,
+                                    ImmutableList.of(
+                                        new ComparisonExpression(
+                                            GREATER_THAN,
+                                            new ArithmeticBinaryExpression(
+                                                ADD,
+                                                new SymbolReference("s1"),
+                                                new SymbolReference("s3")),
+                                            new LongLiteral("0")),
+                                        new ComparisonExpression(
+                                            GREATER_THAN,
+                                            new Cast(new SymbolReference("s1"), dataType("double")),
+                                            new DoubleLiteral("1.0")))),
+                                tableScan)))))));
 
     // You can use anyTree() to match any partial(at least one Node) of Plan
     assertPlan(
@@ -143,7 +137,6 @@ public class ExampleTest {
     /*
      * IdentitySinkNode-33
      *   └──OutputNode-8
-     *       └──LimitNode-7
      *           └──OffsetNode-6
      *             └──ProjectNode
      *               └──MergeSortNode-25
