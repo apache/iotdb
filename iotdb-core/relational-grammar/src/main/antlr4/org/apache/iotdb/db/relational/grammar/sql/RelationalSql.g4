@@ -162,14 +162,10 @@ descTableStatement
     ;
 
 alterTableStatement
-    : ALTER TABLE (IF EXISTS)? alterOptions
-    ;
-
-alterOptions
-    : from=qualifiedName RENAME TO to=identifier                                #renameTable
-    | tableName=qualifiedName ADD COLUMN (IF NOT EXISTS)? column=columnDefinition                #addColumn
-    | tableName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier    #renameColumn
-    | tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
+    : ALTER TABLE from=qualifiedName RENAME TO to=identifier                                #renameTable
+    | ALTER TABLE tableName=qualifiedName ADD COLUMN column=columnDefinition                #addColumn
+    | ALTER TABLE tableName=qualifiedName RENAME COLUMN from=identifier TO to=identifier    #renameColumn
+    | ALTER TABLE tableName=qualifiedName DROP COLUMN column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
