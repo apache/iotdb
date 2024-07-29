@@ -66,7 +66,7 @@ public class IoTDBOrderByTableIT {
         "USE db",
         "CREATE TABLE table0 (device string id, attr1 string attribute, num int32 measurement, bigNum int64 measurement, "
             + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement)",
-        "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 0,3,2947483648,231.2121,'coconut',FALSE)",
+        "insert into table0(device, attr1, time,num,bigNum,floatNum,str,bool) values('d1', 'high', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 40,1,2247483648,12.123,'apricot',TRUE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 80,9,2147483646,43.12,'apple',FALSE)",
@@ -85,7 +85,7 @@ public class IoTDBOrderByTableIT {
 
   private static final String[] sql2 =
       new String[] {
-        "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',0,3,2947483648,231.2121,'coconut',FALSE)",
+        "insert into table0(device,attr1,time,num,bigNum,floatNum,str,bool) values('d2','high',0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',40,1,2247483648,12.123,'apricot',TRUE)",
         "insert into table0(device,time,num,bigNum,floatNum,str,bool) values('d2',80,9,2147483646,43.12,'apple',FALSE)",

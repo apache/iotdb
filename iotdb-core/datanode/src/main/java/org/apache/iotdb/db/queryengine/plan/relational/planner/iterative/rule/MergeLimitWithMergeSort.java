@@ -13,19 +13,53 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
+
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
+/**
+ * Transforms:
+ *
+ * <pre>
+ * - Limit (limit = x)
+ *       - MergeSort (order by a, b)
+ * </pre>
+ *
+ * Into:
+ *
+ * <pre>
+ * - TopK (limit = x, order by a, b)
+ * </pre>
+ *
+ * <pre>
+ * - Limit (limit = x)
+ *       - MergeSort (order by a, b)
+ *          - StreamSort (order by a, b)
+ * </pre>
+ *
+ * Into:
+ *
+ * <pre>
+ * - TopK (limit = x, order by a, b)
+ *    - Limit (limit = x)
+ *      - StreamSort (order by a, b)
+ * </pre>
+ *
+ * Applies to LimitNode without ties only.
+ */
 public class MergeLimitWithMergeSort implements Rule<LimitNode> {
   private static final Capture<MergeSortNode> CHILD = newCapture();
 
@@ -41,15 +75,44 @@ public class MergeLimitWithMergeSort implements Rule<LimitNode> {
 
   @Override
   public Result apply(LimitNode parent, Captures captures, Context context) {
-    MergeSortNode mergeSort = captures.get(CHILD);
+    MergeSortNode mergeSortNode = captures.get(CHILD);
+    PlanNode childOfMergeSort = context.getLookup().resolve(mergeSortNode.getChildren().get(0));
+    TopKNode topKNode = transformByMergeSortNode(parent, mergeSortNode, childOfMergeSort, context);
+    return Result.ofPlanNode(topKNode);
+  }
 
-    return Result.ofPlanNode(
-        new TopKNode(
-            parent.getPlanNodeId(),
-            mergeSort.getChildren(),
-            mergeSort.getOrderingScheme(),
-            parent.getCount(),
-            parent.getOutputSymbols(),
-            false));
+  static TopKNode transformByMergeSortNode(
+      LimitNode parent, MergeSortNode mergeSortNode, PlanNode childOfMergeSort, Context context) {
+    TopKNode topKNode;
+    if (childOfMergeSort instanceof StreamSortNode) {
+      topKNode =
+          new TopKNode(
+              parent.getPlanNodeId(),
+              mergeSortNode.getOrderingScheme(),
+              parent.getCount(),
+              parent.getOutputSymbols(),
+              true);
+      for (PlanNode child : mergeSortNode.getChildren()) {
+        LimitNode limitNode =
+            new LimitNode(
+                context.getIdAllocator().genPlanNodeId(),
+                child,
+                parent.getCount(),
+                Optional.empty());
+        topKNode.addChild(limitNode);
+      }
+
+    } else {
+      topKNode =
+          new TopKNode(
+              parent.getPlanNodeId(),
+              mergeSortNode.getChildren(),
+              mergeSortNode.getOrderingScheme(),
+              parent.getCount(),
+              parent.getOutputSymbols(),
+              true);
+    }
+
+    return topKNode;
   }
 }
