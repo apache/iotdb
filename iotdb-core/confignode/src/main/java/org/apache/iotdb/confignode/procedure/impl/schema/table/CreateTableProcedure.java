@@ -66,6 +66,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
+import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateTableState> {
@@ -91,6 +92,10 @@ public class CreateTableProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case CHECK_TABLE_EXISTENCE:
+          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          checkTableExistence(env);
+          break;
         case PRE_CREATE:
           LOGGER.info("Pre create table {}.{}", database, table.getTableName());
           preCreateTable(env);
@@ -124,6 +129,23 @@ public class CreateTableProcedure
           table.getTableName(),
           state,
           (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private void checkTableExistence(final ConfigNodeProcedureEnv env) {
+    if (env.getConfigManager()
+        .getClusterSchemaManager()
+        .getTable(database, table.getTableName())
+        .isPresent()) {
+      setFailure(
+          new ProcedureException(
+              new IoTDBException(
+                  String.format(
+                      "Table '%s.%s' already exists.",
+                      database.substring(ROOT.length() + 1), table.getTableName()),
+                  TABLE_ALREADY_EXISTS.getStatusCode())));
+    } else {
+      setNextState(CreateTableState.PRE_CREATE);
     }
   }
 
