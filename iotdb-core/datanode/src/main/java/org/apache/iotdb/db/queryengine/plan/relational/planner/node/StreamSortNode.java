@@ -36,6 +36,8 @@ import java.util.List;
 
 public class StreamSortNode extends SortNode {
 
+  // means that the first 0~streamCompareKeyEndIndex sort keys in OrderingScheme are all IDs or
+  // Attributes
   private final int streamCompareKeyEndIndex;
 
   public StreamSortNode(

@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
@@ -32,8 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
 
-import java.util.Optional;
-
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort.transformByMergeSortNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
@@ -53,7 +51,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
  *
  * <pre>
  * - Project (identity, narrowing)
- *    - TopN (limit = x, order by a, b)
+ *    - TopK (limit = x, order by a, b)
  * </pre>
  *
  * Applies to LimitNode without ties only.
@@ -82,38 +80,8 @@ public class MergeLimitOverProjectWithMergeSort implements Rule<LimitNode> {
   public Result apply(LimitNode parent, Captures captures, Context context) {
     ProjectNode project = captures.get(PROJECT);
     MergeSortNode mergeSortNode = captures.get(MERGE_SORT);
-
-    TopKNode topKNode;
     PlanNode childOfMergeSort = context.getLookup().resolve(mergeSortNode.getChildren().get(0));
-    if (childOfMergeSort instanceof StreamSortNode) {
-      topKNode =
-          new TopKNode(
-              parent.getPlanNodeId(),
-              mergeSortNode.getOrderingScheme(),
-              parent.getCount(),
-              parent.getOutputSymbols(),
-              true);
-      for (PlanNode child : mergeSortNode.getChildren()) {
-        LimitNode limitNode =
-            new LimitNode(
-                context.getIdAllocator().genPlanNodeId(),
-                child,
-                parent.getCount(),
-                Optional.empty());
-        topKNode.addChild(limitNode);
-      }
-
-    } else {
-      topKNode =
-          new TopKNode(
-              parent.getPlanNodeId(),
-              mergeSortNode.getChildren(),
-              mergeSortNode.getOrderingScheme(),
-              parent.getCount(),
-              parent.getOutputSymbols(),
-              false);
-    }
-
+    TopKNode topKNode = transformByMergeSortNode(parent, mergeSortNode, childOfMergeSort, context);
     return Result.ofPlanNode(project.replaceChildren(ImmutableList.of(topKNode)));
   }
 }
