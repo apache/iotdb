@@ -33,7 +33,7 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     MultiEnvFactory.createEnv(2);
@@ -58,10 +58,10 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
+
+    super.tearDown();
   }
 }

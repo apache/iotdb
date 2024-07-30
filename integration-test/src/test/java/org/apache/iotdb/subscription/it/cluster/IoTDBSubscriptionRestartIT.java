@@ -65,7 +65,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     EnvFactory.getEnv()
@@ -82,10 +82,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+
+    super.tearDown();
   }
 
   @Test

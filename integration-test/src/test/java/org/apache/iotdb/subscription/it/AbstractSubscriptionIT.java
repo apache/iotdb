@@ -34,7 +34,7 @@ public abstract class AbstractSubscriptionIT {
   @Rule public final TestRule skipOnSetUpFailure = new SkipOnSetUpFailure("setUp");
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     // set thread name
     Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
 
@@ -45,5 +45,5 @@ public abstract class AbstractSubscriptionIT {
   }
 
   @After
-  public void tearDown() {}
+  public void tearDown() throws Exception {}
 }

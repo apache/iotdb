@@ -465,7 +465,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     // prepare schemaList
@@ -475,7 +475,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
 
   @Override
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
     // log some info
     try {
       LOGGER.info("[src] {} = {}", sql1, getCount(sender, sql1));

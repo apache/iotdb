@@ -1,8 +1,6 @@
 package org.apache.iotdb.subscription.it.triple;
 
 import static org.awaitility.Awaitility.await;
-import static org.testng.Assert.*;
-import static org.testng.Assert.assertEquals;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -25,6 +23,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.thrift.TException;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
@@ -33,21 +32,25 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.core.ConditionFactory;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
 
-public class TestConfig {
-    public static final String SRC_HOST = "172.20.70.44";
-    public static final String DEST_HOST = "172.20.70.45";
-    public static final String DEST_HOST2 = "172.20.70.32";
 
-    public static final int PORT = 6667;
-    public static SubscriptionSession subs = new SubscriptionSession(SRC_HOST,PORT);
+public class TestConfig extends AbstractSubscriptionTripleIT  {
+    public final String SRC_HOST = sender.getIP();
+    public final String DEST_HOST = receiver1.getIP();
+    public final String DEST_HOST2 = receiver2.getIP();
+
+    public final int PORT = Integer.parseInt(sender.getPort());
+    public final SubscriptionSession subs = new SubscriptionSession(SRC_HOST,PORT);
     public static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
-    public static Session session_src;
-    public static Session session_dest;
-    public static Session session_dest2;
+    public Session session_src;
+    public Session session_dest;
+    public Session session_dest2;
     private static final String dropDatabaseSql = "drop database ";
 
     public static final ConditionFactory AWAIT=
@@ -55,8 +58,8 @@ public class TestConfig {
                 .pollDelay(10, TimeUnit.SECONDS)
                 .pollInterval(10, TimeUnit.SECONDS)
                 .atMost(120, TimeUnit.SECONDS);
-    @BeforeSuite
-    public static void beforeSuite() throws IoTDBConnectionException, StatementExecutionException {
+
+    public void beforeSuite() throws IoTDBConnectionException, StatementExecutionException {
         System.out.println("TestConfig beforeClass");
         session_src = new Session.Builder().host(SRC_HOST).port(PORT)
                 .username("root").password("root").build();
@@ -69,8 +72,8 @@ public class TestConfig {
         session_dest2.open(false);
         subs.open();
     }
-    @AfterSuite
-    public static void afterSuite() throws IoTDBConnectionException, StatementExecutionException {
+
+    public void afterSuite() throws IoTDBConnectionException, StatementExecutionException {
         System.out.println("TestConfig afterClass");
 //        if(session_src.checkTimeseriesExists("root.**")) {
 //            session_dest.executeNonQueryStatement("drop database root.**");
@@ -82,7 +85,7 @@ public class TestConfig {
         session_dest2.close();
         subs.close();
     }
-    public static void createDB(String database) throws IoTDBConnectionException {
+    public void createDB(String database) throws IoTDBConnectionException {
         try {
             session_src.createDatabase(database);
         } catch (StatementExecutionException e) {
@@ -97,7 +100,7 @@ public class TestConfig {
         }
 
     }
-    public static void dropDB(String pattern) throws IoTDBConnectionException {
+    public void dropDB(String pattern) throws IoTDBConnectionException {
         try {
             session_src.executeNonQueryStatement(dropDatabaseSql+pattern+"*");
         } catch (StatementExecutionException e) {
@@ -115,7 +118,7 @@ public class TestConfig {
         }
     }
 
-    public static SubscriptionPullConsumer create_pull_consumer(String groupId, String consumerId, Boolean autoCommit, Long interval) throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    public SubscriptionPullConsumer create_pull_consumer(String groupId, String consumerId, Boolean autoCommit, Long interval) throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
         SubscriptionPullConsumer pullConsumer;
         Properties properties = new Properties();
         properties.put(ConsumerConstant.HOST_KEY, SRC_HOST);
@@ -138,7 +141,7 @@ public class TestConfig {
         return pullConsumer;
     }
 
-    public static void createTopic_s(String topicName, String pattern, String start, String end, boolean isTsfile) throws IoTDBConnectionException, StatementExecutionException {
+    public void createTopic_s(String topicName, String pattern, String start, String end, boolean isTsfile) throws IoTDBConnectionException, StatementExecutionException {
         Properties properties = new Properties();
         if (pattern != null) {
             properties.setProperty("path", pattern);
@@ -157,7 +160,7 @@ public class TestConfig {
         properties.setProperty("processor", "do-nothing-processor");
         subs.createTopic(topicName, properties);
     }
-    public static void createTopic_s(String topicName, String pattern, String start, String end, boolean isTsfile, String mode, String loose_range) throws IoTDBConnectionException, StatementExecutionException {
+    public void createTopic_s(String topicName, String pattern, String start, String end, boolean isTsfile, String mode, String loose_range) throws IoTDBConnectionException, StatementExecutionException {
         Properties properties = new Properties();
         if (pattern != null) {
             properties.setProperty(TopicConstant.PATH_KEY, pattern);
@@ -192,13 +195,13 @@ public class TestConfig {
         }
         return 0;
     }
-    public static void check_count(int expect_count, String sql, String msg) throws IoTDBConnectionException, StatementExecutionException {
+    public void check_count(int expect_count, String sql, String msg) throws IoTDBConnectionException, StatementExecutionException {
         assertEquals(getCount(session_dest, sql), expect_count,"查询count:"+msg);
     }
-    public static void check_count2(int expect_count, String sql, String msg) throws IoTDBConnectionException, StatementExecutionException {
+    public void check_count2(int expect_count, String sql, String msg) throws IoTDBConnectionException, StatementExecutionException {
         assertEquals(getCount(session_dest2, sql), expect_count,"查询count:"+msg);
     }
-    public static void consume_data(SubscriptionPullConsumer consumer, Session session) throws TException, IOException, StatementExecutionException, InterruptedException, IoTDBConnectionException {
+    public void consume_data(SubscriptionPullConsumer consumer, Session session) throws TException, IOException, StatementExecutionException, InterruptedException, IoTDBConnectionException {
         while (true) {
             Thread.sleep(1000);
 
@@ -214,14 +217,14 @@ public class TestConfig {
             consumer.commitSync(messages);
         }
     }
-    public static List<Integer> consume_tsfile_withFileCount(SubscriptionPullConsumer consumer, String device) throws InterruptedException {
+    public List<Integer> consume_tsfile_withFileCount(SubscriptionPullConsumer consumer, String device) throws InterruptedException {
         return consume_tsfile(consumer, Collections.singletonList(device));
     }
-    public static int consume_tsfile(SubscriptionPullConsumer consumer, String device) throws InterruptedException {
+    public int consume_tsfile(SubscriptionPullConsumer consumer, String device) throws InterruptedException {
         return consume_tsfile(consumer, Collections.singletonList(device)).get(0);
     }
 
-    public static List<Integer> consume_tsfile(SubscriptionPullConsumer consumer, List<String> devices) throws InterruptedException {
+    public List<Integer> consume_tsfile(SubscriptionPullConsumer consumer, List<String> devices) throws InterruptedException {
         List<AtomicInteger> rowCounts = new ArrayList<>(devices.size());
         for (int i = 0; i < devices.size(); i++) {
             rowCounts.add(new AtomicInteger(0));
@@ -276,9 +279,19 @@ public class TestConfig {
             consumer.commitSync(messages);
         }
     }
-    public static void consume_data(SubscriptionPullConsumer consumer) throws TException, IOException, StatementExecutionException, InterruptedException, IoTDBConnectionException {
+    public void consume_data(SubscriptionPullConsumer consumer) throws TException, IOException, StatementExecutionException, InterruptedException, IoTDBConnectionException {
         consume_data(consumer, session_dest);
     }
 
+    public static void assertEquals(int actual, int expected, String message) {
+        Assert.assertEquals(expected, actual);
+    }
 
+    public static void assertEquals(long actual, long expected, String message) {
+        Assert.assertEquals(expected, actual);
+    }
+
+    public static void assertTrue(boolean condition, String message) {
+        Assert.assertTrue(condition);
+    }
 }

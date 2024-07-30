@@ -35,7 +35,7 @@ abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     // increase the number of threads to speed up testing
@@ -68,11 +68,11 @@ abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionIT {
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     sender.cleanClusterEnvironment();
     receiver1.cleanClusterEnvironment();
     receiver2.cleanClusterEnvironment();
+
+    super.tearDown();
   }
 }

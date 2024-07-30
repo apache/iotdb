@@ -1,12 +1,11 @@
 package org.apache.iotdb.subscription.it.triple.mix;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
-import com.timechodb.test.pipe.TestConfig;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -14,16 +13,18 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.triple.TestConfig;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 /**
  * PushConsumer
@@ -31,6 +32,8 @@ import org.testng.annotations.Test;
  * Dataset
  * result:pass
  */
+@RunWith(IoTDBTestRunner.class)
+@Category({MultiClusterIT2Subscription.class})
 public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfig {
     private static String topicName = "`1-group.1-consumer.db`";
     private static List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -41,8 +44,10 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
     private SubscriptionPullConsumer consumer2 ;
 
 
-    @BeforeClass
+    @Override
+    @Before
     public void setUp() throws IoTDBConnectionException, StatementExecutionException {
+        beforeSuite();
         createTopic_s(topicName, pattern, null, null, false);
         createDB(database);
         session_src.createTimeseries(device+".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
@@ -57,12 +62,14 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
         assertTrue(subs.getTopic(topicName).isPresent(), "创建show topics");
     }
 
-    @AfterClass
-    public void cleanUp() throws IoTDBConnectionException, StatementExecutionException {
+    @Override
+    @After
+    public void tearDown() throws IoTDBConnectionException, StatementExecutionException {
         consumer.close();
         consumer2.close();
         subs.dropTopic(topicName);
         dropDB(database);
+        afterSuite();
     }
 
     private void insert_data(long timestamp) throws IoTDBConnectionException, StatementExecutionException {
@@ -133,7 +140,7 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
         System.out.println("dest push consumer: "+getCount(session_dest, sql));
         System.out.println("dest2 pull consumer: "+getCount(session_dest2, sql));
         AWAIT.untilAsserted(()->{
-            Assert.assertEquals(getCount(session_dest, sql)+getCount(session_dest2, sql), getCount(session_src, sql), "share process");
+            assertEquals(getCount(session_dest, sql)+getCount(session_dest2, sql), getCount(session_src, sql), "share process");
         });
 
     }
