@@ -182,9 +182,7 @@ public class TableHeaderSchemaValidator {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
       if (category == null) {
         throw new SemanticException(
-            "Cannot create column category for column "
-                + columnSchema.getName()
-                + " category is not provided");
+            "Cannot create column " + columnSchema.getName() + " category is not provided");
       }
       String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
@@ -194,9 +192,7 @@ public class TableHeaderSchemaValidator {
       TSDataType dataType = getTSDataType(columnSchema.getType());
       if (dataType == null) {
         throw new SemanticException(
-            "Cannot create column category for column "
-                + columnSchema.getName()
-                + " datatype is not provided");
+            "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
       generateColumnSchema(tsTable, category, columnName, dataType);
     }
