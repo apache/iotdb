@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -157,7 +156,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
@@ -287,7 +285,7 @@ public class DataRegion implements IDataRegionForQuery {
   /** whether it's ready from recovery. */
   private boolean isReady = false;
 
-  private ExecutorService asyncRecoverExecutorService;
+  private List<Callable<Void>> asyncTsFileResourceRecoverTaskList;
 
   /** close file listeners. */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
@@ -364,8 +362,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
     } else {
-      asyncRecoverExecutorService =
-          IoTDBThreadPoolFactory.newSingleThreadExecutor("AsyncTsFileResourceRecover");
+      asyncTsFileResourceRecoverTaskList = new ArrayList<>();
       recover();
     }
 
@@ -388,6 +385,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   public boolean isReady() {
     return isReady;
+  }
+
+  public List<Callable<Void>> getAsyncTsFileResourceRecoverTaskList() {
+    return asyncTsFileResourceRecoverTaskList;
   }
 
   /** this class is used to store recovering context. */
@@ -446,7 +447,6 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    List<Callable<?>> asyncRecoverTaskList = new ArrayList<>();
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       // split by partition so that we can find the last file of each partition and decide to
@@ -539,26 +539,26 @@ public class DataRegion implements IDataRegionForQuery {
                   ((TreeMap<Long, List<TsFileResource>>) partitionTmpUnseqTsFiles).lastKey());
         }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
-          Callable<?> asyncRecoverTask =
+          Callable<Void> asyncRecoverTask =
               recoverFilesInPartition(
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
                   true);
           if (asyncRecoverTask != null) {
-            asyncRecoverTaskList.add(asyncRecoverTask);
+            asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
         }
         for (Entry<Long, List<TsFileResource>> partitionFiles :
             partitionTmpUnseqTsFiles.entrySet()) {
-          Callable<?> asyncRecoverTask =
+          Callable<Void> asyncRecoverTask =
               recoverFilesInPartition(
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
                   false);
           if (asyncRecoverTask != null) {
-            asyncRecoverTaskList.add(asyncRecoverTask);
+            asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
         }
         if (config.isEnableSeparateData()) {
@@ -608,7 +608,7 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    if (isReady) {
+    if (asyncTsFileResourceRecoverTaskList.isEmpty()) {
       initCompactionSchedule();
     }
 
@@ -636,6 +636,23 @@ public class DataRegion implements IDataRegionForQuery {
     }
     if (config.isEnableSeparateData()) {
       lastFlushTimeMap.updateMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+    }
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      lastFlushTimeMap.updateMultiDeviceGlobalFlushedTime(endTimeMap);
+    }
+  }
+
+  protected void upgradeAndUpdateDeviceLastFlushTime(
+      long timePartitionId, List<TsFileResource> resources) {
+    Map<IDeviceID, Long> endTimeMap = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      for (IDeviceID deviceId : resource.getDevices()) {
+        long endTime = resource.getEndTime(deviceId);
+        endTimeMap.put(deviceId, endTime);
+      }
+    }
+    if (config.isEnableSeparateData()) {
+      lastFlushTimeMap.upgradeAndUpdateMultiDeviceFlushedTime(timePartitionId, endTimeMap);
     }
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       lastFlushTimeMap.updateMultiDeviceGlobalFlushedTime(endTimeMap);
@@ -842,7 +859,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private Callable<?> recoverFilesInPartition(
+  private Callable<Void> recoverFilesInPartition(
       long partitionId,
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
@@ -862,7 +879,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
       List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
-      Callable<?> asyncRecoverTask = null;
+      Callable<Void> asyncRecoverTask = null;
       for (TsFileResource tsFileResource : resourceList) {
         if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
           tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
@@ -892,24 +909,6 @@ public class DataRegion implements IDataRegionForQuery {
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
       boolean isSeq) {
-    // TODO: async recover
-    Callable<Void> recoverSealedTsFileTask =
-        () -> {
-          for (TsFileResource tsFileResource : resourceList) {
-            try (SealedTsFileRecoverPerformer recoverPerformer =
-                new SealedTsFileRecoverPerformer(tsFileResource)) {
-              recoverPerformer.recover();
-              tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-            } catch (Throwable e) {
-              logger.error(
-                  "Fail to recover sealed TsFile {}, skip it.", tsFileResource.getTsFilePath(), e);
-            } finally {
-              // update recovery context
-              context.incrementRecoveredFilesNum();
-            }
-          }
-          return null;
-        };
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId, false)) {
         TimePartitionManager.getInstance()
@@ -932,7 +931,27 @@ public class DataRegion implements IDataRegionForQuery {
               lastFlushTimeMap.getMemSize(partitionId),
               false);
     }
-    return recoverSealedTsFileTask;
+    return () -> {
+      for (TsFileResource tsFileResource : resourceList) {
+        try (SealedTsFileRecoverPerformer recoverPerformer =
+            new SealedTsFileRecoverPerformer(tsFileResource)) {
+          recoverPerformer.recover();
+          tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+        } catch (Throwable e) {
+          logger.error(
+              "Fail to recover sealed TsFile {}, skip it.", tsFileResource.getTsFilePath(), e);
+        } finally {
+          // update recovery context
+          context.incrementRecoveredFilesNum();
+        }
+      }
+      // TODO: After recover, replace partition last flush time with device last flush time
+      if (config.isEnableSeparateData()) {
+        upgradeAndUpdateDeviceLastFlushTime(partitionId, resourceList);
+      }
+
+      return null;
+    };
   }
 
   private void syncRecoverFilesInPartition(

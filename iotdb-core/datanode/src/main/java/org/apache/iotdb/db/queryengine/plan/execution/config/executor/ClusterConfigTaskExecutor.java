@@ -1084,7 +1084,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(e);
       }
     } else {
-      if (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (!StorageEngine.getInstance().isReady()) {
         future.setException(
             new IoTDBException(
                 "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));

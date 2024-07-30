@@ -1782,7 +1782,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus startRepairData() throws TException {
-    if (!storageEngine.isReadyForReadAndWrite()) {
+    if (!storageEngine.isReady()) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
     }
     IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();

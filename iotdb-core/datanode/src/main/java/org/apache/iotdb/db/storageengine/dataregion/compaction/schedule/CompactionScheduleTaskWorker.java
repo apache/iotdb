@@ -53,7 +53,7 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
     while (true) {
       try {
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());
-        if (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
+        if (!StorageEngine.getInstance().isReady()) {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
