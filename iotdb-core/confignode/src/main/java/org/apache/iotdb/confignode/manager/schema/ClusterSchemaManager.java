@@ -99,6 +99,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -1106,7 +1107,7 @@ public class ClusterSchemaManager {
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public TsTable getTable(String database, String tableName) {
+  public Optional<TsTable> getTable(final String database, final String tableName) {
     return clusterSchemaInfo.getTsTable(database, tableName);
   }
 

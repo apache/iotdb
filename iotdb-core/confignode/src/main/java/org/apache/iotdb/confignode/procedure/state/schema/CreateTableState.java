@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum CreateTableState {
+  CHECK_TABLE_EXISTENCE,
   PRE_CREATE,
   PRE_RELEASE,
   VALIDATE_TIMESERIES_EXISTENCE,
