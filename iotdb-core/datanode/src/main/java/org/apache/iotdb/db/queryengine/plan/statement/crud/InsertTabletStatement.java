@@ -350,7 +350,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes != null ? dataTypes[index] : null;
   }
 
   @Override

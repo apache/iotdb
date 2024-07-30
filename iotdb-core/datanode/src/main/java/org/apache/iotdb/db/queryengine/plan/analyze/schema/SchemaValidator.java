@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -65,15 +64,7 @@ public class SchemaValidator {
   public static void validate(
       Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
     try {
-      String databaseName = context.getSession().getDatabaseName().orElse(null);
-      final TableSchema incomingSchema = insertStatement.getTableSchema();
-      final TableSchema realSchema =
-          metadata.validateTableHeaderSchema(databaseName, incomingSchema, context).orElse(null);
-      if (realSchema == null) {
-        throw new SemanticException(
-            "Schema validation failed, table cannot be created: " + incomingSchema);
-      }
-      insertStatement.validateTableSchema(realSchema);
+      insertStatement.validateTableSchema(metadata, context);
       insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {

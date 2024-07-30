@@ -85,7 +85,9 @@ public class TypeInferenceUtils {
 
   /** Get predicted DataType of the given value */
   public static TSDataType getPredictedDataType(Object value, boolean inferType) {
-
+    if (value == null) {
+      return null;
+    }
     if (value instanceof Boolean) {
       return TSDataType.BOOLEAN;
     } else if (value instanceof Integer) {
