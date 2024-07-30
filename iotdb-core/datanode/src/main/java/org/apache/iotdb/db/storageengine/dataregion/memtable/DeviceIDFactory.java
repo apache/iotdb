@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
@@ -62,8 +65,34 @@ public class DeviceIDFactory {
    * @param devicePath device path of the timeseries
    * @return device id of the timeseries
    */
-  public IDeviceID getDeviceID(PartialPath devicePath) {
+  public IDeviceID getDeviceID(final PartialPath devicePath) {
     return getDeviceIDFunction.apply(devicePath.getFullPath());
+  }
+
+  public static List<Object[]> truncateTailingNull(final List<Object[]> deviceIdList) {
+    final List<Object[]> res = new ArrayList<>(deviceIdList.size());
+    for (final Object[] device : deviceIdList) {
+      if (device == null) {
+        throw new IllegalArgumentException("DeviceID's length should be larger than 0.");
+      }
+      int lastNonNullIndex = -1;
+      for (int i = device.length - 1; i >= 0; i--) {
+        if (device[i] != null) {
+          lastNonNullIndex = i;
+          break;
+        }
+      }
+      // Use one "null" to indicate all "null"s
+      if (lastNonNullIndex == -1) {
+        res.add(new Object[] {null});
+        continue;
+      }
+      res.add(
+          lastNonNullIndex == device.length - 1
+              ? device
+              : Arrays.copyOf(device, lastNonNullIndex + 1));
+    }
+    return res;
   }
 
   /** reset id method */

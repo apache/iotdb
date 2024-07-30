@@ -34,7 +34,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -61,43 +60,19 @@ public class CreateTableDeviceNode extends WritePlanNode {
   private transient List<IDeviceID> partitionKeyList;
 
   public CreateTableDeviceNode(
-      PlanNodeId id,
-      String database,
-      String tableName,
-      List<Object[]> deviceIdList,
-      List<String> attributeNameList,
-      List<Object[]> attributeValueList) {
+      final PlanNodeId id,
+      final String database,
+      final String tableName,
+      final List<Object[]> deviceIdList,
+      final List<String> attributeNameList,
+      final List<Object[]> attributeValueList) {
     super(id);
     this.database = database;
     this.tableName = tableName;
     // truncate the tailing null
-    this.deviceIdList = truncateTailingNull(deviceIdList);
+    this.deviceIdList = deviceIdList;
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
-  }
-
-  private static List<Object[]> truncateTailingNull(List<Object[]> deviceIdList) {
-    List<Object[]> res = new ArrayList<>(deviceIdList.size());
-    for (Object[] device : deviceIdList) {
-      if (device == null || device.length == 0) {
-        throw new IllegalArgumentException("DeviceID's length should be larger than 0.");
-      }
-      int lastNonNullIndex = -1;
-      for (int i = device.length - 1; i >= 0; i--) {
-        if (device[i] != null) {
-          lastNonNullIndex = i;
-          break;
-        }
-      }
-      if (lastNonNullIndex == -1) {
-        throw new IllegalArgumentException("DeviceID shouldn't be all nulls.");
-      }
-      res.add(
-          lastNonNullIndex == device.length - 1
-              ? device
-              : Arrays.copyOf(device, lastNonNullIndex + 1));
-    }
-    return res;
   }
 
   // in this constructor, we don't need to truncate tailing nulls for deviceIdList, because this

@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
+
 public class CreateDevice extends Statement {
 
   private final String database;
@@ -44,7 +46,7 @@ public class CreateDevice extends Statement {
     super(null);
     this.database = database;
     this.table = table;
-    this.deviceIdList = deviceIdList;
+    this.deviceIdList = truncateTailingNull(deviceIdList);
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
   }
