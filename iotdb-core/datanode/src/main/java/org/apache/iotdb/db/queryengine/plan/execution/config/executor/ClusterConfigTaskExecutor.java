@@ -76,6 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -2072,7 +2073,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.dropTopic(dropTopicStatement.getTopicName());
+      final TSStatus tsStatus =
+          configNodeClient.extendDropTopic(
+              new TDropTopicReq()
+                  .setTopicName(dropTopicStatement.getTopicName())
+                  .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to drop topic {}, status is {}.", dropTopicStatement.getTopicName(), tsStatus);
