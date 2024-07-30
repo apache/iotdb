@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -80,7 +81,7 @@ public class TableDistributedPlanner {
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(outputNodeWithExchange.getOutputColumnNames());
+          .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
     }
     adjustUpStream(outputNodeWithExchange, planContext);
 
