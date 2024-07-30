@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -70,8 +71,9 @@ import org.apache.tsfile.enums.TSDataType;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 
@@ -167,9 +169,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
+      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
+          if (value instanceof Literal
+              && Objects.equals(
+                  ((Literal) value).getTsValue(),
+                  TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.get(key))) {
+            // Ignore default values
+            continue;
+          }
           if (!(value instanceof LongLiteral)) {
             throw new SemanticException(
                 "TTL' value must be a LongLiteral, but now is: " + value.toString());
