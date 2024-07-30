@@ -2438,6 +2438,8 @@ public class ConfigManager implements IManager {
       switch (AlterTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
           return procedureManager.alterTableAddColumn(req);
+        case SET_PROPERTIES:
+          return procedureManager.alterTableSetProperties(req);
         default:
           throw new IllegalArgumentException();
       }

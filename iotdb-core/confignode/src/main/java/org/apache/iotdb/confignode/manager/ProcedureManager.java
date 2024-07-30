@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -123,6 +124,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1337,6 +1339,37 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus alterTableSetProperties(final TAlterTableReq req) {
+    final String database = req.database;
+    final String tableName = req.tableName;
+    final String queryId = req.queryId;
+    final Map<String, String> properties = ReadWriteIOUtils.readMap(req.updateInfo);
+
+    final Pair<Long, Boolean> procedureIdDuplicatePair =
+        awaitDuplicateTableTask(
+            database, null, tableName, queryId, ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE);
+    long procedureId = procedureIdDuplicatePair.getLeft();
+
+    if (procedureId == -1) {
+      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+        return RpcUtils.getStatus(
+            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+            "Some other task is operating table with same name.");
+      }
+      procedureId =
+          this.executor.submitProcedure(
+              new SetTablePropertiesProcedure(database, tableName, queryId, properties));
+    }
+    final List<TSStatus> procedureStatus = new ArrayList<>();
+    final boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
   private synchronized Pair<Long, Boolean> awaitDuplicateTableTask(
       final String database,
       final TsTable table,
@@ -1370,6 +1403,17 @@ public class ProcedureManager {
           }
           if (database.equals(addTableColumnProcedure.getDatabase())
               && Objects.equals(tableName, addTableColumnProcedure.getTableName())) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case SET_TABLE_PROPERTIES_PROCEDURE:
+          final SetTablePropertiesProcedure setTablePropertiesProcedure =
+              (SetTablePropertiesProcedure) procedure;
+          if (type == thisType && queryId.equals(setTablePropertiesProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          if (database.equals(setTablePropertiesProcedure.getDatabase())
+              && Objects.equals(tableName, setTablePropertiesProcedure.getTableName())) {
             return new Pair<>(-1L, true);
           }
           break;
