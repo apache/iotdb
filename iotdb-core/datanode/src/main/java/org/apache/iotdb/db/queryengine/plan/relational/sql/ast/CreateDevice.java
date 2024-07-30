@@ -36,11 +36,11 @@ public class CreateDevice extends Statement {
   private final List<Object[]> attributeValueList;
 
   public CreateDevice(
-      String database,
-      String table,
-      List<Object[]> deviceIdList,
-      List<String> attributeNameList,
-      List<Object[]> attributeValueList) {
+      final String database,
+      final String table,
+      final List<Object[]> deviceIdList,
+      final List<String> attributeNameList,
+      final List<Object[]> attributeValueList) {
     super(null);
     this.database = database;
     this.table = table;
@@ -70,7 +70,7 @@ public class CreateDevice extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitCreateDevice(this, context);
   }
 
@@ -80,10 +80,14 @@ public class CreateDevice extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    CreateDevice that = (CreateDevice) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final CreateDevice that = (CreateDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(table, that.table)
         && Objects.equals(deviceIdList, that.deviceIdList)
