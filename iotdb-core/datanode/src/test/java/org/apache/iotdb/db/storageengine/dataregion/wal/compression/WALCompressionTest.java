@@ -163,6 +163,38 @@ public class WALCompressionTest {
   }
 
   @Test
+  public void testWALInputStreamReadByteBufferInDifferentSegment()
+      throws QueryProcessException, IllegalPathException, IOException {
+    LogWriter writer = new WALWriter(walFile);
+    List<Pair<Long, Integer>> positionAndEntryPairList = new ArrayList<>();
+    int memTableId = 0;
+    long fileOffset = 0;
+    ByteBuffer buffer = ByteBuffer.allocate(1024 * 4);
+    InsertRowNode insertRowNode = WALTestUtils.getInsertRowNode(devicePath + memTableId, 0);
+    for (int i = 0; i < 2; i++) {
+      insertRowNode.serialize(buffer);
+      positionAndEntryPairList.add(new Pair<>(fileOffset, buffer.position()));
+      fileOffset += buffer.position();
+      writer.write(buffer);
+      buffer.clear();
+    }
+    writer.close();
+
+    try (WALInputStream stream = new WALInputStream(walFile)) {
+      stream.skipToGivenLogicalPosition(positionAndEntryPairList.get(0).left);
+      ByteBuffer buffer1 =
+          ByteBuffer.allocate(
+              positionAndEntryPairList.get(0).right + positionAndEntryPairList.get(1).right);
+      stream.read(buffer1);
+      ByteBuffer buffer2 = ByteBuffer.allocate(buffer1.capacity());
+      insertRowNode.serialize(buffer2);
+      insertRowNode.serialize(buffer2);
+      buffer2.flip();
+      Assert.assertArrayEquals(buffer1.array(), buffer2.array());
+    }
+  }
+
+  @Test
   public void testUncompressedWALStructure()
       throws QueryProcessException, IllegalPathException, IOException {
     PublicBAOS baos = new PublicBAOS();
