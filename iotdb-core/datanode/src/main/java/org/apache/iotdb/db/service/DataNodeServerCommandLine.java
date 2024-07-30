@@ -20,12 +20,12 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -33,6 +33,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class DataNodeServerCommandLine extends ServerCommandLine {
 
@@ -53,11 +52,38 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   // metaport-of-removed-node
   public static final String MODE_REMOVE = "-r";
 
+  private final ConfigNodeInfo configNodeInfo;
+  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager;
+  private final DataNode dataNode;
+
   private static final String USAGE =
       "Usage: <-s|-r> "
           + "[-D{} <configure folder>] \n"
           + "-s: start the node to the cluster\n"
           + "-r: remove the node out of the cluster\n";
+
+  /** Default constructor using the singletons for initializing the relationship. */
+  public DataNodeServerCommandLine() {
+    configNodeInfo = ConfigNodeInfo.getInstance();
+    configNodeClientManager = ConfigNodeClientManager.getInstance();
+    dataNode = DataNode.getInstance();
+  }
+
+  /**
+   * Additional constructor allowing injection of custom instances (mainly for testing)
+   *
+   * @param configNodeInfo config node info
+   * @param configNodeClientManager config node client manager
+   * @param dataNode data node
+   */
+  public DataNodeServerCommandLine(
+      ConfigNodeInfo configNodeInfo,
+      IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager,
+      DataNode dataNode) {
+    this.configNodeInfo = configNodeInfo;
+    this.configNodeClientManager = configNodeClientManager;
+    this.dataNode = dataNode;
+  }
 
   @Override
   protected String getUsage() {
@@ -71,8 +97,6 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       return -1;
     }
 
-    DataNode dataNode = DataNode.getInstance();
-
     String mode = args[0];
     LOGGER.info("Running mode {}", mode);
 
@@ -80,7 +104,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
-      doRemoveDataNode(args);
+      return doRemoveDataNode(args);
     } else {
       LOGGER.error("Unrecognized mode {}", mode);
     }
@@ -88,22 +112,25 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   }
 
   /**
-   * remove datanodes from cluster
+   * remove data-nodes from cluster
    *
    * @param args id or ip:rpc_port for removed datanode
    */
-  private void doRemoveDataNode(String[] args)
+  private int doRemoveDataNode(String[] args)
       throws BadNodeUrlException, TException, IoTDBException, ClientManagerException {
 
     if (args.length != 2) {
       LOGGER.info("Usage: <node-id>/<ip>:<rpc-port>");
-      return;
+      return -1;
     }
+
+    // REMARK: Don't need null or empty-checks for args[0] or args[1], as if they were
+    // empty, the JVM would have not received them.
 
     LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
 
     // Load ConfigNodeList from system.properties file
-    ConfigNodeInfo.getInstance().loadConfigNodeList();
+    configNodeInfo.loadConfigNodeList();
 
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
@@ -112,7 +139,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     LOGGER.info("Start to remove datanode, removed datanode endpoints: {}", dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
     try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
       LOGGER.info("Remove result {} ", removeResp);
       if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -125,6 +152,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
               + "and after the process of removing datanode ends successfully, "
               + "you are supposed to delete directory and data of the removed-datanode manually");
     }
+    return 0;
   }
 
   /**
@@ -135,57 +163,62 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
    */
   private List<TDataNodeLocation> buildDataNodeLocations(String args) {
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    if (args == null || args.trim().isEmpty()) {
-      return dataNodeLocations;
-    }
 
     // Now support only single datanode deletion
     if (args.split(",").length > 1) {
-      LOGGER.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
-      return dataNodeLocations;
+      throw new IllegalArgumentException("Currently only removing single nodes is supported.");
     }
 
     // Below supports multiple datanode deletion, split by ',', and is reserved for extension
-    try {
-      List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args);
-      try (ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        dataNodeLocations =
-            client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
-                .map(TDataNodeConfiguration::getLocation)
-                .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
-                .collect(Collectors.toList());
-      } catch (TException | ClientManagerException e) {
-        LOGGER.error("Get data node locations failed", e);
-      }
-    } catch (BadNodeUrlException e) {
-      try (ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        for (String id : args.split(",")) {
-          if (!isNumeric(id)) {
-            LOGGER.warn("Incorrect id format {}, skipped...", id);
-            continue;
-          }
-          List<TDataNodeLocation> nodeLocationResult =
-              client
-                  .getDataNodeConfiguration(Integer.parseInt(id))
-                  .getDataNodeConfigurationMap()
-                  .values()
-                  .stream()
-                  .map(TDataNodeConfiguration::getLocation)
-                  .collect(Collectors.toList());
-          if (nodeLocationResult.isEmpty()) {
-            LOGGER.warn("DataNode {} is not in cluster, skipped...", id);
-            continue;
-          }
-          if (!dataNodeLocations.contains(nodeLocationResult.get(0))) {
-            dataNodeLocations.add(nodeLocationResult.get(0));
-          }
-        }
-      } catch (TException | ClientManagerException e1) {
-        LOGGER.error("Get data node locations failed", e);
+    List<NodeCoordinate> nodeCoordinates = parseCoordinates(args);
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      dataNodeLocations =
+          client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .filter(
+                  location ->
+                      nodeCoordinates.stream()
+                          .anyMatch(nodeCoordinate -> nodeCoordinate.matches(location)))
+              .collect(Collectors.toList());
+    } catch (TException | ClientManagerException e) {
+      LOGGER.error("Get data node locations failed", e);
+    }
+
+    return dataNodeLocations;
+  }
+
+  protected List<NodeCoordinate> parseCoordinates(String coordinatesString) {
+    // Multiple nodeIds are separated by ","
+    String[] nodeIdStrings = coordinatesString.split(",");
+    List<NodeCoordinate> nodeIdCoordinates = new ArrayList<>(nodeIdStrings.length);
+    for (String nodeId : nodeIdStrings) {
+      // In the other case, we expect it to be a numeric value referring to the node-id
+      if (NumberUtils.isCreatable(nodeId)) {
+        nodeIdCoordinates.add(new NodeCoordinateNodeId(Integer.parseInt(nodeId)));
+      } else {
+        LOGGER.error("Invalid format. Expected a numeric node id, but got: {}", nodeId);
       }
     }
-    return dataNodeLocations;
+    return nodeIdCoordinates;
+  }
+
+  protected interface NodeCoordinate {
+    // Returns true if the given location matches this coordinate
+    boolean matches(TDataNodeLocation location);
+  }
+
+  /** Implementation of a NodeCoordinate that uses the node id to match. */
+  protected static class NodeCoordinateNodeId implements NodeCoordinate {
+    private final int nodeId;
+
+    public NodeCoordinateNodeId(int nodeId) {
+      this.nodeId = nodeId;
+    }
+
+    @Override
+    public boolean matches(TDataNodeLocation location) {
+      return location.isSetDataNodeId() && location.dataNodeId == nodeId;
+    }
   }
 }
