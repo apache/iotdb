@@ -874,8 +874,8 @@ public class TSDIFFBOSBTest {
 
     @Test
     public void BOSOptimalTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_b";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1019,8 +1019,8 @@ public class TSDIFFBOSBTest {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();

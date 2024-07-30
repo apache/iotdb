@@ -988,8 +988,9 @@ public class TSDIFFBOSMedianTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/median";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1131,5 +1132,139 @@ public class TSDIFFBOSMedianTest {
         }
     }
 
+    @Test
+    public void ExpTest() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_test";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("Synthetic_Exp_100");
+        dataset_name.add("Synthetic_Exp_1000");
+        dataset_name.add("Synthetic_Exp_10000");
+        dataset_name.add("Synthetic_Exp_100000");
+        dataset_name.add("Synthetic_Exp_1000000");
+        dataset_name.add("Synthetic_Normal_100");
+        dataset_name.add("Synthetic_Normal_1000");
+        dataset_name.add("Synthetic_Normal_10000");
+        dataset_name.add("Synthetic_Normal_100000");
+        dataset_name.add("Synthetic_Normal_1000000");
 
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Normal_1000.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Normal_10000.csv");//5
+        output_path_list.add(output_parent_dir + "/Normal_100000.csv");//5
+        output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
+//        dataset_block_size.add(2048);
+
+        int repeatTime2 = 1;
+
+//        for (int file_i = 0; file_i < 1; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+//                f= tempList[1];
+
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "TS_2DIFF+BOS-M",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+
+//                break;
+            }
+            writer.close();
+
+        }
+    }
 }
