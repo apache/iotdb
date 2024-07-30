@@ -131,7 +131,7 @@ public class CreateTableProcedure
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
     if (env.getConfigManager()
         .getClusterSchemaManager()
-        .getTable(database, table.getTableName())
+        .getTableIfExists(database, table.getTableName())
         .isPresent()) {
       setFailure(
           new ProcedureException(

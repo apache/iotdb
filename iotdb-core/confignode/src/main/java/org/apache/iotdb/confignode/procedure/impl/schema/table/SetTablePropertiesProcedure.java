@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.COMMIT_RELEASE;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.PRE_RELEASE;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.SET_PROPERTIES;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
@@ -102,7 +103,8 @@ public class SetTablePropertiesProcedure
               "Pre release info for table {}.{} when setting properties", database, tableName);
           break;
         case SET_PROPERTIES:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
+          setProperties(env);
+          LOGGER.info("Set properties to table {}.{}", database, tableName);
           break;
         case COMMIT_RELEASE:
           commitRelease(env);
@@ -145,7 +147,7 @@ public class SetTablePropertiesProcedure
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to pre-release table properties info of table {}.{} to DataNode, failure results: {}",
+          "Failed to pre-release properties info of table {}.{} to DataNode, failure results: {}",
           database,
           table.getTableName(),
           failedResults);
@@ -158,12 +160,24 @@ public class SetTablePropertiesProcedure
     setNextState(SET_PROPERTIES);
   }
 
+  private void setProperties(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .setTableProperties(database, tableName, updatedProperties);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    } else {
+      setNextState(COMMIT_RELEASE);
+    }
+  }
+
   private void commitRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to commit table properties info of table {}.{} to DataNode, failure results: {}",
+          "Failed to commit properties info of table {}.{} to DataNode, failure results: {}",
           database,
           table.getTableName(),
           failedResults);
@@ -173,9 +187,61 @@ public class SetTablePropertiesProcedure
 
   @Override
   protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final SetTablePropertiesState setTablePropertiesState)
-      throws IOException, InterruptedException, ProcedureException {}
+      final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
+      throws IOException, InterruptedException, ProcedureException {
+    final long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case PRE_RELEASE:
+          LOGGER.info(
+              "Start rollback pre release info for table {}.{} when setting properties",
+              database,
+              table.getTableName());
+          rollbackPreRelease(env);
+          break;
+        case SET_PROPERTIES:
+          LOGGER.info(
+              "Start rollback set properties to table {}.{}", database, table.getTableName());
+          rollbackSetProperties(env);
+          break;
+      }
+    } finally {
+      LOGGER.info(
+          "Rollback SetTableProperties-{} costs {}ms.",
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to rollback properties info of table {}.{} info to DataNode, failure results: {}",
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Rollback pre-release table column extension info failed")));
+    }
+  }
+
+  private void rollbackSetProperties(final ConfigNodeProcedureEnv env) {
+    if (table == null) {
+      return;
+    }
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .setTableProperties(database, tableName, originalProperties);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   @Override
   protected SetTablePropertiesState getState(final int stateId) {

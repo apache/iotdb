@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1108,15 +1109,15 @@ public class ClusterSchemaManager {
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public Optional<TsTable> getTable(final String database, final String tableName) {
-    return clusterSchemaInfo.getTsTable(database, tableName);
+  public Optional<TsTable> getTableIfExists(final String database, final String tableName) {
+    return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList) {
-    final TsTable originalTable = getTable(database, tableName).orElse(null);
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1179,12 +1180,24 @@ public class ClusterSchemaManager {
     }
   }
 
+  public synchronized TSStatus setTableProperties(
+      final String database, final String tableName, final Map<String, String> properties) {
+    final SetTablePropertiesPlan setTablePropertiesPlan =
+        new SetTablePropertiesPlan(database, tableName, properties);
+    try {
+      return getConsensusManager().write(setTablePropertiesPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
   public synchronized Pair<TSStatus, TsTable> updateTableProperties(
       final String database,
       final String tableName,
       final Map<String, String> originalProperties,
       final Map<String, String> updatedProperties) {
-    final TsTable originalTable = getTable(database, tableName).orElse(null);
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(

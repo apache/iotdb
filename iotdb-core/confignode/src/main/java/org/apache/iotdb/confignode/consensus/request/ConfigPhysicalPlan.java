@@ -119,6 +119,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -411,6 +412,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AddTableColumn:
           plan = new AddTableColumnPlan();
+          break;
+        case SetTableProperties:
+          plan = new SetTablePropertiesPlan();
           break;
         case GetNodePathsPartition:
           plan = new GetNodePathsPartitionPlan();

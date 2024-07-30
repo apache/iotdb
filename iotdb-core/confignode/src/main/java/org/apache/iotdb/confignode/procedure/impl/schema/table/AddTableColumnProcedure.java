@@ -146,6 +146,18 @@ public class AddTableColumnProcedure
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
+  private void addColumn(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .addTableColumn(database, tableName, addedColumnList);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    } else {
+      setNextState(AddTableColumnState.COMMIT_RELEASE);
+    }
+  }
+
   private void commitRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
@@ -159,18 +171,6 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void addColumn(final ConfigNodeProcedureEnv env) {
-    final TSStatus status =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-    } else {
-      setNextState(AddTableColumnState.COMMIT_RELEASE);
-    }
-  }
-
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws IOException, InterruptedException, ProcedureException {
@@ -178,9 +178,14 @@ public class AddTableColumnProcedure
     try {
       switch (state) {
         case ADD_COLUMN:
+          LOGGER.info(
+              "Start rollback pre release info of table {}.{} when adding column",
+              database,
+              table.getTableName());
           rollbackAddColumn(env);
           break;
         case PRE_RELEASE:
+          LOGGER.info("Start rollback Add column to table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);
           break;
       }
