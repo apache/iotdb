@@ -360,8 +360,8 @@ public class CreateTableProcedure
   }
 
   @Override
-  protected int getStateId(final CreateTableState createTableState) {
-    return createTableState.ordinal();
+  protected int getStateId(final CreateTableState state) {
+    return state.ordinal();
   }
 
   @Override
@@ -394,8 +394,12 @@ public class CreateTableProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (!(o instanceof CreateTableProcedure)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CreateTableProcedure)) {
+      return false;
+    }
     final CreateTableProcedure that = (CreateTableProcedure) o;
     return Objects.equals(database, that.database) && Objects.equals(table, that.table);
   }

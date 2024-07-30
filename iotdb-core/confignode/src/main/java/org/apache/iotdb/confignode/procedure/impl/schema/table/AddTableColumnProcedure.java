@@ -280,8 +280,12 @@ public class AddTableColumnProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (!(o instanceof AddTableColumnProcedure)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AddTableColumnProcedure)) {
+      return false;
+    }
     final AddTableColumnProcedure that = (AddTableColumnProcedure) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)

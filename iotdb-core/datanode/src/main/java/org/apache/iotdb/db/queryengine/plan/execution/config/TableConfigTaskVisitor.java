@@ -170,7 +170,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     final TsTable table = new TsTable(databaseTablePair.getRight());
 
-    table.setProps(convertPropertiesToMap(node.getProperties()));
+    table.setProps(convertPropertiesToMap(node.getProperties(), false));
 
     // TODO: Place the check at statement analyzer
     for (final ColumnDefinition columnDefinition : node.getElements()) {
@@ -215,7 +215,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new AlterTableSetPropertiesTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),
-        convertPropertiesToMap(node.getProperties()),
+        convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
         node.ifExists());
   }
@@ -231,7 +231,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new Pair<>(database, name.getSuffix());
   }
 
-  private Map<String, String> convertPropertiesToMap(final List<Property> propertyList) {
+  private Map<String, String> convertPropertiesToMap(
+      final List<Property> propertyList, final boolean serializeDefault) {
     final Map<String, String> map = new HashMap<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
@@ -243,6 +244,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 "TTL' value must be a LongLiteral, but now is: " + value.toString());
           }
           map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+        } else if (serializeDefault) {
+          map.put(key, null);
         }
       } else {
         throw new SemanticException("Table property '" + key + "' is currently not allowed.");

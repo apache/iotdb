@@ -1116,11 +1116,7 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList) {
-    final TsTable originalTable =
-        clusterSchemaInfo.getAllUsingTables().get(database).stream()
-            .filter(tsTable -> tsTable.getTableName().equals(tableName))
-            .findAny()
-            .orElse(null);
+    final TsTable originalTable = getTable(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1181,6 +1177,43 @@ public class ClusterSchemaManager {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
+  }
+
+  public synchronized Pair<TSStatus, TsTable> updateTableProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> originalProperties,
+      final Map<String, String> updatedProperties) {
+    final TsTable originalTable = getTable(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    updatedProperties
+        .keySet()
+        .removeIf(
+            key ->
+                Objects.equals(
+                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+    if (updatedProperties.isEmpty()) {
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
+    }
+
+    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    updatedProperties.forEach(
+        (k, v) -> {
+          originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
+          updatedTable.addProp(k, v);
+        });
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
   public void clearSchemaQuotaCache() {

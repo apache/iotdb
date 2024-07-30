@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum SetTablePropertiesState {
-  PROPERTIES_CHECK,
+  VALIDATE_TABLE,
   PRE_RELEASE,
   SET_PROPERTIES,
   COMMIT_RELEASE
