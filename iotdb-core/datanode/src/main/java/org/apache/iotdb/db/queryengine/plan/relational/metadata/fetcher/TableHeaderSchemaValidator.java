@@ -200,7 +200,7 @@ public class TableHeaderSchemaValidator {
                 + columnSchema.getName()
                 + " datatype is not provided");
       }
-        tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
     }
   }
 
