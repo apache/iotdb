@@ -69,6 +69,20 @@ public class DeviceIDFactory {
     return getDeviceIDFunction.apply(devicePath.getFullPath());
   }
 
+  public static List<IDeviceID> convertRawDeviceIDs2PartitionKeys(
+      final String tableName, final List<Object[]> deviceIdList) {
+    final List<IDeviceID> tmpPartitionKeyList = new ArrayList<>();
+    for (Object[] rawId : deviceIdList) {
+      final String[] partitionKey = new String[rawId.length + 1];
+      partitionKey[0] = tableName;
+      for (int i = 1; i < rawId.length + 1; i++) {
+        partitionKey[i] = (String) rawId[i];
+      }
+      tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
+    }
+    return tmpPartitionKeyList;
+  }
+
   public static List<Object[]> truncateTailingNull(final List<Object[]> deviceIdList) {
     final List<Object[]> res = new ArrayList<>(deviceIdList.size());
     for (final Object[] device : deviceIdList) {

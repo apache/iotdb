@@ -239,12 +239,12 @@ public class LogicalPlanner {
   private PlanNode planFetchDevice(FetchDevice statement, Analysis analysis) {
     queryContext.setQueryType(QueryType.READ);
 
-    List<ColumnHeader> columnHeaderList =
+    final List<ColumnHeader> columnHeaderList =
         getColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
-    TableDeviceFetchNode fetchNode =
+    final TableDeviceFetchNode fetchNode =
         new TableDeviceFetchNode(
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),

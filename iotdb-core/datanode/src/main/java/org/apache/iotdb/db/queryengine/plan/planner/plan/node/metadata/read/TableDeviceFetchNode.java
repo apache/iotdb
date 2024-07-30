@@ -41,17 +41,17 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   private final List<Object[]> deviceIdList;
 
   public TableDeviceFetchNode(
-      PlanNodeId id,
-      String database,
-      String tableName,
-      List<Object[]> deviceIdList,
-      List<ColumnHeader> columnHeaderList,
-      TRegionReplicaSet regionReplicaSet) {
+      final PlanNodeId id,
+      final String database,
+      final String tableName,
+      final List<Object[]> deviceIdList,
+      final List<ColumnHeader> columnHeaderList,
+      final TRegionReplicaSet regionReplicaSet) {
     super(id, database, tableName, columnHeaderList, regionReplicaSet);
     this.deviceIdList = deviceIdList;
   }
 
-  public void addDeviceId(Object[] deviceId) {
+  public void addDeviceId(final Object[] deviceId) {
     deviceIdList.add(deviceId);
   }
 
@@ -81,54 +81,54 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_DEVICE_FETCH.serialize(byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
     ReadWriteIOUtils.write(deviceIdList.size(), byteBuffer);
-    for (Object[] deviceId : deviceIdList) {
+    for (final Object[] deviceId : deviceIdList) {
       ReadWriteIOUtils.write(deviceId.length, byteBuffer);
-      for (Object idValue : deviceId) {
+      for (final Object idValue : deviceId) {
         ReadWriteIOUtils.writeObject(idValue, byteBuffer);
       }
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
-    for (ColumnHeader columnHeader : columnHeaderList) {
+    for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(byteBuffer);
     }
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_DEVICE_FETCH.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
 
     ReadWriteIOUtils.write(deviceIdList.size(), stream);
-    for (Object[] deviceId : deviceIdList) {
+    for (final Object[] deviceId : deviceIdList) {
       ReadWriteIOUtils.write(deviceId.length, stream);
-      for (Object idValue : deviceId) {
+      for (final Object idValue : deviceId) {
         ReadWriteIOUtils.writeObject(idValue, stream);
       }
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
-    for (ColumnHeader columnHeader : columnHeaderList) {
+    for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(stream);
     }
   }
 
-  public static TableDeviceFetchNode deserialize(ByteBuffer buffer) {
-    String database = ReadWriteIOUtils.readString(buffer);
-    String tableName = ReadWriteIOUtils.readString(buffer);
+  public static TableDeviceFetchNode deserialize(final ByteBuffer buffer) {
+    final String database = ReadWriteIOUtils.readString(buffer);
+    final String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<Object[]> deviceIdList = new ArrayList<>(size);
+    final List<Object[]> deviceIdList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      int length = ReadWriteIOUtils.readInt(buffer);
-      Object[] nodes = new String[length];
+      final int length = ReadWriteIOUtils.readInt(buffer);
+      final Object[] nodes = new String[length];
       for (int j = 0; j < length; j++) {
         nodes[j] = ReadWriteIOUtils.readObject(buffer);
       }
@@ -136,27 +136,33 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     }
 
     size = ReadWriteIOUtils.readInt(buffer);
-    List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
+    final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
-    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceFetchNode(
         planNodeId, database, tableName, deviceIdList, columnHeaderList, null);
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTableDeviceFetch(this, context);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof TableDeviceFetchNode)) return false;
-    if (!super.equals(o)) return false;
-    TableDeviceFetchNode that = (TableDeviceFetchNode) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TableDeviceFetchNode)) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    final TableDeviceFetchNode that = (TableDeviceFetchNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(deviceIdList, that.deviceIdList)

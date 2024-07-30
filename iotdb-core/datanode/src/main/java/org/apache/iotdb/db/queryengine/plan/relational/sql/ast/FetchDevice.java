@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.convertRawDeviceIDs2PartitionKeys;
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
 public class FetchDevice extends Statement {
 
@@ -35,11 +37,12 @@ public class FetchDevice extends Statement {
 
   private transient List<IDeviceID> partitionKeyList;
 
-  public FetchDevice(String database, String tableName, List<Object[]> deviceIdList) {
+  public FetchDevice(
+      final String database, final String tableName, final List<Object[]> deviceIdList) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.deviceIdList = deviceIdList;
+    this.deviceIdList = truncateTailingNull(deviceIdList);
   }
 
   public String getDatabase() {
@@ -56,15 +59,7 @@ public class FetchDevice extends Statement {
 
   public List<IDeviceID> getPartitionKeyList() {
     if (partitionKeyList == null) {
-      List<IDeviceID> partitionKeyList = new ArrayList<>();
-      for (Object[] rawId : deviceIdList) {
-        String[] partitionKey = new String[rawId.length];
-        for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i] = Objects.toString(rawId[i]);
-        }
-        partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
-      }
-      this.partitionKeyList = partitionKeyList;
+      this.partitionKeyList = convertRawDeviceIDs2PartitionKeys(tableName, deviceIdList);
     }
     return partitionKeyList;
   }
