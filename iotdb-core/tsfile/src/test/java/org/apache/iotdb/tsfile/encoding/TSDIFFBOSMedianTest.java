@@ -1142,11 +1142,11 @@ public class TSDIFFBOSMedianTest {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("Synthetic_Exp_50");
-        dataset_name.add("Synthetic_Exp_500");
-        dataset_name.add("Synthetic_Exp_5000");
-        dataset_name.add("Synthetic_Exp_50000");
-        dataset_name.add("Synthetic_Exp_500000");
+        dataset_name.add("Synthetic_Exp_100");
+        dataset_name.add("Synthetic_Exp_1000");
+        dataset_name.add("Synthetic_Exp_10000");
+        dataset_name.add("Synthetic_Exp_100000");
+        dataset_name.add("Synthetic_Exp_1000000");
         dataset_name.add("Synthetic_Normal_100");
         dataset_name.add("Synthetic_Normal_1000");
         dataset_name.add("Synthetic_Normal_10000");
@@ -1158,13 +1158,13 @@ public class TSDIFFBOSMedianTest {
             dataset_block_size.add(1024);
         }
 
-        output_path_list.add(output_parent_dir + "/Exp_50.csv"); // 0
+        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
 //        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Exp_500.csv");// 1
+        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
 //        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Exp_5000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_50000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_500000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
 //        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
 //        dataset_block_size.add(2048);
