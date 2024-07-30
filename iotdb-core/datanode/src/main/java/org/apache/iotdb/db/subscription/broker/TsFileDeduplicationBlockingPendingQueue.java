@@ -62,6 +62,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
     if (Objects.isNull(event)) {
       return null;
     }
+
     if (event instanceof PipeRawTabletInsertionEvent) {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
@@ -74,6 +75,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
         return null;
       }
     }
+
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       if (isDuplicated(pipeTsFileInsertionEvent)) {
@@ -83,6 +85,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
         return null;
       }
     }
+
     return event;
   }
 

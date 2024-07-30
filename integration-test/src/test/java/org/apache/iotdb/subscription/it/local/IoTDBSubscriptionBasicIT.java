@@ -539,10 +539,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
       consumer.open();
       consumer.subscribe(topicName);
 
-      AWAIT.untilAsserted(
-          () -> {
-            Assert.assertEquals(100, rowCount.get());
-          });
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
