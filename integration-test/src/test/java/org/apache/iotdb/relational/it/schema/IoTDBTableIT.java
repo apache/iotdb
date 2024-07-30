@@ -130,7 +130,7 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table test1.nonExist set properties ttl=1");
       } catch (final SQLException e) {
-        assertEquals("552: Table 'test1.nonexist' does not exist", e.getMessage());
+        assertEquals("550: Table 'test1.nonexist' does not exist", e.getMessage());
       }
 
       // If exists
