@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
@@ -287,6 +288,16 @@ public class WALNodeRecoverTask implements Runnable {
                 "Fail to find TsFile recover performer for wal entry in TsFile {}", walFile);
           }
         }
+      } catch (BrokenWALFileException e) {
+        logger.warn(
+            "Fail to read memTable ids from the wal file {} of wal node: {}",
+            walFile.getAbsoluteFile(),
+            e.getMessage());
+      } catch (IOException e) {
+        logger.warn(
+            "Fail to read memTable ids from the wal file {} of wal node.",
+            walFile.getAbsoluteFile(),
+            e);
       } catch (Exception e) {
         logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
       }
