@@ -312,12 +312,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public void read(ByteBuffer buffer) throws IOException {
     int totalBytesToBeRead = buffer.remaining();
-    int currReadBytes = Math.min(dataBuffer.remaining(), buffer.remaining());
-    dataBuffer.get(buffer.array(), buffer.position(), currReadBytes);
-    if (totalBytesToBeRead - currReadBytes > 0) {
-      loadNextSegment();
-      read(buffer);
+    while (totalBytesToBeRead > 0) {
+      if (dataBuffer.remaining() == 0) {
+        loadNextSegment();
+      }
+      int currReadBytes = Math.min(dataBuffer.remaining(), totalBytesToBeRead);
+      dataBuffer.get(buffer.array(), buffer.position(), currReadBytes);
+      buffer.position(buffer.position() + currReadBytes);
+      totalBytesToBeRead -= currReadBytes;
     }
+    buffer.flip();
   }
 
   public long getFileCurrentPos() throws IOException {
