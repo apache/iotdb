@@ -128,17 +128,17 @@ public class IoTDBTableIT {
 
       // Alter non-exist table
       try {
-        statement.execute("alter table test1.non-exist set properties ttl=1");
+        statement.execute("alter table test1.nonExist set properties ttl=1");
       } catch (final SQLException e) {
-        assertEquals("552: Table 'test1.non-exist' does not exist", e.getMessage());
+        assertEquals("552: Table 'test1.nonExist' does not exist", e.getMessage());
       }
 
       // If exists
-      statement.execute("alter table if exists test1.non-exist set properties ttl=1");
+      statement.execute("alter table if exists test1.nonExist set properties ttl=1");
 
       // Alter non-supported properties
       try {
-        statement.execute("alter table test1.table1 set properties non-support=1");
+        statement.execute("alter table test1.table1 set properties nonSupport=1");
       } catch (final SQLException e) {
         assertEquals("701: Table property 'nonsupport' is currently not allowed.", e.getMessage());
       }
