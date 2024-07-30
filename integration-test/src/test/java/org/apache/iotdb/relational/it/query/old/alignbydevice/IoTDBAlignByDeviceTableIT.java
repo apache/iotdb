@@ -288,6 +288,27 @@ public class IoTDBAlignByDeviceTableIT {
         DATABASE_NAME);
   }
 
+  @Test
+  public void predicateCannotNormalizedTest() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s0", "s1", "s2"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d0,101,1101,null,",
+          "1970-01-01T00:00:00.002Z,d0,10000,40000,2.22,",
+          "1970-01-01T00:00:00.050Z,d0,10000,50000,null,",
+          "1970-01-01T00:00:00.100Z,d0,99,199,null,",
+          "1970-01-01T00:00:00.101Z,d0,99,199,null,",
+          "1970-01-01T00:00:00.103Z,d0,99,199,null,",
+          "1970-01-01T00:00:00.105Z,d0,99,199,11.11,",
+          "1970-01-01T00:00:01.000Z,d0,22222,55555,1000.11,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s0,s1,s2 from vehicle where (((\"time\" > 10) AND (\"s1\" > 190)) OR (\"s2\" > 190.0) OR ((\"time\" < 4) AND (\"s1\" > 100))) order by device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   //
   //  @Test
   //  public void aggregateTest() {
