@@ -415,13 +415,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private InsertRowStatement toInsertRowStatement(
-      Row row, int timeColumnIndex, String[] columnNames, String tableName) {
+      Row row, int timeColumnIndex, String[] nonTimeColumnNames, String tableName) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
     long timestamp;
+    int nonTimeColCnt;
     if (timeColumnIndex == -1) {
       timestamp = CommonDateTimeUtils.currentTime();
+      nonTimeColCnt = row.getItems().size();
     } else {
       Expression timeExpression = row.getItems().get(timeColumnIndex);
       if (timeExpression instanceof LongLiteral) {
@@ -433,18 +435,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 CommonDateTimeUtils.currentTime(),
                 zoneId);
       }
+      nonTimeColCnt = row.getItems().size() - 1;
     }
+
+    if (nonTimeColCnt != nonTimeColumnNames.length) {
+      throw new SemanticException(
+          String.format(
+              "Inconsistent numbers of non-time column names and values: %d-%d",
+              nonTimeColumnNames.length, nonTimeColCnt));
+    }
+
     TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
     insertRowStatement.setTime(timestamp);
-    insertRowStatement.setMeasurements(columnNames);
+    insertRowStatement.setMeasurements(nonTimeColumnNames);
 
-    Object[] values = new Object[columnNames.length];
+    Object[] values = new Object[nonTimeColumnNames.length];
     int valuePos = 0;
     for (int i = 0; i < row.getItems().size(); i++) {
       if (i != timeColumnIndex) {
         values[valuePos++] = AstUtil.expressionToTsValue(row.getItems().get(i));
       }
     }
+
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
     return insertRowStatement;

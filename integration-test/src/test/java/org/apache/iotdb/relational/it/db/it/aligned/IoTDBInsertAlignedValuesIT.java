@@ -276,7 +276,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into wf01(id1, time, status, temperature) values('wt01', 11000, 100)");
       fail();
     } catch (SQLException e) {
-      assertTrue(e.getMessage().contains("failed"));
+      assertEquals("701: Inconsistent numbers of non-time column names and values: 3-2", e.getMessage());
     }
   }
 
@@ -292,7 +292,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into wf01(id1, time, status, temperature) values('wt01', 11000, 100, 300, 400)");
       fail();
     } catch (SQLException e) {
-      assertTrue(e.getMessage(), e.getMessage().contains("failed"));
+      assertEquals("701: Inconsistent numbers of non-time column names and values: 3-4", e.getMessage());
     }
   }
 
