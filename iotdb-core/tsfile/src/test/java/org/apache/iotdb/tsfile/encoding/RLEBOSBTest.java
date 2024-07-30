@@ -562,7 +562,7 @@ public class RLEBOSBTest {
             int beta_max = getBitWith(max_delta_value - x_l_plus_value);
             int end_value_i = start_value_i + 1;
             for(int beta = 1; beta <= beta_max; beta++){
-                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta))-1;
+                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta));
 
                 for (; end_value_i < unique_value_count; end_value_i++) {
 

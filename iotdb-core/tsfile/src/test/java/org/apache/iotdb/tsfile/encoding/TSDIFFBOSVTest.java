@@ -571,6 +571,7 @@ public class TSDIFFBOSVTest {
 
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
+//        System.out.println(encode_pos);
 
         return encode_pos;
     }
@@ -864,7 +865,7 @@ public class TSDIFFBOSVTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 

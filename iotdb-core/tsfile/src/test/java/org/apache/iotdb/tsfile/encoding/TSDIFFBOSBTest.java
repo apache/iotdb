@@ -512,6 +512,26 @@ public class TSDIFFBOSBTest {
         }
 
         int k_start_value = -1; // x_l_minus
+//        int beta_max_all = getBitWith(max_delta_value)+1;
+//        int[][] hash_table_count = new int[unique_value_count][beta_max_all];
+//        int[][] hash_table_value = new int[unique_value_count][beta_max_all];
+//        int cur_value = getUniqueValue(sorted_value_list[0], left_shift) ;
+//        int next_value = getUniqueValue(sorted_value_list[1], left_shift) ;
+//
+//        for (int value_i = 0; value_i < unique_value_count; value_i++) {
+//
+//
+//            next_value = getUniqueValue(sorted_value_list[value_i + 1], left_shift) ;
+//            long k_start_valueL = sorted_value_list[value_i];
+//            hash_table_count[value_i][0] = getCount(k_start_valueL,mask);
+//
+//            int beta_max = getBitWith(max_delta_value - cur_value);
+//            for(int beta = 1; beta <= beta_max; beta++){
+//
+//            }
+//            cur_value =  next_value ;
+//
+//        }
 
         for (int start_value_i = 0; start_value_i < unique_value_count-1; start_value_i++) {
             long k_start_valueL = sorted_value_list[start_value_i];
@@ -544,7 +564,7 @@ public class TSDIFFBOSBTest {
             int beta_max = getBitWith(max_delta_value - x_l_plus_value);
             int end_value_i = start_value_i + 1;
             for(int beta = 1; beta <= beta_max; beta++){
-                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta))-1;
+                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta));
 
                 for (; end_value_i < unique_value_count; end_value_i++) {
 
@@ -611,6 +631,8 @@ public class TSDIFFBOSBTest {
 
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
+
+//        System.out.println(encode_pos);
 
         return encode_pos;
     }
@@ -904,8 +926,8 @@ public class TSDIFFBOSBTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
-
+//        for (int file_i = 9; file_i < 10; file_i++) {
+//
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
