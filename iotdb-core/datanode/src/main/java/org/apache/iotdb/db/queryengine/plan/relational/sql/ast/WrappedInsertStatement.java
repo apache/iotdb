@@ -78,14 +78,11 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         columnSchemas.add(
             new ColumnSchema(
                 insertBaseStatement.getMeasurements()[i],
-                insertBaseStatement.getDataTypes() != null
-                        && insertBaseStatement.getDataTypes()[i] != null
-                    ? TypeFactory.getType(insertBaseStatement.getDataTypes()[i])
+                insertBaseStatement.getDataType(i) != null
+                    ? TypeFactory.getType(insertBaseStatement.getDataType(i))
                     : null,
                 false,
-                insertBaseStatement.getColumnCategories() != null
-                    ? insertBaseStatement.getColumnCategories()[i]
-                    : null));
+                insertBaseStatement.getColumnCategory(i)));
       } else {
         columnSchemas.add(null);
       }
@@ -93,10 +90,17 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     return new TableSchema(tableName, columnSchemas);
   }
 
-  public void validateTableSchema(TableSchema realSchema) {
-    final TableSchema incomingTableSchema = getTableSchema();
+  public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    String databaseName = context.getSession().getDatabaseName().orElse(null);
+    final TableSchema incomingSchema = getTableSchema();
+    final TableSchema realSchema =
+        metadata.validateTableHeaderSchema(databaseName, incomingSchema, context).orElse(null);
+    if (realSchema == null) {
+      throw new SemanticException(
+          "Schema validation failed, table cannot be created: " + incomingSchema);
+    }
     InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
-    validateTableSchema(realSchema, incomingTableSchema, innerTreeStatement);
+    validateTableSchema(realSchema, incomingSchema, innerTreeStatement);
   }
 
   protected void validateTableSchema(
@@ -161,8 +165,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         return;
       }
     }
-    if (incoming.getType() == null) {
+    if (incoming.getType() == null
+        || incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
       // sql insertion does not provide type
+      // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!incoming.getType().equals(real.getType())) {
       SemanticException semanticException =

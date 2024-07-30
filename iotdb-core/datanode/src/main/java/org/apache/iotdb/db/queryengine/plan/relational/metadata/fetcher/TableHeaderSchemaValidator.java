@@ -109,10 +109,16 @@ public class TableHeaderSchemaValidator {
       if (existingColumn == null) {
         // check arguments for column auto creation
         if (columnSchema.getColumnCategory() == null) {
-          throw new SemanticException("Unknown column category. Cannot auto create column.");
+          throw new SemanticException(
+              String.format(
+                  "Unknown column category for %s. Cannot auto create column.",
+                  columnSchema.getName()));
         }
         if (columnSchema.getType() == null) {
-          throw new SemanticException("Unknown column data type. Cannot auto create column.");
+          throw new SemanticException(
+              String.format(
+                  "Unknown column data type for %s. Cannot auto create column.",
+                  columnSchema.getName()));
         }
         missingColumnList.add(columnSchema);
       } else {
@@ -174,12 +180,24 @@ public class TableHeaderSchemaValidator {
   private void addColumnSchema(List<ColumnSchema> columnSchemas, TsTable tsTable) {
     for (ColumnSchema columnSchema : columnSchemas) {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
+      if (category == null) {
+        throw new SemanticException(
+            "Cannot create column category for column "
+                + columnSchema.getName()
+                + " category is not provided");
+      }
       String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       TSDataType dataType = getTSDataType(columnSchema.getType());
+      if (dataType == null) {
+        throw new SemanticException(
+            "Cannot create column category for column "
+                + columnSchema.getName()
+                + " datatype is not provided");
+      }
       generateColumnSchema(tsTable, category, columnName, dataType);
     }
   }
