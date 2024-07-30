@@ -137,14 +137,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           return node;
         }
 
-        // for predicate which is not cnf normalized
-        if (predicate instanceof LogicalExpression
-            && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.OR
-            && ((LogicalExpression) predicate).getTerms().size() > 1) {
-          node.setChild(node.getChild().accept(this, context));
-          return node;
-        }
-
         if (node.getChild() instanceof TableScanNode) {
           // child of FilterNode is TableScanNode, means FilterNode must get from where clause
           return combineFilterAndScan((TableScanNode) node.getChild());
