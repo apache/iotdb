@@ -818,6 +818,30 @@ public class AnalyzerTest {
     assertTrue(getChildrenNode(rootNode, 2) instanceof TableScanNode);
   }
 
+  @Test
+  public void duplicateProjectionsTest() {
+    sql = "SELECT Time,time,s1+1,S1+1,tag1,TAG1 FROM table1";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(
+        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
+    assertEquals(
+        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue());
+    assertEquals(
+        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
+    assertEquals(
+        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue());
+    assertEquals(
+        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue());
+    assertEquals(
+        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
+  }
+
   private Metadata mockMetadataForInsertion() {
     return new TestMatadata() {
       @Override
