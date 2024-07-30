@@ -55,12 +55,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.awaitility.Awaitility.await;
 
 public class TestConfig extends AbstractSubscriptionTripleIT {
-  public final String SRC_HOST = sender.getIP();
-  public final String DEST_HOST = receiver1.getIP();
-  public final String DEST_HOST2 = receiver2.getIP();
+  public String SRC_HOST;
+  public String DEST_HOST;
+  public String DEST_HOST2;
 
-  public final int PORT = Integer.parseInt(sender.getPort());
-  public final SubscriptionSession subs = new SubscriptionSession(SRC_HOST, PORT);
+  public int SRC_PORT;
+  public int DEST_PORT;
+  public int DEST_PORT2;
+
+  public SubscriptionSession subs;
   public static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
   public Session session_src;
@@ -76,17 +79,42 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
           .atMost(120, TimeUnit.SECONDS);
 
   public void beforeSuite() throws IoTDBConnectionException, StatementExecutionException {
-    System.out.println("TestConfig beforeClass");
+    SRC_HOST = sender.getIP();
+    DEST_HOST = receiver1.getIP();
+    DEST_HOST2 = receiver2.getIP();
+
+    SRC_PORT = Integer.parseInt(sender.getPort());
+    DEST_PORT = Integer.parseInt(receiver1.getPort());
+    DEST_PORT2 = Integer.parseInt(receiver2.getPort());
+
     session_src =
-        new Session.Builder().host(SRC_HOST).port(PORT).username("root").password("root").build();
+        new Session.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .username("root")
+            .password("root")
+            .build();
     session_dest =
-        new Session.Builder().host(DEST_HOST).port(PORT).username("root").password("root").build();
+        new Session.Builder()
+            .host(DEST_HOST)
+            .port(DEST_PORT)
+            .username("root")
+            .password("root")
+            .build();
     session_dest2 =
-        new Session.Builder().host(DEST_HOST2).port(PORT).username("root").password("root").build();
+        new Session.Builder()
+            .host(DEST_HOST2)
+            .port(DEST_PORT2)
+            .username("root")
+            .password("root")
+            .build();
     session_src.open(false);
     session_dest.open(false);
     session_dest2.open(false);
+
+    subs = new SubscriptionSession(SRC_HOST, SRC_PORT);
     subs.open();
+    System.out.println("TestConfig beforeClass");
   }
 
   public void afterSuite() throws IoTDBConnectionException, StatementExecutionException {
@@ -141,7 +169,7 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
     SubscriptionPullConsumer pullConsumer;
     Properties properties = new Properties();
     properties.put(ConsumerConstant.HOST_KEY, SRC_HOST);
-    properties.put(ConsumerConstant.PORT_KEY, PORT);
+    properties.put(ConsumerConstant.PORT_KEY, SRC_PORT);
     if (groupId != null) {
       properties.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, groupId);
     }

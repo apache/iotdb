@@ -60,7 +60,8 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
 
   @Override
   @Before
-  public void setUp() throws IoTDBConnectionException, StatementExecutionException {
+  public void setUp() throws Exception {
+    super.setUp();
     beforeSuite();
     createTopic_s(topicName, pattern, null, null, false);
     createDB(database);
@@ -84,12 +85,13 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
 
   @Override
   @After
-  public void tearDown() throws IoTDBConnectionException, StatementExecutionException {
+  public void tearDown() throws Exception {
     consumer.close();
     consumer2.close();
     subs.dropTopic(topicName);
     dropDB(database);
     afterSuite();
+    super.tearDown();
   }
 
   private void insert_data(long timestamp)
@@ -132,7 +134,7 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
-            .port(PORT)
+            .port(SRC_PORT)
             .consumerId("dataset_push_consumer_1")
             .consumerGroupId("db_pull_push_mix")
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
@@ -157,7 +159,7 @@ public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfi
     consumer2 =
         new SubscriptionPullConsumer.Builder()
             .host(SRC_HOST)
-            .port(PORT)
+            .port(SRC_PORT)
             .consumerId("dataset_pull_consumer_2")
             .consumerGroupId("db_pull_push_mix")
             .buildPullConsumer();
