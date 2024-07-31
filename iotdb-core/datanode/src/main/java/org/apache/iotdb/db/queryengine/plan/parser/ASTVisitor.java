@@ -3739,6 +3739,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
 
+    alterPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
     if (ctx.alterExtractorAttributesClause() != null) {
       alterPipeStatement.setExtractorAttributes(
           parseExtractorAttributesClause(
@@ -3771,8 +3773,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setConnectorAttributes(new HashMap<>());
       alterPipeStatement.setReplaceAllConnectorAttributes(false);
     }
-
-    alterPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
     return alterPipeStatement;
   }
@@ -3874,14 +3874,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Not support for this sql in CREATE TOPIC, please enter topicName.");
     }
 
+    createTopicStatement.setIfNotExists(
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
+
     if (ctx.topicAttributesClause() != null) {
       createTopicStatement.setTopicAttributes(
           parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
     } else {
       createTopicStatement.setTopicAttributes(new HashMap<>());
     }
-    createTopicStatement.setIfNotExists(
-        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
     return createTopicStatement;
   }
