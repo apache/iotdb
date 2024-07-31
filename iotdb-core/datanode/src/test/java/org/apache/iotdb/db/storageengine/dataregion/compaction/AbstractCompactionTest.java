@@ -525,7 +525,7 @@ public class AbstractCompactionTest {
     for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
       files.add(resource.getTsFile());
     }
-    TsFileValidationTool.findUncorrectFiles(files);
+    TsFileValidationTool.findIncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.getBadFileNum());
   }
 

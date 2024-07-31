@@ -87,9 +87,9 @@ public class TsFileValidationTool {
       validationScan.setPrintDetails(printDetails);
     }
 
-    // check tsfile, which will only check for correctness inside a single tsfile
+    // check tsfile
     for (File f : fileList) {
-      findUncorrectFiles(Collections.singletonList(f));
+      findIncorrectFiles(Collections.singletonList(f));
     }
 
     // check tsfiles in data dir, which will check for correctness inside one single tsfile and
@@ -103,7 +103,7 @@ public class TsFileValidationTool {
           Arrays.asList(
               Objects.requireNonNull(
                   seqDataDir.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX))));
-      findUncorrectFiles(rootTsFiles);
+      findIncorrectFiles(rootTsFiles);
 
       List<File> sgDirs =
           Arrays.asList(Objects.requireNonNull(seqDataDir.listFiles(File::isDirectory)));
@@ -152,7 +152,7 @@ public class TsFileValidationTool {
                       : timeDiff;
                 });
 
-            findUncorrectFiles(tsFiles);
+            findIncorrectFiles(tsFiles);
           }
           // clear map
           clearMap(false);
@@ -167,7 +167,8 @@ public class TsFileValidationTool {
     }
   }
 
-  public static void findUncorrectFiles(List<File> tsFiles) {
+  public static void findIncorrectFiles(List<File> tsFiles) {
+    validationScan.clear();
     for (File tsFile : tsFiles) {
       validationScan.getPreviousBadFileMsgs().clear();
       validationScan.scanTsFile(tsFile);
