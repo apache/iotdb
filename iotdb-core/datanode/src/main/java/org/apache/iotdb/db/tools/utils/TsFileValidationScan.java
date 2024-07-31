@@ -189,6 +189,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     for (long timestamp : timeBatch) {
       onTimeStamp(timestamp, fileNameLastTimePair);
     }
+    lastPageEndTime = Math.max(lastPageEndTime, currentPageEndTime);
   }
 
   protected void markInFileOverlap() {
@@ -278,6 +279,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
       onTimeStamp(timestamp, fileNameLastTimePair);
       batchData.next();
     }
+    lastPageEndTime = Math.max(lastPageEndTime, currentPageEndTime);
   }
 
   private void onTimeStamp(long timestamp, FileLastTimeInfo fileNameLastTimePair) {
