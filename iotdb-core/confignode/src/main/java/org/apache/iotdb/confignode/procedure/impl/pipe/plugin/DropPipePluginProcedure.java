@@ -61,16 +61,21 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private static final int RETRY_THRESHOLD = 5;
 
   private String pluginName;
-  private boolean ifExistsCondition;
+
+  // If the plugin does not exist and the If Exists condition is met, the process ends.
+  // This field will not be serialized. It may cause some problems
+  // when the procedure fails on one node and recovers on another node.
+  // Though it is not a good practice, it is acceptable here.
+  private boolean isSetIfExistsCondition;
 
   public DropPipePluginProcedure() {
     super();
   }
 
-  public DropPipePluginProcedure(String pluginName, boolean ifExistsCondition) {
+  public DropPipePluginProcedure(String pluginName, boolean isSetIfExistsCondition) {
     super();
     this.pluginName = pluginName;
-    this.ifExistsCondition = ifExistsCondition;
+    this.isSetIfExistsCondition = isSetIfExistsCondition;
   }
 
   @Override
@@ -118,12 +123,19 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
 
-    boolean exists = true;
     try {
-      exists =
-          pipePluginCoordinator
-              .getPipePluginInfo()
-              .validateBeforeDroppingPipePlugin(pluginName, ifExistsCondition);
+      if (pipePluginCoordinator
+          .getPipePluginInfo()
+          .validateBeforeDroppingPipePlugin(pluginName, isSetIfExistsCondition)) {
+        LOGGER.info(
+            "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})",
+            pluginName,
+            pluginName);
+        pipePluginCoordinator.unlock();
+        pipeTaskCoordinator.unlock();
+        return Flow.NO_MORE_STATE;
+      }
+
       pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
@@ -131,17 +143,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       pipePluginCoordinator.unlock();
       pipeTaskCoordinator.unlock();
       setFailure(new ProcedureException(e.getMessage()));
-      return Flow.NO_MORE_STATE;
-    }
-
-    // If the plugin does not exist and the If Exists condition is met, the process ends.
-    if (!exists) {
-      LOGGER.info(
-          "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})",
-          pluginName,
-          pluginName);
-      pipePluginCoordinator.unlock();
-      pipeTaskCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
 

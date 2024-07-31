@@ -834,7 +834,8 @@ public class ProcedureManager {
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
     final long procedureId =
         executor.submitProcedure(
-            new DropPipePluginProcedure(req.getPluginName(), req.ifExistsCondition));
+            new DropPipePluginProcedure(
+                req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition()));
     final List<TSStatus> statusList = new ArrayList<>();
     final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

@@ -94,16 +94,16 @@ public class PipePluginInfo implements SnapshotProcessor {
   /////////////////////////////// Validator ///////////////////////////////
 
   /**
-   * @return true if the pipe plugin is already created and the ifNotExistsCondition is true, false
-   *     otherwise
-   * @throws PipeException if the pipe plugin is already created and the ifNotExistsCondition is
-   *     false
+   * @return true if the pipe plugin is already created and the isSetIfNotExistsCondition is true,
+   *     false otherwise
+   * @throws PipeException if the pipe plugin is already created and the isSetIfNotExistsCondition
+   *     is false
    */
   public boolean validateBeforeCreatingPipePlugin(
-      final String pluginName, final boolean ifNotExistsCondition) {
+      final String pluginName, final boolean isSetIfNotExistsCondition) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      if (ifNotExistsCondition) {
+      if (isSetIfNotExistsCondition) {
         return true;
       }
       throw new PipeException(
@@ -114,11 +114,16 @@ public class PipePluginInfo implements SnapshotProcessor {
     return false;
   }
 
+  /**
+   * @return true if the pipe plugin is not created and the isSetIfExistsCondition is true, false
+   *     otherwise
+   * @throws PipeException if the pipe plugin is not created and the isSetIfExistsCondition is false
+   */
   public boolean validateBeforeDroppingPipePlugin(
-      final String pluginName, boolean ifExistsCondition) {
+      final String pluginName, final boolean isSetIfExistsCondition) {
     if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      if (ifExistsCondition) {
-        return false;
+      if (isSetIfExistsCondition) {
+        return true;
       }
       throw new PipeException(
           String.format(
@@ -130,7 +135,7 @@ public class PipePluginInfo implements SnapshotProcessor {
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
               pluginName));
     }
-    return true;
+    return false;
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(final String jarName) {
