@@ -38,44 +38,50 @@ import static org.junit.Assert.assertEquals;
 
 public class TsFileValidationScanTest {
 
-  public static void main(String[] args) throws IOException {}
+  public static void main(String[] args) throws IOException {
+    prepareTsFiles();
+  }
 
   @Test
   public void testValidation() throws IOException {
     List<File> files = prepareTsFiles();
     try {
       // overlap between chunks
-      TsFileValidationScan tsFileValidationScan = new TsFileValidationScan(null);
+      TsFileValidationScan tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(0));
       assertEquals(1, tsFileValidationScan.getBadFileNum());
 
       // overlap between page
-      tsFileValidationScan = new TsFileValidationScan(null);
+      tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(1));
       assertEquals(1, tsFileValidationScan.getBadFileNum());
 
       // overlap within page
-      tsFileValidationScan = new TsFileValidationScan(null);
+      tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(2));
       assertEquals(1, tsFileValidationScan.getBadFileNum());
 
       // normal
-      tsFileValidationScan = new TsFileValidationScan(null);
+      tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(3));
       assertEquals(0, tsFileValidationScan.getBadFileNum());
 
       // normal
-      tsFileValidationScan = new TsFileValidationScan(null);
+      tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(4));
       assertEquals(0, tsFileValidationScan.getBadFileNum());
 
       // overlap between files
-      tsFileValidationScan = new TsFileValidationScan(null);
+      tsFileValidationScan = new TsFileValidationScan();
       tsFileValidationScan.scanTsFile(files.get(3));
       tsFileValidationScan.scanTsFile(files.get(4));
       assertEquals(2, tsFileValidationScan.getBadFileNum());
     } finally {
-      files.forEach(File::delete);
+      files.forEach(
+          file -> {
+            file.delete();
+            new TsFileResource(file).remove();
+          });
     }
   }
 

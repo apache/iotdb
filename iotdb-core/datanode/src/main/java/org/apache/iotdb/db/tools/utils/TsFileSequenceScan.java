@@ -34,8 +34,7 @@ import java.nio.ByteBuffer;
 
 public abstract class TsFileSequenceScan {
 
-  protected boolean printToFile;
-  protected PrintWriter pw = null;
+  protected PrintWriter printWriter = null;
 
   protected TsFileSequenceReader reader;
   protected byte marker;
@@ -46,9 +45,7 @@ public abstract class TsFileSequenceScan {
   protected Pair<IDeviceID, String> currTimeseriesID;
   protected boolean currChunkOnePage;
 
-  public TsFileSequenceScan(PrintWriter pw) {
-    this.pw = pw;
-  }
+  public TsFileSequenceScan() {}
 
   /**
    * @return true if the file should be scanned
@@ -106,8 +103,8 @@ public abstract class TsFileSequenceScan {
   @SuppressWarnings("java:S106")
   protected void printBoth(String msg) {
     System.out.println(msg);
-    if (pw != null) {
-      pw.println(msg);
+    if (printWriter != null) {
+      printWriter.println(msg);
     }
   }
 
@@ -163,5 +160,9 @@ public abstract class TsFileSequenceScan {
     } catch (Throwable e) {
       onException(e);
     }
+  }
+
+  public void setPrintWriter(PrintWriter printWriter) {
+    this.printWriter = printWriter;
   }
 }

@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -78,8 +77,8 @@ public class TsFileValidationScan extends TsFileSequenceScan {
   protected long currentPageEndTime;
   protected long lastPageEndTime;
 
-  public TsFileValidationScan(PrintWriter pw) {
-    super(pw);
+  public TsFileValidationScan() {
+    super();
   }
 
   @Override
@@ -377,5 +376,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     private boolean chunkOverlapPrinted;
     private boolean crossPageOverlapPrinted;
     private boolean inPagePOverlapPrinted;
+  }
+
+  public void setPrintDetails(boolean printDetails) {
+    this.printDetails = printDetails;
   }
 }

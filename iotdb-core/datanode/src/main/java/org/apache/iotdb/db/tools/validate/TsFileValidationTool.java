@@ -66,7 +66,7 @@ public class TsFileValidationTool {
   private static final List<File> seqDataDirList = new ArrayList<>();
   private static final List<File> fileList = new ArrayList<>();
 
-  private static TsFileValidationScan validationScan;
+  private static TsFileValidationScan validationScan = new TsFileValidationScan();
 
   /**
    * The form of param is: [path of data dir or tsfile] [-pd = print details or not] [-f = path of
@@ -80,11 +80,12 @@ public class TsFileValidationTool {
     }
     if (printToFile) {
       pw = new PrintWriter(new FileWriter(outFilePath));
+      validationScan.setPrintWriter(pw);
     }
     if (printDetails) {
       printBoth("Start checking seq files ...");
+      validationScan.setPrintDetails(printDetails);
     }
-    validationScan = new TsFileValidationScan(pw);
 
     // check tsfile, which will only check for correctness inside a single tsfile
     for (File f : fileList) {
