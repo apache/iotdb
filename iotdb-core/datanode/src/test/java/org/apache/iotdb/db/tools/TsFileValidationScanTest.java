@@ -85,6 +85,28 @@ public class TsFileValidationScanTest {
     }
   }
 
+  @Test
+  public void testIgnoreFileOverlap() throws IOException {
+    List<File> files = prepareTsFiles();
+    try {
+      TsFileValidationScan tsFileValidationScan;
+
+      // overlap between files
+      tsFileValidationScan = new TsFileValidationScan();
+      tsFileValidationScan.setIgnoreFileOverlap(true);
+      tsFileValidationScan.setPrintDetails(true);
+      tsFileValidationScan.scanTsFile(files.get(3));
+      tsFileValidationScan.scanTsFile(files.get(4));
+      assertEquals(0, tsFileValidationScan.getBadFileNum());
+    } finally {
+      files.forEach(
+          file -> {
+            file.delete();
+            new TsFileResource(file).remove();
+          });
+    }
+  }
+
   private static List<File> prepareTsFiles() throws IOException {
     List<File> files = new ArrayList<>();
     PlainDeviceID plainDeviceID = new PlainDeviceID("root.sg1.d1");

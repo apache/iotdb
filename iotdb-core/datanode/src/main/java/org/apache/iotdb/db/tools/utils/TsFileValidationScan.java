@@ -57,25 +57,30 @@ public class TsFileValidationScan extends TsFileSequenceScan {
   private static final IDeviceID EMPTY_DEVICE_ID = new PlainDeviceID("");
 
   protected boolean printDetails;
-  protected int badFileNum;
+  protected boolean ignoreFileOverlap = false;
 
+  // chunk/page context
+  protected long currentChunkEndTime;
+  protected long currentPageEndTime;
+  protected long lastPageEndTime;
+
+  // single file context
+  protected TsFileResource resource;
   // deviceID -> has checked overlap or not
   protected Map<IDeviceID, Boolean> hasCheckedDeviceOverlap;
   protected Map<Pair<IDeviceID, String>, SeriesOverlapPrintInfo> hasSeriesPrintedDetails;
   // measurementId -> lastChunkEndTime in current file
   protected Map<Pair<IDeviceID, String>, Long> lashChunkEndTime;
+
+  // global context
   // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
   protected Map<Pair<IDeviceID, String>, FileLastTimeInfo> timeseriesLastTimeMap = new HashMap<>();
   // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
   protected Map<IDeviceID, FileLastTimeInfo> deviceEndTime = new HashMap<>();
   // fileName -> isBadFile
   protected Map<String, Boolean> isBadFileMap = new HashMap<>();
+  protected int badFileNum;
   protected List<String> previousBadFileMsgs = new ArrayList<>();
-  protected TsFileResource resource;
-
-  protected long currentChunkEndTime;
-  protected long currentPageEndTime;
-  protected long lastPageEndTime;
 
   public TsFileValidationScan() {
     super();
@@ -114,6 +119,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
         fileNameLastTime.lastFileName = file.getName();
       }
     }
+    if (ignoreFileOverlap) {
+      reset(false);
+    }
   }
 
   @Override
@@ -137,6 +145,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
       // device overlap, find bad file
       recordDeviceOverlap(fileNameLastTimePair.lastFileName);
     }
+
     hasCheckedDeviceOverlap.put(currDeviceID, true);
   }
 
@@ -380,5 +389,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
 
   public void setPrintDetails(boolean printDetails) {
     this.printDetails = printDetails;
+  }
+
+  public void setIgnoreFileOverlap(boolean ignoreFileOverlap) {
+    this.ignoreFileOverlap = ignoreFileOverlap;
   }
 }

@@ -57,6 +57,7 @@ public class TsFileValidationTool {
 
   // print to local file or not
   private static boolean printToFile = false;
+  private static boolean ignoreFileOverlap = false;
 
   private static String outFilePath = "TsFile_validation_view.txt";
 
@@ -86,6 +87,7 @@ public class TsFileValidationTool {
       printBoth("Start checking seq files ...");
       validationScan.setPrintDetails(printDetails);
     }
+    validationScan.setIgnoreFileOverlap(ignoreFileOverlap);
 
     // check tsfile
     for (File f : fileList) {
@@ -186,6 +188,8 @@ public class TsFileValidationTool {
       for (String arg : args) {
         if (arg.startsWith("-pd")) {
           printDetails = Boolean.parseBoolean(arg.split("=")[1]);
+        } else if (arg.startsWith("-if")) {
+          ignoreFileOverlap = Boolean.parseBoolean(arg.split("=")[1]);
         } else if (arg.startsWith("-f")) {
           printToFile = true;
           outFilePath = arg.split("=")[1];
