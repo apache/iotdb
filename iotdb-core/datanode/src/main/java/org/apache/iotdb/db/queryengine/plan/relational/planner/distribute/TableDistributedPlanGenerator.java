@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator.parseDeviceIdArray;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
@@ -558,7 +557,7 @@ public class TableDistributedPlanGenerator
 
       for (final Object[] deviceIdArray : node.getDeviceIdList()) {
         final IDeviceID deviceID =
-            IDeviceID.Factory.DEFAULT_FACTORY.create(parseDeviceIdArray(deviceIdArray));
+            IDeviceID.Factory.DEFAULT_FACTORY.create((String[]) deviceIdArray);
         final TRegionReplicaSet regionReplicaSet =
             databaseMap.get(schemaPartition.calculateDeviceGroupId(deviceID));
         tableDeviceFetchMap

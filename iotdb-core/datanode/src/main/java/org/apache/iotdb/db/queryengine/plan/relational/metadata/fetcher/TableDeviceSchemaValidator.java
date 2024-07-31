@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -40,10 +39,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
@@ -96,7 +96,8 @@ public class TableDeviceSchemaValidator {
       final Map<String, String> attributeMap =
           fetcher
               .getTableDeviceCache()
-              .getDeviceAttribute(database, tableName, parseDeviceIdArray(deviceIdList.get(i)));
+              .getDeviceAttribute(
+                  database, tableName, (String[]) truncateTailingNull(deviceIdList.get(i)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
@@ -116,46 +117,29 @@ public class TableDeviceSchemaValidator {
     return result;
   }
 
-  // we need to truncate the tailing null
-  public static String[] parseDeviceIdArray(Object[] objects) {
-    String[] strings = new String[objects.length];
-    int lastNonNullIndex = -1;
-    for (int i = 0; i < objects.length; i++) {
-      if (objects[i] != null) {
-        strings[i] = (String) objects[i];
-        lastNonNullIndex = i;
-      }
-    }
-    if (lastNonNullIndex == -1) {
-      throw new SemanticException("We don't support all IDColumns are null.");
-    }
-    return lastNonNullIndex == objects.length - 1
-        ? strings
-        : Arrays.copyOf(strings, lastNonNullIndex + 1);
-  }
-
   private ValidateResult fetchAndValidateDeviceSchema(
-      ITableDeviceSchemaValidation schemaValidation,
-      ValidateResult previousValidateResult,
-      MPPQueryContext context) {
-    List<Object[]> targetDeviceList =
+      final ITableDeviceSchemaValidation schemaValidation,
+      final ValidateResult previousValidateResult,
+      final MPPQueryContext context) {
+    final List<Object[]> targetDeviceList =
         new ArrayList<>(
             previousValidateResult.missingDeviceIndexList.size()
                 + previousValidateResult.attributeMissingInCacheDeviceIndexList.size());
-    for (int index : previousValidateResult.missingDeviceIndexList) {
+    for (final int index : previousValidateResult.missingDeviceIndexList) {
       targetDeviceList.add(schemaValidation.getDeviceIdList().get(index));
     }
-    for (int index : previousValidateResult.attributeMissingInCacheDeviceIndexList) {
+    for (final int index : previousValidateResult.attributeMissingInCacheDeviceIndexList) {
       targetDeviceList.add(schemaValidation.getDeviceIdList().get(index));
     }
 
-    Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema =
+    final Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(), schemaValidation.getTableName(), targetDeviceList),
             context);
 
-    for (Map.Entry<TableDeviceId, Map<String, String>> entry : fetchedDeviceSchema.entrySet()) {
+    for (final Map.Entry<TableDeviceId, Map<String, String>> entry :
+        fetchedDeviceSchema.entrySet()) {
       fetcher
           .getTableDeviceCache()
           .put(
@@ -165,14 +149,14 @@ public class TableDeviceSchemaValidator {
               entry.getValue());
     }
 
-    List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
-    List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
+    final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
+    final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
-    ValidateResult result = new ValidateResult();
-    for (int index : previousValidateResult.missingDeviceIndexList) {
-      Object[] deviceId = schemaValidation.getDeviceIdList().get(index);
-      Map<String, String> attributeMap =
-          fetchedDeviceSchema.get(new TableDeviceId(parseDeviceIdArray(deviceId)));
+    final ValidateResult result = new ValidateResult();
+    for (final int index : previousValidateResult.missingDeviceIndexList) {
+      final Object[] deviceId = schemaValidation.getDeviceIdList().get(index);
+      final Map<String, String> attributeMap =
+          fetchedDeviceSchema.get(new TableDeviceId((String[]) truncateTailingNull(deviceId)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(index);
       } else {
@@ -181,10 +165,10 @@ public class TableDeviceSchemaValidator {
       }
     }
 
-    for (int index : previousValidateResult.attributeMissingInCacheDeviceIndexList) {
-      Object[] deviceId = schemaValidation.getDeviceIdList().get(index);
-      Map<String, String> attributeMap =
-          fetchedDeviceSchema.get(new TableDeviceId(parseDeviceIdArray(deviceId)));
+    for (final int index : previousValidateResult.attributeMissingInCacheDeviceIndexList) {
+      final Object[] deviceId = schemaValidation.getDeviceIdList().get(index);
+      final Map<String, String> attributeMap =
+          fetchedDeviceSchema.get(new TableDeviceId((String[]) truncateTailingNull(deviceId)));
       if (attributeMap == null) {
         throw new IllegalStateException("Device shall exist but not exist.");
       } else {
@@ -200,16 +184,16 @@ public class TableDeviceSchemaValidator {
   }
 
   private void constructAttributeUpdateDeviceIndexList(
-      List<String> attributeKeyList,
-      List<Object[]> attributeValueList,
-      ValidateResult result,
-      int index,
-      Map<String, String> attributeMap) {
-    Object[] deviceAttributeValueList = attributeValueList.get(index);
+      final List<String> attributeKeyList,
+      final List<Object[]> attributeValueList,
+      final ValidateResult result,
+      final int index,
+      final Map<String, String> attributeMap) {
+    final Object[] deviceAttributeValueList = attributeValueList.get(index);
     for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
       if (deviceAttributeValueList[j] != null) {
-        String key = attributeKeyList.get(j);
-        String value = attributeMap.get(key);
+        final String key = attributeKeyList.get(j);
+        final String value = attributeMap.get(key);
 
         if (!deviceAttributeValueList[j].equals(value)) {
           result.attributeUpdateDeviceIndexList.add(index);

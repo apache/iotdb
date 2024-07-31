@@ -77,9 +77,13 @@ public class FetchDevice extends Statement {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    FetchDevice that = (FetchDevice) o;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final FetchDevice that = (FetchDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(deviceIdList, that.deviceIdList);

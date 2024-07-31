@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
@@ -31,6 +34,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The {@link DeviceEntry} shall have {@code null} suffix in its {@link IDeviceID}, e.g. "a.b.null".
+ * However, in other places related to {@link TableDeviceSchemaCache} or {@link ISchemaRegion}, the
+ * {@code null}s are trimmed thus will not appear in the {@link IDeviceID}, and it will be like
+ * "a.b".
+ */
 public class DeviceEntry implements Accountable {
 
   private static final long INSTANCE_SIZE =
