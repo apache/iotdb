@@ -1583,7 +1583,7 @@ public class TsFileProcessor {
     writer.endFile();
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance()
-        .submitTask(dataRegionInfo.getDataRegion().getDataRegionSysDir(), tsFileResource);
+        .logFileTimeIndex(dataRegionInfo.getDataRegion().getDataRegionSysDir(), tsFileResource);
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }

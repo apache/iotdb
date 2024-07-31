@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -50,7 +49,6 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -58,7 +56,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -297,16 +294,12 @@ public class TsFileResource {
   }
 
   public ByteBuffer serializeFileTimeIndexToByteBuffer() {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      outputStream.writeLong(tsFileID.fileVersion);
-      outputStream.writeLong(tsFileID.compactionVersion);
-      outputStream.writeLong(timeIndex.getMinStartTime());
-      outputStream.writeLong(timeIndex.getMaxEndTime());
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    } catch (IOException e) {
-      throw new SerializationRunTimeException(e);
-    }
+    ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES);
+    buffer.putLong(tsFileID.fileVersion);
+    buffer.putLong(tsFileID.compactionVersion);
+    buffer.putLong(timeIndex.getMinStartTime());
+    buffer.putLong(timeIndex.getMaxEndTime());
+    return buffer;
   }
 
   public void updateStartTime(IDeviceID device, long time) {

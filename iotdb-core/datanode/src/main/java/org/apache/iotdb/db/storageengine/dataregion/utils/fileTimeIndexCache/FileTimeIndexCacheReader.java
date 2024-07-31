@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.writelog;
+package org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -45,19 +45,19 @@ public class FileTimeIndexCacheReader {
   }
 
   public void read(Map<TsFileID, FileTimeIndex> fileTimeIndexMap) throws IOException {
-    DataInputStream logStream =
-        new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
-    long readLength = 0L;
-    while (readLength < fileLength) {
-      long fileVersion = logStream.readLong();
-      long compactionVersion = logStream.readLong();
-      long minStartTime = logStream.readLong();
-      long maxEndTime = logStream.readLong();
-      TsFileID tsFileID = new TsFileID(dataRegionId, partitionId, fileVersion, compactionVersion);
-      FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
-      fileTimeIndexMap.put(tsFileID, fileTimeIndex);
-      readLength += 4 * Long.BYTES;
+    try (DataInputStream logStream =
+        new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())))) {
+      long readLength = 0L;
+      while (readLength < fileLength) {
+        long fileVersion = logStream.readLong();
+        long compactionVersion = logStream.readLong();
+        long minStartTime = logStream.readLong();
+        long maxEndTime = logStream.readLong();
+        TsFileID tsFileID = new TsFileID(dataRegionId, partitionId, fileVersion, compactionVersion);
+        FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
+        fileTimeIndexMap.put(tsFileID, fileTimeIndex);
+        readLength += 4 * Long.BYTES;
+      }
     }
-    logStream.close();
   }
 }

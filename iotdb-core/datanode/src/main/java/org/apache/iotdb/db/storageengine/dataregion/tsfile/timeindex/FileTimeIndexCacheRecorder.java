@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.writelog.FileTimeIndexCacheWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +68,7 @@ public class FileTimeIndexCacheRecorder {
     }
   }
 
-  public void submitTask(File dataRegionSysDir, TsFileResource tsFileResource) {
+  public void logFileTimeIndex(File dataRegionSysDir, TsFileResource tsFileResource) {
     TsFileID tsFileID = tsFileResource.getTsFileID();
     int dataRegionId = tsFileID.regionId;
     long partitionId = tsFileID.timePartitionId;

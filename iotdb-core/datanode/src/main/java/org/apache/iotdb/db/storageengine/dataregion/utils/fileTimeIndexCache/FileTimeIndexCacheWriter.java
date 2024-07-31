@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils.writelog;
+package org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache;
+
+import org.apache.iotdb.db.utils.writelog.ILogWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,5 +84,9 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   @Override
   public String toString() {
     return "LogWriter{" + "logFile=" + logFile + '}';
+  }
+
+  public File getLogFile() {
+    return logFile;
   }
 }
