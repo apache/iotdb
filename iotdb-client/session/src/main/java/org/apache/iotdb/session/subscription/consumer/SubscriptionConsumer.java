@@ -234,13 +234,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       providers.releaseWriteLock();
     }
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
     // submit heartbeat worker
     submitHeartbeatWorker();
 
     // submit endpoints syncer
     submitEndpointsSyncer();
-
-    isClosed.set(false);
   }
 
   @Override
@@ -1068,7 +1069,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    Map<String, String> result = new HashMap<>(5);
+    final Map<String, String> result = new HashMap<>(5);
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
@@ -1078,7 +1079,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   protected Map<String, String> allReportMessage() {
-    Map<String, String> result = new HashMap<>(10);
+    final Map<String, String> result = new HashMap<>(10);
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));

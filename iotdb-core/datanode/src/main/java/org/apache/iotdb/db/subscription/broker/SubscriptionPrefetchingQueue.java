@@ -389,7 +389,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    Map<String, String> result = new HashMap<>(6);
+    final Map<String, String> result = new HashMap<>(6);
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
@@ -400,7 +400,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected Map<String, String> allReportMessage() {
-    Map<String, String> result = new HashMap<>(8);
+    final Map<String, String> result = new HashMap<>(8);
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));

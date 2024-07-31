@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -37,15 +39,15 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
 
-  private final Cache<Integer, Integer> polledTsFiles;
+  private final Cache<Integer, Boolean> hashCodeToIsGeneratedByHistoricalExtractor;
 
   public TsFileDeduplicationBlockingPendingQueue(
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(inputPendingQueue);
 
-    this.polledTsFiles =
+    this.hashCodeToIsGeneratedByHistoricalExtractor =
         Caffeine.newBuilder()
-            .expireAfterWrite(
+            .expireAfterAccess(
                 SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
                 TimeUnit.SECONDS)
             .build();
@@ -61,21 +63,49 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
       return null;
     }
 
+    if (event instanceof PipeRawTabletInsertionEvent) {
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) event;
+      final EnrichedEvent sourceEvent = pipeRawTabletInsertionEvent.getSourceEvent();
+      if (sourceEvent instanceof PipeTsFileInsertionEvent
+          && isDuplicated((PipeTsFileInsertionEvent) sourceEvent)) {
+        // commit directly
+        pipeRawTabletInsertionEvent.decreaseReferenceCount(
+            TsFileDeduplicationBlockingPendingQueue.class.getName(), true);
+        return null;
+      }
+    }
+
     if (event instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-      final int hashcode = pipeTsFileInsertionEvent.getTsFile().hashCode();
-      if (Objects.nonNull(polledTsFiles.getIfPresent(hashcode))) {
-        LOGGER.info(
-            "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
-            pipeTsFileInsertionEvent.coreReportMessage());
+      if (isDuplicated(pipeTsFileInsertionEvent)) {
         // commit directly
         pipeTsFileInsertionEvent.decreaseReferenceCount(
             TsFileDeduplicationBlockingPendingQueue.class.getName(), true);
         return null;
       }
-      polledTsFiles.put(hashcode, hashcode);
     }
 
     return event;
+  }
+
+  private boolean isDuplicated(final PipeTsFileInsertionEvent event) {
+    final int hashCode = event.getTsFile().hashCode();
+    final boolean isGeneratedByHistoricalExtractor = event.isGeneratedByHistoricalExtractor();
+    final Boolean existedIsGeneratedByHistoricalExtractor =
+        hashCodeToIsGeneratedByHistoricalExtractor.getIfPresent(hashCode);
+    if (Objects.isNull(existedIsGeneratedByHistoricalExtractor)) {
+      hashCodeToIsGeneratedByHistoricalExtractor.put(hashCode, isGeneratedByHistoricalExtractor);
+      return false;
+    }
+    // Multiple PipeRawTabletInsertionEvents parsed from the same PipeTsFileInsertionEvent (i.e.,
+    // with the same isGeneratedByHistoricalExtractor field) are not considered duplicates.
+    if (Objects.equals(existedIsGeneratedByHistoricalExtractor, isGeneratedByHistoricalExtractor)) {
+      return false;
+    }
+    LOGGER.info(
+        "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
+        event.coreReportMessage());
+    return true;
   }
 }
