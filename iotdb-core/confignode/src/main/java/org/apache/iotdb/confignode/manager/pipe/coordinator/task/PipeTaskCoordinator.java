@@ -162,23 +162,23 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(TDropPipeReq req) {
-    String pipeName = req.getPipeName();
+    final String pipeName = req.getPipeName();
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
 
-    if (!isPipeExistedBeforeDrop && !req.isIfExistsCondition()) {
-      // If the If Exists condition is not set and the pipe does not exist before the delete
-      // operation, return an error status indicating that the pipe does not exist.
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR,
-          String.format(
-              "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
-    }
-
-    return status;
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    // If the `IF EXISTS` condition is not set and the pipe does not exist before the delete
+    // operation, return an error status indicating that the pipe does not exist.
+    return isPipeExistedBeforeDrop || isSetIfExistsCondition
+        ? status
+        : RpcUtils.getStatus(
+            TSStatusCode.PIPE_NOT_EXIST_ERROR,
+            String.format(
+                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
