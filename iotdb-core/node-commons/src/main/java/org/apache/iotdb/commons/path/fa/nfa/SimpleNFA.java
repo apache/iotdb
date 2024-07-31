@@ -84,8 +84,10 @@ public class SimpleNFA implements IPatternFA {
     }
 
     while (smallestNullableIndex >= 0) {
-      if (!Objects.equals(pathPattern.getNodes()[smallestNullableIndex], ONE_LEVEL_PATH_WILDCARD)
-          || !((ExtendedPartialPath) pathPattern).match(smallestNullableIndex, null)) {
+      final String node = pathPattern.getNodes()[smallestNullableIndex];
+      if (!Objects.isNull(node)
+          && !(Objects.equals(node, ONE_LEVEL_PATH_WILDCARD)
+              && ((ExtendedPartialPath) pathPattern).match(smallestNullableIndex, null))) {
         break;
       }
       smallestNullableIndex--;

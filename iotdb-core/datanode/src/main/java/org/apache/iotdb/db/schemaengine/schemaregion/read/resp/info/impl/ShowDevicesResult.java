@@ -76,7 +76,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   @Override
   public String toString() {
     return "ShowDevicesResult{"
-        + " name='"
+        + "name='"
         + path
         + '\''
         + ", isAligned = "

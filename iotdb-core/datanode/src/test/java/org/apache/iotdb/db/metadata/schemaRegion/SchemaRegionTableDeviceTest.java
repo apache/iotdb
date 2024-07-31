@@ -251,7 +251,6 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 0)),
             null);
     Assert.assertEquals(1, deviceSchemaInfoList.size());
-    System.out.println(deviceSchemaInfoList);
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -260,7 +259,6 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             3,
             Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
             null);
-    System.out.println(deviceSchemaInfoList);
     Assert.assertEquals(2, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
