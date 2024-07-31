@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,6 +77,10 @@ public class TsFileValidationScan extends TsFileSequenceScan {
   protected long currentChunkEndTime;
   protected long currentPageEndTime;
   protected long lastPageEndTime;
+
+  public TsFileValidationScan(PrintWriter pw) {
+    super(pw);
+  }
 
   @Override
   protected boolean onFileOpen(File file) throws IOException {

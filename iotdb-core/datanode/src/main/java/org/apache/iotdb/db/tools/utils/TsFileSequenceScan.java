@@ -46,6 +46,10 @@ public abstract class TsFileSequenceScan {
   protected Pair<IDeviceID, String> currTimeseriesID;
   protected boolean currChunkOnePage;
 
+  public TsFileSequenceScan(PrintWriter pw) {
+    this.pw = pw;
+  }
+
   /**
    * @return true if the file should be scanned
    */
@@ -102,7 +106,7 @@ public abstract class TsFileSequenceScan {
   @SuppressWarnings("java:S106")
   protected void printBoth(String msg) {
     System.out.println(msg);
-    if (printToFile && pw != null) {
+    if (pw != null) {
       pw.println(msg);
     }
   }

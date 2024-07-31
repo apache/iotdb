@@ -66,7 +66,7 @@ public class TsFileValidationTool {
   private static final List<File> seqDataDirList = new ArrayList<>();
   private static final List<File> fileList = new ArrayList<>();
 
-  private static final TsFileValidationScan validationScan = new TsFileValidationScan();
+  private static TsFileValidationScan validationScan;
 
   /**
    * The form of param is: [path of data dir or tsfile] [-pd = print details or not] [-f = path of
@@ -84,6 +84,7 @@ public class TsFileValidationTool {
     if (printDetails) {
       printBoth("Start checking seq files ...");
     }
+    validationScan = new TsFileValidationScan(pw);
 
     // check tsfile, which will only check for correctness inside a single tsfile
     for (File f : fileList) {
