@@ -1403,7 +1403,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+      final ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
     return mtree.getTableDeviceReader(
         showTableDevicesPlan.getDevicePattern(),
         showTableDevicesPlan.getDeviceFilter(),
@@ -1412,7 +1412,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
+      final String table, final List<Object[]> devicePathList) {
     return mtree.getTableDeviceReader(
         table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }

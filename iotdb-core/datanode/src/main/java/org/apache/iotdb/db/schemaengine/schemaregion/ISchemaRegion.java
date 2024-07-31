@@ -339,11 +339,11 @@ public interface ISchemaRegion {
   ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException;
 
-  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(ShowTableDevicesPlan showTableDevicesPlan)
-      throws MetadataException;
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException;
 
-  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(String table, List<Object[]> devicePathList)
-      throws MetadataException;
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final String table, final List<Object[]> devicePathList) throws MetadataException;
   // endregion
 
   // endregion

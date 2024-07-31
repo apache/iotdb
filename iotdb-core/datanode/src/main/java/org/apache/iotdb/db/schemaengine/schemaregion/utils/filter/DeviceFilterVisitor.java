@@ -68,13 +68,11 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   @Override
   public boolean visitIdFilter(final IdFilter filter, final IDeviceSchemaInfo info) {
     final String[] nodes = info.getPartialPath().getNodes();
-    if (nodes.length < filter.getIndex() + 3) {
-      return false;
-    } else {
-      return filter
-          .getChild()
-          .accept(StringValueFilterVisitor.getInstance(), nodes[filter.getIndex() + 3]);
-    }
+    return filter
+        .getChild()
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            nodes.length > filter.getIndex() + 3 ? nodes[filter.getIndex() + 3] : null);
   }
 
   @Override

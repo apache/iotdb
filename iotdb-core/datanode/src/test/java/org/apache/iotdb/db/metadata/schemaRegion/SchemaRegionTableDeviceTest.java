@@ -207,10 +207,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     String tableName = "t";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", null);
     SchemaRegionTestUtil.createTableDevice(
@@ -219,14 +219,15 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
     attributeMap.put("cycle", "daily");
+    // The null suffix is trimmed
     SchemaRegionTestUtil.createTableDevice(
-        schemaRegion, tableName, new String[] {"shandong", "p_1", null}, attributeMap);
+        schemaRegion, tableName, new String[] {"shandong", "p_1"}, attributeMap);
 
-    List<String[]> deviceIdList =
+    final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", null, "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
-            new String[] {"shandong", "p_1", null});
+            new String[] {"shandong", "p_1"});
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(schemaRegion, tableName, deviceIdList);
     Assert.assertEquals(3, deviceSchemaInfoList.size());
