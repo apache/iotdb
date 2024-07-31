@@ -169,7 +169,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return true;
-    } else if (createPipeRequest.isIfNotExistsCondition()) {
+    }
+
+    if (createPipeRequest.isSetIfNotExistsCondition()
+        && createPipeRequest.isIfNotExistsCondition()) {
       return false;
     }
 
@@ -194,9 +197,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private boolean checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
     if (!isPipeExisted(alterPipeRequest.getPipeName())) {
-      if (alterPipeRequest.isIfExistsCondition()) {
+      if (alterPipeRequest.isSetIfExistsCondition() && alterPipeRequest.isIfExistsCondition()) {
         return false;
       }
+
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
@@ -260,6 +264,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+
     return true;
   }
 
