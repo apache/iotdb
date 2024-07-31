@@ -117,6 +117,7 @@ public class AnalyzerTest {
           "db",
           IClientSession.SqlDialect.TABLE);
   Metadata metadata = new TestMatadata();
+  WarningCollector warningCollector = NOOP;
   String sql;
   Analysis actualAnalysis;
   MPPQueryContext context;
@@ -777,8 +778,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
-            .plan(actualAnalysis);
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof OffsetNode);
     OffsetNode offsetNode = (OffsetNode) rootNode.getChildren().get(0);
@@ -792,8 +792,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
-            .plan(actualAnalysis);
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 2) instanceof OffsetNode);
@@ -804,15 +803,43 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void sortTest() {
-    // when TableScan locates multi regions, use default MergeSortNode
-    sql = "SELECT * FROM table1 ";
+  public void predicateCannotNormalizedTest() {
+    sql = "SELECT * FROM table1 where (time > 1 and s1 > 1 or s2 < 7) or (time < 10 and s1 > 4)";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
-            .plan(actualAnalysis);
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(getChildrenNode(rootNode, 1) instanceof FilterNode);
+    assertEquals(
+        "(((\"time\" > 1) AND (\"s1\" > 1)) OR (\"s2\" < 7) OR ((\"time\" < 10) AND (\"s1\" > 4)))",
+        ((FilterNode) getChildrenNode(rootNode, 1)).getPredicate().toString());
+    assertTrue(getChildrenNode(rootNode, 2) instanceof TableScanNode);
+  }
+
+  @Test
+  public void duplicateProjectionsTest() {
+    sql = "SELECT Time,time,s1+1,S1+1,tag1,TAG1 FROM table1";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(
+        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
+    assertEquals(
+        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue());
+    assertEquals(
+        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
+    assertEquals(
+        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue());
+    assertEquals(
+        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue());
+    assertEquals(
+        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
   }
 
   private Metadata mockMetadataForInsertion() {

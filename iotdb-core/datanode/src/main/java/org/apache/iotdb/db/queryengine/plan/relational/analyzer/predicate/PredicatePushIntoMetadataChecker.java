@@ -85,8 +85,7 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
   @Override
   protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
     if (node.getOperator() == LogicalExpression.Operator.AND) {
-      throw new IllegalStateException(
-          "Shouldn't have AND operator in PredicatePushIntoMetadataChecker.");
+      return false;
     }
     List<Expression> children = node.getTerms();
     for (Expression child : children) {

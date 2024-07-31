@@ -18,37 +18,27 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DistributedQueryPlan {
-  private final MPPQueryContext context;
   private final SubPlan rootSubPlan;
-  private final List<PlanFragment> fragments;
   private final List<FragmentInstance> instances;
 
-  public DistributedQueryPlan(
-      MPPQueryContext context,
-      SubPlan rootSubPlan,
-      List<PlanFragment> fragments,
-      List<FragmentInstance> instances) {
-    this.context = context;
+  public DistributedQueryPlan(SubPlan rootSubPlan, List<FragmentInstance> instances) {
     this.rootSubPlan = rootSubPlan;
-    this.fragments = fragments;
     this.instances = instances;
   }
 
+  @TestOnly
   public List<PlanFragment> getFragments() {
-    return fragments;
+    return instances.stream().map(FragmentInstance::getFragment).collect(Collectors.toList());
   }
 
   public SubPlan getRootSubPlan() {
     return rootSubPlan;
-  }
-
-  public MPPQueryContext getContext() {
-    return context;
   }
 
   public List<FragmentInstance> getInstances() {

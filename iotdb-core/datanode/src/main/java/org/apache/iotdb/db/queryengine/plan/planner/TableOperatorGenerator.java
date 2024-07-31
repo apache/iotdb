@@ -521,32 +521,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitOutput(OutputNode node, LocalExecutionPlanContext context) {
-    TypeProvider typeProvider = context.getTypeProvider();
-    Optional<Expression> predicate;
-    Operator inputOperator;
-    List<TSDataType> inputDataTypes;
-    Map<Symbol, List<InputLocation>> inputLocations;
-    if (node.getChild() instanceof FilterNode) {
-      FilterNode filterNode = (FilterNode) node.getChild();
-      predicate = Optional.of(filterNode.getPredicate());
-      inputOperator = filterNode.getChild().accept(this, context);
-      inputDataTypes = getInputColumnTypes(filterNode, typeProvider);
-      inputLocations = makeLayout(filterNode.getChildren());
-    } else {
-      predicate = Optional.empty();
-      inputOperator = node.getChild().accept(this, context);
-      inputDataTypes = getInputColumnTypes(node, typeProvider);
-      inputLocations = makeLayout(node.getChildren());
-    }
-
-    return constructFilterAndProjectOperator(
-        predicate,
-        inputOperator,
-        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
-        inputDataTypes,
-        inputLocations,
-        node.getPlanNodeId(),
-        context);
+    return node.getChild().accept(this, context);
   }
 
   @Override
