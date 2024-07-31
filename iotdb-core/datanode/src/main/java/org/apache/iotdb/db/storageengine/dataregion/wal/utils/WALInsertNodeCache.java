@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -273,9 +272,7 @@ public class WALInsertNodeCache {
 
         // batch load when wal file is sealed
         long position = 0;
-        try (final FileChannel channel = walEntryPosition.openReadFileChannel();
-            final WALByteBufReader walByteBufReader =
-                new WALByteBufReader(walEntryPosition.getWalFile(), channel)) {
+        try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
           while (walByteBufReader.hasNext()) {
             // see WALInfoEntry#serialize, entry type + memtable id + plan node type
             final ByteBuffer buffer = walByteBufReader.next();
