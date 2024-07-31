@@ -70,6 +70,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+        fail();
       } catch (final SQLException e) {
         assertEquals("701: database is not specified", e.getMessage());
       }
@@ -93,6 +94,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+        fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
       }
@@ -144,6 +146,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT, time2 INT64 TIME) with (TTL=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals(
             "701: Create table statement shall not specify column category TIME", e.getMessage());
@@ -152,6 +155,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (UNKNOWN=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals("701: Table property unknown is currently not allowed.", e.getMessage());
       }
@@ -159,6 +163,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id TEXT ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ID Column should only be STRING, current is TEXT", e.getMessage());
@@ -167,6 +172,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id INT32 ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ID Column should only be STRING, current is INT32", e.getMessage());
@@ -175,6 +181,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model TEXT ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ATTRIBUTE Column should only be STRING, current is TEXT",
@@ -184,6 +191,7 @@ public class IoTDBTableIT {
       try {
         statement.execute(
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model DOUBLE ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+        fail();
       } catch (final SQLException e) {
         assertEquals(
             "701: DataType of ATTRIBUTE Column should only be STRING, current is DOUBLE",
@@ -216,6 +224,7 @@ public class IoTDBTableIT {
       // show tables from a non-exist database
       try {
         statement.executeQuery("SHOW tables from test3");
+        fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test3", e.getMessage());
       }
@@ -223,6 +232,7 @@ public class IoTDBTableIT {
       // describe
       try {
         statement.executeQuery("describe table1");
+        fail();
       } catch (final SQLException e) {
         assertEquals("550: Table 'test2.table1' does not exist.", e.getMessage());
       }
@@ -276,6 +286,7 @@ public class IoTDBTableIT {
 
       try {
         statement.executeQuery("describe test3.table3");
+        fail();
       } catch (final SQLException e) {
         assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
       }
@@ -284,6 +295,7 @@ public class IoTDBTableIT {
 
       try {
         statement.executeQuery("SHOW tables from test1");
+        fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
