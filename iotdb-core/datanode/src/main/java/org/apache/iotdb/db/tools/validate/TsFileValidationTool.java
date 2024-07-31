@@ -168,7 +168,6 @@ public class TsFileValidationTool {
   }
 
   public static void findIncorrectFiles(List<File> tsFiles) {
-    validationScan.clear();
     for (File tsFile : tsFiles) {
       validationScan.getPreviousBadFileMsgs().clear();
       validationScan.scanTsFile(tsFile);
