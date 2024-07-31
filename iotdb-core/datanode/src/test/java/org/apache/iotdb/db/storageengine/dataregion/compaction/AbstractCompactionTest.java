@@ -526,7 +526,7 @@ public class AbstractCompactionTest {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
-    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    Assert.assertEquals(0, TsFileValidationTool.getBadFileNum());
   }
 
   protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(

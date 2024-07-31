@@ -4397,6 +4397,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
-    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    Assert.assertEquals(0, TsFileValidationTool.getBadFileNum());
   }
 }
