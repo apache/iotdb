@@ -31,11 +31,11 @@ public class TableDeviceId {
 
   private final String[] idValues;
 
-  public TableDeviceId(String[] idValues) {
+  public TableDeviceId(final String[] idValues) {
     this.idValues = idValues;
   }
 
-  public String getIdValue(int index) {
+  public String getIdValue(final int index) {
     return idValues[index];
   }
 
@@ -48,10 +48,14 @@ public class TableDeviceId {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof TableDeviceId)) return false;
-    TableDeviceId that = (TableDeviceId) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TableDeviceId)) {
+      return false;
+    }
+    final TableDeviceId that = (TableDeviceId) o;
     return Arrays.equals(idValues, that.idValues);
   }
 

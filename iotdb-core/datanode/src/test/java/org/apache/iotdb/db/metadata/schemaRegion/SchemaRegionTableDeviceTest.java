@@ -223,15 +223,14 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1"}, attributeMap);
     // Pure null
-    SchemaRegionTestUtil.createTableDevice(
-        schemaRegion, tableName, new String[] {null}, attributeMap);
+    SchemaRegionTestUtil.createTableDevice(schemaRegion, tableName, new String[] {}, attributeMap);
 
     final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", null, "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
             new String[] {"shandong", "p_1"},
-            new String[] {null});
+            new String[] {});
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(schemaRegion, tableName, deviceIdList);
     Assert.assertEquals(4, deviceSchemaInfoList.size());
