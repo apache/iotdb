@@ -36,22 +36,26 @@ import java.util.List;
 public class CreatePipePluginStatement extends Statement implements IConfigStatement {
 
   private final String pluginName;
+  private final boolean ifNotExistsCondition;
   private final String className;
   private final String uriString;
-  private final boolean ifNotExistsCondition;
 
   public CreatePipePluginStatement(
-      String pluginName, String className, String uriString, boolean ifNotExistsCondition) {
+      String pluginName, boolean ifNotExistsCondition, String className, String uriString) {
     super();
     statementType = StatementType.CREATE_PIPEPLUGIN;
     this.pluginName = pluginName;
+    this.ifNotExistsCondition = ifNotExistsCondition;
     this.className = className;
     this.uriString = uriString;
-    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   public String getPluginName() {
     return pluginName;
+  }
+
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
   }
 
   public String getClassName() {
@@ -60,10 +64,6 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
 
   public String getUriString() {
     return uriString;
-  }
-
-  public boolean hasIfNotExistsCondition() {
-    return ifNotExistsCondition;
   }
 
   @Override

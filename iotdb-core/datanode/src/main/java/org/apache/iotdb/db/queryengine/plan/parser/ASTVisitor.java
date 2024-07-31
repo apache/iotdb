@@ -958,20 +958,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
     return new CreatePipePluginStatement(
         parseIdentifier(ctx.pluginName.getText()),
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null,
         parseStringLiteral(ctx.className.getText()),
-        parseAndValidateURI(ctx.uriClause()),
-        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
+        parseAndValidateURI(ctx.uriClause()));
   }
 
   // Drop PipePlugin =====================================================================
   @Override
   public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
-
-    DropPipePluginStatement dropPipePluginStatement = new DropPipePluginStatement();
-
+    final DropPipePluginStatement dropPipePluginStatement = new DropPipePluginStatement();
     dropPipePluginStatement.setPluginName(parseIdentifier(ctx.pluginName.getText()));
     dropPipePluginStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
-
     return dropPipePluginStatement;
   }
 
@@ -3708,6 +3705,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in CREATE PIPE, please enter pipe name.");
     }
+
+    createPipeStatement.setIfNotExists(
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
+
     if (ctx.extractorAttributesClause() != null) {
       createPipeStatement.setExtractorAttributes(
           parseExtractorAttributesClause(
@@ -3722,10 +3723,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-
-    createPipeStatement.setIfNotExists(
-        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
-
     createPipeStatement.setConnectorAttributes(
         parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
     return createPipeStatement;
