@@ -208,6 +208,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return Objects.nonNull(tablet) ? tablet.getDeviceId() : deviceId;
   }
 
+  public EnrichedEvent getSourceEvent() {
+    return sourceEvent;
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
