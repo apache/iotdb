@@ -859,6 +859,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           client.createPipePlugin(
               new TCreatePipePluginReq()
                   .setPluginName(pluginName)
+                  .setIfNotExistsCondition(createPipePluginStatement.hasIfNotExistsCondition())
                   .setClassName(className)
                   .setJarFile(jarFile)
                   .setJarMD5(jarMd5)
@@ -867,8 +868,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                           "%s-%s.%s",
                           jarFileName.substring(0, jarFileName.lastIndexOf(".")),
                           jarMd5,
-                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1)))
-                  .setIfNotExistsCondition(createPipePluginStatement.hasIfNotExistsCondition()));
+                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1))));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "Failed to create PipePlugin {}({}) because {}",
@@ -1764,10 +1764,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
+              .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
               .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getConnectorAttributes())
-              .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition());
+              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -2053,8 +2053,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TCreateTopicReq req =
           new TCreateTopicReq()
               .setTopicName(topicName)
-              .setTopicAttributes(topicAttributes)
-              .setIfNotExistsCondition(createTopicStatement.hasIfNotExistsCondition());
+              .setIfNotExistsCondition(createTopicStatement.hasIfNotExistsCondition())
+              .setTopicAttributes(topicAttributes);
       final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to create topic {} in config node, status is {}.", topicName, tsStatus);
@@ -2076,8 +2076,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus =
           configNodeClient.dropTopicExtended(
               new TDropTopicReq()
-                  .setTopicName(dropTopicStatement.getTopicName())
-                  .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition()));
+                  .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition())
+                  .setTopicName(dropTopicStatement.getTopicName()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to drop topic {}, status is {}.", dropTopicStatement.getTopicName(), tsStatus);
