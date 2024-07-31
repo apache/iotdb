@@ -184,10 +184,10 @@ public abstract class AbstractOperateSubscriptionProcedure
       switch (state) {
         case VALIDATE:
           if (!executeFromValidate(env)) {
+            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the
             // subscription command corresponding to this procedure is "Msg: The statement is
             // executed successfully."
-            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
             this.setResult(SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
             return Flow.NO_MORE_STATE;
           }

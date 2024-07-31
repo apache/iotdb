@@ -225,7 +225,7 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           if (!executeFromValidateTask(env)) {
-            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
+            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the pipe
             // command corresponding to this procedure is "Msg: The statement is executed
             // successfully."
