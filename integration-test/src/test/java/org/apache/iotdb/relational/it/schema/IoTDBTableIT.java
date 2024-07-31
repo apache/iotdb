@@ -86,8 +86,9 @@ public class IoTDBTableIT {
       }
 
       // or use full qualified table name
+      // test "TTL=INF"
       statement.execute(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL='INF')");
 
       try {
         statement.execute(
