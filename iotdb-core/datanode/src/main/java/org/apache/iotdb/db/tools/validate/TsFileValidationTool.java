@@ -98,7 +98,14 @@ public class TsFileValidationTool {
       if (!checkIsDirectory(seqDataDir)) {
         continue;
       }
-      File[] sgDirs = seqDataDir.listFiles();
+      List<File> rootTsFiles =
+          Arrays.asList(
+              Objects.requireNonNull(
+                  seqDataDir.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX))));
+      findUncorrectFiles(rootTsFiles);
+
+      List<File> sgDirs =
+          Arrays.asList(Objects.requireNonNull(seqDataDir.listFiles(File::isDirectory)));
       for (File sgDir : Objects.requireNonNull(sgDirs)) {
         if (!checkIsDirectory(sgDir)) {
           continue;
