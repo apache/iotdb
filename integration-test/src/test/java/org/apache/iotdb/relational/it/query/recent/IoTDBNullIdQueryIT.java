@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -50,7 +50,7 @@ public class IoTDBNullIdQueryIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "CREATE TABLE testNullId(id1 STRING ID, id2 STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
-        "INSERT INTO testNullId(time,id1,id2,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
+        "INSERT INTO testNullId(time,id1,id2,s1,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
       };
 
   @BeforeClass
@@ -65,25 +65,24 @@ public class IoTDBNullIdQueryIT {
   }
 
   @Test
-  public void nullFilterTest() {
-    String result = defaultFormatDataTime(1) + ",0,false,11.1";
-    try (Connection connectionIsNull =
+  public void nullFilterTest() throws Exception {
+    final String result = defaultFormatDataTime(1) + ",0,false,11.1";
+    try (final Connection connectionIsNull =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connectionIsNull.createStatement()) {
+        final Statement statement = connectionIsNull.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
 
       ResultSet resultSet = statement.executeQuery("select * from testNullId where id1 is null");
-      if (resultSet.next()) {
-        String ans =
-            resultSet.getString("time")
-                + ","
-                + resultSet.getString("s1")
-                + ","
-                + resultSet.getString("s2")
-                + ","
-                + resultSet.getString("s3");
-        assertEquals(result, ans);
-      }
+      assertTrue(resultSet.next());
+      String ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+      assertEquals(result, ans);
       assertFalse(resultSet.next());
 
       resultSet = statement.executeQuery("select * from testNullId where id1 is not null");
@@ -94,38 +93,32 @@ public class IoTDBNullIdQueryIT {
 
       resultSet =
           statement.executeQuery("select * from testNullId where id1 is null and id2 is null");
-      if (resultSet.next()) {
-        String ans =
-            resultSet.getString("time")
-                + ","
-                + resultSet.getString("s1")
-                + ","
-                + resultSet.getString("s2")
-                + ","
-                + resultSet.getString("s3");
-        assertEquals(result, ans);
-      }
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+      assertEquals(result, ans);
       assertFalse(resultSet.next());
 
       // The second time we read from cache
       resultSet =
           statement.executeQuery("select * from testNullId where id1 is null and id2 is null");
-      if (resultSet.next()) {
-        String ans =
-            resultSet.getString("time")
-                + ","
-                + resultSet.getString("s1")
-                + ","
-                + resultSet.getString("s2")
-                + ","
-                + resultSet.getString("s3");
-        assertEquals(result, ans);
-      }
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+      assertEquals(result, ans);
       assertFalse(resultSet.next());
-
-    } catch (final Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 }
