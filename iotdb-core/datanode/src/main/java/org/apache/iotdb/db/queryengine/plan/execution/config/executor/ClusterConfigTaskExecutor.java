@@ -1896,14 +1896,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    final TDropPipeReq dropPipeReq =
-        new TDropPipeReq()
-            .setPipeName(dropPipeStatement.getPipeName())
-            .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition());
-
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.dropPipeExtended(dropPipeReq);
+      final TSStatus tsStatus =
+          configNodeClient.dropPipeExtended(
+              new TDropPipeReq()
+                  .setPipeName(dropPipeStatement.getPipeName())
+                  .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to drop pipe {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);
