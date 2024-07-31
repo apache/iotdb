@@ -131,7 +131,6 @@ public class TsFileValidationScanTest {
     tsFileIOWriter.startChunkGroup(plainDeviceID);
     chunkWriter = new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(1, 1);
-    chunkWriter.sealCurrentPage();
     chunkWriter.write(1, 1);
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
