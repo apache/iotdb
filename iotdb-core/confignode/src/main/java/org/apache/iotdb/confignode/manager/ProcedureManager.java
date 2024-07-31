@@ -801,9 +801,9 @@ public class ProcedureManager {
   }
 
   public TSStatus createPipePlugin(
-      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean ifNotExistsCondition) {
+      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean isSetIfNotExistsCondition) {
     final CreatePipePluginProcedure createPipePluginProcedure =
-        new CreatePipePluginProcedure(pipePluginMeta, jarFile, ifNotExistsCondition);
+        new CreatePipePluginProcedure(pipePluginMeta, jarFile, isSetIfNotExistsCondition);
     try {
       if (jarFile != null
           && new UpdateProcedurePlan(createPipePluginProcedure).getSerializedSize()

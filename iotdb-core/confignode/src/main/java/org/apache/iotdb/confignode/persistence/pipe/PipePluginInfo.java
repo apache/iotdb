@@ -93,22 +93,25 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
+  /**
+   * @return true if the pipe plugin is already created and the ifNotExistsCondition is true, false
+   *     otherwise
+   * @throws PipeException if the pipe plugin is already created and the ifNotExistsCondition is
+   *     false
+   */
   public boolean validateBeforeCreatingPipePlugin(
-      final String pluginName,
-      final String jarName,
-      final String jarMD5,
-      final boolean ifNotExistsCondition) {
+      final String pluginName, final boolean ifNotExistsCondition) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       if (ifNotExistsCondition) {
-        return false;
+        return true;
       }
       throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
-    return true;
+    return false;
   }
 
   public boolean validateBeforeDroppingPipePlugin(

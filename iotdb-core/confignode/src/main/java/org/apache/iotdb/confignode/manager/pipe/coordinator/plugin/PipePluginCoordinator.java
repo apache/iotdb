@@ -75,7 +75,10 @@ public class PipePluginCoordinator {
 
     return configManager
         .getProcedureManager()
-        .createPipePlugin(pipePluginMeta, req.getJarFile(), req.ifNotExistsCondition);
+        .createPipePlugin(
+            pipePluginMeta,
+            req.getJarFile(),
+            req.isSetIfNotExistsCondition() && req.isIfNotExistsCondition());
   }
 
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {

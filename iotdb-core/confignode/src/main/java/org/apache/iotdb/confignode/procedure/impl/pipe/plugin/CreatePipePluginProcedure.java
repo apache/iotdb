@@ -65,18 +65,22 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
 
   private PipePluginMeta pipePluginMeta;
   private byte[] jarFile;
-  private boolean ifNotExistsCondition;
+
+  // This field will not be serialized. It may cause some problems
+  // when the procedure fails on one node and recovers on another node.
+  // Though it is not a good practice, it is acceptable here.
+  private boolean isSetIfNotExistsCondition;
 
   public CreatePipePluginProcedure() {
     super();
   }
 
   public CreatePipePluginProcedure(
-      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean ifNotExistsCondition) {
+      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean isSetIfNotExistsCondition) {
     super();
     this.pipePluginMeta = pipePluginMeta;
     this.jarFile = jarFile;
-    this.ifNotExistsCondition = ifNotExistsCondition;
+    this.isSetIfNotExistsCondition = isSetIfNotExistsCondition;
   }
 
   @Override
@@ -128,19 +132,19 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
     pipePluginCoordinator.lock();
-    boolean notExists = true;
-    String pluginName = pipePluginMeta.getPluginName();
+    final String pluginName = pipePluginMeta.getPluginName();
+
     try {
-      // If the result is true, the procedure will continue; if it is false, the procedure will exit
-      // normally.
-      notExists =
-          pipePluginCoordinator
-              .getPipePluginInfo()
-              .validateBeforeCreatingPipePlugin(
-                  pluginName,
-                  pipePluginMeta.getJarName(),
-                  pipePluginMeta.getJarMD5(),
-                  ifNotExistsCondition);
+      if (pipePluginCoordinator
+          .getPipePluginInfo()
+          .validateBeforeCreatingPipePlugin(pluginName, isSetIfNotExistsCondition)) {
+        LOGGER.info(
+            "Pipe plugin {} is already created and isSetIfNotExistsCondition is true, end the CreatePipePluginProcedure({})",
+            pluginName,
+            pluginName);
+        pipePluginCoordinator.unlock();
+        return Flow.NO_MORE_STATE;
+      }
     } catch (PipeException e) {
       // The pipe plugin has already created, we should end the procedure
       LOGGER.warn(
@@ -151,14 +155,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
       pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
-    if (!notExists) {
-      LOGGER.info(
-          "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
-          pluginName,
-          pluginName);
-      pipePluginCoordinator.unlock();
-      return Flow.NO_MORE_STATE;
-    }
+
     setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODES);
     return Flow.HAS_MORE_STATE;
   }
