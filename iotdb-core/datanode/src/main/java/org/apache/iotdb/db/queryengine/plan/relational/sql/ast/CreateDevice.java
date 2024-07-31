@@ -46,6 +46,7 @@ public class CreateDevice extends Statement {
     super(null);
     this.database = database;
     this.table = table;
+    // Truncate the tailing null
     this.deviceIdList = truncateTailingNull(deviceIdList);
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;

@@ -70,13 +70,12 @@ public class CreateTableDeviceNode extends WritePlanNode {
     super(id);
     this.database = database;
     this.tableName = tableName;
-    // truncate the tailing null
     this.deviceIdList = deviceIdList;
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
   }
 
-  // in this constructor, we don't need to truncate tailing nulls for deviceIdList, because this
+  // In this constructor, we don't need to truncate tailing nulls for deviceIdList, because this
   // constructor can only be generated from another CreateTableDeviceNode
   public CreateTableDeviceNode(
       final PlanNodeId id,

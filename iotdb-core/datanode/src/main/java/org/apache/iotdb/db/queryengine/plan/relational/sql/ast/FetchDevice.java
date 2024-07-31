@@ -42,6 +42,7 @@ public class FetchDevice extends Statement {
     super(null);
     this.database = database;
     this.tableName = tableName;
+    // Truncate the tailing null
     this.deviceIdList = truncateTailingNull(deviceIdList);
   }
 

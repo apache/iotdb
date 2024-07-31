@@ -1257,7 +1257,7 @@ public class MTreeBelowSGMemoryImpl {
     };
   }
 
-  private IMemMNode getTableDeviceNode(String table, Object[] deviceId)
+  private IMemMNode getTableDeviceNode(final String table, final Object[] deviceId)
       throws PathNotExistException {
     IMemMNode cur = storageGroupMNode;
     IMemMNode next;

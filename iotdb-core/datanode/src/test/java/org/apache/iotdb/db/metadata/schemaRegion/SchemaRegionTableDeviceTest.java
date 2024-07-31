@@ -208,7 +208,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
       return;
     }
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName = "t";
+    final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
@@ -222,15 +222,19 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     // The null suffix is trimmed
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1"}, attributeMap);
+    // Pure null
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName, new String[] {null}, attributeMap);
 
     final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", null, "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
-            new String[] {"shandong", "p_1"});
+            new String[] {"shandong", "p_1"},
+            new String[] {null});
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(schemaRegion, tableName, deviceIdList);
-    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(4, deviceSchemaInfoList.size());
     Assert.assertEquals(
         deviceIdList.stream().map(Arrays::toString).sorted().collect(Collectors.toList()),
         deviceSchemaInfoList.stream()
@@ -244,9 +248,20 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
+            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 0)),
             null);
     Assert.assertEquals(1, deviceSchemaInfoList.size());
+    System.out.println(deviceSchemaInfoList);
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
+            null);
+    System.out.println(deviceSchemaInfoList);
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -258,7 +273,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
                 Arrays.asList(
                     new IdFilter(new PreciseFilter((String) null), 2),
                     new AttributeFilter(new PreciseFilter((String) null), "cycle"))));
-    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(4, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
