@@ -60,10 +60,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
-    fileSize = channel.size();
     this.logFile = logFile;
-    analyzeFileVersion();
-    getEndOffset();
+    try {
+      fileSize = channel.size();
+      analyzeFileVersion();
+      getEndOffset();
+    } catch (Exception e) {
+      channel.close();
+      throw e;
+    }
   }
 
   private void getEndOffset() throws IOException {
@@ -312,16 +317,28 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public void read(ByteBuffer buffer) throws IOException {
     int totalBytesToBeRead = buffer.remaining();
-    int currReadBytes = Math.min(dataBuffer.remaining(), buffer.remaining());
-    dataBuffer.get(buffer.array(), buffer.position(), currReadBytes);
-    if (totalBytesToBeRead - currReadBytes > 0) {
-      loadNextSegment();
-      read(buffer);
+    while (totalBytesToBeRead > 0) {
+      if (dataBuffer.remaining() == 0) {
+        loadNextSegment();
+      }
+      int currReadBytes = Math.min(dataBuffer.remaining(), totalBytesToBeRead);
+      dataBuffer.get(buffer.array(), buffer.position(), currReadBytes);
+      buffer.position(buffer.position() + currReadBytes);
+      totalBytesToBeRead -= currReadBytes;
     }
+    buffer.flip();
   }
 
   public long getFileCurrentPos() throws IOException {
     return channel.position();
+  }
+
+  public WALMetaData getWALMetaData() throws IOException {
+    long position = channel.position();
+    channel.position(0);
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(logFile, channel);
+    channel.position(position);
+    return walMetaData;
   }
 
   private SegmentInfo getNextSegmentInfo() throws IOException {

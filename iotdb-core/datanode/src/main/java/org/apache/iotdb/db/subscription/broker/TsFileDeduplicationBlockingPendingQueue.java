@@ -47,7 +47,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
     this.hashCodeToIsGeneratedByHistoricalExtractor =
         Caffeine.newBuilder()
-            .expireAfterWrite(
+            .expireAfterAccess(
                 SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
                 TimeUnit.SECONDS)
             .build();
