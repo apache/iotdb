@@ -213,10 +213,10 @@ public class LogicalPlanner {
         analysis, symbolAllocator, queryContext, sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(CreateDevice statement, Analysis analysis) {
+  private PlanNode planCreateDevice(final CreateDevice statement, final Analysis analysis) {
     queryContext.setQueryType(QueryType.WRITE);
 
-    CreateTableDeviceNode node =
+    final CreateTableDeviceNode node =
         new CreateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
@@ -226,7 +226,7 @@ public class LogicalPlanner {
             statement.getAttributeValueList());
 
     analysis.setStatement(statement);
-    SchemaPartition partition =
+    final SchemaPartition partition =
         metadata.getOrCreateSchemaPartition(
             statement.getDatabase(),
             node.getPartitionKeyList(),
@@ -236,7 +236,7 @@ public class LogicalPlanner {
     return node;
   }
 
-  private PlanNode planFetchDevice(FetchDevice statement, Analysis analysis) {
+  private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
     queryContext.setQueryType(QueryType.READ);
 
     final List<ColumnHeader> columnHeaderList =
@@ -253,7 +253,7 @@ public class LogicalPlanner {
             columnHeaderList,
             null);
 
-    SchemaPartition schemaPartition =
+    final SchemaPartition schemaPartition =
         metadata.getSchemaPartition(statement.getDatabase(), statement.getPartitionKeyList());
     analysis.setSchemaPartitionInfo(schemaPartition);
 

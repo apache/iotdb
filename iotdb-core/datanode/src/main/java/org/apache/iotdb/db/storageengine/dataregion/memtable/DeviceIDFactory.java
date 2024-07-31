@@ -100,11 +100,6 @@ public class DeviceIDFactory {
         break;
       }
     }
-    // Use one "null" to indicate all "null"s
-    if (lastNonNullIndex == -1) {
-      // Use "String" null currently
-      return new String[] {null};
-    }
     return lastNonNullIndex == device.length - 1
         ? device
         : Arrays.copyOf(device, lastNonNullIndex + 1);
