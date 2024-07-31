@@ -48,7 +48,7 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
 
   @Override
   public boolean visitLikeFilter(final LikeFilter filter, final String context) {
-    return filter.getPattern().matcher(context).find();
+    return Objects.nonNull(context) && filter.getPattern().matcher(context).find();
   }
 
   @Override

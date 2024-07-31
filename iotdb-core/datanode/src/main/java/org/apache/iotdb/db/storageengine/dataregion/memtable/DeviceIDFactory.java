@@ -70,12 +70,11 @@ public class DeviceIDFactory {
   }
 
   public static List<IDeviceID> convertRawDeviceIDs2PartitionKeys(
-      final String tableName, final List<Object[]> deviceIdList) {
+      final List<Object[]> deviceIdList) {
     final List<IDeviceID> tmpPartitionKeyList = new ArrayList<>();
     for (final Object[] rawId : deviceIdList) {
-      final String[] partitionKey = new String[rawId.length + 1];
-      partitionKey[0] = tableName;
-      for (int i = 1; i < rawId.length + 1; i++) {
+      final String[] partitionKey = new String[rawId.length];
+      for (int i = 0; i < rawId.length; i++) {
         partitionKey[i] = (String) rawId[i];
       }
       tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));

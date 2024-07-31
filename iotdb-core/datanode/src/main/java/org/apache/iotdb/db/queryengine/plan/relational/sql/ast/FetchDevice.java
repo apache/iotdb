@@ -60,7 +60,7 @@ public class FetchDevice extends Statement {
 
   public List<IDeviceID> getPartitionKeyList() {
     if (partitionKeyList == null) {
-      this.partitionKeyList = convertRawDeviceIDs2PartitionKeys(tableName, deviceIdList);
+      this.partitionKeyList = convertRawDeviceIDs2PartitionKeys(deviceIdList);
     }
     return partitionKeyList;
   }
