@@ -283,6 +283,17 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             null);
 
     Assert.assertEquals(2, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(
+                new IdFilter(new LikeFilter(parseLikePatternToRegex("%")), 2)),
+            null);
+
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
   }
 
   @Test
