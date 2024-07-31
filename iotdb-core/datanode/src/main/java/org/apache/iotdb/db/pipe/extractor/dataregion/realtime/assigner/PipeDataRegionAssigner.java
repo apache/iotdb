@@ -19,18 +19,25 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.pattern.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.pattern.PipeDataRegionMatcher;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.Closeable;
 
 public class PipeDataRegionAssigner implements Closeable {
+
+  private static final int nonForwardingEventsProgressReportInterval =
+      PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
@@ -43,18 +50,20 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private final String dataRegionId;
 
+  private int counter = 0;
+
   public String getDataRegionId() {
     return dataRegionId;
   }
 
-  public PipeDataRegionAssigner(String dataRegionId) {
+  public PipeDataRegionAssigner(final String dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
   }
 
-  public void publishToAssign(PipeRealtimeEvent event) {
+  public void publishToAssign(final PipeRealtimeEvent event) {
     event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
 
     disruptor.publish(event);
@@ -64,12 +73,34 @@ public class PipeDataRegionAssigner implements Closeable {
     }
   }
 
-  public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
+  public void assignToExtractor(
+      final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
     matcher
         .match(event)
         .forEach(
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+                // The frequency of progress reports is limited by the counter, while progress
+                // reports to TsFileInsertionEvent are not limited.
+                if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+                  if (counter < nonForwardingEventsProgressReportInterval) {
+                    counter++;
+                    return;
+                  }
+                  counter = 0;
+                }
+
+                final ProgressReportEvent reportEvent =
+                    new ProgressReportEvent(
+                        extractor.getPipeName(),
+                        extractor.getCreationTime(),
+                        extractor.getPipeTaskMeta(),
+                        extractor.getPipePattern(),
+                        extractor.getRealtimeDataExtractionStartTime(),
+                        extractor.getRealtimeDataExtractionEndTime());
+                reportEvent.bindProgressIndex(event.getProgressIndex());
+                reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
                 return;
               }
 
@@ -98,11 +129,11 @@ public class PipeDataRegionAssigner implements Closeable {
     event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
   }
 
-  public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {
+  public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {
     matcher.register(extractor);
   }
 
-  public void stopAssignTo(PipeRealtimeDataRegionExtractor extractor) {
+  public void stopAssignTo(final PipeRealtimeDataRegionExtractor extractor) {
     matcher.deregister(extractor);
   }
 

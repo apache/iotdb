@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -54,6 +56,16 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   public PipeMetaSyncProcedure() {
     super();
+  }
+
+  @Override
+  protected AtomicReference<PipeTaskInfo> acquireLockInternal(
+      ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return configNodeProcedureEnv
+        .getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .tryLock();
   }
 
   @Override

@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 public class PipeEndPointRateLimiter {
 
   // The task agent is used to check if the pipe is still alive
+  @SuppressWarnings("java:S3077")
   private static volatile PipeTaskAgent taskAgent;
 
   private final String pipeName;
@@ -79,7 +80,7 @@ public class PipeEndPointRateLimiter {
   private boolean tryAcquireWithPipeCheck(final RateLimiter rateLimiter, final int bytes) {
     while (!rateLimiter.tryAcquire(
         bytes,
-        PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
       final PipeTaskAgent finalTaskAgent = taskAgent;
       if (Objects.nonNull(finalTaskAgent)

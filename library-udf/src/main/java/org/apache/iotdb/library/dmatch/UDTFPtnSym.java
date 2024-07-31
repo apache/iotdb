@@ -64,6 +64,7 @@ public class UDTFPtnSym implements UDTF {
   }
 
   @Override
+  @SuppressWarnings("javabugs:S6466")
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     if (rowWindow.windowSize() < window) { // skip too short series
       return;

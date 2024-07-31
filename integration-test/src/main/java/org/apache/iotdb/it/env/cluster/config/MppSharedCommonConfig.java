@@ -328,6 +328,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    cnConfig.setWalBufferSize(walBufferSize);
+    dnConfig.setWalBufferSize(walBufferSize);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     cnConfig.setDegreeOfParallelism(degreeOfParallelism);
     dnConfig.setDegreeOfParallelism(degreeOfParallelism);

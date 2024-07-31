@@ -39,4 +39,9 @@ public class SubscriptionRuntimeNonCriticalException extends SubscriptionRuntime
         && Objects.equals(
             getTimeStamp(), ((SubscriptionRuntimeNonCriticalException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

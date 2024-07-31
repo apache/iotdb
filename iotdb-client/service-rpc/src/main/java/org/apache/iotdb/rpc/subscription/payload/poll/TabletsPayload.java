@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TabletsPayload implements SubscriptionPollPayload {
 
@@ -36,7 +37,7 @@ public class TabletsPayload implements SubscriptionPollPayload {
   public TabletsPayload() {}
 
   public TabletsPayload(final List<Tablet> tablets) {
-    this.tablets = tablets;
+    this.tablets = new CopyOnWriteArrayList<>(tablets);
   }
 
   public List<Tablet> getTablets() {
@@ -58,7 +59,7 @@ public class TabletsPayload implements SubscriptionPollPayload {
     for (int i = 0; i < size; ++i) {
       tablets.add(Tablet.deserialize(buffer));
     }
-    this.tablets = tablets;
+    this.tablets = new CopyOnWriteArrayList<>(tablets);
     return this;
   }
 

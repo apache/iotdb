@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -2163,6 +2164,19 @@ public class DataRegion implements IDataRegionForQuery {
     return walFlushListeners;
   }
 
+  /**
+   * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
+   * request</a> for details.
+   */
+  public void insertSeparatorToWAL() {
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                walNode.log(
+                    TsFileProcessor.MEMTABLE_NOT_EXIST,
+                    new ContinuousSameSearchIndexSeparatorNode()));
+  }
+
   private boolean canSkipDelete(
       TsFileResource tsFileResource,
       Set<PartialPath> devicePaths,
@@ -2680,6 +2694,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       return executeCompaction();
     } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
@@ -3298,6 +3313,9 @@ public class DataRegion implements IDataRegionForQuery {
                 v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {
                   v.markAsGeneratedByPipe();
+                }
+                if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+                  v.markAsGeneratedByRemoteConsensusLeader();
                 }
               }
               v.addOneInsertRowNode(insertRowNode, finalI);

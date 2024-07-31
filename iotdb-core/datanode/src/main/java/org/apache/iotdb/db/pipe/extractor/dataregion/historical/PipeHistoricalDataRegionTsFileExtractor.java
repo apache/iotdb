@@ -588,6 +588,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             shouldTransferModFile,
             false,
             false,
+            true,
             pipeName,
             creationTime,
             pipeTaskMeta,
@@ -616,10 +617,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return event;
   }
 
+  @Override
   public synchronized boolean hasConsumedAll() {
-    // If the pendingQueue is null when the function is called, it
-    // implies that the extractor only extracts deletion thus the
-    // Historical event has nothing to consume
+    // If the pendingQueue is null when the function is called, it implies that the extractor only
+    // extracts deletion thus the historical event has nothing to consume.
     return Objects.isNull(pendingQueue)
         || pendingQueue.isEmpty()
             && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);

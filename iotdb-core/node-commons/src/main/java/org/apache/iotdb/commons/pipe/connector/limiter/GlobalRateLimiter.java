@@ -62,7 +62,7 @@ public class GlobalRateLimiter {
   private void tryAcquireWithRateCheck(final int bytes) {
     while (!rateLimiter.tryAcquire(
         bytes,
-        PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
       if (reloadParams()) {
         return;

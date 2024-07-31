@@ -57,12 +57,13 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
       PlanNodeId sourceId,
       Map<IDeviceID, DeviceContext> deviceContextMap,
       Filter timeFilter,
+      Map<IDeviceID, Long> ttlCache,
       boolean outputCount) {
     this.outputCount = outputCount;
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.deviceContextMap = deviceContextMap;
-    this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter);
+    this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter, ttlCache);
   }
 
   @Override
@@ -91,7 +92,6 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         int templateId = deviceContext.getTemplateId();
         // TODO: use IDeviceID interface to get ttl
         long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
-
         // TODO: make it more readable, like "30 days" or "10 hours"
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 

@@ -251,6 +251,12 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeNonForwardingEventsProgressReportInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_non_forwarding_events_progress_report_interval",
+                Integer.toString(config.getPipeNonForwardingEventsProgressReportInterval()))));
+
     config.setPipeHardlinkBaseDirName(
         properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
@@ -275,6 +281,12 @@ public class CommonDescriptor {
                 "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
+
+    config.setPipeRealTimeQueuePollHistoryThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_queue_poll_history_threshold",
+                Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
@@ -391,11 +403,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_all_sinks_rate_limit_bytes_per_second",
                 String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
-    config.setPipeEndPointRateLimiterDropCheckIntervalMs(
+    config.setRateLimiterHotReloadCheckIntervalMs(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_end_point_rate_limiter_drop_check_interval_ms",
-                String.valueOf(config.getPipeEndPointRateLimiterDropCheckIntervalMs()))));
+                "rate_limiter_hot_reload_check_interval_ms",
+                String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -640,6 +652,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionTsFileDeduplicationWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_deduplication_window_seconds",
+                String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionPollPayloadMaxSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_poll_payload_max_size",
+                String.valueOf(config.getSubscriptionPollPayloadMaxSize()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

@@ -553,7 +553,7 @@ public class IoTDBConfig {
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private volatile long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+  private volatile long innerCompactionTaskSelectionModsFileThreshold = 128 * 1024L;
 
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
@@ -905,7 +905,7 @@ public class IoTDBConfig {
   private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   /** The time of data node waiting for the next retry to join into the cluster */
-  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(1);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
@@ -1331,12 +1331,17 @@ public class IoTDBConfig {
     formulateLoadTsFileDirs(tierDataDirs);
   }
 
-  void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
+  void reloadDataDirs(String[][] newTierDataDirs) throws LoadConfigurationException {
     // format data directories
-    formulateDataDirs(tierDataDirs);
+    formulateDataDirs(newTierDataDirs);
+    if (newTierDataDirs.length < this.tierDataDirs.length) {
+      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      logger.error(msg);
+      throw new LoadConfigurationException(msg);
+    }
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
+      List<String> newDirs = Arrays.asList(newTierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
         if (newDirs.stream()
             .noneMatch(
@@ -1350,7 +1355,7 @@ public class IoTDBConfig {
         }
       }
     }
-    this.tierDataDirs = tierDataDirs;
+    this.tierDataDirs = newTierDataDirs;
     reloadSystemMetrics();
   }
 
@@ -1430,6 +1435,7 @@ public class IoTDBConfig {
     return tierDataDirs;
   }
 
+  @SuppressWarnings("javabugs:S6466")
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
@@ -1475,10 +1481,16 @@ public class IoTDBConfig {
   }
 
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
-    final String[] newLoadTsFileDirs = new String[tierDataDirs.length];
-    for (int i = 0; i < tierDataDirs.length; i++) {
+    if (tierDataDirs.length < 1) {
+      logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
+      return;
+    }
+
+    final String[] firstTierDataDirs = tierDataDirs[0];
+    final String[] newLoadTsFileDirs = new String[firstTierDataDirs.length];
+    for (int i = 0; i < firstTierDataDirs.length; i++) {
       newLoadTsFileDirs[i] =
-          tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+          firstTierDataDirs[i] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
     }
 
     // Update loadTsFileDirs after all newLoadTsFileDirs are generated,

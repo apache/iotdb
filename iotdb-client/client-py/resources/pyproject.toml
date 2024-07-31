@@ -16,9 +16,49 @@
 # under the License.
 #
 
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apache-iotdb"
+version = "${iotdb_version}"
+description = "Apache IoTDB client API"
+readme = "README.md"
+authors = [
+    { name = "Apache IoTDB", email = "dev@iotdb.apache.org" }
+]
+license = { text = "Apache License, Version 2.0"}
+keywords = ["iotdb", "apache", "client", "API"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+requires-python = ">=3.6"
+dependencies = [
+    "thrift>=0.14.1",
+    "pandas>=1.0.0",
+    "numpy>=1.0.0",
+    "sqlalchemy<1.5,>=1.4",
+    "sqlalchemy-utils>=0.37.8"
+]
+
+[project.urls]
+Homepage = "https://iotdb.apache.org"
+Documentation = "https://github.com/apache/iotdb"
+
+[project.entry-points."sqlalchemy.dialects"]
+iotdb = "iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.black]
 line-length = 88
-target-version = ['py37']
+target-version = ['py36', 'py37', 'py38', 'py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 
@@ -36,7 +76,6 @@ exclude = '''
     | build
     | dist
     | migrations
-    | test
     | iotdb/thrift
   )/
   | foo.py           # also separately exclude a file named foo.py in

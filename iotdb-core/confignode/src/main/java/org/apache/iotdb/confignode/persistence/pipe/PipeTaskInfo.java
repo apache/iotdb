@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -61,6 +65,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,6 +75,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -206,6 +213,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     //   1.1. if they are empty, the original attributes are filled directly.
     //   1.2. Otherwise, corresponding updates on original attributes are performed.
     // 2. In replace mode, do nothing here.
+    if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
+      if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
+      } else {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator
+                .getExtractorParameters()
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeRequest.getExtractorAttributes()))
+                .getAttribute());
+      }
+    }
+
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
         alterPipeRequest.setProcessorAttributes(
@@ -219,6 +240,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
@@ -341,6 +363,57 @@ public class PipeTaskInfo implements SnapshotProcessor {
           && !isStoppedByRuntimeException(pipeName);
     } finally {
       releaseReadLock();
+    }
+  }
+
+  public void validatePipePluginUsageByPipe(String pluginName) {
+    acquireReadLock();
+    try {
+      validatePipePluginUsageByPipeInternal(pluginName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void validatePipePluginUsageByPipeInternal(String pluginName) {
+    Iterable<PipeMeta> pipeMetas = getPipeMetaList();
+    for (PipeMeta pipeMeta : pipeMetas) {
+      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getExtractorParameters();
+      final String extractorPluginName =
+          extractorParameters.getStringOrDefault(
+              Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+              BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
+      if (pluginName.equals(extractorPluginName)) {
+        String exceptionMessage =
+            String.format(
+                "PipePlugin '%s' is already used by Pipe '%s' as a source.",
+                pluginName, pipeMeta.getStaticMeta().getPipeName());
+        throw new PipeException(exceptionMessage);
+      }
+
+      PipeParameters processorParameters = pipeMeta.getStaticMeta().getProcessorParameters();
+      final String processorPluginName =
+          processorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY);
+      if (pluginName.equals(processorPluginName)) {
+        String exceptionMessage =
+            String.format(
+                "PipePlugin '%s' is already used by Pipe '%s' as a processor.",
+                pluginName, pipeMeta.getStaticMeta().getPipeName());
+        throw new PipeException(exceptionMessage);
+      }
+
+      PipeParameters connectorParameters = pipeMeta.getStaticMeta().getConnectorParameters();
+      final String connectorPluginName =
+          connectorParameters.getStringOrDefault(
+              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+              IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+      if (pluginName.equals(connectorPluginName)) {
+        String exceptionMessage =
+            String.format(
+                "PipePlugin '%s' is already used by Pipe '%s' as a sink.",
+                pluginName, pipeMeta.getStaticMeta().getPipeName());
+        throw new PipeException(exceptionMessage);
+      }
     }
   }
 

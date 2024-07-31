@@ -141,7 +141,7 @@ public class DataNode implements DataNodeMBean {
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
    * times before returning a failure to the client.
    */
-  private static final int DEFAULT_RETRY = 50;
+  private static final int DEFAULT_RETRY = 200;
 
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
 

@@ -60,27 +60,35 @@ public class SubscriptionBroker {
 
   public List<SubscriptionEvent> poll(final String consumerId, final Set<String> topicNames) {
     final List<SubscriptionEvent> events = new ArrayList<>();
-    for (final Map.Entry<String, SubscriptionPrefetchingQueue> entry :
-        topicNameToPrefetchingQueue.entrySet()) {
-      final String topicName = entry.getKey();
-      final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
-      if (topicNames.contains(topicName)) {
-        // before determining if it is closed
-        if (prefetchingQueue.isCompleted()) {
-          LOGGER.info(
-              "Subscription: prefetching queue bound to topic [{}] is completed, return termination response to client",
-              topicName);
-          events.add(prefetchingQueue.generateSubscriptionPollTerminationResponse());
-          continue;
-        }
-        if (prefetchingQueue.isClosed()) {
-          LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
-          continue;
-        }
-        final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
-        if (Objects.nonNull(event)) {
-          events.add(event);
-        }
+    for (final String topicName : topicNames) {
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
+      if (Objects.isNull(prefetchingQueue)) {
+        // There are two reasons for not printing logs here:
+        // 1. There will be a delay in the creation of the prefetching queue after subscription.
+        // 2. There is no corresponding prefetching queue on this DN (currently the consumer is
+        // fully connected to all DNs).
+        continue;
+      }
+      // check if completed before closed
+      if (prefetchingQueue.isCompleted()) {
+        LOGGER.info(
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, return termination response to client",
+            topicName,
+            brokerId);
+        events.add(prefetchingQueue.generateSubscriptionPollTerminationResponse());
+        continue;
+      }
+      if (prefetchingQueue.isClosed()) {
+        LOGGER.warn(
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+            topicName,
+            brokerId);
+        continue;
+      }
+      final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
+      if (Objects.nonNull(event)) {
+        events.add(event);
       }
     }
     return events;
@@ -96,19 +104,24 @@ public class SubscriptionBroker {
     if (Objects.isNull(prefetchingQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] does not exist", topicName);
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] does not exist",
+              topicName, brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
     if (!(prefetchingQueue instanceof SubscriptionPrefetchingTsFileQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] is invalid", topicName);
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] is invalid",
+              topicName, brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
     if (prefetchingQueue.isClosed()) {
-      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
       return Collections.emptyList();
     }
     final SubscriptionEvent event =
@@ -132,11 +145,16 @@ public class SubscriptionBroker {
           topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
         LOGGER.warn(
-            "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+            topicName,
+            brokerId);
         continue;
       }
       if (prefetchingQueue.isClosed()) {
-        LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
+        LOGGER.warn(
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+            topicName,
+            brokerId);
         continue;
       }
       if (!nack) {
@@ -156,34 +174,40 @@ public class SubscriptionBroker {
 
   public void bindPrefetchingQueue(
       final String topicName, final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
-    final SubscriptionPrefetchingQueue prefetchingQueue =
-        topicNameToPrefetchingQueue.get(topicName);
-    if (Objects.nonNull(prefetchingQueue)) {
+    if (Objects.nonNull(topicNameToPrefetchingQueue.get(topicName))) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] has already existed", topicName);
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] has already existed",
+          topicName,
+          brokerId);
       return;
     }
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue;
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
-      final SubscriptionPrefetchingQueue queue =
+      prefetchingQueue =
           new SubscriptionPrefetchingTsFileQueue(
               brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
-      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
-      topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
-      final SubscriptionPrefetchingQueue queue =
+      prefetchingQueue =
           new SubscriptionPrefetchingTabletQueue(
               brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
-      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
-      topicNameToPrefetchingQueue.put(topicName, queue);
     }
+    SubscriptionPrefetchingQueueMetrics.getInstance().register(prefetchingQueue);
+    topicNameToPrefetchingQueue.put(topicName, prefetchingQueue);
+    LOGGER.info(
+        "Subscription: create prefetching queue bound to topic [{}] for consumer group [{}]",
+        topicName,
+        brokerId);
   }
 
   public void unbindPrefetchingQueue(final String topicName, final boolean doRemove) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          topicName,
+          brokerId);
       return;
     }
 
@@ -207,6 +231,10 @@ public class SubscriptionBroker {
 
       // remove prefetching queue
       topicNameToPrefetchingQueue.remove(topicName);
+      LOGGER.info(
+          "Subscription: drop prefetching queue bound to topic [{}] for consumer group [{}]",
+          topicName,
+          brokerId);
     }
   }
 
@@ -214,11 +242,17 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          topicName,
+          brokerId);
       return;
     }
     if (prefetchingQueue.isClosed()) {
-      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
       return;
     }
     prefetchingQueue.executePrefetch();

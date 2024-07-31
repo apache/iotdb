@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.util;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -40,7 +41,8 @@ import java.util.List;
  * full memory, partial memory and non memory.
  *
  * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
- * AbstractSchemaIT#setUpEnvironment} before test env initialization and call {@link
+ * AbstractSchemaIT#setUpEnvironment} before test env initialization at {@code @BeforeParam}, or
+ * call {@link AbstractSchemaIT#setUpEnvironmentBeforeMethod()} at {@code @Before}, and call {@link
  * AbstractSchemaIT#tearDownEnvironment} after test env cleaning.
  */
 @RunWith(Parameterized.class)
@@ -70,7 +72,14 @@ public abstract class AbstractSchemaIT {
   }
 
   protected static SchemaTestMode setUpEnvironment() throws Exception {
-    SchemaTestMode schemaTestMode = schemaTestModes.get(mode++);
+    return setUpEnvironmentInternal(schemaTestModes.get(mode++));
+  }
+
+  protected void setUpEnvironmentBeforeMethod() {
+    setUpEnvironmentInternal(schemaTestMode);
+  }
+
+  private static SchemaTestMode setUpEnvironmentInternal(final SchemaTestMode schemaTestMode) {
     switch (schemaTestMode) {
       case Memory:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
@@ -128,7 +137,7 @@ public abstract class AbstractSchemaIT {
         .setSchemaMemoryAllocate(StringUtils.join(proportion, ':'));
   }
 
-  protected enum SchemaTestMode {
+  public enum SchemaTestMode {
     Memory,
     PBTree
   }

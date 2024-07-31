@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ILogWriter;
@@ -374,7 +375,7 @@ public class CheckpointManager implements AutoCloseable {
   public int getRegionId(long memtableId) {
     final MemTableInfo info = memTableId2Info.get(memtableId);
     if (info == null) {
-      if (memtableId != Long.MIN_VALUE) {
+      if (memtableId != Long.MIN_VALUE && memtableId != TsFileProcessor.MEMTABLE_NOT_EXIST) {
         logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
       }
       return -1;

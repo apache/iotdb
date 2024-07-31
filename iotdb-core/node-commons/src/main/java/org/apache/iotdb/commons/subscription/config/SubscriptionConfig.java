@@ -71,6 +71,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
+  public long getSubscriptionTsFileDeduplicationWindowSeconds() {
+    return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
+  }
+
+  public long getSubscriptionPollPayloadMaxSize() {
+    return COMMON_CONFIG.getSubscriptionPollPayloadMaxSize();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -99,6 +107,10 @@ public class SubscriptionConfig {
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
+    LOGGER.info(
+        "SubscriptionTsFileDeduplicationWindowSeconds: {}",
+        getSubscriptionTsFileDeduplicationWindowSeconds());
+    LOGGER.info("SubscriptionPollPayloadMaxSize: {}", getSubscriptionPollPayloadMaxSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

@@ -166,14 +166,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
-  private static final int RETRY_NUM = 5;
+  private static final int RETRY_NUM = 10;
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 2000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
 

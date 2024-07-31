@@ -93,7 +93,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
-      tryPrefetch();
+      tryPrefetch(true);
     }
 
     final long size = prefetchingQueue.size();
@@ -140,14 +140,27 @@ public abstract class SubscriptionPrefetchingQueue {
   public abstract void executePrefetch();
 
   /**
-   * prefetch at most one {@link SubscriptionEvent} from {@link
+   * Prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
+   * SubscriptionPrefetchingQueue#prefetchingQueue}.
+   *
+   * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
+   * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
+   *
+   * @param onEventIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#onEvent()} is called
+   *     when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
+   *     otherwise
    */
-  protected void tryPrefetch() {
-    Event event;
-    while (Objects.nonNull(
-        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+  protected void tryPrefetch(final boolean onEventIfEmpty) {
+    while (!inputPendingQueue.isEmpty()) {
+      final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+      if (Objects.isNull(event)) {
+        // The event will be null in two cases:
+        // 1. The inputPendingQueue is empty.
+        // 2. The tsfile event has been deduplicated.
+        continue;
+      }
+
       if (!(event instanceof EnrichedEvent)) {
         LOGGER.warn(
             "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
@@ -169,25 +182,34 @@ public abstract class SubscriptionPrefetchingQueue {
 
       if (event instanceof TabletInsertionEvent) {
         if (onEvent((TabletInsertionEvent) event)) {
-          break;
+          return;
         }
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        if (onEvent((PipeTsFileInsertionEvent) event)) {
-          break;
-        }
-      } else {
-        // TODO:
-        //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-        //  - UserDefinedEnrichedEvent: ignored?
-        //  - Others: events related to meta sync, safe to ignore
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
-            this,
-            event);
-        if (trySealBatch()) {
-          break;
-        }
+        continue;
       }
+
+      if (event instanceof PipeTsFileInsertionEvent) {
+        if (onEvent((PipeTsFileInsertionEvent) event)) {
+          return;
+        }
+        continue;
+      }
+
+      // TODO:
+      //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+      //  - UserDefinedEnrichedEvent: ignored?
+      //  - Others: events related to meta sync, safe to ignore
+      LOGGER.info(
+          "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+          this,
+          event);
+      if (onEvent()) {
+        return;
+      }
+    }
+
+    // At this moment, the inputPendingQueue is empty.
+    if (onEventIfEmpty) {
+      onEvent();
     }
   }
 
@@ -204,7 +226,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if a new event has been prefetched.
    */
-  protected abstract boolean trySealBatch();
+  protected abstract boolean onEvent();
 
   /////////////////////////////// commit ///////////////////////////////
 
@@ -222,6 +244,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event.isCommitted()) {
+      event.cleanup();
       LOGGER.warn(
           "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
           event,
@@ -287,7 +310,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return true;
   }
 
-  protected SubscriptionCommitContext generateSubscriptionCommitContext() {
+  public SubscriptionCommitContext generateSubscriptionCommitContext() {
     // Recording data node ID and reboot times to address potential stale commit IDs caused by
     // leader transfers or restarts.
     return new SubscriptionCommitContext(
@@ -366,30 +389,26 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    final Map<String, String> result = new HashMap<>(6);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("brokerId", brokerId);
-        put("topicName", topicName);
-        put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
-        put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
-        put("uncommittedEvents", uncommittedEvents.toString());
-        put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
-        put("isCompleted", String.valueOf(isCompleted));
-        put("isClosed", String.valueOf(isClosed));
-      }
-    };
+    final Map<String, String> result = new HashMap<>(8);
+    result.put("brokerId", brokerId);
+    result.put("topicName", topicName);
+    result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
+    result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
+    result.put("uncommittedEvents", uncommittedEvents.toString());
+    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("isCompleted", String.valueOf(isCompleted));
+    result.put("isClosed", String.valueOf(isClosed));
+    return result;
   }
 }

@@ -38,4 +38,9 @@ public class SubscriptionParameterNotValidException extends SubscriptionExceptio
         && Objects.equals(
             getTimeStamp(), ((SubscriptionParameterNotValidException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

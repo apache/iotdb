@@ -58,6 +58,7 @@ public class SubscriptionEvent {
   private final SubscriptionCommitContext
       commitContext; // all responses have the same commit context
 
+  // lastPolledConsumerId is not used as a criterion for determining pollability
   private String lastPolledConsumerId;
   private long lastPolledTimestamp;
   private long committedTimestamp;
@@ -106,7 +107,7 @@ public class SubscriptionEvent {
     return getResponse(currentResponseIndex);
   }
 
-  public SubscriptionPollResponse getResponse(final int index) {
+  private SubscriptionPollResponse getResponse(final int index) {
     return responses[index];
   }
 
@@ -120,6 +121,7 @@ public class SubscriptionEvent {
     committedTimestamp = System.currentTimeMillis();
   }
 
+  /** NOTE: {@link SubscriptionEvent#cleanup} should be called immediately if event is committed */
   public boolean isCommitted() {
     if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
       // event with invalid commit id is committed
@@ -172,7 +174,7 @@ public class SubscriptionEvent {
     // reset current response index
     currentResponseIndex = 0;
 
-    lastPolledConsumerId = null;
+    // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp = INVALID_TIMESTAMP;
   }
 
@@ -265,7 +267,7 @@ public class SubscriptionEvent {
    * @param index the index of response to be serialized
    * @return {@code true} if a serialization operation was actually performed
    */
-  public boolean trySerializeResponse(final int index) {
+  private boolean trySerializeResponse(final int index) {
     if (index >= responses.length) {
       return false;
     }
@@ -299,11 +301,15 @@ public class SubscriptionEvent {
 
   public void resetResponseByteBuffer(final boolean resetAll) {
     if (resetAll) {
-      SubscriptionEventBinaryCache.getInstance().invalidateAll(Arrays.asList(responses));
+      SubscriptionEventBinaryCache.getInstance()
+          .invalidateAll(
+              Arrays.stream(responses).filter(Objects::nonNull).collect(Collectors.toList()));
       // maybe friendly for gc
       Arrays.fill(byteBuffers, null);
     } else {
-      SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
+      if (Objects.nonNull(responses[currentResponseIndex])) {
+        SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
+      }
       // maybe friendly for gc
       byteBuffers[currentResponseIndex] = null;
     }
@@ -311,7 +317,7 @@ public class SubscriptionEvent {
 
   /////////////////////////////// tsfile ///////////////////////////////
 
-  public @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
+  private @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
       final long writingOffset) throws IOException {
     final File tsFile = pipeEvents.getTsFile();
 

@@ -222,6 +222,7 @@ import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -1789,6 +1790,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate pipe plugin before alteration - only validate replace mode
     final String pipeName = alterPipeStatement.getPipeName();
     try {
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+      }
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
           && alterPipeStatement.isReplaceAllProcessorAttributes()) {
         PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
@@ -1814,6 +1819,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               alterPipeStatement.getConnectorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
@@ -1985,14 +1992,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String topicName = createTopicStatement.getTopicName();
     final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
 
+    // Replace now value with current time (raw timestamp based on system timestamp precision)
+    final long currentTime =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            System.currentTimeMillis(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    topicAttributes.computeIfPresent(
+        TopicConstant.START_TIME_KEY,
+        (k, v) -> {
+          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
+            return String.valueOf(currentTime);
+          }
+          return v;
+        });
+    topicAttributes.computeIfPresent(
+        TopicConstant.END_TIME_KEY,
+        (k, v) -> {
+          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
+            return String.valueOf(currentTime);
+          }
+          return v;
+        });
+
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
-        new TopicMeta(
-            topicName,
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                System.currentTimeMillis(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
-            topicAttributes);
+        new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
       PipeDataNodeAgent.plugin()
           .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());

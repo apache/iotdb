@@ -231,6 +231,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     return this;
   }
