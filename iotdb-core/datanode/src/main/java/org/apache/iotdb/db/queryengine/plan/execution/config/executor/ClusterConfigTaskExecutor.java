@@ -1903,7 +1903,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.extendDropPipe(dropPipeReq);
+      final TSStatus tsStatus = configNodeClient.dropPipeExtended(dropPipeReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to drop pipe {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);
@@ -2074,7 +2074,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus tsStatus =
-          configNodeClient.extendDropTopic(
+          configNodeClient.dropTopicExtended(
               new TDropTopicReq()
                   .setTopicName(dropTopicStatement.getTopicName())
                   .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition()));

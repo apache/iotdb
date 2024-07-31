@@ -1045,7 +1045,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus extendDropPipe(TDropPipeReq req) {
+  public TSStatus dropPipeExtended(TDropPipeReq req) {
     return configManager.dropPipe(req);
   }
 
@@ -1081,7 +1081,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus extendDropTopic(TDropTopicReq req) throws TException {
+  public TSStatus dropTopicExtended(TDropTopicReq req) throws TException {
     return configManager.dropTopic(req);
   }
 

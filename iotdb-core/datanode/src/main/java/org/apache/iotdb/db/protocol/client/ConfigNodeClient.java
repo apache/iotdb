@@ -976,9 +976,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus extendDropPipe(TDropPipeReq req) throws TException {
+  public TSStatus dropPipeExtended(TDropPipeReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.extendDropPipe(req), status -> !updateConfigNodeLeader(status));
+        () -> client.dropPipeExtended(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -1006,9 +1006,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus extendDropTopic(TDropTopicReq req) throws TException {
+  public TSStatus dropTopicExtended(TDropTopicReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.extendDropTopic(req), status -> !updateConfigNodeLeader(status));
+        () -> client.dropTopicExtended(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

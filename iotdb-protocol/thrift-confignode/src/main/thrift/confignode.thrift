@@ -1499,8 +1499,8 @@ service IConfigNodeRPCService {
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
 
-    /** Drop Pipe */
-  common.TSStatus extendDropPipe(TDropPipeReq req)
+  /** Drop Pipe */
+  common.TSStatus dropPipeExtended(TDropPipeReq req)
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
@@ -1524,7 +1524,7 @@ service IConfigNodeRPCService {
   common.TSStatus dropTopic(string topicName)
 
   /** Drop Topic */
-  common.TSStatus extendDropTopic(TDropTopicReq req)
+  common.TSStatus dropTopicExtended(TDropTopicReq req)
 
   /** Show Topic by name, if name is empty, show all Topic */
   TShowTopicResp showTopic(TShowTopicReq req)
