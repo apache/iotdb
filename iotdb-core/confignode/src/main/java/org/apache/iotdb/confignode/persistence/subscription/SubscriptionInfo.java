@@ -156,7 +156,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throws SubscriptionException {
     if (!isTopicExisted(createTopicReq.getTopicName())) {
       return true;
-    } else if (createTopicReq.isIfNotExistsCondition()) {
+    }
+
+    if (createTopicReq.isSetIfNotExistsCondition() && createTopicReq.isIfNotExistsCondition()) {
       return false;
     }
 
