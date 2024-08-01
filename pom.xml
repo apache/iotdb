@@ -128,7 +128,7 @@
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.5</ratis-thirdparty-misc.version>
+        <ratis-thirdparty-misc.version>1.0.6</ratis-thirdparty-misc.version>
         <!--
       This is an unreleased version of a custom branch. The 8-character part after the version number
       This is an unreleased version of a custom branch. The 8-character part after the version number
