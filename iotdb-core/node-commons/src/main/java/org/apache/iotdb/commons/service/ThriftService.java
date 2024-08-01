@@ -77,15 +77,12 @@ public abstract class ThriftService implements IService {
   }
 
   boolean setSyncedImpl = false;
-  boolean setAsyncedImpl = false;
 
   public void initSyncedServiceImpl(Object serviceImpl) {
     setSyncedImpl = true;
   }
 
-  public void initAsyncedServiceImpl(Object serviceImpl) {
-    setAsyncedImpl = true;
-  }
+
 
   public abstract void initTProcessor()
       throws ClassNotFoundException,
@@ -114,7 +111,7 @@ public abstract class ThriftService implements IService {
     try {
       reset();
       initTProcessor();
-      if (!setSyncedImpl && !setAsyncedImpl) {
+      if (!setSyncedImpl) {
         throw new StartupException(
             getID().getName(), "At least one service implementation should be set.");
       }
