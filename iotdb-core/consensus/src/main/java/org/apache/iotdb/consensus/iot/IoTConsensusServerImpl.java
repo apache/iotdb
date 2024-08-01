@@ -654,23 +654,26 @@ public class IoTConsensusServerImpl {
   public boolean removeSyncLogChannel(Peer targetPeer) {
     // step 1, remove sync channel in LogDispatcher
     boolean exceptionHappened = false;
+    String suggestion = "";
     try {
       logDispatcher.removeLogDispatcherThread(targetPeer);
     } catch (Exception e) {
       logger.warn(
-          "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be remove",
+          "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be removed.",
           e);
+      suggestion = "It's suggested restart the DataNode to remove log dispatcher thread.";
       exceptionHappened = true;
     }
     if (!exceptionHappened) {
-      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
+      logger.info(
+          "[IoTConsensus] Log dispatcher thread to {} has been removed and cleanup", targetPeer);
     }
     // step 2, update configuration
     configuration.remove(targetPeer);
     checkAndUpdateSafeDeletedSearchIndex();
     // step 3, persist configuration
     persistConfiguration();
-    logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
+    logger.info("[IoTConsensus] Configuration updated to {}. {}", this.configuration, suggestion);
     return !exceptionHappened;
   }
 
