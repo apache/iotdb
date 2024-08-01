@@ -83,7 +83,7 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
     for (ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        if (pathNodes[idIndex + 3] == null) {
+        if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder

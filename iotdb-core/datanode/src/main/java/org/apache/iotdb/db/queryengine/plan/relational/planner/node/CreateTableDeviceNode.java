@@ -126,7 +126,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   public List<IDeviceID> getPartitionKeyList() {
     if (partitionKeyList == null) {
-      this.partitionKeyList = convertRawDeviceIDs2PartitionKeys(deviceIdList);
+      this.partitionKeyList = convertRawDeviceIDs2PartitionKeys(tableName, deviceIdList);
     }
     return partitionKeyList;
   }

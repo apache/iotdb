@@ -1536,16 +1536,22 @@ public class MTreeBelowSGMemoryImpl {
   // region table device management
 
   public void createTableDevice(
-      String tableName,
-      Object[] devicePath,
-      IntSupplier attributePointerGetter,
-      IntConsumer attributeUppdater)
+      final String tableName,
+      final Object[] devicePath,
+      final IntSupplier attributePointerGetter,
+      final IntConsumer attributeUpdater)
       throws MetadataException {
     // todo implement storage for device of diverse data types
 
-    IMemMNode cur = storageGroupMNode;
-    for (Object o : devicePath) {
-      String childName = o == null ? null : o.toString();
+    IMemMNode cur = storageGroupMNode.getChild(tableName);
+    if (cur == null) {
+      cur =
+          store.addChild(
+              storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
+    }
+
+    for (final Object o : devicePath) {
+      final String childName = o == null ? null : o.toString();
       IMemMNode child = cur.getChild(childName);
       if (child == null) {
         child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
@@ -1553,7 +1559,7 @@ public class MTreeBelowSGMemoryImpl {
       cur = child;
     }
 
-    IDeviceMNode<IMemMNode> entityMNode;
+    final IDeviceMNode<IMemMNode> entityMNode;
 
     synchronized (this) {
       if (cur.isDevice()) {
@@ -1561,12 +1567,12 @@ public class MTreeBelowSGMemoryImpl {
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
           throw new MetadataException("Table device shall not create under tree model");
         }
-        TableDeviceInfo<IMemMNode> deviceInfo =
+        final TableDeviceInfo<IMemMNode> deviceInfo =
             (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();
-        attributeUppdater.accept(deviceInfo.getAttributePointer());
+        attributeUpdater.accept(deviceInfo.getAttributePointer());
       } else {
         entityMNode = store.setToEntity(cur);
-        TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
+        final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addDevice();
