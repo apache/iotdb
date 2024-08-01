@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -39,6 +40,29 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
   @Override
   public boolean visitPreciseFilter(final PreciseFilter filter, final String context) {
     return Objects.equals(filter.getValue(), context);
+  }
+
+  @Override
+  public boolean visitComparisonFilter(final ComparisonFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return false;
+    }
+
+    final int result = context.compareTo(filter.getValue());
+
+    switch (filter.getOperator()) {
+      case NOT_EQUAL:
+        return result != 0;
+      case LESS_THAN:
+        return result < 0;
+      case LESS_THAN_OR_EQUAL:
+        return result <= 0;
+      case GREATER_THAN:
+        return result > 0;
+      case GREATER_THAN_OR_EQUAL:
+        return result >= 0;
+    }
+    return false;
   }
 
   @Override

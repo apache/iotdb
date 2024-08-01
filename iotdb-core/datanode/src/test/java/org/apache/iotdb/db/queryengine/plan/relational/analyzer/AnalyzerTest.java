@@ -646,6 +646,36 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+
+    // 5. String literal comparisons
+    sql = "SELECT * FROM table1 WHERE tag1 <= 's1'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
+
+    // 6. String column comparisons
+    sql = "SELECT * FROM table1 WHERE tag1 != attr1";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
   }
 
   @Test
@@ -860,8 +890,7 @@ public class AnalyzerTest {
         Object[] columns = StatementTestUtils.genColumns();
         for (int i = 0; i < schemaValidation.getDeviceIdList().size(); i++) {
           Object[] objects = schemaValidation.getDeviceIdList().get(i);
-          assertEquals(objects[0].toString(), StatementTestUtils.tableName());
-          assertEquals(objects[1].toString(), ((Binary[]) columns[0])[i].toString());
+          assertEquals(objects[0].toString(), ((Binary[]) columns[0])[i].toString());
         }
         List<String> attributeColumnNameList = schemaValidation.getAttributeColumnNameList();
         assertEquals(Collections.singletonList("attr1"), attributeColumnNameList);

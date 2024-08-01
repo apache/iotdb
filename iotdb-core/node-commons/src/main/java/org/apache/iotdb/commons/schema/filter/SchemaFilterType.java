@@ -35,6 +35,7 @@ public enum SchemaFilterType {
   PRECISE((short) 11),
   IN((short) 12),
   LIKE((short) 13),
+  COMPARISON((short) 14),
   ;
 
   private final short code;
@@ -77,6 +78,8 @@ public enum SchemaFilterType {
         return IN;
       case 13:
         return LIKE;
+      case 14:
+        return COMPARISON;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }

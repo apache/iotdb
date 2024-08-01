@@ -65,7 +65,7 @@ public interface Metadata {
   IPartitionFetcher getPartitionFetcher();
 
   /**
-   * get all device ids and corresponding attributes from schema region
+   * Get all device ids and corresponding attributes from schema region
    *
    * @param tableName qualified table name
    * @param expressionList device filter in conj style, need to remove all the deviceId filter after

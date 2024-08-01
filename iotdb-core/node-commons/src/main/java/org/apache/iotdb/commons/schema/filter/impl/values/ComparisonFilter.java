@@ -30,15 +30,27 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PreciseFilter extends SchemaFilter {
+import static java.util.Objects.requireNonNull;
+
+public class ComparisonFilter extends SchemaFilter {
+  private final Operator operator;
   private final String value;
 
-  public PreciseFilter(final String value) {
+  public ComparisonFilter(final Operator operator, final String value) {
+    requireNonNull(operator, "operator is null");
+    requireNonNull(value, "value is null");
+
+    this.operator = operator;
     this.value = value;
   }
 
-  public PreciseFilter(final ByteBuffer byteBuffer) {
+  public ComparisonFilter(final ByteBuffer byteBuffer) {
+    this.operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     this.value = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  public Operator getOperator() {
+    return operator;
   }
 
   public String getValue() {
@@ -47,21 +59,23 @@ public class PreciseFilter extends SchemaFilter {
 
   @Override
   public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitPreciseFilter(this, node);
+    return visitor.visitComparisonFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.PRECISE;
+    return SchemaFilterType.COMPARISON;
   }
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(operator.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(operator.ordinal(), stream);
     ReadWriteIOUtils.write(value, stream);
   }
 
@@ -73,12 +87,20 @@ public class PreciseFilter extends SchemaFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final PreciseFilter that = (PreciseFilter) o;
-    return Objects.equals(value, that.value);
+    final ComparisonFilter that = (ComparisonFilter) o;
+    return Objects.equals(operator, that.operator) && Objects.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(value);
+    return Objects.hash(operator, value);
+  }
+
+  public enum Operator {
+    NOT_EQUAL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL;
   }
 }
