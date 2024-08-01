@@ -77,6 +77,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -464,7 +467,7 @@ public interface IManager {
   TSStatus createPipePlugin(TCreatePipePluginReq req);
 
   /** Drop pipe plugin. */
-  TSStatus dropPipePlugin(String pluginName);
+  TSStatus dropPipePlugin(TDropPipePluginReq req);
 
   /** Show pipe plugins. */
   TGetPipePluginTableResp getPipePluginTable();
@@ -631,11 +634,11 @@ public interface IManager {
   /**
    * Drop Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
    *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
-  TSStatus dropPipe(String pipeName);
+  TSStatus dropPipe(TDropPipeReq req);
 
   /**
    * Get Pipe by name. If pipeName is empty, get all Pipe.
@@ -670,7 +673,7 @@ public interface IManager {
   TSStatus createTopic(TCreateTopicReq topic);
 
   /** Drop Topic. */
-  TSStatus dropTopic(String topicName);
+  TSStatus dropTopic(TDropTopicReq req);
 
   /** Show Topic. */
   TShowTopicResp showTopic(TShowTopicReq req);

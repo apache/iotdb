@@ -65,7 +65,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
 
-    return pipeTaskInfo.get().isPipeStoppedByUser(pipeName);
+    return !pipeTaskInfo.get().isPipeStoppedByUser(pipeName);
   }
 
   @Override

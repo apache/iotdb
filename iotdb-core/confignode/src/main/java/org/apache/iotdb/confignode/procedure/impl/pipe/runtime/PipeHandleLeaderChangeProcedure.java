@@ -71,7 +71,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
     // Nothing needs to be checked
-    return false;
+    return true;
   }
 
   @Override
