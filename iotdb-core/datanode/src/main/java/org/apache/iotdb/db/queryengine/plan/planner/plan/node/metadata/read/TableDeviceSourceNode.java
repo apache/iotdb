@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,11 +42,11 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   protected TRegionReplicaSet schemaRegionReplicaSet;
 
   protected TableDeviceSourceNode(
-      PlanNodeId id,
-      String database,
-      String tableName,
-      List<ColumnHeader> columnHeaderList,
-      TRegionReplicaSet schemaRegionReplicaSet) {
+      final PlanNodeId id,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList,
+      final TRegionReplicaSet schemaRegionReplicaSet) {
     super(id);
     this.database = database;
     this.tableName = tableName;
@@ -76,8 +77,15 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   }
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(final TRegionReplicaSet regionReplicaSet) {
     this.schemaRegionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return columnHeaderList.stream()
+        .map(columnHeader -> new Symbol(columnHeader.getColumnName()))
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -92,7 +100,7 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(final PlanNode child) {}
 
   @Override
   public int allowedChildCount() {
@@ -100,7 +108,7 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -110,7 +118,7 @@ public abstract class TableDeviceSourceNode extends SourceNode {
     if (!super.equals(o)) {
       return false;
     }
-    TableDeviceSourceNode that = (TableDeviceSourceNode) o;
+    final TableDeviceSourceNode that = (TableDeviceSourceNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);

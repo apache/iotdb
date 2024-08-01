@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
@@ -273,14 +274,19 @@ public class LogicalPlanner {
           new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
     }
 
-    return new TableDeviceQueryScanNode(
-        queryContext.getQueryId().genPlanNodeId(),
-        database,
-        statement.getTableName(),
-        statement.getIdDeterminedFilterList(),
-        statement.getIdFuzzyPredicate(),
-        columnHeaderList,
-        null);
+    final TableDeviceQueryScanNode node =
+        new TableDeviceQueryScanNode(
+            queryContext.getQueryId().genPlanNodeId(),
+            database,
+            statement.getTableName(),
+            statement.getIdDeterminedFilterList(),
+            null,
+            columnHeaderList,
+            null);
+    return Objects.nonNull(statement.getIdFuzzyPredicate())
+        ? new FilterNode(
+            queryContext.getQueryId().genPlanNodeId(), node, statement.getIdFuzzyPredicate())
+        : node;
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
