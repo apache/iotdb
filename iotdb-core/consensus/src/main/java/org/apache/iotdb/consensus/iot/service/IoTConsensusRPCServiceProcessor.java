@@ -144,12 +144,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TInactivatePeerRes(status);
     }
     impl.setActive(false);
-    TInactivatePeerRes res = null;
-    res = new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     if (req.isForDeletionPurpose()) {
       KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
     }
-    return res;
+    return new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Override

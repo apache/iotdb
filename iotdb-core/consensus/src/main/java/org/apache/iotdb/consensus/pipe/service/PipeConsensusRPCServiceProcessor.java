@@ -61,9 +61,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
 
   @Override
   public TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req) {
-    TPipeConsensusTransferResp resp = config.getConsensusPipeReceiver().receive(req);
-    // we need to call onComplete by hand
-    return resp;
+    return config.getConsensusPipeReceiver().receive(req);
   }
 
   // TODO: consider batch transfer
