@@ -361,7 +361,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public void addOnCommittedHook(final Supplier<Void> hook) {
-    this.onCommittedHooks.add(hook);
+    onCommittedHooks.add(hook);
   }
 
   public boolean isReleased() {
