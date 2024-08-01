@@ -27,14 +27,9 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +41,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public abstract class SubscriptionPrefetchingQueue {
 
@@ -174,6 +167,13 @@ public abstract class SubscriptionPrefetchingQueue {
             "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
             this,
             event);
+        final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
+        // add mark completed hook
+        terminateEvent.addOnCommittedHook(
+            () -> {
+              markCompleted();
+              return null;
+            });
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
@@ -321,15 +321,6 @@ public abstract class SubscriptionPrefetchingQueue {
         subscriptionCommitIdGenerator.getAndIncrement());
   }
 
-  private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
-    return new SubscriptionCommitContext(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeDataNodeAgent.runtime().getRebootTimes(),
-        topicName,
-        brokerId,
-        INVALID_COMMIT_ID);
-  }
-
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getPrefetchingQueueId() {
@@ -349,7 +340,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return subscriptionCommitIdGenerator.get();
   }
 
-  /////////////////////////////// termination ///////////////////////////////
+  /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
     return isClosed;
@@ -365,25 +356,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public void markCompleted() {
     isCompleted = true;
-  }
-
-  public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.TERMINATION.getType(),
-            new TerminationPayload(),
-            generateInvalidSubscriptionCommitContext()));
-  }
-
-  public SubscriptionEvent generateSubscriptionPollErrorResponse(
-      final String errorMessage, final boolean critical) {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.ERROR.getType(),
-            new ErrorPayload(errorMessage, critical),
-            generateInvalidSubscriptionCommitContext()));
   }
 
   /////////////////////////////// stringify ///////////////////////////////
