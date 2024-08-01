@@ -82,8 +82,6 @@ public abstract class ThriftService implements IService {
     setSyncedImpl = true;
   }
 
-
-
   public abstract void initTProcessor()
       throws ClassNotFoundException,
           IllegalAccessException,

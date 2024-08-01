@@ -45,7 +45,6 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
     return ServiceType.PIPE_CONSENSUS_SERVICE;
   }
 
-
   @Override
   public void initSyncedServiceImpl(Object pipeConsensusRPCServiceProcessor) {
     this.pipeConsensusRPCServiceProcessor =
