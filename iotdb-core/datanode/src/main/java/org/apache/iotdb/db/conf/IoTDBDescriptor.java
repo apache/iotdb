@@ -387,6 +387,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
+    conf.setSeqMemtableTopKSize(
+        (Integer.parseInt(
+            properties.getProperty(
+                "seq_memtable_topk_size", Integer.toString(conf.getSeqMemtableTopKSize())))));
+
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
             properties.getProperty(

@@ -62,6 +62,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -93,6 +94,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.GET_QUERY_RESOURCE_FROM_MEM;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.FLUSHING_MEMTABLE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORKING_MEMTABLE;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.MEMTABLE_TOPK_SIZE;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
@@ -179,6 +181,8 @@ public class TsFileProcessor {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  private File tsfileTemp;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -324,6 +328,39 @@ public class TsFileProcessor {
                 dataRegionInfo.getDataRegion().getDatabaseName(),
                 dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
+    logger.info(
+        "Succeed to create {} memTable {}",
+        sequence ? "Sequence" : "Unsequence",
+        workMemTable.getMemTableId());
+  }
+
+  private void createNewWorkingMemTable(IMemTable tobeFlushed) throws WriteProcessException {
+    if (MEMTABLE_TOPK_SIZE != 0) {
+      try {
+        logger.info(
+            "Try to divide memTable {} with size {} and points {}",
+            tobeFlushed.getMemTableId(),
+            tobeFlushed.memSize(),
+            tobeFlushed.getTotalPointsNum());
+        workMemTable = tobeFlushed.divide();
+        walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
+        logger.info(
+            "Succeed to divide {} memTable {} with size {} and points {} to "
+                + "new workMemTable {} with size {} and points {} to",
+            sequence ? "Sequence" : "Unsequence",
+            tobeFlushed.getMemTableId(),
+            tobeFlushed.memSize(),
+            tobeFlushed.getTotalPointsNum(),
+            workMemTable.getMemTableId(),
+            workMemTable.memSize(),
+            workMemTable.getTotalPointsNum());
+      } catch (TopkDivideMemoryNotEnoughException e) {
+        logger.warn(e.getMessage());
+        createNewWorkingMemTable();
+      }
+    } else {
+      createNewWorkingMemTable();
+    }
   }
 
   /**
@@ -854,18 +891,19 @@ public class TsFileProcessor {
     try {
       if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
-          logger.debug(
-              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
-                  + "size: {}, plan index: [{}, {}], progress index: {}",
+          logger.info(
+              "{}: flush working memtable {} with size: {}, tsfile "
+                  + "size: {}, plan index: [{}, {}], progress index: {} in async close tsfile {}",
               storageGroupName,
-              tsFileResource.getTsFile().getAbsolutePath(),
+              workMemTable.getMemTableId(),
               workMemTable.memSize(),
               tsFileResource.getTsFileSize(),
               workMemTable.getMinPlanIndex(),
               workMemTable.getMaxPlanIndex(),
-              tsFileResource.getMaxProgressIndex());
+              tsFileResource.getMaxProgressIndex(),
+              tsFileResource.getTsFile().getAbsolutePath());
         } else {
-          logger.debug(
+          logger.info(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
@@ -899,6 +937,12 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
+        logger.info(
+            "Memtable {}: {} with size {} and points {} has been added to flushing list",
+            tmpMemTable.getMemTableId(),
+            tmpMemTable,
+            tmpMemTable.memSize(),
+            tmpMemTable.getTotalPointsNum());
         shouldClose = true;
         return future;
       } catch (Exception e) {
@@ -982,7 +1026,9 @@ public class TsFileProcessor {
         return;
       }
       logger.info(
-          "Async flush a memtable to tsfile: {}", tsFileResource.getTsFile().getAbsolutePath());
+          "Async flush a memtable {} to tsfile: {}",
+          workMemTable.getMemTableId(),
+          tsFileResource.getTsFile().getAbsolutePath());
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error(
@@ -1007,7 +1053,9 @@ public class TsFileProcessor {
   private Future<?> addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
     Map<String, Long> lastTimeForEachDevice = new HashMap<>();
     if (sequence) {
-      lastTimeForEachDevice = tobeFlushed.getMaxTime();
+      // TODO:修改lastFlushTime的取法
+      lastTimeForEachDevice = tobeFlushed.getTopKTime();
+      // lastTimeForEachDevice = tobeFlushed.getMaxTime();
       // If some devices have been removed in MemTable, the number of device in MemTable and
       // tsFileResource will not be the same. And the endTime of these devices in resource will be
       // Long.minValue.
@@ -1027,7 +1075,18 @@ public class TsFileProcessor {
     updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, lastWorkMemtableFlushTime);
 
     SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
-    flushingMemTables.addLast(tobeFlushed);
+    // TODO:如果是顺序区并且k>0,拆分之后分别进入不同的waitinglist中，否则的话仍然按照原方式刷盘
+    if (MEMTABLE_TOPK_SIZE == 0) {
+      flushingMemTables.addLast(tobeFlushed);
+      workMemTable = null;
+    } else {
+      try {
+        createNewWorkingMemTable(tobeFlushed);
+      } catch (WriteProcessException e) {
+        throw new RuntimeException(e);
+      }
+      flushingMemTables.addLast(tobeFlushed);
+    }
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: {} Memtable (signal = {}) is added into the flushing Memtable, queue size = {}",
