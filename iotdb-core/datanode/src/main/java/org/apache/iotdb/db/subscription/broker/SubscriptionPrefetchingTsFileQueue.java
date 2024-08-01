@@ -50,6 +50,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -72,8 +73,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
+    super(brokerId, topicName, inputPendingQueue, commitIdGenerator);
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
     this.currentBatchRef.set(

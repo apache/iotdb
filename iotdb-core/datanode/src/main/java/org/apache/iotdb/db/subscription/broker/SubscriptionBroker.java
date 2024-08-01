@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -54,17 +55,22 @@ public class SubscriptionBroker {
   private final String brokerId; // consumer group id
 
   private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
-
   private final Map<String, String> completedTopicNames;
+
+  // The subscription pipe that was restarted should reuse the previous commit ID.
+  private final Map<String, AtomicLong> topicNameToCommitIdGenerator;
 
   public SubscriptionBroker(final String brokerId) {
     this.brokerId = brokerId;
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
     this.completedTopicNames = new ConcurrentHashMap<>();
+    this.topicNameToCommitIdGenerator = new ConcurrentHashMap<>();
   }
 
   public boolean isEmpty() {
-    return topicNameToPrefetchingQueue.isEmpty() && completedTopicNames.isEmpty();
+    return topicNameToPrefetchingQueue.isEmpty()
+        && completedTopicNames.isEmpty()
+        && topicNameToCommitIdGenerator.isEmpty();
   }
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
@@ -208,11 +214,17 @@ public class SubscriptionBroker {
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       prefetchingQueue =
           new SubscriptionPrefetchingTsFileQueue(
-              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
+              brokerId,
+              topicName,
+              new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue),
+              topicNameToCommitIdGenerator.computeIfAbsent(topicName, (key) -> new AtomicLong()));
     } else {
       prefetchingQueue =
           new SubscriptionPrefetchingTabletQueue(
-              brokerId, topicName, new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue));
+              brokerId,
+              topicName,
+              new TsFileDeduplicationBlockingPendingQueue(inputPendingQueue),
+              topicNameToCommitIdGenerator.computeIfAbsent(topicName, (key) -> new AtomicLong()));
     }
     SubscriptionPrefetchingQueueMetrics.getInstance().register(prefetchingQueue);
     topicNameToPrefetchingQueue.put(topicName, prefetchingQueue);
@@ -269,6 +281,7 @@ public class SubscriptionBroker {
     }
 
     completedTopicNames.remove(topicName);
+    topicNameToCommitIdGenerator.remove(topicName);
   }
 
   public void executePrefetch(final String topicName) {
