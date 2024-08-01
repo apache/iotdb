@@ -133,7 +133,7 @@ public class IoTConsensus implements IConsensus {
   @Override
   public synchronized void start() throws IOException {
     initAndRecover();
-    service.initAsyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
+    service.initSyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {
