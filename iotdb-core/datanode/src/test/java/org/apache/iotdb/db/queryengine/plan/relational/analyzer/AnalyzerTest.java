@@ -83,6 +83,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -811,11 +812,12 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof FilterNode);
+    assertTrue(getChildrenNode(rootNode, 1) instanceof TableScanNode);
     assertEquals(
         "(((\"time\" > 1) AND (\"s1\" > 1)) OR (\"s2\" < 7) OR ((\"time\" < 10) AND (\"s1\" > 4)))",
-        ((FilterNode) getChildrenNode(rootNode, 1)).getPredicate().toString());
-    assertTrue(getChildrenNode(rootNode, 2) instanceof TableScanNode);
+        Objects.requireNonNull(
+                ((TableScanNode) getChildrenNode(rootNode, 1)).getPushDownPredicate())
+            .toString());
   }
 
   @Test
