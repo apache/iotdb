@@ -163,10 +163,6 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            event);
         final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
         // add mark completed hook
         terminateEvent.addOnCommittedHook(
@@ -177,6 +173,10 @@ public abstract class SubscriptionPrefetchingQueue {
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+            this,
+            terminateEvent);
         continue;
       }
 
