@@ -558,30 +558,45 @@ public class TSDIFFBOSMedianTest {
         encode_pos += 4;
         int2Bytes(min_delta[1],encode_pos,cur_byte);
         encode_pos += 4;
-        int2Bytes(final_x_l_plus,encode_pos,cur_byte);
-        encode_pos += 4;
-        int2Bytes(final_k_end_value,encode_pos,cur_byte);
-        encode_pos += 4;
+
         int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
-        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
-        encode_pos += 1;
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
-        intByte2Bytes(left_bit_width,encode_pos,cur_byte);
-        encode_pos += 1;
-        intByte2Bytes(right_bit_width,encode_pos,cur_byte);
-        encode_pos += 1;
-        if (final_alpha == 0) { // 0
 
-            for (int i : bitmap_outlier) {
+        if(k1==0 && k2==0){
+            intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+            encode_pos += 1;
 
-                intByte2Bytes(i,encode_pos,cur_byte);
-                encode_pos += 1;
-            }
-        } else {
-            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
-            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+//            encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+//            return encode_pos;
         }
+        else{
+            int2Bytes(final_x_l_plus,encode_pos,cur_byte);
+            encode_pos += 4;
+            int2Bytes(final_k_end_value,encode_pos,cur_byte);
+            encode_pos += 4;
+
+            bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
+            intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+            encode_pos += 1;
+            intByte2Bytes(left_bit_width,encode_pos,cur_byte);
+            encode_pos += 1;
+            intByte2Bytes(right_bit_width,encode_pos,cur_byte);
+            encode_pos += 1;
+            if (final_alpha == 0) { // 0
+
+                for (int i : bitmap_outlier) {
+
+                    intByte2Bytes(i,encode_pos,cur_byte);
+                    encode_pos += 1;
+                }
+            } else {
+                encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+                encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+            }
+        }
+
+
 //        if(k1+k2!=block_size)
         encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
@@ -688,8 +703,8 @@ public class TSDIFFBOSMedianTest {
         int final_k_end_value = max_delta_value+1; // x_u_plus
         int final_x_u_minus = max_delta_value; // x_u_minus
 
-        int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value - 2) * (block_size));
+        int min_bits = (getBitWith(final_k_end_value - final_k_start_value - 2) * (block_size));
+//        min_bits +=;
 
 
         int[] count_left = new int[max_bit_width];
@@ -732,6 +747,10 @@ public class TSDIFFBOSMedianTest {
             }
 
         }
+//        if(min_bits == bp_cost){
+//
+//        }
+//        else
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 
@@ -810,84 +829,95 @@ public class TSDIFFBOSMedianTest {
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
-        int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
-        decode_pos += 4;
-
-        int final_k_end_value = bytes2Integer(encoded, decode_pos, 4);
-        decode_pos += 4;
-
-        int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-
-        int left_bit_width = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-        int right_bit_width = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-
         ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_left_outlier = new ArrayList<>();
         ArrayList<Integer> final_right_outlier = new ArrayList<>();
         ArrayList<Integer> final_normal= new ArrayList<>();;
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+        int final_k_start_value = 0;
+        int final_k_end_value = 0;
+        int bit_width_final = 0;
+        int left_bit_width = 0;
+        int right_bit_width = 0;
 
+        if(k1!=0 || k2 != 0){
+             final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
+            decode_pos += 4;
 
-        if (final_alpha == 0) {
-            int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
-            for (int i = 0; i < bitmap_bytes; i++) {
-                bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
-                decode_pos += 1;
-            }
-            int bitmap_outlier_i = 0;
-            int remaining_bits = 8;
-            int tmp = bitmap_outlier.get(bitmap_outlier_i);
-            bitmap_outlier_i++;
-            int i = 0;
-            while (i < block_size ) {
-                if (remaining_bits > 1) {
-                    int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
-                    remaining_bits -= 1;
-                    if (bit_i == 1) {
-                        int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+            final_k_end_value = bytes2Integer(encoded, decode_pos, 4);
+            decode_pos += 4;
+
+            bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+
+            left_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+            right_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+
+            if (final_alpha == 0) {
+                int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
+                for (int i = 0; i < bitmap_bytes; i++) {
+                    bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
+                    decode_pos += 1;
+                }
+                int bitmap_outlier_i = 0;
+                int remaining_bits = 8;
+                int tmp = bitmap_outlier.get(bitmap_outlier_i);
+                bitmap_outlier_i++;
+                int i = 0;
+                while (i < block_size ) {
+                    if (remaining_bits > 1) {
+                        int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
                         remaining_bits -= 1;
-                        if (bit_left_right == 1) {
-                            final_left_outlier_index.add(i);
-                        } else {
-                            final_right_outlier_index.add(i);
+                        if (bit_i == 1) {
+                            int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+                            remaining_bits -= 1;
+                            if (bit_left_right == 1) {
+                                final_left_outlier_index.add(i);
+                            } else {
+                                final_right_outlier_index.add(i);
+                            }
                         }
-                    }
-                    if (remaining_bits == 0) {
+                        if (remaining_bits == 0) {
+                            remaining_bits = 8;
+                            if (bitmap_outlier_i >= bitmap_bytes) break;
+                            tmp = bitmap_outlier.get(bitmap_outlier_i);
+                            bitmap_outlier_i++;
+                        }
+                    } else if (remaining_bits == 1) {
+                        int bit_i = tmp & 0x1;
                         remaining_bits = 8;
                         if (bitmap_outlier_i >= bitmap_bytes) break;
                         tmp = bitmap_outlier.get(bitmap_outlier_i);
                         bitmap_outlier_i++;
-                    }
-                } else if (remaining_bits == 1) {
-                    int bit_i = tmp & 0x1;
-                    remaining_bits = 8;
-                    if (bitmap_outlier_i >= bitmap_bytes) break;
-                    tmp = bitmap_outlier.get(bitmap_outlier_i);
-                    bitmap_outlier_i++;
-                    if (bit_i == 1) {
-                        int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
-                        remaining_bits -= 1;
-                        if (bit_left_right == 1) {
-                            final_left_outlier_index.add(i);
-                        } else {
-                            final_right_outlier_index.add(i);
+                        if (bit_i == 1) {
+                            int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+                            remaining_bits -= 1;
+                            if (bit_left_right == 1) {
+                                final_left_outlier_index.add(i);
+                            } else {
+                                final_right_outlier_index.add(i);
+                            }
                         }
                     }
+                    i++;
                 }
-                i++;
+            } else {
+                ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
+                final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k1, decode_pos_result_left);
+                decode_pos = (decode_pos_result_left.get(0));
+                ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
+                final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k2, decode_pos_result_right);
+                decode_pos = (decode_pos_result_right.get(0));
             }
-        } else {
-            ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
-            final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k1, decode_pos_result_left);
-            decode_pos = (decode_pos_result_left.get(0));
-            ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
-            final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k2, decode_pos_result_right);
-            decode_pos = (decode_pos_result_right.get(0));
+        }else {
+            bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
         }
+
+
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
