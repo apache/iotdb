@@ -958,9 +958,9 @@ public class TSDIFFBOSVTest {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_bos";
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -973,7 +973,7 @@ public class TSDIFFBOSVTest {
         dataset_name.add("TY-Fuel");
         dataset_name.add("Cyber-Vehicle");
         dataset_name.add("Vehicle-Charge");
-//        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("Nifty-Stocks");
         dataset_name.add("TH-Climate");
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
