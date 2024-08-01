@@ -35,6 +35,7 @@ import java.util.List;
 
 public class DropTopicStatement extends Statement implements IConfigStatement {
   private String topicName;
+  private boolean ifExistsCondition;
 
   public DropTopicStatement() {
     super();
@@ -45,8 +46,16 @@ public class DropTopicStatement extends Statement implements IConfigStatement {
     return topicName;
   }
 
+  public boolean hasIfExistsCondition() {
+    return ifExistsCondition;
+  }
+
   public void setTopicName(String topicName) {
     this.topicName = topicName;
+  }
+
+  public void setIfExists(boolean ifExistsCondition) {
+    this.ifExistsCondition = ifExistsCondition;
   }
 
   @Override
