@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,9 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
+
+  private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
+      "Skip subscription-related operations and do nothing";
 
   private static final int RETRY_THRESHOLD = 1;
 
@@ -156,7 +160,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract SubscriptionOperation getOperation();
 
-  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env)
+  protected abstract boolean executeFromValidate(ConfigNodeProcedureEnv env)
       throws SubscriptionException;
 
   protected abstract void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
@@ -179,7 +183,14 @@ public abstract class AbstractOperateSubscriptionProcedure
     try {
       switch (state) {
         case VALIDATE:
-          executeFromValidate(env);
+          if (!executeFromValidate(env)) {
+            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
+            // On client side, the message returned after the successful execution of the
+            // subscription command corresponding to this procedure is "Msg: The statement is
+            // executed successfully."
+            this.setResult(SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperateSubscriptionState.OPERATE_ON_CONFIG_NODES);
           break;
         case OPERATE_ON_CONFIG_NODES:
