@@ -128,7 +128,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public abstract <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node);
+  public abstract <C> Boolean accept(final SchemaFilterVisitor<C> visitor, C node);
 
   public abstract SchemaFilterType getSchemaFilterType();
 

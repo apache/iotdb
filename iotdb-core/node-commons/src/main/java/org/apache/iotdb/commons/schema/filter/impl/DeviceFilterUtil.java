@@ -66,7 +66,10 @@ public class DeviceFilterUtil {
             nodes[index] = ((PreciseFilter) childFilter).getValue();
           } else {
             partialPath.addMatchFunction(
-                index, node -> childFilter.accept(StringValueFilterVisitor.getInstance(), node));
+                index,
+                node ->
+                    Boolean.TRUE.equals(
+                        childFilter.accept(StringValueFilterVisitor.getInstance(), node)));
           }
         } else {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");

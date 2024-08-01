@@ -155,9 +155,10 @@ public class SchemaPredicateUtil {
       if (index2FilterMap.get(index).stream()
           .allMatch(
               existingFilter ->
-                  existingFilter.accept(
-                      StringValueFilterVisitor.getInstance(),
-                      ((PreciseFilter) childFilter).getValue()))) {
+                  Boolean.TRUE.equals(
+                      existingFilter.accept(
+                          StringValueFilterVisitor.getInstance(),
+                          ((PreciseFilter) childFilter).getValue())))) {
         index2FilterMap.put(index, Collections.singletonList(currentFilter));
       } else {
         return false;
@@ -169,9 +170,10 @@ public class SchemaPredicateUtil {
               .getChild()
               .getSchemaFilterType()
               .equals(SchemaFilterType.PRECISE)) {
-        return currentFilter.accept(
-            StringValueFilterVisitor.getInstance(),
-            ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue());
+        return Boolean.TRUE.equals(
+            currentFilter.accept(
+                StringValueFilterVisitor.getInstance(),
+                ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue()));
       } else {
         index2FilterMap.get(index).add(currentFilter);
       }

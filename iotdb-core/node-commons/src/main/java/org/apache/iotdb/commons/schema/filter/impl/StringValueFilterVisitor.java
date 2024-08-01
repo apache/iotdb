@@ -33,19 +33,19 @@ import java.util.Objects;
 public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
 
   @Override
-  protected boolean visitNode(final SchemaFilter filter, final String context) {
+  protected Boolean visitNode(final SchemaFilter filter, final String context) {
     return true;
   }
 
   @Override
-  public boolean visitPreciseFilter(final PreciseFilter filter, final String context) {
+  public Boolean visitPreciseFilter(final PreciseFilter filter, final String context) {
     return Objects.equals(filter.getValue(), context);
   }
 
   @Override
-  public boolean visitComparisonFilter(final ComparisonFilter filter, final String context) {
+  public Boolean visitComparisonFilter(final ComparisonFilter filter, final String context) {
     if (Objects.isNull(context)) {
-      return false;
+      return null;
     }
 
     final int result = context.compareTo(filter.getValue());
@@ -66,22 +66,28 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
   }
 
   @Override
-  public boolean visitInFilter(final InFilter filter, final String context) {
+  public Boolean visitInFilter(final InFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return null;
+    }
     return filter.getValues().contains(context);
   }
 
   @Override
-  public boolean visitLikeFilter(final LikeFilter filter, final String context) {
-    return Objects.nonNull(context) && filter.getPattern().matcher(context).find();
+  public Boolean visitLikeFilter(final LikeFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return null;
+    }
+    return filter.getPattern().matcher(context).find();
   }
 
   @Override
-  public boolean visitIdFilter(final IdFilter filter, final String context) {
+  public Boolean visitIdFilter(final IdFilter filter, final String context) {
     return filter.getChild().accept(this, context);
   }
 
   @Override
-  public boolean visitAttributeFilter(final AttributeFilter filter, final String context) {
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final String context) {
     return filter.getChild().accept(this, context);
   }
 

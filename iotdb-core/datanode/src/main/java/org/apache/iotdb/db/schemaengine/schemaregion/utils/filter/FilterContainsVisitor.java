@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 public class FilterContainsVisitor extends SchemaFilterVisitor<SchemaFilterType> {
 
   @Override
-  protected boolean visitNode(SchemaFilter filter, SchemaFilterType schemaFilterType) {
+  protected Boolean visitNode(SchemaFilter filter, SchemaFilterType schemaFilterType) {
     return filter != null && filter.getSchemaFilterType().equals(schemaFilterType);
   }
 }

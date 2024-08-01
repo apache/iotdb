@@ -52,7 +52,7 @@ public class TemplateFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
     return visitor.visitTemplateFilter(this, node);
   }
 

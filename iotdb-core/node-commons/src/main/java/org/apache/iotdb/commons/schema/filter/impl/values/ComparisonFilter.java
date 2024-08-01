@@ -58,7 +58,7 @@ public class ComparisonFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitComparisonFilter(this, node);
   }
 
