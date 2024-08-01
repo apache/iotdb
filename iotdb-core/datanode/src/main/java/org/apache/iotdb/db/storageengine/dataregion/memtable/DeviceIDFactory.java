@@ -77,7 +77,7 @@ public class DeviceIDFactory {
       final String[] partitionKey = new String[rawId.length + 1];
       partitionKey[0] = tableName;
       for (int i = 1; i <= rawId.length; i++) {
-        partitionKey[i] = (String) rawId[i];
+        partitionKey[i] = (String) rawId[i - 1];
       }
       tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
     }

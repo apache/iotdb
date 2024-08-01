@@ -223,6 +223,8 @@ public class SchemaPredicateUtil {
     if (expressionList.isEmpty()) {
       return null;
     }
-    return new LogicalExpression(LogicalExpression.Operator.AND, expressionList);
+    return expressionList.size() > 1
+        ? new LogicalExpression(LogicalExpression.Operator.AND, expressionList)
+        : expressionList.get(0);
   }
 }
