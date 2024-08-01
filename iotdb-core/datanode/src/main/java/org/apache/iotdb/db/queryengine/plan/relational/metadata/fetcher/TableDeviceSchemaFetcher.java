@@ -382,11 +382,12 @@ public class TableDeviceSchemaFetcher {
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
-          // TODO table metadata: add memory control in query
-          deviceEntryList.add(
+          DeviceEntry deviceEntry =
               new DeviceEntry(
                   deviceID,
-                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList())));
+                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+          mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
+          deviceEntryList.add(deviceEntry);
           // Only cache those exact device query
           // Fetch paths is null iff there are fuzzy queries related to id columns
           if (Objects.nonNull(fetchPaths)) {
