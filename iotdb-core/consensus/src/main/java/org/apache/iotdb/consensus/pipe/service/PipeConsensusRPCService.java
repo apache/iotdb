@@ -45,18 +45,12 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
     return ServiceType.PIPE_CONSENSUS_SERVICE;
   }
 
-  @Override
-  public void initAsyncedServiceImpl(Object pipeConsensusRPCServiceProcessor) {
-    this.pipeConsensusRPCServiceProcessor =
-        (PipeConsensusRPCServiceProcessor) pipeConsensusRPCServiceProcessor;
-    super.initAsyncedServiceImpl(this.pipeConsensusRPCServiceProcessor);
-  }
 
   @Override
   public void initSyncedServiceImpl(Object pipeConsensusRPCServiceProcessor) {
     this.pipeConsensusRPCServiceProcessor =
         (PipeConsensusRPCServiceProcessor) pipeConsensusRPCServiceProcessor;
-    super.initAsyncedServiceImpl(this.pipeConsensusRPCServiceProcessor);
+    super.initSyncedServiceImpl(this.pipeConsensusRPCServiceProcessor);
   }
 
   @Override

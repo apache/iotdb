@@ -51,13 +51,7 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
   public ServiceType getID() {
     return ServiceType.IOT_CONSENSUS_SERVICE;
   }
-
-  @Override
-  public void initAsyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
-    this.iotConsensusRPCServiceProcessor =
-        (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
-    super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
-  }
+  
 
   @Override
   public void initSyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
