@@ -76,7 +76,7 @@ public abstract class ThriftService implements IService {
     JMXService.deregisterMBean(mbeanName);
   }
 
-  boolean setSyncedImpl = false;
+  boolean setSyncedImpl = true;
 
   public void initSyncedServiceImpl(Object serviceImpl) {
     setSyncedImpl = true;
@@ -109,10 +109,6 @@ public abstract class ThriftService implements IService {
     try {
       reset();
       initTProcessor();
-      if (!setSyncedImpl) {
-        throw new StartupException(
-            getID().getName(), "At least one service implementation should be set.");
-      }
       initThriftServiceThread();
       thriftServiceThread.setThreadStopLatch(stopLatch);
       thriftServiceThread.start();
