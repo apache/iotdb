@@ -546,8 +546,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer)
-      throws ConsensusGroupModifyPeerException {
+  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer) {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
@@ -568,12 +567,14 @@ public class IoTConsensusServerImpl {
                       targetPeer.getEndpoint(),
                       targetPeer.getNodeId()));
           if (!isSuccess(res.status)) {
-            throw new ConsensusGroupModifyPeerException(
-                String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
+            logger.warn("removing sync log channel failed from {} to {}", peer, targetPeer);
           }
         } catch (Exception e) {
-          throw new ConsensusGroupModifyPeerException(
-              String.format("error when removing sync log channel to %s", peer), e);
+          logger.warn(
+              "Exception happened during removing sync log channel from {} to {}",
+              peer,
+              targetPeer,
+              e);
         }
       }
     }
@@ -647,20 +648,30 @@ public class IoTConsensusServerImpl {
     logger.info("[IoTConsensus] persist new configuration: {}", configuration);
   }
 
-  public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  /**
+   * @return totally succeed
+   */
+  public boolean removeSyncLogChannel(Peer targetPeer) {
+    // step 1, remove sync channel in LogDispatcher
+    boolean exceptionHappened = false;
     try {
-      // step 1, remove sync channel in LogDispatcher
       logDispatcher.removeLogDispatcherThread(targetPeer);
-      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
-      // step 2, update configuration
-      configuration.remove(targetPeer);
-      checkAndUpdateSafeDeletedSearchIndex();
-      // step 3, persist configuration
-      persistConfiguration();
-      logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
-    } catch (IOException e) {
-      throw new ConsensusGroupModifyPeerException("error when remove LogDispatcherThread", e);
+    } catch (Exception e) {
+      logger.warn(
+          "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be remove",
+          e);
+      exceptionHappened = true;
     }
+    if (!exceptionHappened) {
+      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
+    }
+    // step 2, update configuration
+    configuration.remove(targetPeer);
+    checkAndUpdateSafeDeletedSearchIndex();
+    // step 3, persist configuration
+    persistConfiguration();
+    logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
+    return !exceptionHappened;
   }
 
   public void persistConfiguration() {
