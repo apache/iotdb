@@ -280,20 +280,19 @@ public class TableDeviceSchemaFetcher {
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths) {
-    final String[] idValues = new String[tableInstance.getIdNums()];
+    String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    final String[] idValuesWithoutTailingNull = (String[]) truncateTailingNull(idValues);
+    idValues = (String[]) truncateTailingNull(idValues);
     final Map<String, String> attributeMap =
-        cache.getDeviceAttribute(
-            database, tableInstance.getTableName(), idValuesWithoutTailingNull);
+        cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
     if (attributeMap == null) {
       if (Objects.nonNull(fetchPaths)) {
-        fetchPaths.add(convertIdValuesToDeviceID(idValuesWithoutTailingNull, tableInstance));
+        fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
       }
       return false;
     }
@@ -302,12 +301,11 @@ public class TableDeviceSchemaFetcher {
       if (!attributeMap.containsKey(attributeKey)) {
         // The attributes may be updated and the cache entry is stale
         if (Objects.nonNull(fetchPaths)) {
-          fetchPaths.add(convertIdValuesToDeviceID(idValuesWithoutTailingNull, tableInstance));
+          fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
         }
         return false;
       }
-      String value = attributeMap.get(attributeKey);
-      attributeValues.add(value);
+      attributeValues.add(attributeMap.get(attributeKey));
     }
 
     final DeviceEntry deviceEntry =
@@ -381,11 +379,12 @@ public class TableDeviceSchemaFetcher {
         }
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          final String[] nodes = new String[idLength + 1];
+          String[] nodes = new String[idLength + 1];
           nodes[0] = table;
           final Map<String, String> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
+          nodes = (String[]) truncateTailingNull(nodes);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
           // TODO table metadata: add memory control in query
           deviceEntryList.add(
@@ -395,11 +394,7 @@ public class TableDeviceSchemaFetcher {
           // Only cache those exact device query
           // Fetch paths is null iff there are fuzzy queries related to id columns
           if (Objects.nonNull(fetchPaths)) {
-            cache.put(
-                database,
-                table,
-                (String[]) truncateTailingNull(Arrays.copyOfRange(nodes, 1, nodes.length)),
-                attributeMap);
+            cache.put(database, table, Arrays.copyOfRange(nodes, 1, nodes.length), attributeMap);
           }
         }
       }
