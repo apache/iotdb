@@ -46,13 +46,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
 
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      // create Topic
+      // create topic
       String topicName = "topic1";
       session.createTopic(topicName);
       Assert.assertTrue(session.getTopic(topicName).isPresent());
       Assert.assertEquals(topicName, session.getTopic(topicName).get().getTopicName());
 
-      // create Topic
+      // create topic
       topicName = "topic2";
       Properties properties = new Properties();
       properties.put("path", "root.**");
@@ -63,7 +63,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
       Optional<Topic> topic = session.getTopic(topicName);
       Assert.assertTrue(topic.isPresent());
       Assert.assertEquals(topicName, topic.get().getTopicName());
-      // Verify Topic Parameters
+      // verify topic parameters
       Assert.assertTrue(topic.get().getTopicAttributes().contains("path=root.**"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("start-time=2023-01-01"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("end-time=2023-12-31"));
@@ -82,20 +82,20 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
 
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      // create Topic if not exits
+      // create topic if not exits
       String topicName = "topic3";
       session.createTopicIfNotExists(topicName);
       Optional<Topic> topic = session.getTopic(topicName);
       Assert.assertTrue(topic.isPresent());
       Assert.assertEquals(topicName, topic.get().getTopicName());
 
-      // create Topic if not exits
+      // create topic if not exits
       session.createTopicIfNotExists(topicName);
       topic = session.getTopic(topicName);
       Assert.assertTrue(topic.isPresent());
       Assert.assertEquals(topicName, topic.get().getTopicName());
 
-      // create Topic if not exits
+      // create topic if not exits
       topicName = "topic4";
       Properties properties = new Properties();
       properties.put("path", "root.**");
@@ -106,13 +106,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
       topic = session.getTopic(topicName);
       Assert.assertTrue(topic.isPresent());
       Assert.assertEquals(topicName, topic.get().getTopicName());
-      // Verify Topic Parameters
+      // verify topic parameters
       Assert.assertTrue(topic.get().getTopicAttributes().contains("path=root.**"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("start-time=2023-01-01"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("end-time=2023-12-31"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("format=TsFileHandler"));
 
-      // create Topic if not exits
+      // create topic if not exits
       properties.put("start-time", "2023-01-02");
       session.createTopicIfNotExists(topicName, properties);
       topic = session.getTopic(topicName);
