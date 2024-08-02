@@ -85,15 +85,6 @@ public class IoTDBStreamSortIT {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,date) values('d2','l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2023-01-01')"
       };
 
-  public static void main(String[] args) {
-    for (String s : sql1) {
-      System.out.println(s + ";");
-    }
-    for (String s : sql2) {
-      System.out.println(s + ";");
-    }
-  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
