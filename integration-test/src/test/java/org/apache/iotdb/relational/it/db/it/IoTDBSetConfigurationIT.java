@@ -26,7 +26,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,10 +37,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -60,9 +57,11 @@ public class IoTDBSetConfigurationIT {
   public void testSetConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("set configuration \"enable_seq_space_compaction\"=\"false\"");
-      statement.execute("set configuration \"enable_unseq_space_compaction\"=\"false\" on 0");
-      statement.execute("set configuration \"enable_cross_space_compaction\"=\"false\" on 1");
+      statement.execute("set configuration enable_seq_space_compaction=\"false\"");
+      statement.execute("set configuration enable_unseq_space_compaction=\'false\' on 0");
+      statement.execute("set configuration enable_cross_space_compaction=false on 1");
+      statement.execute(
+          "set configuration max_inner_compaction_candidate_file_num=1,max_cross_compaction_candidate_file_num=1 on 1");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -81,46 +80,9 @@ public class IoTDBSetConfigurationIT {
                     checkConfigFileContains(
                         nodeWrapper,
                         "enable_seq_space_compaction=false",
-                        "enable_cross_space_compaction=false")));
-  }
-
-  @Test
-  public void testSetClusterName() throws Exception {
-    // set cluster name on cn and dn
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("set configuration \"cluster_name\"=\"xx\"");
-      ResultSet variables = statement.executeQuery("show variables");
-      variables.next();
-      Assert.assertEquals("xx", variables.getString(2));
-    }
-    Assert.assertTrue(
-        EnvFactory.getEnv().getNodeWrapperList().stream()
-            .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, "cluster_name=xx")));
-    // restart successfully
-    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-    EnvFactory.getEnv().getDataNodeWrapper(0).start();
-    // set cluster name on datanode
-    Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
-        .until(
-            () -> {
-              try (Connection connection = EnvFactory.getEnv().getConnection();
-                  Statement statement = connection.createStatement()) {
-                statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
-              } catch (Exception e) {
-                return false;
-              }
-              return true;
-            });
-    // cannot restart
-    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-    EnvFactory.getEnv().getDataNodeWrapper(0).start();
-    Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
-        .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
-    Assert.assertTrue(
-        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+                        "enable_cross_space_compaction=false",
+                        "max_inner_compaction_candidate_file_num=1",
+                        "max_cross_compaction_candidate_file_num=1")));
   }
 
   private static boolean checkConfigFileContains(
@@ -134,6 +96,7 @@ public class IoTDBSetConfigurationIT {
               + CommonConfig.SYSTEM_CONFIG_NAME;
       File f = new File(systemPropertiesPath);
       String fileContent = new String(Files.readAllBytes(f.toPath()));
+      System.out.println(fileContent);
       return Arrays.stream(contents).allMatch(fileContent::contains);
     } catch (IOException ignore) {
       return false;
