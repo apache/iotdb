@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -76,34 +77,15 @@ public class TableDistributedPlanner {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+
     if (analysis.getStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(outputNodeWithExchange.getOutputColumnNames());
+          .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
     }
     adjustUpStream(outputNodeWithExchange, planContext);
 
-    // generate subPlan
-    SubPlan subPlan =
-        new SubPlanGenerator()
-            .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
-    subPlan.getPlanFragment().setRoot(true);
-
-    // generate fragment instances
-    List<FragmentInstance> fragmentInstances =
-        mppQueryContext.getQueryType() == QueryType.READ
-            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
-            : new WriteFragmentParallelPlanner(
-                    subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
-                .parallelPlan();
-
-    // only execute this step for READ operation
-    if (mppQueryContext.getQueryType() == QueryType.READ) {
-      setSinkForRootInstance(subPlan, fragmentInstances);
-    }
-
-    return new DistributedQueryPlan(
-        logicalQueryPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+    return generateDistributedPlan(outputNodeWithExchange);
   }
 
   public PlanNode generateDistributedPlanWithOptimize(
@@ -138,6 +120,29 @@ public class TableDistributedPlanner {
 
     // add exchange node for distributed plan
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+  }
+
+  private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange) {
+    // generate subPlan
+    SubPlan subPlan =
+        new SubPlanGenerator()
+            .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
+    subPlan.getPlanFragment().setRoot(true);
+
+    // generate fragment instances
+    List<FragmentInstance> fragmentInstances =
+        mppQueryContext.getQueryType() == QueryType.READ
+            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
+            : new WriteFragmentParallelPlanner(
+                    subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
+                .parallelPlan();
+
+    // only execute this step for READ operation
+    if (mppQueryContext.getQueryType() == QueryType.READ) {
+      setSinkForRootInstance(subPlan, fragmentInstances);
+    }
+
+    return new DistributedQueryPlan(subPlan, fragmentInstances);
   }
 
   public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
