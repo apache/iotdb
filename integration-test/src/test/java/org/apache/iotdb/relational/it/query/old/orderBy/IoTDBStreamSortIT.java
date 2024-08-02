@@ -238,10 +238,10 @@ public class IoTDBStreamSortIT {
           "1971-08-20T11:33:20.000Z,l5,null,d1,15,2022-01-01,",
           "1971-04-26T18:01:40.000Z,l4,null,d2,13,null,",
           "1971-04-26T18:01:40.000Z,l4,null,d1,13,null,",
-          "1971-04-26T17:46:40.020Z,l3,t,d1,14,null,",
+          "1971-04-26T17:46:40.020Z,l3,null,d2,14,null,",
         };
     tableResultSetEqualTest(
-        "select time,level,attr1,device,num,date from table0 order by time desc limit 5",
+        "select time,level,attr1,device,num,date from table0 order by time desc,device desc limit 5",
         expectedHeader,
         retArray,
         DATABASE_NAME);
