@@ -208,12 +208,11 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TRemoveSyncLogChannelRes(status);
     }
     TSStatus responseStatus;
-    try {
-      impl.removeSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
+    if (impl.removeSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint))) {
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupModifyPeerException e) {
+    } else {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      responseStatus.setMessage(e.getMessage());
+      responseStatus.setMessage("remove sync log channel failed");
     }
     return new TRemoveSyncLogChannelRes(responseStatus);
   }
