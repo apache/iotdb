@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTabl
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -72,11 +73,16 @@ public class PipePluginCoordinator {
     final PipePluginMeta pipePluginMeta =
         new PipePluginMeta(pluginName, className, false, jarName, jarMD5);
 
-    return configManager.getProcedureManager().createPipePlugin(pipePluginMeta, req.getJarFile());
+    return configManager
+        .getProcedureManager()
+        .createPipePlugin(
+            pipePluginMeta,
+            req.getJarFile(),
+            req.isSetIfNotExistsCondition() && req.isIfNotExistsCondition());
   }
 
-  public TSStatus dropPipePlugin(String pluginName) {
-    return configManager.getProcedureManager().dropPipePlugin(pluginName);
+  public TSStatus dropPipePlugin(TDropPipePluginReq req) {
+    return configManager.getProcedureManager().dropPipePlugin(req);
   }
 
   public TGetPipePluginTableResp getPipePluginTable() {
