@@ -27,6 +27,8 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -38,73 +40,67 @@ import static org.junit.Assert.assertEquals;
 
 public class TsFileValidationScanTest {
 
-  public static void main(String[] args) throws IOException {
-    prepareTsFiles();
+  private List<File> files;
+
+  @Before
+  public void setUp() throws Exception {
+    files = prepareTsFiles();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    files.forEach(
+        file -> {
+          file.delete();
+          new TsFileResource(file).remove();
+        });
   }
 
   @Test
   public void testValidation() throws IOException {
-    List<File> files = prepareTsFiles();
-    try {
-      // overlap between chunks
-      TsFileValidationScan tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(0));
-      assertEquals(1, tsFileValidationScan.getBadFileNum());
+    // overlap between chunks
+    TsFileValidationScan tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(0));
+    assertEquals(1, tsFileValidationScan.getBadFileNum());
 
-      // overlap between page
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(1));
-      assertEquals(1, tsFileValidationScan.getBadFileNum());
+    // overlap between page
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(1));
+    assertEquals(1, tsFileValidationScan.getBadFileNum());
 
-      // overlap within page
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(2));
-      assertEquals(1, tsFileValidationScan.getBadFileNum());
+    // overlap within page
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(2));
+    assertEquals(1, tsFileValidationScan.getBadFileNum());
 
-      // normal
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(3));
-      assertEquals(0, tsFileValidationScan.getBadFileNum());
+    // normal
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(3));
+    assertEquals(0, tsFileValidationScan.getBadFileNum());
 
-      // normal
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(4));
-      assertEquals(0, tsFileValidationScan.getBadFileNum());
+    // normal
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(4));
+    assertEquals(0, tsFileValidationScan.getBadFileNum());
 
-      // overlap between files
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.scanTsFile(files.get(3));
-      tsFileValidationScan.scanTsFile(files.get(4));
-      assertEquals(2, tsFileValidationScan.getBadFileNum());
-    } finally {
-      files.forEach(
-          file -> {
-            file.delete();
-            new TsFileResource(file).remove();
-          });
-    }
+    // overlap between files
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.scanTsFile(files.get(3));
+    tsFileValidationScan.scanTsFile(files.get(4));
+    assertEquals(2, tsFileValidationScan.getBadFileNum());
   }
 
   @Test
   public void testIgnoreFileOverlap() throws IOException {
-    List<File> files = prepareTsFiles();
-    try {
-      TsFileValidationScan tsFileValidationScan;
+    TsFileValidationScan tsFileValidationScan;
 
-      // overlap between files
-      tsFileValidationScan = new TsFileValidationScan();
-      tsFileValidationScan.setIgnoreFileOverlap(true);
-      tsFileValidationScan.setPrintDetails(true);
-      tsFileValidationScan.scanTsFile(files.get(3));
-      tsFileValidationScan.scanTsFile(files.get(4));
-      assertEquals(0, tsFileValidationScan.getBadFileNum());
-    } finally {
-      files.forEach(
-          file -> {
-            file.delete();
-            new TsFileResource(file).remove();
-          });
-    }
+    // overlap between files
+    tsFileValidationScan = new TsFileValidationScan();
+    tsFileValidationScan.setIgnoreFileOverlap(true);
+    tsFileValidationScan.setPrintDetails(true);
+    tsFileValidationScan.scanTsFile(files.get(3));
+    tsFileValidationScan.scanTsFile(files.get(4));
+    assertEquals(0, tsFileValidationScan.getBadFileNum());
   }
 
   private static List<File> prepareTsFiles() throws IOException {
