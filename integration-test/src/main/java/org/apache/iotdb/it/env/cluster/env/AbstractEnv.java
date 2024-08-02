@@ -55,6 +55,7 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.Session.Builder;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.thrift.TException;
@@ -417,6 +418,11 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
+    if (manualRun) {
+      Session session = new Builder().host("127.0.0.1").port(6667).sqlDialect(sqlDialect).build();
+      session.open();
+      return session;
+    }
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     Session session =

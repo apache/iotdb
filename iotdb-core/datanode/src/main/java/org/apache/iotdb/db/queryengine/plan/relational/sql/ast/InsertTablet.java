@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -52,7 +53,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public String getDatabase() {
-    return context.getSession().getDatabaseName().get();
+    return AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
   }
 
   @Override

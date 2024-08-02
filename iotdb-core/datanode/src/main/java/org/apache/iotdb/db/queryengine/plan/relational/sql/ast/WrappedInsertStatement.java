@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -91,10 +92,12 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = context.getSession().getDatabaseName().orElse(null);
+    String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
     final TableSchema incomingSchema = getTableSchema();
     final TableSchema realSchema =
-        metadata.validateTableHeaderSchema(databaseName, incomingSchema, context).orElse(null);
+        metadata
+            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+            .orElse(null);
     if (realSchema == null) {
       throw new SemanticException(
           "Schema validation failed, table cannot be created: " + incomingSchema);
@@ -205,5 +208,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
     metadata.validateDeviceSchema(this, context);
+  }
+
+  public String getDatabase() {
+    return null;
   }
 }

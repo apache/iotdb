@@ -92,7 +92,7 @@ public class InsertStatementTest {
                 TsTableColumnCategory.MEASUREMENT));
     tableSchema = new TableSchema("table1", columnSchemas);
     when(metadata.validateTableHeaderSchema(
-            any(String.class), any(TableSchema.class), any(MPPQueryContext.class)))
+            any(String.class), any(TableSchema.class), any(MPPQueryContext.class), true))
         .thenReturn(Optional.of(tableSchema));
     when(queryContext.getSession()).thenReturn(sessionInfo);
     when(sessionInfo.getDatabaseName()).thenReturn(Optional.of("test"));
@@ -177,7 +177,7 @@ public class InsertStatementTest {
                 TsTableColumnCategory.ATTRIBUTE));
     tableSchema = new TableSchema("table1", columnSchemas);
     when(metadata.validateTableHeaderSchema(
-            any(String.class), any(TableSchema.class), any(MPPQueryContext.class)))
+            any(String.class), any(TableSchema.class), any(MPPQueryContext.class), true))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(
@@ -203,7 +203,7 @@ public class InsertStatementTest {
                 "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID));
     tableSchema = new TableSchema("table1", columnSchemas);
     when(metadata.validateTableHeaderSchema(
-            any(String.class), any(TableSchema.class), any(MPPQueryContext.class)))
+            any(String.class), any(TableSchema.class), any(MPPQueryContext.class), true))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(
