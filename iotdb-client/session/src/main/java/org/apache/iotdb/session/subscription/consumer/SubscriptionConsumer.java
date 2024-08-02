@@ -66,23 +66,34 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
 
 abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 100_000_000L; // 100ms
+  private static final long SLEEP_MS = 100L;
+  private static final long SLEEP_DELTA_MS = 50L;
+  private static final long TIMER_DELTA_MS = 250L;
 
   private final String username;
   private final String password;
@@ -101,6 +112,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
+
+  private final int maxPollParallelism;
 
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
@@ -155,6 +168,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    this.maxPollParallelism = builder.maxPollParallelism;
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -196,7 +211,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (Boolean)
                     properties.getOrDefault(
                         ConsumerConstant.FILE_SAVE_FSYNC_KEY,
-                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE)));
+                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE))
+            .maxPollParallelism(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.MAX_POLL_PARALLELISM_KEY,
+                        ConsumerConstant.MAX_POLL_PARALLELISM_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -400,109 +420,255 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// poll ///////////////////////////////
 
-  protected List<SubscriptionMessage> poll(
-      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
-      throws SubscriptionException {
-    // check topic names
-    if (subscribedTopics.isEmpty()) {
-      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+  private final Map<
+          SubscriptionPollResponseType,
+          Function<SubscriptionPollResponse, Optional<SubscriptionMessage>>>
+      responseTransformer =
+          Collections.unmodifiableMap(
+              new HashMap<
+                  SubscriptionPollResponseType,
+                  Function<SubscriptionPollResponse, Optional<SubscriptionMessage>>>() {
+                {
+                  put(
+                      TABLETS,
+                      resp ->
+                          Optional.of(
+                              new SubscriptionMessage(
+                                  resp.getCommitContext(),
+                                  ((TabletsPayload) resp.getPayload()).getTablets())));
+
+                  put(
+                      FILE_INIT,
+                      resp ->
+                          pollFile(
+                              resp.getCommitContext(),
+                              ((FileInitPayload) resp.getPayload()).getFileName()));
+
+                  put(
+                      ERROR,
+                      resp -> {
+                        final ErrorPayload payload = (ErrorPayload) resp.getPayload();
+                        final String errorMessage = payload.getErrorMessage();
+                        if (payload.isCritical()) {
+                          throw new SubscriptionRuntimeCriticalException(errorMessage);
+                        } else {
+                          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+                        }
+                      });
+
+                  put(
+                      TERMINATION,
+                      resp -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        final String topicNameToUnsubscribe = commitContext.getTopicName();
+                        LOGGER.info(
+                            "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
+                            this,
+                            topicNameToUnsubscribe);
+                        unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
+                        return Optional.empty();
+                      });
+                }
+              });
+
+  protected List<SubscriptionMessage> multiplePoll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
+    if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
 
-    topicNames.stream()
-        .filter(topicName -> !subscribedTopics.containsKey(topicName))
-        .forEach(
-            topicName ->
-                LOGGER.warn(
-                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+    // execute single task in current thread
+    final int availableCount =
+        SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
+    if (availableCount == 0) {
+      // non-strict timeout
+      return singlePoll(topicNames, timeoutMs);
+    }
+
+    // dividing topics
+    final List<PollTask> tasks = new ArrayList<>();
+    final List<Set<String>> partitionedTopicNames =
+        partition(topicNames, Math.min(maxPollParallelism, availableCount));
+    for (final Set<String> partition : partitionedTopicNames) {
+      tasks.add(new PollTask(partition, timeoutMs));
+    }
+
+    // submit multiple tasks to poll messages
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
+    try {
+      // strict timeout
+      for (final Future<List<SubscriptionMessage>> future :
+          SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
+        try {
+          if (future.isCancelled()) {
+            continue;
+          }
+          messages.addAll(future.get());
+        } catch (final CancellationException ignored) {
+
+        } catch (final ExecutionException e) {
+          final Throwable cause = e.getCause();
+          if (cause instanceof SubscriptionRuntimeCriticalException) {
+            final SubscriptionRuntimeCriticalException ex =
+                (SubscriptionRuntimeCriticalException) cause;
+            LOGGER.warn(
+                "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+                this,
+                topicNames,
+                ex);
+            lastSubscriptionRuntimeCriticalException = ex;
+          } else {
+            LOGGER.warn(
+                "ExecutionException occurred when SubscriptionConsumer {} polling topics {}",
+                this,
+                topicNames,
+                e);
+          }
+        }
+      }
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          "InterruptedException occurred when SubscriptionConsumer {} polling topics {}",
+          this,
+          topicNames,
+          e);
+      Thread.currentThread().interrupt(); // restore interrupted state
+    }
+
+    // TODO: ignore possible interrupted state?
+
+    // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
+    // the client
+    if (messages.isEmpty() && Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
+      throw lastSubscriptionRuntimeCriticalException;
+    }
+
+    return messages;
+  }
+
+  private class PollTask implements Callable<List<SubscriptionMessage>> {
+
+    private final Set<String> topicNames;
+    private final long timeoutMs;
+
+    public PollTask(final Set<String> topicNames, final long timeoutMs) {
+      this.topicNames = topicNames;
+      this.timeoutMs = timeoutMs;
+    }
+
+    @Override
+    public List<SubscriptionMessage> call() {
+      return singlePoll(topicNames, timeoutMs);
+    }
+  }
+
+  private List<SubscriptionMessage> singlePoll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    if (topicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
 
     final List<SubscriptionMessage> messages = new ArrayList<>();
+    List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
     final SubscriptionPollTimer timer =
         new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
-    do {
-      try {
-        // poll tablets or file
-        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
-          final short responseType = pollResponse.getResponseType();
-          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            LOGGER.warn("unexpected response type: {}", responseType);
-            continue;
-          }
-          switch (SubscriptionPollResponseType.valueOf(responseType)) {
-            case TABLETS:
-              messages.add(
-                  new SubscriptionMessage(
-                      pollResponse.getCommitContext(),
-                      ((TabletsPayload) pollResponse.getPayload()).getTablets()));
-              break;
-            case FILE_INIT:
-              pollFile(
-                      pollResponse.getCommitContext(),
-                      ((FileInitPayload) pollResponse.getPayload()).getFileName())
-                  .ifPresent(messages::add);
-              break;
-            case ERROR:
-              final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
-              final String errorMessage = payload.getErrorMessage();
-              if (payload.isCritical()) {
-                throw new SubscriptionRuntimeCriticalException(errorMessage);
-              } else {
-                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
-              }
-            case TERMINATION:
-              final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
-              final String topicNameToUnsubscribe = commitContext.getTopicName();
-              LOGGER.info(
-                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} automatically",
+    try {
+      do {
+        final List<SubscriptionMessage> currentMessages = new ArrayList<>();
+        try {
+          currentResponses.clear();
+          currentResponses = pollInternal(topicNames);
+          for (final SubscriptionPollResponse response : currentResponses) {
+            final short responseType = response.getResponseType();
+            if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+              LOGGER.warn("unexpected response type: {}", responseType);
+              continue;
+            }
+            try {
+              responseTransformer
+                  .getOrDefault(
+                      SubscriptionPollResponseType.valueOf(responseType),
+                      resp -> {
+                        LOGGER.warn("unexpected response type: {}", responseType);
+                        return Optional.empty();
+                      })
+                  .apply(response)
+                  .ifPresent(currentMessages::add);
+            } catch (final SubscriptionRuntimeNonCriticalException e) {
+              LOGGER.warn(
+                  "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
                   this,
                   topicNames,
-                  topicNameToUnsubscribe);
-              unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
-              break;
-            default:
-              LOGGER.warn("unexpected response type: {}", responseType);
-              break;
+                  e);
+              // assume the corresponding response has been nacked
+            }
           }
-        }
-      } catch (final SubscriptionRuntimeNonCriticalException e) {
-        LOGGER.warn(
-            "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
-            this,
-            topicNames,
-            e);
-        // nack and clear messages
-        try {
-          nack(messages);
-          messages.clear();
-        } catch (final Exception ignored) {
-        }
-      } catch (final SubscriptionRuntimeCriticalException e) {
-        LOGGER.warn(
-            "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
-            this,
-            topicNames,
-            e);
-        // nack and clear messages
-        try {
-          nack(messages);
-          messages.clear();
-        } catch (final Exception ignored) {
-        }
-        // rethrow
-        throw e;
-      }
-      if (!messages.isEmpty()) {
-        return messages;
-      }
-      // update timer
-      timer.update();
-      // TODO: associated with timeoutMs instead of hardcoding
-      LockSupport.parkNanos(SLEEP_NS); // wait some time
-    } while (timer.notExpired());
+        } catch (final SubscriptionRuntimeCriticalException e) {
+          LOGGER.warn(
+              "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+              this,
+              topicNames,
+              e);
+          // nack and clear current responses
+          try {
+            nack(currentResponses);
+            currentResponses.clear();
+          } catch (final Exception ignored) {
+          }
+          // nack and clear result messages
+          try {
+            nack(messages);
+            messages.clear();
+          } catch (final Exception ignored) {
+          }
 
-    LOGGER.info(
-        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
+          // the upper layer perceives ExecutionException
+          throw e;
+        }
+
+        // add all current messages to result messages
+        messages.addAll(currentMessages);
+
+        // TODO: maybe we can poll a few more times
+        if (!messages.isEmpty()) {
+          break;
+        }
+
+        // update timer
+        timer.update();
+
+        // TODO: associated with timeoutMs instead of hardcoding
+        // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
+        Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
+
+        // the use of TIMER_DELTA_MS here slightly reduces the timeout to avoid being interrupted as
+        // much as possible
+      } while (timer.notExpired(TIMER_DELTA_MS));
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt(); // restore interrupted state
+    }
+
+    if (Thread.currentThread().isInterrupted()) {
+      // nack and clear current responses
+      try {
+        nack(currentResponses);
+        currentResponses.clear();
+      } catch (final Exception ignored) {
+      }
+      // nack and clear result messages
+      try {
+        nack(messages);
+        messages.clear();
+      } catch (final Exception ignored) {
+      }
+
+      // the upper layer perceives CancellationException
+      return Collections.emptyList();
+    }
+
     return messages;
   }
 
@@ -513,7 +679,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, file, fileWriter));
+      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter));
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -525,12 +691,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private SubscriptionMessage pollFileInternal(
       final SubscriptionCommitContext commitContext,
+      final String rawFileName,
       final File file,
       final RandomAccessFile fileWriter)
       throws IOException, SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
-    final String fileName = file.getName();
 
     LOGGER.info(
         "{} start to poll file {} with commit context {}",
@@ -541,7 +707,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(dataNodeId, topicName, fileName, writingOffset);
+          pollFileInternal(dataNodeId, topicName, rawFileName, writingOffset);
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -578,11 +744,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FilePiecePayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FilePiecePayload) payload).getFileName(), this);
+                      rawFileName, ((FilePiecePayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -625,11 +791,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FileSealPayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FileSealPayload) payload).getFileName(), this);
+                      rawFileName, ((FileSealPayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -753,7 +919,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), false);
     }
@@ -775,7 +941,21 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
+      commitInternal(entry.getKey(), entry.getValue(), true);
+    }
+  }
+
+  private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionPollResponse response : responses) {
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(response.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(response.getCommitContext());
+    }
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), true);
     }
@@ -1004,6 +1184,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
+    protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_VALUE;
+
     public Builder host(final String host) {
       this.host = host;
       return this;
@@ -1061,6 +1243,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
+      // single thread to execute poll whenever there are idle resources available, thereby
+      // achieving strict timeout.
+      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
+      return this;
+    }
+
     public abstract SubscriptionPullConsumer buildPullConsumer();
 
     public abstract SubscriptionPushConsumer buildPushConsumer();
@@ -1090,6 +1280,55 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("fileSaveDir", fileSaveDir);
     result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
     result.put("subscribedTopics", subscribedTopics.toString());
+    return result;
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  /**
+   * Partitions the given set into the specified number of subsets.
+   *
+   * <p>Ensures that each partition contains at least one element, even if the number of elements in
+   * the set is less than the number of partitions. When the number of elements is greater than or
+   * equal to the number of partitions, elements are evenly distributed across the partitions.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>1 topic, 4 partitions: [topic1 | topic1 | topic1 | topic1]
+   *   <li>3 topics, 4 partitions: [topic1 | topic2 | topic3 | topic1]
+   *   <li>2 topics, 4 partitions: [topic1 | topic2 | topic1 | topic2]
+   *   <li>5 topics, 4 partitions: [topic1, topic4 | topic2 | topic5 | topic3]
+   *   <li>7 topics, 3 partitions: [topic1, topic6, topic7 | topic2, topic3 | topic5, topic4]
+   * </ul>
+   *
+   * @param set the given set
+   * @param partitions the number of partitions
+   * @param <T> the type of the elements in the set
+   * @return a list containing the specified number of subsets
+   */
+  public static <T> List<Set<T>> partition(final Set<T> set, final int partitions) {
+    final List<Set<T>> result = new ArrayList<>(partitions);
+    for (int i = 0; i < partitions; i++) {
+      result.add(new HashSet<>());
+    }
+
+    final List<T> elements = new ArrayList<>(set);
+    int index = 0;
+
+    // When the number of elements is less than the number of partitions, distribute elements
+    // repeatedly
+    for (int i = 0; i < partitions; i++) {
+      result.get(i).add(elements.get(index));
+      index = (index + 1) % elements.size();
+    }
+
+    // When the number of elements is greater than or equal to the number of partitions, distribute
+    // elements normally
+    for (int i = partitions; i < elements.size(); i++) {
+      result.get(i % partitions).add(elements.get(i));
+    }
+
     return result;
   }
 }

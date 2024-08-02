@@ -158,11 +158,11 @@ public class SubscriptionBroker {
         continue;
       }
       if (!nack) {
-        if (prefetchingQueue.ack(consumerId, commitContext)) {
+        if (Objects.nonNull(prefetchingQueue.ack(consumerId, commitContext))) {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(consumerId, commitContext)) {
+        if (Objects.nonNull(prefetchingQueue.nack(consumerId, commitContext))) {
           successfulCommitContexts.add(commitContext);
         }
       }

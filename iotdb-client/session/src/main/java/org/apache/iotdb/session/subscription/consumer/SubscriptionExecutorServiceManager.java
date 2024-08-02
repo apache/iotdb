@@ -22,11 +22,16 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public final class SubscriptionExecutorServiceManager {
@@ -42,26 +47,18 @@ public final class SubscriptionExecutorServiceManager {
   private static final String DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME =
       "SubscriptionDownstreamDataFlowExecutor";
 
-  /**
-   * Control Flow Executor: execute heartbeat worker and endpoints syncer for {@link
-   * SubscriptionConsumer}
-   */
-  private static final SubscriptionExecutorService CONTROL_FLOW_EXECUTOR =
-      new SubscriptionExecutorService(
+  /** Control Flow Executor: execute heartbeat worker, endpoints syncer and auto poll worker */
+  private static final SubscriptionScheduledExecutorService CONTROL_FLOW_EXECUTOR =
+      new SubscriptionScheduledExecutorService(
           CONTROL_FLOW_EXECUTOR_NAME, Math.max(Runtime.getRuntime().availableProcessors() / 2, 1));
 
-  /**
-   * Upstream Data Flow Executor: execute auto commit worker and async commit worker for {@link
-   * SubscriptionPullConsumer}
-   */
-  private static final SubscriptionExecutorService UPSTREAM_DATA_FLOW_EXECUTOR =
-      new SubscriptionExecutorService(
+  /** Upstream Data Flow Executor: execute auto commit worker and async commit worker */
+  private static final SubscriptionScheduledExecutorService UPSTREAM_DATA_FLOW_EXECUTOR =
+      new SubscriptionScheduledExecutorService(
           UPSTREAM_DATA_FLOW_EXECUTOR_NAME,
           Math.max(Runtime.getRuntime().availableProcessors() / 2, 1));
 
-  /**
-   * Downstream Data Flow Executor: execute auto poll worker for {@link SubscriptionPushConsumer}
-   */
+  /** Downstream Data Flow Executor: execute poll task */
   private static final SubscriptionExecutorService DOWNSTREAM_DATA_FLOW_EXECUTOR =
       new SubscriptionExecutorService(
           DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME,
@@ -128,6 +125,17 @@ public final class SubscriptionExecutorServiceManager {
   }
 
   @SuppressWarnings("unsafeThreadSchedule")
+  public static ScheduledFuture<?> submitAutoPollWorker(
+      final Runnable task, final long autoPollIntervalMs) {
+    CONTROL_FLOW_EXECUTOR.launchIfNeeded();
+    return CONTROL_FLOW_EXECUTOR.scheduleWithFixedDelay(
+        task,
+        generateRandomInitialDelayMs(autoPollIntervalMs),
+        autoPollIntervalMs,
+        TimeUnit.MILLISECONDS);
+  }
+
+  @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoCommitWorker(
       final Runnable task, final long autoCommitIntervalMs) {
     UPSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
@@ -143,15 +151,16 @@ public final class SubscriptionExecutorServiceManager {
     UPSTREAM_DATA_FLOW_EXECUTOR.submit(task);
   }
 
-  @SuppressWarnings("unsafeThreadSchedule")
-  public static ScheduledFuture<?> submitAutoPollWorker(
-      final Runnable task, final long autoPollIntervalMs) {
+  public static <T> List<Future<T>> submitMultiplePollTasks(
+      final Collection<? extends Callable<T>> tasks, final long timeoutMs)
+      throws InterruptedException {
     DOWNSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
-    return DOWNSTREAM_DATA_FLOW_EXECUTOR.scheduleWithFixedDelay(
-        task,
-        generateRandomInitialDelayMs(autoPollIntervalMs),
-        autoPollIntervalMs,
-        TimeUnit.MILLISECONDS);
+    return DOWNSTREAM_DATA_FLOW_EXECUTOR.invokeAll(tasks, timeoutMs);
+  }
+
+  public static int getAvailableThreadCountForPollTasks() {
+    DOWNSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
+    return DOWNSTREAM_DATA_FLOW_EXECUTOR.getAvailableCount();
   }
 
   /////////////////////////////// subscription executor service ///////////////////////////////
@@ -160,7 +169,7 @@ public final class SubscriptionExecutorServiceManager {
 
     String name;
     volatile int corePoolSize;
-    volatile ScheduledExecutorService executor;
+    volatile ExecutorService executor;
 
     SubscriptionExecutorService(final String name, final int corePoolSize) {
       this.name = name;
@@ -194,7 +203,7 @@ public final class SubscriptionExecutorServiceManager {
             LOGGER.info("Launching {} with core pool size {}...", this.name, this.corePoolSize);
 
             this.executor =
-                Executors.newScheduledThreadPool(
+                Executors.newFixedThreadPool(
                     this.corePoolSize,
                     r -> {
                       final Thread t =
@@ -244,21 +253,6 @@ public final class SubscriptionExecutorServiceManager {
       }
     }
 
-    @SuppressWarnings("unsafeThreadSchedule")
-    ScheduledFuture<?> scheduleWithFixedDelay(
-        final Runnable task, final long initialDelay, final long delay, final TimeUnit unit) {
-      if (!isShutdown()) {
-        synchronized (this) {
-          if (!isShutdown()) {
-            return this.executor.scheduleWithFixedDelay(task, initialDelay, delay, unit);
-          }
-        }
-      }
-
-      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", this.name);
-      return null;
-    }
-
     Future<?> submit(final Runnable task) {
       if (!isShutdown()) {
         synchronized (this) {
@@ -269,6 +263,86 @@ public final class SubscriptionExecutorServiceManager {
       }
 
       LOGGER.warn("{} has not been launched, ignore submit task", this.name);
+      return null;
+    }
+
+    <T> List<Future<T>> invokeAll(
+        final Collection<? extends Callable<T>> tasks, final long timeoutMs)
+        throws InterruptedException {
+      if (!isShutdown()) {
+        synchronized (this) {
+          if (!isShutdown()) {
+            return this.executor.invokeAll(tasks, timeoutMs, TimeUnit.MILLISECONDS);
+          }
+        }
+      }
+
+      LOGGER.warn("{} has not been launched, ignore invoke all tasks", this.name);
+      return null;
+    }
+
+    int getAvailableCount() {
+      if (!isShutdown()) {
+        synchronized (this) {
+          if (!isShutdown()) {
+            return Math.max(
+                ((ThreadPoolExecutor) this.executor).getPoolSize()
+                    - ((ThreadPoolExecutor) this.executor).getActiveCount(),
+                0);
+          }
+        }
+      }
+
+      LOGGER.warn("{} has not been launched, return zero", this.name);
+      return 0;
+    }
+  }
+
+  private static class SubscriptionScheduledExecutorService extends SubscriptionExecutorService {
+
+    SubscriptionScheduledExecutorService(final String name, final int corePoolSize) {
+      super(name, corePoolSize);
+    }
+
+    @Override
+    void launchIfNeeded() {
+      if (isShutdown()) {
+        synchronized (this) {
+          if (isShutdown()) {
+            LOGGER.info("Launching {} with core pool size {}...", this.name, this.corePoolSize);
+
+            this.executor =
+                Executors.newScheduledThreadPool(
+                    this.corePoolSize,
+                    r -> {
+                      final Thread t =
+                          new Thread(Thread.currentThread().getThreadGroup(), r, this.name, 0);
+                      if (!t.isDaemon()) {
+                        t.setDaemon(true);
+                      }
+                      if (t.getPriority() != Thread.NORM_PRIORITY) {
+                        t.setPriority(Thread.NORM_PRIORITY);
+                      }
+                      return t;
+                    });
+          }
+        }
+      }
+    }
+
+    @SuppressWarnings("unsafeThreadSchedule")
+    ScheduledFuture<?> scheduleWithFixedDelay(
+        final Runnable task, final long initialDelay, final long delay, final TimeUnit unit) {
+      if (!isShutdown()) {
+        synchronized (this) {
+          if (!isShutdown()) {
+            return ((ScheduledExecutorService) this.executor)
+                .scheduleWithFixedDelay(task, initialDelay, delay, unit);
+          }
+        }
+      }
+
+      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", this.name);
       return null;
     }
   }

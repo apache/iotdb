@@ -103,6 +103,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     this.ackStrategy = ackStrategy;
     this.consumeListener = consumeListener;
 
+    // avoid interval less than or equal to zero
     this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
     this.autoPollTimeoutMs =
         Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
@@ -172,7 +173,15 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         final List<SubscriptionMessage> messages =
-            poll(subscribedTopics.keySet(), autoPollTimeoutMs);
+            multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
+        if (messages.isEmpty()) {
+          LOGGER.info(
+              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
+              this,
+              subscribedTopics.keySet(),
+              autoPollTimeoutMs);
+          return;
+        }
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
@@ -280,6 +289,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     @Override
     public Builder fileSaveFsync(final boolean fileSaveFsync) {
       super.fileSaveFsync(fileSaveFsync);
+      return this;
+    }
+
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
       return this;
     }
 
