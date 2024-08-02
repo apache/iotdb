@@ -316,6 +316,42 @@ public class TsFileNameGenerator {
     return resource;
   }
 
+  public static List<TsFileResource> getNewInnerCompactionTargetFileResources(
+      List<TsFileResource> tsFileResources, boolean sequence)
+      throws IOException, DiskSpaceInsufficientException {
+    long minInnerMergeCount = Long.MAX_VALUE;
+    long maxCrossMergeCount = Long.MIN_VALUE;
+    int maxTierLevel = 0;
+    for (TsFileResource resource : tsFileResources) {
+      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      minInnerMergeCount = Math.min(tsFileName.innerCompactionCnt, minInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
+      maxTierLevel = Math.max(resource.getTierLevel(), maxTierLevel);
+    }
+    List<TsFileResource> targetResources = new ArrayList<>(tsFileResources.size());
+    for (TsFileResource resource : tsFileResources) {
+      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      TsFileResource targetResource =
+          new TsFileResource(
+              new File(
+                  generateNewTsFilePathWithMkdir(
+                      sequence,
+                      tsFileResources.get(0).getDatabaseName(),
+                      tsFileResources.get(0).getDataRegionId(),
+                      tsFileResources.get(0).getTimePartition(),
+                      tsFileName.time,
+                      tsFileName.version,
+                      (int) minInnerMergeCount + 1,
+                      (int) maxCrossMergeCount,
+                      maxTierLevel,
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),
+              TsFileResourceStatus.COMPACTING);
+      targetResource.setSeq(sequence);
+      targetResources.add(targetResource);
+    }
+    return targetResources;
+  }
+
   public static TsFileResource getSettleCompactionTargetFileResources(
       List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
     long minTime = Long.MAX_VALUE;

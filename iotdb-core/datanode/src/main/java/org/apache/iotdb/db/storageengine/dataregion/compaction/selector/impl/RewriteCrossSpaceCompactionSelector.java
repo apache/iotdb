@@ -449,7 +449,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -577,7 +577,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return false;
       }
 
-      for (DeviceInfo device : candidate2.getDevices()) {
+      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;

@@ -469,6 +469,10 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
+  private long innerCompactionTotalFileSizeThreshold = 21474836480L;
+
+  private int maxLevelGapInInnerCompaction = 2;
+
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
 
@@ -2856,6 +2860,22 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public int getMaxLevelGapInInnerCompaction() {
+    return maxLevelGapInInnerCompaction;
+  }
+
+  public void setMaxLevelGapInInnerCompaction(int maxLevelGapInInnerCompaction) {
+    this.maxLevelGapInInnerCompaction = maxLevelGapInInnerCompaction;
+  }
+
+  public long getInnerCompactionTotalFileSizeThreshold() {
+    return innerCompactionTotalFileSizeThreshold;
+  }
+
+  public void setInnerCompactionTotalFileSizeThreshold(long innerCompactionTotalFileSizeThreshold) {
+    this.innerCompactionTotalFileSizeThreshold = innerCompactionTotalFileSizeThreshold;
   }
 
   public long getTargetChunkSize() {

@@ -148,30 +148,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
-  public InnerSpaceCompactionTask(
-      TsFileManager tsFileManager,
-      long timePartition,
-      List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence,
-      ICompactionPerformer performer,
-      long serialId) {
-    super(
-        tsFileManager.getStorageGroupName(),
-        tsFileManager.getDataRegionId(),
-        timePartition,
-        tsFileManager,
-        serialId);
-    this.selectedTsFileResourceList = selectedTsFileResourceList;
-    this.sequence = sequence;
-    this.performer = performer;
-    isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
-    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-      isHoldingWriteLock[i] = false;
-    }
-    collectSelectedFilesInfo();
-    createSummary();
-  }
-
   protected void prepare() throws IOException, DiskSpaceInsufficientException {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(

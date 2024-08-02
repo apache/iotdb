@@ -93,4 +93,12 @@ public class TsFileID {
         (Long.parseLong(names[2]) << 32) | Long.parseLong(names[3].substring(0, dotIndex));
     return versionArray;
   }
+
+  public long getInnerCompactionCount() {
+    return compactionVersion >>> 32;
+  }
+
+  public long getCrossCompactionCount() {
+    return compactionVersion & 0xFFFFFFFFL;
+  }
 }

@@ -62,7 +62,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(tsFileManager, timePartition, partiallyDirtyFiles, isSequence, performer, serialId);
+    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId);
     this.fullyDirtyFiles = fullyDirtyFiles;
     fullyDirtyFiles.forEach(x -> fullyDirtyFileSize += x.getTsFileSize());
     partiallyDirtyFiles.forEach(

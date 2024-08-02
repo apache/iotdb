@@ -1,0 +1,213 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
+
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.NewInnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelector {
+
+  private List<TsFileResourceCandidate> tsFileResourceCandidateList = new ArrayList<>();
+  private final long totalFileSizeThreshold;
+  private final long totalFileNumThreshold;
+  private final long singleFileSizeThreshold;
+  private final int maxLevelGap;
+
+  public NewSizeTieredCompactionSelector(
+      String storageGroupName,
+      String dataRegionId,
+      long timePartition,
+      boolean sequence,
+      TsFileManager tsFileManager) {
+    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
+    double availableDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                "system")
+            .getValue();
+    long maxDiskSizeForTempFiles = (long) availableDisk / config.getCompactionThreadCount();
+    this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
+    this.totalFileNumThreshold = config.getFileLimitPerInnerTask();
+    this.totalFileSizeThreshold =
+        Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
+    this.singleFileSizeThreshold =
+        Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
+  }
+
+  @Override
+  public List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+    this.tsFileResourceCandidateList =
+        tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
+    return super.selectInnerSpaceTask(tsFileResources);
+  }
+
+  @Override
+  protected List<AbstractCompactionTask> selectTaskBaseOnLevel()
+      throws IOException, DiskSpaceInsufficientException {
+    int maxLevel = searchMaxFileLevel();
+    for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+      List<AbstractCompactionTask> selectedResourceList = selectTasksByLevel(currentLevel);
+      if (!selectedResourceList.isEmpty()) {
+        return selectedResourceList;
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  @SuppressWarnings("java:S135")
+  private List<AbstractCompactionTask> selectTasksByLevel(int level)
+      throws IOException, DiskSpaceInsufficientException {
+    InnerSpaceCompactionTaskSelection levelTaskSelection = new InnerSpaceCompactionTaskSelection();
+    for (TsFileResourceCandidate currentFile : tsFileResourceCandidateList) {
+      long innerCompactionCount = currentFile.resource.getTsFileID().getInnerCompactionCount();
+
+      if (levelTaskSelection.isCurrentTaskEmpty() && innerCompactionCount != level) {
+        continue;
+      }
+
+      if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) >= maxLevelGap) {
+        levelTaskSelection.endCurrentTaskSelection();
+        continue;
+      }
+
+      boolean skipCurrentFile = !levelTaskSelection.haveOverlappedDevices(currentFile);
+      if (skipCurrentFile) {
+        levelTaskSelection.addSkippedResource(currentFile);
+        continue;
+      }
+
+      if (levelTaskSelection.isTaskTooLarge(currentFile)) {
+        levelTaskSelection.endCurrentTaskSelection();
+      }
+      levelTaskSelection.addSelectedResource(currentFile);
+    }
+    levelTaskSelection.endCurrentTaskSelection();
+    return levelTaskSelection.getSelectedTaskList();
+  }
+
+  private class InnerSpaceCompactionTaskSelection {
+    List<AbstractCompactionTask> selectedTaskList = new ArrayList<>();
+
+    List<TsFileResource> currentSelectedResources = new ArrayList<>();
+    List<TsFileResource> currentSkippedResources = new ArrayList<>();
+    HashSet<IDeviceID> currentSelectedDevices = new HashSet<>();
+    long currentSelectedFileTotalSize = 0;
+    long currentSkippedFileTotalSize = 0;
+
+    private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
+        throws IOException {
+      return resourceCandidate.getDevices().stream().anyMatch(currentSelectedDevices::contains);
+    }
+
+    private void addSelectedResource(TsFileResourceCandidate currentFile) throws IOException {
+      currentSelectedResources.add(currentFile.resource);
+      currentSelectedDevices.addAll(currentFile.getDevices());
+      currentSelectedFileTotalSize += currentFile.resource.getTsFileSize();
+    }
+
+    private void addSkippedResource(TsFileResourceCandidate currentFile) {
+      currentSkippedResources.add(currentFile.resource);
+      currentSkippedFileTotalSize += currentFile.resource.getTsFileSize();
+    }
+
+    private boolean isCurrentTaskEmpty() {
+      return currentSelectedResources.isEmpty();
+    }
+
+    private void reset() {
+      currentSelectedResources.clear();
+      currentSkippedResources.clear();
+      currentSelectedDevices.clear();
+      currentSelectedFileTotalSize = 0;
+      currentSkippedFileTotalSize = 0;
+    }
+
+    private boolean isTaskTooLarge(TsFileResourceCandidate currentFile) {
+      if (!currentFile.isValidCandidate) {
+        return true;
+      }
+      return (currentFile.resource.getTsFileSize() + currentSelectedFileTotalSize
+              > totalFileSizeThreshold)
+          || currentSelectedResources.size() + 1 > totalFileNumThreshold;
+    }
+
+    private void endCurrentTaskSelection() throws DiskSpaceInsufficientException, IOException {
+      try {
+        long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
+        int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
+        if (totalFileNum < 2) {
+          return;
+        }
+
+        boolean canCompactAllFiles =
+            totalFileSize < singleFileSizeThreshold
+                && totalFileNum < config.getFileLimitPerInnerTask();
+        if (canCompactAllFiles) {
+          currentSelectedResources =
+              Stream.concat(currentSelectedResources.stream(), currentSkippedResources.stream())
+                  .sorted(TsFileResource::compareFileName)
+                  .collect(Collectors.toList());
+          currentSkippedResources.clear();
+        }
+        AbstractCompactionTask task = createInnerSpaceCompactionTask();
+        selectedTaskList.add(task);
+      } finally {
+        reset();
+      }
+    }
+
+    private AbstractCompactionTask createInnerSpaceCompactionTask()
+        throws DiskSpaceInsufficientException, IOException {
+      return new NewInnerSpaceCompactionTask(
+          timePartition,
+          tsFileManager,
+          currentSelectedResources,
+          currentSkippedResources,
+          sequence,
+          createCompactionPerformer(),
+          tsFileManager.getNextCompactionTaskId());
+    }
+
+    private List<AbstractCompactionTask> getSelectedTaskList() {
+      return selectedTaskList;
+    }
+  }
+}

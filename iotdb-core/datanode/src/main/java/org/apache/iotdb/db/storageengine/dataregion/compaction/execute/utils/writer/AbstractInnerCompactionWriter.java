@@ -31,20 +31,24 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
+import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
   protected CompactionTsFileWriter fileWriter;
+  protected List<TsFileResource> targetResources;
+  protected int currentFileIndex;
+  protected long endedFileSize = 0;
 
   protected boolean isEmptyFile;
 
   protected TsFileResource targetResource;
+  protected final long sizeForFileWriter =
+      (long)
+          ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     this.targetResource = targetFileResource;
     this.fileWriter =
         new CompactionTsFileWriter(
@@ -61,6 +65,42 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     fileWriter.startChunkGroup(deviceId);
     this.isAlign = isAlign;
     this.deviceId = deviceId;
+  }
+
+  private CompactionTsFileWriter getAvailableWriter() throws IOException {
+    if (fileWriter == null) {
+      fileWriter =
+          new CompactionTsFileWriter(
+              targetResources.get(currentFileIndex).getTsFile(),
+              sizeForFileWriter,
+              CompactionType.INNER_SEQ_COMPACTION);
+      return fileWriter;
+    }
+    boolean shouldSwitchToNextWriter =
+        fileWriter.getPos()
+                >= IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize()
+            && (currentFileIndex != targetResources.size() - 1);
+    if (shouldSwitchToNextWriter) {
+      rollCompactionFileWriter();
+    }
+    return fileWriter;
+  }
+
+  private void rollCompactionFileWriter() throws IOException {
+    fileWriter.endFile();
+    fileWriter.close();
+    if (fileWriter.isEmptyTargetFile()) {
+      targetResources.get(currentFileIndex).forceMarkDeleted();
+    }
+    endedFileSize += fileWriter.getPos();
+    fileWriter = null;
+
+    currentFileIndex++;
+    fileWriter =
+        new CompactionTsFileWriter(
+            targetResources.get(currentFileIndex).getTsFile(),
+            sizeForFileWriter,
+            CompactionType.INNER_SEQ_COMPACTION);
   }
 
   @Override
@@ -89,8 +129,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endFile() throws IOException {
+    if (fileWriter == null) {
+      return;
+    }
     fileWriter.endFile();
-    if (isEmptyFile) {
+    if (fileWriter.isEmptyTargetFile()) {
       targetResource.forceMarkDeleted();
     }
   }
@@ -110,6 +153,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public long getWriterSize() throws IOException {
-    return fileWriter.getPos();
+    return endedFileSize + fileWriter.getPos();
   }
 }

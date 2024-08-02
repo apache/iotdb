@@ -22,7 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -57,7 +59,7 @@ public class SizeTieredCompactionSelector
     implements IInnerSeqSpaceSelector, IInnerUnseqSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String storageGroupName;
   protected String dataRegionId;
   protected long timePartition;
@@ -178,11 +180,11 @@ public class SizeTieredCompactionSelector
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+  public List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     this.tsFileResources = tsFileResources;
     try {
       // 1. select compaction task based on file which need to repair
-      List<InnerSpaceCompactionTask> taskList = selectFileNeedToRepair();
+      List<AbstractCompactionTask> taskList = selectFileNeedToRepair();
       if (!taskList.isEmpty()) {
         return taskList;
       }
@@ -195,7 +197,8 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
-  private List<InnerSpaceCompactionTask> selectTaskBaseOnLevel() throws IOException {
+  protected List<AbstractCompactionTask> selectTaskBaseOnLevel()
+      throws IOException, DiskSpaceInsufficientException {
     int maxLevel = searchMaxFileLevel();
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
       List<List<TsFileResource>> selectedResourceList = selectTsFileResourcesByLevel(currentLevel);
@@ -206,8 +209,8 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
-  private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
-    List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
+  private List<AbstractCompactionTask> selectFileNeedToRepair() {
+    List<AbstractCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource resource : tsFileResources) {
       if (resource.getStatus() == TsFileResourceStatus.NORMAL
           && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
@@ -223,7 +226,7 @@ public class SizeTieredCompactionSelector
     return taskList;
   }
 
-  private ICompactionPerformer createCompactionPerformer() {
+  protected ICompactionPerformer createCompactionPerformer() {
     return sequence
         ? IoTDBDescriptor.getInstance()
             .getConfig()
@@ -235,7 +238,7 @@ public class SizeTieredCompactionSelector
             .createInstance();
   }
 
-  private int searchMaxFileLevel() throws IOException {
+  protected int searchMaxFileLevel() throws IOException {
     int maxLevel = -1;
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
@@ -247,16 +250,16 @@ public class SizeTieredCompactionSelector
     return maxLevel;
   }
 
-  private List<InnerSpaceCompactionTask> createCompactionTasks(
+  private List<AbstractCompactionTask> createCompactionTasks(
       List<List<TsFileResource>> selectedTsFileResourceList) {
-    List<InnerSpaceCompactionTask> tasks = new ArrayList<>();
+    List<AbstractCompactionTask> tasks = new ArrayList<>();
     for (List<TsFileResource> tsFileResourceList : selectedTsFileResourceList) {
       tasks.add(createCompactionTask(tsFileResourceList));
     }
     return tasks;
   }
 
-  private InnerSpaceCompactionTask createCompactionTask(List<TsFileResource> fileResources) {
+  private AbstractCompactionTask createCompactionTask(List<TsFileResource> fileResources) {
     return new InnerSpaceCompactionTask(
         timePartition,
         tsFileManager,

@@ -90,7 +90,7 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
             () -> {
               InnerSpaceCompactionTask task =
                   new InnerSpaceCompactionTask(
-                      tsFileManager, 0, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+                      0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
               task.start();
             });
     thread.start();
@@ -118,7 +118,7 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
     long tsFileSize = resource.getTsFileSize();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            tsFileManager, 0, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     Assert.assertTrue(
         TimeUnit.SECONDS.toMillis(tsFileSize / IoTDBConstant.MB + 30) > task.getTimeCost());
