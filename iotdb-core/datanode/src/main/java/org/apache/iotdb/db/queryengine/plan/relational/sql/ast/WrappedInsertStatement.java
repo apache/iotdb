@@ -92,7 +92,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
+    String databaseName = getDatabase();
     final TableSchema incomingSchema = getTableSchema();
     final TableSchema realSchema =
         metadata
@@ -211,6 +211,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public String getDatabase() {
-    return null;
+    String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
+    if (databaseName == null) {
+      throw new SemanticException("database is not specified");
+    }
+    return databaseName;
   }
 }

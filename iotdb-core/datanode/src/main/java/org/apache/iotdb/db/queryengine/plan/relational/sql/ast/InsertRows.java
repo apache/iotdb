@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -56,11 +55,6 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
@@ -85,7 +79,7 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
+    String databaseName = getDatabase();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);

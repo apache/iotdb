@@ -853,13 +853,15 @@ public class IoTDBSessionRelationalIT {
       long timestamp;
 
       // no db in session and sql
-      assertThrows(
-          StatementExecutionException.class,
-          () ->
-              session.executeNonQueryStatement(
-                  String.format(
-                      "INSERT INTO table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                      0, "id:" + 0, "attr:" + 0, 0 * 1.0)));
+      try {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: database is not specified", e.getMessage());
+      }
 
       // specify db in sql
       for (long row = 0; row < 15; row++) {
@@ -943,7 +945,7 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertNonExistDBTest() throws IoTDBConnectionException, StatementExecutionException {
+  public void insertNonExistTableTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("USE \"db1\"");
 
@@ -961,6 +963,24 @@ public class IoTDBSessionRelationalIT {
         session.executeNonQueryStatement(
             String.format(
                 "INSERT INTO db2.table13 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals("507: Table table13 does not exist", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertNonExistDBTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      try {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO db3.table13 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
                 0, "id:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {

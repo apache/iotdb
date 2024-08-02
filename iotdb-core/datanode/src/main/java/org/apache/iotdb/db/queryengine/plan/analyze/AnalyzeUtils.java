@@ -90,7 +90,7 @@ public class AnalyzeUtils {
     if (context.getDatabaseName().isPresent()) {
       return context.getDatabaseName().get();
     }
-    throw new SemanticException("database not specified");
+    return null;
   }
 
   public static List<DataPartitionQueryParam> computeTableDataPartitionParams(
