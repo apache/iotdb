@@ -75,6 +75,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Test
   public void testBasicCreateTopicIfNotExists() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -129,6 +130,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Test
   public void testBasicDropTopic() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -149,6 +151,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Test
   public void testBasicDropTopicIfExists() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
