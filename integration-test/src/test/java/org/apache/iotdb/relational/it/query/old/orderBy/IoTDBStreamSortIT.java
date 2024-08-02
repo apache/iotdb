@@ -48,7 +48,7 @@ public class IoTDBStreamSortIT {
         "CREATE DATABASE db",
         "USE db",
         "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement)",
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -63,7 +63,7 @@ public class IoTDBStreamSortIT {
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l2', 'yy', 'zz', 41536000000,12,2146483648,45.231,'strawberry',FALSE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l3',41536000020,14,2907483648,231.34,'cherry',FALSE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l4',41536900000,13,2107483648,54.12,'lychee',TRUE)",
-        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l5',51536000000,15,3147483648,235.213,'watermelon',TRUE)"
+        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool,date) values('d1', 'l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2022-01-01')"
       };
 
   private static final String[] sql2 =
@@ -82,8 +82,17 @@ public class IoTDBStreamSortIT {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l2',41536000000,12,2146483648,45.231,'strawberry',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',41536000020,14,2907483648,231.34,'cherry',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l4',41536900000,13,2107483648,54.12,'lychee',TRUE)",
-        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l5',51536000000,15,3147483648,235.213,'watermelon',TRUE)"
+        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,date) values('d2','l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2023-01-01')"
       };
+
+  public static void main(String[] args) {
+    for (String s : sql1) {
+      System.out.println(s + ";");
+    }
+    for (String s : sql2) {
+      System.out.println(s + ";");
+    }
+  }
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -215,6 +224,24 @@ public class IoTDBStreamSortIT {
         };
     tableResultSetEqualTest(
         "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void dateTypeTopKTest() {
+    String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num", "date"};
+    String[] retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,l5,null,d2,15,2023-01-01,",
+          "1971-08-20T11:33:20.000Z,l5,null,d1,15,2022-01-01,",
+          "1971-04-26T18:01:40.000Z,l4,null,d2,13,null,",
+          "1971-04-26T18:01:40.000Z,l4,null,d1,13,null,",
+          "1971-04-26T17:46:40.020Z,l3,t,d1,14,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,level,attr1,device,num,date from table0 order by time desc limit 5",
         expectedHeader,
         retArray,
         DATABASE_NAME);
