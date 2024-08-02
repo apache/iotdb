@@ -115,6 +115,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
         <milo.version>0.6.11</milo.version>
+        <bouncycastle.version>1.68</bouncycastle.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
@@ -369,6 +370,11 @@
                         <artifactId>jakarta.activation</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk15on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
