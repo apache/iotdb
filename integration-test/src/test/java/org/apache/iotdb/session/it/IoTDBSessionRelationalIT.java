@@ -945,7 +945,8 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertNonExistTableTest() throws IoTDBConnectionException, StatementExecutionException {
+  public void insertNonExistTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("USE \"db1\"");
 
