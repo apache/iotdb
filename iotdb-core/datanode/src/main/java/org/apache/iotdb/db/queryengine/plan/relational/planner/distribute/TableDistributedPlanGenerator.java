@@ -437,7 +437,7 @@ public class TableDistributedPlanGenerator
       if (tableScanNode.getAssignments().get(symbol).getColumnCategory()
           == TsTableColumnCategory.ID) {
         // segments[0] is always tableName
-        orderingRules.add(deviceEntry -> (String) deviceEntry.getDeviceID().getSegments()[idx + 1]);
+        orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
       } else {
         orderingRules.add(deviceEntry -> deviceEntry.getAttributeColumnValues().get(idx));
       }
