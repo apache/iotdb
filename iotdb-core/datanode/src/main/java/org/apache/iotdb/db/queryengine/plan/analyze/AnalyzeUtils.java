@@ -87,7 +87,7 @@ public class AnalyzeUtils {
     if (statement.getDatabaseName().isPresent()) {
       return statement.getDatabaseName().get();
     }
-    if (context.getDatabaseName().isPresent()) {
+    if (context != null && context.getDatabaseName().isPresent()) {
       return context.getDatabaseName().get();
     }
     return null;
