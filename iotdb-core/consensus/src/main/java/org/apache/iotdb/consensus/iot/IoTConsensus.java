@@ -334,16 +334,9 @@ public class IoTConsensus implements IConsensus {
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
 
     } catch (ConsensusGroupModifyPeerException e) {
-      try {
-        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
-
-        // clean up the sync log channel
-        impl.notifyPeersToRemoveSyncLogChannel(peer);
-
-      } catch (ConsensusGroupModifyPeerException mpe) {
-        logger.error(
-            "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
-      }
+      logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+      // try to clean up the sync log channel
+      impl.notifyPeersToRemoveSyncLogChannel(peer);
       throw new ConsensusException(e);
     } finally {
       impl.checkAndUnlockSafeDeletedSearchIndex();
@@ -364,12 +357,8 @@ public class IoTConsensus implements IConsensus {
 
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
 
-    try {
-      // let other peers remove the sync channel with target peer
-      impl.notifyPeersToRemoveSyncLogChannel(peer);
-    } catch (ConsensusGroupModifyPeerException e) {
-      throw new ConsensusException(e.getMessage());
-    }
+    // let other peers remove the sync channel with target peer
+    impl.notifyPeersToRemoveSyncLogChannel(peer);
     KillPoint.setKillPoint(
         IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
 
@@ -500,14 +489,11 @@ public class IoTConsensus implements IConsensus {
     String previousPeerListStr = impl.getConfiguration().toString();
     for (Peer peer : impl.getConfiguration()) {
       if (!correctPeers.contains(peer)) {
-        try {
-          impl.removeSyncLogChannel(peer);
-        } catch (ConsensusGroupModifyPeerException e) {
+        if (!impl.removeSyncLogChannel(peer)) {
           logger.error(
               "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
               peer,
-              groupId,
-              e);
+              groupId);
         }
       }
     }
