@@ -36,14 +36,12 @@ import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -65,6 +63,8 @@ public abstract class SubscriptionPrefetchingQueue {
   /** Contains events coming from the upstream pipeline, corresponding to the pipe sink stage. */
   private final SubscriptionBlockingPendingQueue inputPendingQueue;
 
+  private final AtomicLong commitIdGenerator;
+
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
@@ -74,8 +74,6 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent> inFlightEvents;
 
   protected final SubscriptionPipeEventBatches batches;
-
-  private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
   /**
    * A ReentrantReadWriteLock to ensure thread-safe operations. This lock is used to guarantee
@@ -96,15 +94,16 @@ public abstract class SubscriptionPrefetchingQueue {
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
+    this.commitIdGenerator = commitIdGenerator;
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
-
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
   }
 
@@ -307,13 +306,20 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            event);
+        final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
+        // add mark completed hook
+        terminateEvent.addOnCommittedHook(
+            () -> {
+              markCompleted();
+              return null;
+            });
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+            this,
+            terminateEvent);
         continue;
       }
 
@@ -485,13 +491,19 @@ public abstract class SubscriptionPrefetchingQueue {
         commitIdGenerator.getAndIncrement());
   }
 
-  private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
-    return new SubscriptionCommitContext(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeDataNodeAgent.runtime().getRebootTimes(),
-        topicName,
-        brokerId,
-        INVALID_COMMIT_ID);
+  protected SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
+    // consider non-critical by default, meaning the client can retry
+    return new SubscriptionEvent(
+        new SubscriptionPipeEmptyEvent(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, false),
+            new SubscriptionCommitContext(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                PipeDataNodeAgent.runtime().getRebootTimes(),
+                topicName,
+                brokerId,
+                INVALID_COMMIT_ID)));
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -513,7 +525,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
-  /////////////////////////////// termination ///////////////////////////////
+  /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
     return isClosed;
@@ -529,32 +541,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public void markCompleted() {
     isCompleted = true;
-  }
-
-  public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        Collections.singletonList(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TERMINATION.getType(),
-                new TerminationPayload(),
-                generateInvalidSubscriptionCommitContext())));
-  }
-
-  public SubscriptionEvent generateSubscriptionPollErrorResponse(
-      final String errorMessage, final boolean critical) {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        Collections.singletonList(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.ERROR.getType(),
-                new ErrorPayload(errorMessage, critical),
-                generateInvalidSubscriptionCommitContext())));
-  }
-
-  protected SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
-    // consider non-critical by default, meaning the client can retry
-    return generateSubscriptionPollErrorResponse(errorMessage, false);
   }
 
   /////////////////////////////// stringify ///////////////////////////////

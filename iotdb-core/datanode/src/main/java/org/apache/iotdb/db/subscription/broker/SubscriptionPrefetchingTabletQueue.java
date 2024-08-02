@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
@@ -47,11 +48,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
     super(
         brokerId,
         topicName,
         inputPendingQueue,
+        commitIdGenerator,
         SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs(),
         SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
   }

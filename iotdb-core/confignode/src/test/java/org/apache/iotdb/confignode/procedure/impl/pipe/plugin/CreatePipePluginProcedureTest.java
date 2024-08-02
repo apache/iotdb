@@ -41,7 +41,7 @@ public class CreatePipePluginProcedureTest {
     PipePluginMeta pipePluginMeta =
         new PipePluginMeta("test", "test.class", false, "test.jar", "testMD5test");
     CreatePipePluginProcedure proc =
-        new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3});
+        new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3}, false);
 
     try {
       proc.serialize(outputStream);

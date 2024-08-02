@@ -61,10 +61,11 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("DropTopicProcedure: executeFromValidate({})", topicName);
 
     subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
+    return true;
   }
 
   @Override

@@ -37,6 +37,7 @@ import java.util.Map;
 public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private boolean ifNotExistsCondition;
   private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
@@ -47,6 +48,10 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
   }
 
   public Map<String, String> getExtractorAttributes() {
@@ -63,6 +68,10 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setIfNotExists(boolean ifNotExistsCondition) {
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   public void setExtractorAttributes(Map<String, String> extractorAttributes) {

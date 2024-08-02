@@ -81,7 +81,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromValidateTask");
 
     // Do nothing
-    return false;
+    return true;
   }
 
   @Override

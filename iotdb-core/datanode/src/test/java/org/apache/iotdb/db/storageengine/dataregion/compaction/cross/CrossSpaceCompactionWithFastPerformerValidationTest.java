@@ -100,7 +100,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
-    TsFileValidationTool.badFileNum = 0;
+    TsFileValidationTool.setBadFileNum(0);
   }
 
   /**
