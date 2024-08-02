@@ -86,31 +86,23 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void createTopic(final String topicName, final Properties properties)
+  public void createTopicIfNotExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (properties.isEmpty()) {
-      createTopic(topicName);
-      return;
-    }
-    final StringBuilder sb = new StringBuilder();
-    sb.append('(');
-    properties.forEach(
-        (k, v) ->
-            sb.append('\'')
-                .append(k)
-                .append('\'')
-                .append('=')
-                .append('\'')
-                .append(v)
-                .append('\'')
-                .append(','));
-    sb.deleteCharAt(sb.length() - 1);
-    sb.append(')');
-    final String sql = String.format("CREATE TOPIC %s WITH %s", topicName, sb);
+    final String sql = String.format("CREATE TOPIC IF NOT EXISTS %s", topicName);
     executeNonQueryStatement(sql);
   }
 
-  public void createTopic(
+  public void createTopic(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    createTopic(topicName, properties, false);
+  }
+
+  public void createTopicIfNotExists(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    createTopic(topicName, properties, true);
+  }
+
+  private void createTopic(
       final String topicName, final Properties properties, final boolean isSetIfNotExistsCondition)
       throws IoTDBConnectionException, StatementExecutionException {
     if (properties.isEmpty()) {
@@ -133,7 +125,7 @@ public class SubscriptionSession extends Session {
     sb.append(')');
     final String sql =
         isSetIfNotExistsCondition
-            ? String.format("CREATE TOPIC IF EXISTS %s WITH %s", topicName, sb)
+            ? String.format("CREATE TOPIC IF NOT EXISTS %s WITH %s", topicName, sb)
             : String.format("CREATE TOPIC %s WITH %s", topicName, sb);
     executeNonQueryStatement(sql);
   }
@@ -144,12 +136,9 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void dropTopic(final String topicName, final boolean isSetIfExistsCondition)
+  private void dropTopicIfExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
-    final String sql =
-        isSetIfExistsCondition
-            ? String.format("DROP TOPIC IF EXISTS %s", topicName)
-            : String.format("DROP TOPIC %s", topicName);
+    final String sql = String.format("DROP TOPIC IF Exists %s", topicName);
     executeNonQueryStatement(sql);
   }
 
