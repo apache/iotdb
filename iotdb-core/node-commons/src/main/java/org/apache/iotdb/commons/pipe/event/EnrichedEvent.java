@@ -29,9 +29,12 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
  * {@link EnrichedEvent} is an {@link Event} that can be enriched with additional runtime
@@ -65,6 +68,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isTimeParsed;
 
   protected boolean shouldReportOnCommit = true;
+  protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
       final String pipeName,
@@ -83,6 +87,13 @@ public abstract class EnrichedEvent implements Event {
     this.endTime = endTime;
     isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            reportProgress();
+          }
+          return null;
+        });
   }
 
   /**
@@ -346,9 +357,11 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public void onCommitted() {
-    if (shouldReportOnCommit) {
-      reportProgress();
-    }
+    onCommittedHooks.forEach(Supplier::get);
+  }
+
+  public void addOnCommittedHook(final Supplier<Void> hook) {
+    onCommittedHooks.add(hook);
   }
 
   public boolean isReleased() {
