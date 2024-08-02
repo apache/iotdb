@@ -138,7 +138,7 @@ public class SubscriptionSession extends Session {
 
   public void dropTopicIfExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
-    final String sql = String.format("DROP TOPIC IF Exists %s", topicName);
+    final String sql = String.format("DROP TOPIC IF EXISTS %s", topicName);
     executeNonQueryStatement(sql);
   }
 
