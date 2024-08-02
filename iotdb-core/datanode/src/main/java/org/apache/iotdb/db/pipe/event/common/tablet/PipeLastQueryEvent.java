@@ -35,13 +35,13 @@ public class PipeLastQueryEvent extends EnrichedEvent {
 
   private List<Tablet> tablets;
 
-  private PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final long captureTime;
 
-  private final boolean isAligned;
+  private PipeTabletMemoryBlock allocatedMemoryBlock;
 
   protected PipeLastQueryEvent(
       final List<Tablet> tablets,
-      final boolean isAligned,
+      final long captureTime,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -50,19 +50,19 @@ public class PipeLastQueryEvent extends EnrichedEvent {
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
     this.tablets = tablets;
-    this.isAligned = isAligned;
+    this.captureTime = captureTime;
   }
 
   protected PipeLastQueryEvent(
       final List<Tablet> tablets,
-      final boolean isAligned,
+      final long captureTime,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern) {
     this(
         tablets,
-        isAligned,
+        captureTime,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -73,13 +73,13 @@ public class PipeLastQueryEvent extends EnrichedEvent {
 
   protected PipeLastQueryEvent(
       final List<Tablet> tablets,
-      final boolean isAligned,
+      final long captureTime,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta) {
     this(
         tablets,
-        isAligned,
+        captureTime,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -115,7 +115,14 @@ public class PipeLastQueryEvent extends EnrichedEvent {
       long startTime,
       long endTime) {
     return new PipeLastQueryEvent(
-        tablets, isAligned, pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
+        tablets,
+        System.currentTimeMillis(),
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        pipePattern,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -138,9 +145,17 @@ public class PipeLastQueryEvent extends EnrichedEvent {
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablets=%s, isAligned=%s, allocatedMemoryBlock=%s}",
-            tablets, isAligned, allocatedMemoryBlock)
+            "PipeRawTabletInsertionEvent{tablets=%s, captureTime=%s, allocatedMemoryBlock=%s}",
+            tablets, captureTime, allocatedMemoryBlock)
         + " - "
         + super.toString();
+  }
+
+  public List<Tablet> getTablets() {
+    return tablets;
+  }
+
+  public long getCaptureTime() {
+    return captureTime;
   }
 }
