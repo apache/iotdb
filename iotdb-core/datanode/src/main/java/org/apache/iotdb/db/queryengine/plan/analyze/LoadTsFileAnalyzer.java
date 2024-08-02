@@ -93,9 +93,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class LoadTsfileAnalyzer implements AutoCloseable {
+public class LoadTsFileAnalyzer implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsfileAnalyzer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -121,7 +121,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
 
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
-  LoadTsfileAnalyzer(
+  LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,

@@ -1015,6 +1015,8 @@ public class IoTDBDescriptor {
     // Author cache
     loadAuthorCache(properties);
 
+    loadListeningAndAutoLoadTsFile(properties);
+
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
@@ -1037,6 +1039,41 @@ public class IoTDBDescriptor {
 
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
+  }
+
+  private void loadListeningAndAutoLoadTsFile(Properties properties) {
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                Boolean.toString(conf.getLoadActiveListeningEnable()))));
+
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(",", conf.getLoadActiveListeningDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_check_interval_seconds",
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
+
+    conf.setLoadActiveListeningMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_active_listening_max_thread_num",
+                Integer.toString(conf.getLoadActiveListeningMaxThreadNum()))));
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {

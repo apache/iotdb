@@ -181,6 +181,7 @@ public enum ThreadName {
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   REPAIR_DATA("RepairData"),
+  LOAD_TSFILE("LoadTsFile"),
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
