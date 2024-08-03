@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -170,6 +171,25 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       maxTime = Math.max(maxTime, memChunk.getMaxTime());
     }
     return maxTime;
+  }
+
+  @Override
+  public long getTopKTime() {
+    long maxTime = Long.MIN_VALUE;
+    for (IWritableMemChunk memChunk : memChunkMap.values()) {
+      maxTime = Math.max(maxTime, memChunk.getTopKTime());
+    }
+    return maxTime;
+  }
+
+  @Override
+  public IWritableMemChunkGroup divide() throws TopkDivideMemoryNotEnoughException {
+    WritableMemChunkGroup topkMemChunkGroup = new WritableMemChunkGroup();
+    for (String key : memChunkMap.keySet()) {
+      IWritableMemChunk topkMemChunk = memChunkMap.get(key).divide();
+      topkMemChunkGroup.memChunkMap.put(key, topkMemChunk);
+    }
+    return topkMemChunkGroup;
   }
 
   @Override

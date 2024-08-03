@@ -37,6 +37,14 @@ public class PrimitiveMemTable extends AbstractMemTable {
     super(database, dataRegionId, memTableMap);
   }
 
+  public PrimitiveMemTable(
+      String database,
+      String dataRegionId,
+      Map<IDeviceID, IWritableMemChunkGroup> memTableMap,
+      AbstractMemTable lastMemTable) {
+    super(database, dataRegionId, memTableMap, lastMemTable);
+  }
+
   @Override
   public IMemTable copy() {
     Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());

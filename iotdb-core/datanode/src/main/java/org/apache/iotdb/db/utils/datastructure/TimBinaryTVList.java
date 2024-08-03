@@ -44,14 +44,19 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
       sortedValues =
           (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, rowCount);
     }
-    sort(0, rowCount);
+    timSort(0, rowCount);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
   }
 
   @Override
-  public void tim_set(int src, int dest) {
+  public void sort(int lo, int hi) {
+    timSort(lo, hi);
+  }
+
+  @Override
+  public void timSet(int src, int dest) {
     set(src, dest);
   }
 

@@ -40,6 +40,7 @@ public class PrimitiveArrayManager {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
+  public static final int MEMTABLE_TOPK_SIZE = CONFIG.getSeqMemtableTopKSize();
 
   public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM = CONFIG.getTvListSortAlgorithm();
 

@@ -410,6 +410,9 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
+  /** The value of primitive topk area size in the tvlist */
+  private int seqMemtableTopKSize = 0;
+
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
@@ -2068,6 +2071,14 @@ public class IoTDBConfig {
 
   public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
+  }
+
+  public int getSeqMemtableTopKSize() {
+    return seqMemtableTopKSize;
+  }
+
+  public void setSeqMemtableTopKSize(int seqMemtableTopKSize) {
+    this.seqMemtableTopKSize = seqMemtableTopKSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
