@@ -55,6 +55,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
 
+  public static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
+  private static final String DROP_DATABASE_SQL = "drop database ";
+
   public String SRC_HOST;
   public String DEST_HOST;
   public String DEST_HOST2;
@@ -64,12 +68,10 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   public int DEST_PORT2;
 
   public SubscriptionSession subs;
-  public static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
   public Session session_src;
   public Session session_dest;
   public Session session_dest2;
-  private static final String dropDatabaseSql = "drop database ";
 
   @Override
   @Before
@@ -149,17 +151,17 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
 
   public void dropDB(String pattern) throws IoTDBConnectionException {
     try {
-      session_src.executeNonQueryStatement(dropDatabaseSql + pattern + "*");
+      session_src.executeNonQueryStatement(DROP_DATABASE_SQL + pattern + "*");
     } catch (StatementExecutionException e) {
       System.out.println("### src:" + e);
     }
     try {
-      session_dest.executeNonQueryStatement(dropDatabaseSql + pattern + "*");
+      session_dest.executeNonQueryStatement(DROP_DATABASE_SQL + pattern + "*");
     } catch (StatementExecutionException e) {
       System.out.println("### dest:" + e);
     }
     try {
-      session_dest2.executeNonQueryStatement(dropDatabaseSql + pattern + "*");
+      session_dest2.executeNonQueryStatement(DROP_DATABASE_SQL + pattern + "*");
     } catch (StatementExecutionException e) {
       System.out.println("### dest2:" + e);
     }
@@ -317,7 +319,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       }
       for (final SubscriptionMessage message : messages) {
         onReceived.incrementAndGet();
-        System.out.println(format.format(new Date()) + " onReceived=" + onReceived.get());
+        System.out.println(FORMAT.format(new Date()) + " onReceived=" + onReceived.get());
         final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
         try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
           for (int i = 0; i < devices.size(); i++) {
@@ -330,7 +332,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
               System.out.println(next.getTimestamp() + "," + next.getFields());
             }
             System.out.println(
-                format.format(new Date()) + " consume tsfile " + i + ":" + rowCounts.get(i).get());
+                FORMAT.format(new Date()) + " consume tsfile " + i + ":" + rowCounts.get(i).get());
           }
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -410,6 +412,10 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   }
 
   public static void assertEquals(long actual, long expected, String message) {
+    Assert.assertEquals(message, expected, actual);
+  }
+
+  public static void assertEquals(boolean actual, boolean expected, String message) {
     Assert.assertEquals(message, expected, actual);
   }
 

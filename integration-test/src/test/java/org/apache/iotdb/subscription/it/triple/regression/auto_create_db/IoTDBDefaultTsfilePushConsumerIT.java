@@ -138,7 +138,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
                 message -> {
                   onReceiveCount.incrementAndGet();
                   System.out.println(
-                      format.format(new Date()) + " ######## onReceived: " + onReceiveCount.get());
+                      FORMAT.format(new Date()) + " ######## onReceived: " + onReceiveCount.get());
                   try {
                     TsFileReader reader = message.getTsFileHandler().openReader();
                     for (int i = 0; i < deviceCount; i++) {
@@ -153,7 +153,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
                         // Date())+" "+next.getTimestamp()+","+next.getFields());
                       }
                       System.out.println(
-                          format.format(new Date())
+                          FORMAT.format(new Date())
                               + " rowCounts_"
                               + i
                               + ":"
@@ -175,7 +175,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     for (int i = 0; i < deviceCount; i++) {
       insert_data(System.currentTimeMillis(), devices.get(i));
       System.out.println(
-          format.format(new Date())
+          FORMAT.format(new Date())
               + " src "
               + i
               + ":"
@@ -198,7 +198,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     for (int i = 0; i < deviceCount; i++) {
       insert_data(1707782400000L, devices.get(i)); // 2024-02-13 08:00:00+08:00
       System.out.println(
-          format.format(new Date())
+          FORMAT.format(new Date())
               + " src "
               + i
               + ":"
@@ -213,6 +213,6 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
             assertEquals(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
           }
         });
-    System.out.println(format.format(new Date()) + " onReceived: " + onReceiveCount.get());
+    System.out.println(FORMAT.format(new Date()) + " onReceived: " + onReceiveCount.get());
   }
 }

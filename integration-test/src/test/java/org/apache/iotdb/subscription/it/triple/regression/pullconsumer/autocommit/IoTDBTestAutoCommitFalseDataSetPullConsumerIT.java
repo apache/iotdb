@@ -137,7 +137,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
           final Tablet tablet = it.next();
           session.insertTablet(tablet);
           System.out.println(
-              format.format(new Date()) + " consume data no commit:" + tablet.rowSize);
+              FORMAT.format(new Date()) + " consume data no commit:" + tablet.rowSize);
         }
       }
     }
@@ -161,7 +161,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
     String sql1 = "select count(s_0) from " + device;
     String sql2 = "select count(s_1) from " + device;
     consume_data_noCommit(consumer, session_dest);
-    System.out.println(format.format(new Date()) + " src sql1: " + getCount(session_src, sql1));
+    System.out.println(FORMAT.format(new Date()) + " src sql1: " + getCount(session_src, sql1));
     System.out.println("dest sql1: " + getCount(session_dest, sql1));
     System.out.println("dest2 sql1: " + getCount(session_dest2, sql1));
     check_count(4, sql1, "dest consume subscription before data:s_0");

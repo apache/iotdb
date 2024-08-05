@@ -232,7 +232,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                           final Tablet tablet = it.next();
                           try {
                             session_dest.insertTablet(tablet);
-                            System.out.println(format.format(new Date()) + " " + tablet.rowSize);
+                            System.out.println(FORMAT.format(new Date()) + " " + tablet.rowSize);
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -270,7 +270,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     String sql1 = "select count(s_0) from " + device + " where time <= " + timestamp;
     String sql2 = "select count(s_1) from " + device + " where time <= " + timestamp;
 
-    System.out.println(format.format(new Date()) + " src:" + getCount(session_src, sql1));
+    System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql1));
     AWAIT.untilAsserted(
         () -> {
           // Consumption data
@@ -293,17 +293,17 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     insert_data(System.currentTimeMillis());
     session_src.executeNonQueryStatement("flush;");
     System.out.println(
-        format.format(new Date())
+        FORMAT.format(new Date())
             + " Unsubscribe after writing data src:"
             + getCount(session_src, sql1));
 
     thread3.start();
     thread3.join(5000);
-    System.out.println(format.format(new Date()));
+    System.out.println(FORMAT.format(new Date()));
     AWAIT.untilAsserted(
         () -> {
           assertEquals(
-              rowCount.get(), 12, "Re-consume data: tsfile consumer " + format.format(new Date()));
+              rowCount.get(), 12, "Re-consume data: tsfile consumer " + FORMAT.format(new Date()));
           check_count(6, sql1, "consume data again:" + pattern);
           check_count(0, sql2, "Reconsume data:" + pattern2);
         });

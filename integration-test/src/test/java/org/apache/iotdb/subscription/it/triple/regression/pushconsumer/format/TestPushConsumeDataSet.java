@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.triple.regression.auto_create_db;
+package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.format;
 
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -31,46 +29,49 @@ import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRe
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * PushConsumer
- * pattern: root
+ * PushConsumer: BEFORE_CONSUME
  * DataSet
+ * pattern: root.**
  */
-@RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
-public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionRegressionIT {
-  private String pattern = "root.**";
-  public static SubscriptionPushConsumer consumer;
-  private int deviceCount = 3;
-  private static final String databasePrefix = "root.RootDatasetPushConsumer";
-  private static final String database2 = "root.RootDatasetPushConsumer2.test";
-  private static String topicName = "topicAutoCreateDB_RootDatasetPushConsumer";
+public class TestPushConsumeDataSet extends AbstractSubscriptionRegressionIT {
+  private static final String database = "root.test.TestPushConsumeDataSet";
+  private static final String topicName = "topic_TestPushConsumeDataSet";
   private static List<MeasurementSchema> schemaList = new ArrayList<>();
+  private static final String pattern = "root.**";
+  private static SubscriptionPushConsumer consumer;
+  private static final String device = database + ".d_push_dataset";
 
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
+    createDB(database);
     createTopic_s(topicName, pattern, null, null, false);
-    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT32));
+    session_src.createTimeseries(
+        device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
+    session_src.createTimeseries(
+        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
+    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
-    assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+    assertTrue(subs.getTopic(topicName).isPresent(), "create show topics");
   }
 
   @Override
@@ -81,20 +82,20 @@ public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionRegressi
     } catch (Exception e) {
     }
     subs.dropTopic(topicName);
-    dropDB(databasePrefix + "*.*");
+    dropDB(database);
     super.tearDown();
   }
 
-  private void insert_data(long timestamp, String device)
-      throws IoTDBConnectionException, StatementExecutionException {
-    Tablet tablet = new Tablet(device, schemaList, 10);
+  private void insert_data(long timestamp)
+      throws IoTDBConnectionException, StatementExecutionException, InterruptedException {
+    Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue("s_0", rowIndex, row * 20 + row);
+      tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
-      timestamp += 2000;
+      timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
     session_src.executeNonQueryStatement("flush;");
@@ -107,23 +108,17 @@ public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionRegressi
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    List<String> devices = new ArrayList<>(deviceCount);
-    for (int i = 0; i < deviceCount - 1; i++) {
-      devices.add(databasePrefix + i + ".d_0");
-    }
-    devices.add(database2 + ".d_2");
-    for (int i = 0; i < deviceCount; i++) {
-      // Subscribe before writing data
-      insert_data(1706659200000L, devices.get(i)); // 2024-01-31 08:00:00+08:00
-    }
+    // Subscribe before writing data
+    insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
+
+    final AtomicInteger rowCount = new AtomicInteger(0);
     consumer =
         new SubscriptionPushConsumer.Builder()
-            .host(SRC_HOST)
-            .port(SRC_PORT)
+            .nodeUrls(Collections.singletonList(SRC_HOST + ":" + SRC_PORT))
             .consumerId("root_dataset_consumer")
-            .consumerGroupId("push_auto_create_db")
-            .ackStrategy(AckStrategy.AFTER_CONSUME)
-            .fileSaveDir("target/push-subscription")
+            .consumerGroupId("push_format")
+            .ackStrategy(AckStrategy.BEFORE_CONSUME)
+            .fileSaveDir("target/iotdb-subscription")
             .consumeListener(
                 message -> {
                   for (final SubscriptionSessionDataSet dataSet :
@@ -142,44 +137,36 @@ public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionRegressi
     consumer.open();
     // Subscribe
     consumer.subscribe(topicName);
-    assertEquals(subs.getSubscriptions(topicName).size(), 1, "subscribe:show subscriptions");
-    for (int i = 0; i < deviceCount; i++) {
-      insert_data(System.currentTimeMillis(), devices.get(i));
-    }
-    String sql = "select count(s_0) from " + databasePrefix + "0.d_0";
-    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+    subs.getSubscriptions().forEach(System.out::println);
+    assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
+    insert_data(System.currentTimeMillis());
+    String sql0 = "select count(s_0) from " + device;
+    String sql1 = "select count(s_1) from " + device;
+    long expectCount = getCount(session_src, sql0);
+    System.out.println("###### src " + expectCount);
+    long finalExpectCount = expectCount;
     AWAIT.untilAsserted(
         () -> {
-          check_count(10, "select count(s_0) from " + devices.get(0), "0:consume data:s_0");
-          for (int i = 1; i < deviceCount; i++) {
-            check_count(10, "select count(s_0) from " + devices.get(i), i + ":consume data:s_0");
-          }
+          assertEquals(getCount(session_dest, sql0), finalExpectCount, "First result:s_0");
+          assertEquals(getCount(session_dest, sql1), finalExpectCount, "First result:s_1");
         });
 
     // Unsubscribe
     consumer.unsubscribe(topicName);
-    for (int i = 0; i < deviceCount; i++) {
-      insert_data(1707782400000L, devices.get(i)); // 2024-02-13 08:00:00+08:00
-    }
+    assertEquals(subs.getSubscriptions().size(), 0, "After cancellation, show subscriptions");
     // Subscribe and then write data
     consumer.subscribe(topicName);
-    assertEquals(
-        subs.getSubscriptions(topicName).size(), 1, "After subscribing again: show subscriptions");
-    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
-    // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
+    assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
+    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
+    expectCount = getCount(session_src, sql0);
+    System.out.println("###### src2 " + expectCount);
+    // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
+    long finalExpectCount1 = expectCount;
     AWAIT.untilAsserted(
         () -> {
-          check_count(
-              15,
-              "select count(s_0) from " + devices.get(0),
-              "0:After subscribing again:consume data:s_0");
-          for (int i = 1; i < deviceCount; i++) {
-            check_count(
-                15,
-                "select count(s_0) from " + devices.get(i),
-                i + ":After subscribing again:consume data:s_0");
-          }
+          assertEquals(getCount(session_dest, sql0), finalExpectCount1, "Second result: s_0");
+          assertEquals(getCount(session_dest, sql1), finalExpectCount1, "Second result: s_1");
         });
   }
 }

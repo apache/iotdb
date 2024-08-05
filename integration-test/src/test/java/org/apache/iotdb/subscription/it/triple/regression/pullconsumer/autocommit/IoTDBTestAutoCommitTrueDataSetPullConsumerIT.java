@@ -130,7 +130,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscr
           final Tablet tablet = it.next();
           session.insertTablet(tablet);
           System.out.println(
-              format.format(new Date()) + " consume data no commit:" + tablet.rowSize);
+              FORMAT.format(new Date()) + " consume data no commit:" + tablet.rowSize);
         }
       }
     }
@@ -155,7 +155,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscr
 
     System.out.println("First consumption");
     consume_data_noCommit(consumer, session_dest);
-    System.out.println(format.format(new Date()) + ", " + getCount(session_src, sql));
+    System.out.println(FORMAT.format(new Date()) + ", " + getCount(session_src, sql));
     check_count(4, sql, "Consumption subscription previous data: s_0");
     check_count(4, "select count(s_1) from " + device, "Consumption subscription before data: s_1");
     //        Thread.sleep(3000);

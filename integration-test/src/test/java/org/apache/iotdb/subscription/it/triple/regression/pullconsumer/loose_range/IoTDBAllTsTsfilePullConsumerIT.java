@@ -158,7 +158,7 @@ public class IoTDBAllTsTsfilePullConsumerIT extends AbstractSubscriptionRegressi
     insert_data(System.currentTimeMillis() - 4000, device);
     insert_data(System.currentTimeMillis() - 4000, device2);
     System.out.println(
-        format.format(new Date())
+        FORMAT.format(new Date())
             + " src filter:"
             + getCount(
                 session_src, "select count(s_0) from " + device + " where time <" + timestamp));

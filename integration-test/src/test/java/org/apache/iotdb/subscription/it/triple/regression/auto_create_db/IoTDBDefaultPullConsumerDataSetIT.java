@@ -109,7 +109,7 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
       insert_data(System.currentTimeMillis(), devices.get(i));
     }
     String sql = "select count(s_0) from " + databasePrefix + "0.d_0";
-    System.out.println(format.format(new Date()) + " src: " + getCount(session_src, sql));
+    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
     // Consumption data
     consume_data(consumer, session_dest);
     for (int i = 0; i < deviceCount; i++) {
@@ -124,7 +124,7 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
     consumer.subscribe(topicName);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after re-subscribing");
-    System.out.println(format.format(new Date()) + " src: " + getCount(session_src, sql));
+    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
     consume_data(consumer, session_dest);
