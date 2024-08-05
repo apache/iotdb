@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
-import com.google.common.collect.Table;
-import javafx.scene.control.Tab;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -212,9 +210,7 @@ public class OpcUaConnector implements PipeConnector {
     }
   }
 
-  private void transferTabletForClientServerModel(final OpcUaServer server, final Tablet tablet) {
-
-  }
+  private void transferTabletForClientServerModel(final OpcUaServer server, final Tablet tablet) {}
 
   /**
    * Transfer {@link Tablet} into eventNodes and post it on the eventBus, so that they will be heard
@@ -224,7 +220,8 @@ public class OpcUaConnector implements PipeConnector {
    * @param tablet the tablet to send
    * @throws UaException if failed to create {@link Event}
    */
-  private void transferTabletForPubSubModel(final OpcUaServer server, final Tablet tablet) throws UaException {
+  private void transferTabletForPubSubModel(final OpcUaServer server, final Tablet tablet)
+      throws UaException {
     // There is no nameSpace, so that nameSpaceIndex is always 0
     final int pseudoNameSpaceIndex = 0;
     final BaseEventTypeNode eventNode =
