@@ -84,13 +84,13 @@ public class OpcUaNameSpace extends ManagedNamespace {
       final NodeId folderNodeId = newNodeId(currentStr.toString());
       currentStr.append("/");
 
-      folderNode =
-          new UaFolderNode(
-              getNodeContext(),
-              folderNodeId,
-              newQualifiedName(segment),
-              LocalizedText.english(segment));
-      if (!getNodeManager().containsNode(folderNode)) {
+      if (!getNodeManager().containsNode(folderNodeId)) {
+        folderNode =
+            new UaFolderNode(
+                getNodeContext(),
+                folderNodeId,
+                newQualifiedName(segment),
+                LocalizedText.english(segment));
         getNodeManager().addNode(folderNode);
         folderNode.addReference(
             new Reference(
