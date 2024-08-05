@@ -39,15 +39,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 
 public interface BaseEnv {
-
-  boolean manualRun = false;
 
   String TREE_SQL_DIALECT = "tree";
 
@@ -108,62 +105,32 @@ public interface BaseEnv {
   List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", TREE_SQL_DIALECT));
-    }
     return getConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
   default Connection getTableConnection() throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", TABLE_SQL_DIALECT));
-    }
     return getConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
   }
 
   default Connection getConnection(String sqlDialect) throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", sqlDialect));
-    }
     return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   default Connection getConnection(Constant.Version version) throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", TREE_SQL_DIALECT));
-    }
     return getConnection(
         version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
   default Connection getConnection(Constant.Version version, String sqlDialect)
       throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", sqlDialect));
-    }
     return getConnection(
         version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   default Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", TREE_SQL_DIALECT));
-    }
     return getConnection(version, username, password, TREE_SQL_DIALECT);
   }
 
@@ -172,11 +139,6 @@ public interface BaseEnv {
       throws SQLException;
 
   default Connection getConnection(String username, String password) throws SQLException {
-    if (manualRun) {
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "localhost" + ":" + 6667,
-          BaseEnv.constructProperties("root", "root", TREE_SQL_DIALECT));
-    }
     return getConnection(username, password, TREE_SQL_DIALECT);
   }
 
