@@ -56,7 +56,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class PushConsumerPullConsumerWith1TopicShareProcessMix
+public class IoTDBPushConsumerPullConsumerWith1TopicShareProcessMixIT
     extends AbstractSubscriptionRegressionIT {
   private static String topicName = "`1-group.1-consumer.db`";
   private static List<MeasurementSchema> schemaList = new ArrayList<>();
