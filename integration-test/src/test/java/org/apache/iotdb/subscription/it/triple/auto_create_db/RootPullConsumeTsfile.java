@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.subscription.it.triple.auto_create_db;
 
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -31,6 +33,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,6 +45,8 @@ import java.util.List;
  * pattern: db
  * Tsfile
  */
+@RunWith(IoTDBTestRunner.class)
+@Category({MultiClusterIT2SubscriptionRegression.class})
 public class RootPullConsumeTsfile extends TestConfig {
   private static final String pattern = "root.**";
   private static final String device = "root.auto_create_db.RootPullConsumeTsfile.d_0";
