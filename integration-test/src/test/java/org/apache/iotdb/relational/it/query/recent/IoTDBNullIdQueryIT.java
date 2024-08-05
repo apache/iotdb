@@ -119,6 +119,21 @@ public class IoTDBNullIdQueryIT {
               + resultSet.getString("s3");
       assertEquals(result, ans);
       assertFalse(resultSet.next());
+
+      // Test deduplication
+      resultSet =
+          statement.executeQuery("select * from testNullId where id1 is null or id2 is null");
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+      assertEquals(result, ans);
+      assertFalse(resultSet.next());
     }
   }
 }
