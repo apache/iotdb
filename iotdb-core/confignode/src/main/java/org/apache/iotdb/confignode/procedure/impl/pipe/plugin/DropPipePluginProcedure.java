@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -119,9 +121,12 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
         env.getConfigManager().getPipeManager().getPipeTaskCoordinator();
     final PipePluginCoordinator pipePluginCoordinator =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
+    final SubscriptionCoordinator subscriptionCoordinator =
+        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
     final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
+    SubscriptionInfo subscriptionInfo = subscriptionCoordinator.getSubscriptionInfo();
 
     try {
       if (pipePluginCoordinator
@@ -137,6 +142,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       }
 
       pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
+      subscriptionInfo.validatePipePluginUsageByTopic(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
