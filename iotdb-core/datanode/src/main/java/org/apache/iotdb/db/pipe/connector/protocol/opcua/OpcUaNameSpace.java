@@ -169,8 +169,6 @@ public class OpcUaNameSpace extends ManagedNamespace {
                   new DateTime()));
         }
       }
-
-      getNodeManager().addNode(measurementNode);
     }
   }
 
