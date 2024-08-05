@@ -27,15 +27,19 @@ import org.junit.runners.model.Statement;
 
 import java.lang.reflect.Method;
 
-public class SkipOnSetUpFailure implements TestRule {
+public class SkipOnSetUpAndTearDownFailure implements TestRule {
 
   private final String setUpMethodName;
+  private final String tearDownMethodName;
 
   /**
    * @param setUpMethodName Should be exactly the same as the method name decorated with @Before.
+   * @param tearDownMethodName Should be exactly the same as the method name decorated with @After.
    */
-  public SkipOnSetUpFailure(@NonNull final String setUpMethodName) {
+  public SkipOnSetUpAndTearDownFailure(
+      @NonNull final String setUpMethodName, @NonNull final String tearDownMethodName) {
     this.setUpMethodName = setUpMethodName;
+    this.tearDownMethodName = tearDownMethodName;
   }
 
   @Override
@@ -59,6 +63,17 @@ public class SkipOnSetUpFailure implements TestRule {
                       "Skipping test due to setup failure for %s#%s",
                       description.getClassName(), description.getMethodName()));
             }
+
+            if (tearDownMethodName.equals(stackTraceElement.getMethodName())
+                && description.getClassName().equals(stackTraceElement.getClassName())
+                && isMethodAnnotationWithAfter(stackTraceElement.getMethodName())) {
+              e.printStackTrace();
+              // Skip this test.
+              throw new AssumptionViolatedException(
+                  String.format(
+                      "Skipping test due to tearDown failure for %s#%s",
+                      description.getClassName(), description.getMethodName()));
+            }
           }
 
           // Re-throw the exception (which means the test has failed).
@@ -73,6 +88,15 @@ public class SkipOnSetUpFailure implements TestRule {
         try {
           final Method method = description.getTestClass().getDeclaredMethod(methodName);
           return method.isAnnotationPresent(org.junit.Before.class);
+        } catch (final Throwable ignored) {
+          return false;
+        }
+      }
+
+      private boolean isMethodAnnotationWithAfter(final String methodName) {
+        try {
+          final Method method = description.getTestClass().getDeclaredMethod(methodName);
+          return method.isAnnotationPresent(org.junit.After.class);
         } catch (final Throwable ignored) {
           return false;
         }

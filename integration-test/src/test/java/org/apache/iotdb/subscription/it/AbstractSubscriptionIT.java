@@ -31,7 +31,9 @@ public abstract class AbstractSubscriptionIT {
 
   @Rule public TestName testName = new TestName();
 
-  @Rule public final TestRule skipOnSetUpFailure = new SkipOnSetUpFailure("setUp");
+  @Rule
+  public final TestRule skipOnSetUpAndTearDownFailure =
+      new SkipOnSetUpAndTearDownFailure("setUp", "tearDown");
 
   @Before
   public void setUp() throws Exception {

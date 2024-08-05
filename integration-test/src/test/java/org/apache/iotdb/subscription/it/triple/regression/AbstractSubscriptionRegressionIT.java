@@ -53,6 +53,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS;
+
 public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
 
   public static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
@@ -87,7 +89,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     super.tearDown();
   }
 
-  public void beforeSuite() throws IoTDBConnectionException, StatementExecutionException {
+  public void beforeSuite() throws IoTDBConnectionException {
     SRC_HOST = sender.getIP();
     DEST_HOST = receiver1.getIP();
     DEST_HOST2 = receiver2.getIP();
@@ -126,7 +128,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     System.out.println("TestConfig beforeClass");
   }
 
-  public void afterSuite() throws IoTDBConnectionException, StatementExecutionException {
+  public void afterSuite() throws IoTDBConnectionException {
     System.out.println("TestConfig afterClass");
     session_src.close();
     session_dest.close();
@@ -260,12 +262,12 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
 
   public void check_count(int expect_count, String sql, String msg)
       throws IoTDBConnectionException, StatementExecutionException {
-    assertEquals(getCount(session_dest, sql), expect_count, "查询count:" + msg);
+    assertEquals(getCount(session_dest, sql), expect_count, "Query count:" + msg);
   }
 
   public void check_count2(int expect_count, String sql, String msg)
       throws IoTDBConnectionException, StatementExecutionException {
-    assertEquals(getCount(session_dest2, sql), expect_count, "查询count:" + msg);
+    assertEquals(getCount(session_dest2, sql), expect_count, "Query count:" + msg);
   }
 
   public void consume_data(SubscriptionPullConsumer consumer, Session session)
@@ -277,7 +279,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     while (true) {
       Thread.sleep(1000);
 
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
         break;
       }
@@ -313,7 +315,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       Thread.sleep(1000);
       // That is, the consumer poll will keep pulling if no messages are fetched within the timeout,
       // until a message is fetched or the time exceeds the timeout.
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
         break;
       }
@@ -353,7 +355,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
     timeout = System.currentTimeMillis() + timeout;
     while (System.currentTimeMillis() < timeout) {
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
         Thread.sleep(1000);
       }
