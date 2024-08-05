@@ -150,6 +150,7 @@ public class QueryExecution implements IQueryExecution {
     T get() throws IoTDBException;
   }
 
+  @Override
   public void start() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
@@ -317,6 +318,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the workers for this query
+  @Override
   public void stop(Throwable t) {
     // only stop once
     if (stopped.compareAndSet(false, true) && this.scheduler != null) {
@@ -325,6 +327,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the query and clean up all the resources this query occupied
+  @Override
   public void stopAndCleanup() {
     stop(null);
     releaseResource();
@@ -371,6 +374,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the query and clean up all the resources this query occupied
+  @Override
   public void stopAndCleanup(Throwable t) {
     stop(t);
     releaseResource(t);
@@ -511,6 +515,7 @@ public class QueryExecution implements IQueryExecution {
    *
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
+  @Override
   public ExecutionResult getStatus() {
     // Although we monitor the state to transition to RUNNING, the future will return if any
     // Terminated state is triggered
@@ -663,6 +668,7 @@ public class QueryExecution implements IQueryExecution {
     return context;
   }
 
+  @Override
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
   }
