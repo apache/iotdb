@@ -412,6 +412,10 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
     Assert.assertEquals(message, expected, actual);
   }
 
+  public static void assertTrue(boolean condition) {
+    Assert.assertTrue(condition);
+  }
+
   public static void assertTrue(boolean condition, String message) {
     Assert.assertTrue(message, condition);
   }
