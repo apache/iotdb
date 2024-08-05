@@ -29,18 +29,16 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 
 import org.apache.tsfile.write.record.Tablet;
 
-import java.util.List;
+public class PipeLastPointTabletEvent extends EnrichedEvent {
 
-public class PipeLastQueryEvent extends EnrichedEvent {
-
-  private List<Tablet> tablets;
+  private Tablet tablet;
 
   private final long captureTime;
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  protected PipeLastQueryEvent(
-      final List<Tablet> tablets,
+  public PipeLastPointTabletEvent(
+      final Tablet tablet,
       final long captureTime,
       final String pipeName,
       final long creationTime,
@@ -49,55 +47,20 @@ public class PipeLastQueryEvent extends EnrichedEvent {
       final long startTime,
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
-    this.tablets = tablets;
+    this.tablet = tablet;
     this.captureTime = captureTime;
-  }
-
-  protected PipeLastQueryEvent(
-      final List<Tablet> tablets,
-      final long captureTime,
-      final String pipeName,
-      final long creationTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pipePattern) {
-    this(
-        tablets,
-        captureTime,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pipePattern,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE);
-  }
-
-  protected PipeLastQueryEvent(
-      final List<Tablet> tablets,
-      final long captureTime,
-      final String pipeName,
-      final long creationTime,
-      final PipeTaskMeta pipeTaskMeta) {
-    this(
-        tablets,
-        captureTime,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        null,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE);
   }
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    tablets.forEach(tablet -> PipeDataNodeResourceManager.memory().forceAllocateWithRetry(tablet));
+    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocateWithRetry(tablet);
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     allocatedMemoryBlock.close();
-    tablets = null;
+    tablet = null;
     return true;
   }
 
@@ -114,8 +77,8 @@ public class PipeLastQueryEvent extends EnrichedEvent {
       PipePattern pattern,
       long startTime,
       long endTime) {
-    return new PipeLastQueryEvent(
-        tablets,
+    return new PipeLastPointTabletEvent(
+        tablet,
         System.currentTimeMillis(),
         pipeName,
         creationTime,
@@ -145,14 +108,16 @@ public class PipeLastQueryEvent extends EnrichedEvent {
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablets=%s, captureTime=%s, allocatedMemoryBlock=%s}",
-            tablets, captureTime, allocatedMemoryBlock)
+            "PipeLastPointTabletEvent{tablets=%s, captureTime=%s, allocatedMemoryBlock=%s}",
+            tablet, captureTime, allocatedMemoryBlock)
         + " - "
         + super.toString();
   }
 
-  public List<Tablet> getTablets() {
-    return tablets;
+  /////////////////////////// Getter ///////////////////////////
+
+  public Tablet getTablets() {
+    return tablet;
   }
 
   public long getCaptureTime() {
