@@ -440,13 +440,13 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.NEW_SIZE_TIERED;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
       InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.NEW_SIZE_TIERED;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
       InnerUnseqCompactionPerformer.FAST;
@@ -469,7 +469,7 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
-  private long innerCompactionTotalFileSizeThreshold = 21474836480L;
+  private long innerCompactionTotalFileSizeThreshold = 10737418240L;
 
   private int maxLevelGapInInnerCompaction = 2;
 

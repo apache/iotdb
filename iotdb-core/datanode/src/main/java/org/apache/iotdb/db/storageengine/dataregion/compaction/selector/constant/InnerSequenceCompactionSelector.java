@@ -20,16 +20,21 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 @SuppressWarnings("squid:S6548")
 public enum InnerSequenceCompactionSelector {
-  SIZE_TIERED;
+  SIZE_TIERED,
+  NEW_SIZE_TIERED;
 
   public static InnerSequenceCompactionSelector getInnerSequenceCompactionSelector(String name) {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
+    }
+    if (NEW_SIZE_TIERED.toString().equalsIgnoreCase(name)) {
+      return NEW_SIZE_TIERED;
     }
     throw new IllegalCompactionSelectorNameException("Illegal Compaction Selector " + name);
   }
@@ -41,6 +46,9 @@ public enum InnerSequenceCompactionSelector {
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
+      case NEW_SIZE_TIERED:
+        return new NewSizeTieredCompactionSelector(
+            storageGroupName, dataRegionId, timePartition, true, tsFileManager);
       case SIZE_TIERED:
       default:
         return new SizeTieredCompactionSelector(
