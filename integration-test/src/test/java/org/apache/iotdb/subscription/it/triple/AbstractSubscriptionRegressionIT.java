@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestConfig extends AbstractSubscriptionTripleIT {
+public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
 
   public String SRC_HOST;
   public String DEST_HOST;

@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -44,7 +44,7 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class MiddleMatchPatternPullConsumerDataSet extends TestConfig {
+public class MiddleMatchPatternPullConsumerDataSet extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.MiddleMatchPatternPullConsumerDataSet";
   private static final String database2 = "root.MiddleMatchPatternPullConsumerDataSet";
   private static final String device = database + ".d_0";

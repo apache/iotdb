@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -59,7 +59,7 @@ import java.util.List;
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class TestAutoCommitFalseDataSetPullConsumer extends TestConfig {
+public class TestAutoCommitFalseDataSetPullConsumer extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.TestAutoCommitFalseDataSetPullConsumer";
   private static final String device = database + ".d_0";
   private static final String topicName = "Topic_auto_commit_false";

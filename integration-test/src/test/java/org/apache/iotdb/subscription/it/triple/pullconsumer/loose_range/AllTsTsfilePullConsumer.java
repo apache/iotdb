@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -52,7 +52,7 @@ import java.util.List;
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class AllTsTsfilePullConsumer extends TestConfig {
+public class AllTsTsfilePullConsumer extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.AllTsTsfilePullConsumer";
   private static final String database2 = "root.AllTsTsfilePullConsumer";
   private static final String topicName = "TopicAllTsTsfilePullConsumer";

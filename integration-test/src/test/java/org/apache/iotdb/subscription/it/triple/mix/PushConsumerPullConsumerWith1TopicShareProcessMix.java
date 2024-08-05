@@ -28,7 +28,7 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -56,7 +56,8 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class PushConsumerPullConsumerWith1TopicShareProcessMix extends TestConfig {
+public class PushConsumerPullConsumerWith1TopicShareProcessMix
+    extends AbstractSubscriptionRegressionIT {
   private static String topicName = "`1-group.1-consumer.db`";
   private static List<MeasurementSchema> schemaList = new ArrayList<>();
   private final String database = "root.PushConsumerPullConsumerWith1TopicShareProcessMix";

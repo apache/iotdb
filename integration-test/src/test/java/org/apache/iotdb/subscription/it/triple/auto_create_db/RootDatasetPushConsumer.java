@@ -27,7 +27,7 @@ import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -53,7 +53,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class RootDatasetPushConsumer extends TestConfig {
+public class RootDatasetPushConsumer extends AbstractSubscriptionRegressionIT {
   private String pattern = "root.**";
   public static SubscriptionPushConsumer consumer;
   private int deviceCount = 3;

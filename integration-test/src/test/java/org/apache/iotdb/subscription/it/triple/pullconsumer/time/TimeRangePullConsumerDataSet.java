@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -47,7 +47,7 @@ import java.util.List;
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class TimeRangePullConsumerDataSet extends TestConfig {
+public class TimeRangePullConsumerDataSet extends AbstractSubscriptionRegressionIT {
   private String database = "root.TimeRangePullConsumerDataSet";
   private String device = database + ".d_0";
   private String pattern = device + ".s_0";

@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.subscription.it.triple.TestConfig;
+import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -53,7 +53,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
-public class Consumer2With1TopicShareProcessTsfile extends TestConfig {
+public class Consumer2With1TopicShareProcessTsfile extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.Consumer2With1TopicShareProcessTsfile";
   private static final String device = database + ".d_0";
   private static final String topicName = "topicConsumer2With1TopicShareProcessTsfile";
