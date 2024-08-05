@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.loose_range;
 
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -37,6 +39,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,6 +56,8 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * loose-range:path
  * result: pass
  */
+@RunWith(IoTDBTestRunner.class)
+@Category({MultiClusterIT2SubscriptionRegression.class})
 public class IoTDBPathLooseTsDatasetPushConsumerIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.PathLooseTsDatasetPushConsumer";
   private static final String database2 = "root.PathLooseTsDatasetPushConsumer";

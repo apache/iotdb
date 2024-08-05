@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.multi;
 
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
@@ -39,6 +41,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -63,6 +67,8 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * <p>
  * org.apache.iotdb.subscription.it.triple.IoTDBSubscriptionSharingIT refer to this test
  */
+@RunWith(IoTDBTestRunner.class)
+@Category({MultiClusterIT2SubscriptionRegression.class})
 public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegressionIT {
 
   private String topicNamePrefix = "topic_MultiGroupVsMultiConsumer_";
