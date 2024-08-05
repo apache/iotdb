@@ -31,8 +31,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
@@ -102,7 +104,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             selectedTsFileResourceList, skippedTsFileResourceList, sequence);
     // may be modified later
     this.performer = performer;
-    this.hashCode = this.toString().hashCode();
+    this.hashCode = this.hashCode();
     createSummary();
   }
 
@@ -442,6 +444,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   public void recover() {
     try {
+      if (needRecoverTaskInfoFromLogFile) {
+        recoverTaskInfoFromLogFile();
+      }
       if (shouldRollback()) {
         rollback();
       } else {
@@ -450,6 +455,55 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       handleRecoverException(e);
+    }
+  }
+
+  private void recoverTaskInfoFromLogFile() throws IOException {
+    CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
+    logAnalyzer.analyze();
+    List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
+
+    // recover source files
+    List<TsFileResource> selectedTsFileResourceList = new ArrayList<>();
+    sourceFileIdentifiers.forEach(
+        f -> selectedTsFileResourceList.add(new TsFileResource(f.getFileFromDataDirs())));
+
+    filesView.setSourceFiles(selectedTsFileResourceList);
+    // recover target files
+    recoverTargetResource(targetFileIdentifiers, deletedTargetFileIdentifiers);
+    this.taskStage = logAnalyzer.getTaskStage();
+  }
+
+  protected void recoverTargetResource(
+      List<TsFileIdentifier> targetFileIdentifiers,
+      List<TsFileIdentifier> deletedTargetFileIdentifiers) {
+    if (targetFileIdentifiers.isEmpty()) {
+      filesView.setTargetFile(Collections.emptyList());
+      return;
+    }
+    TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
+    File tmpTargetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+    targetIdentifier.setFilename(
+        targetIdentifier
+            .getFilename()
+            .replace(
+                CompactionUtils.getTmpFileSuffix(getCompactionTaskType()),
+                TsFileConstant.TSFILE_SUFFIX));
+    File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+    if (tmpTargetFile != null) {
+      filesView.setTargetFile(new TsFileResource(tmpTargetFile));
+    } else if (targetFile != null) {
+      filesView.setTargetFile(new TsFileResource(targetFile));
+    } else {
+      // target file does not exist, then create empty resource
+      filesView.setTargetFile(new TsFileResource(new File(targetIdentifier.getFilePath())));
+    }
+    // check if target file is deleted after compaction or not
+    if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
+      // target file is deleted after compaction
+      filesView.targetFilesInLog.get(0).forceMarkDeleted();
     }
   }
 

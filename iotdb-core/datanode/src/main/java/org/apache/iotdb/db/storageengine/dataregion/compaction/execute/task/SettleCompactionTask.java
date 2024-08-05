@@ -23,7 +23,6 @@ import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
@@ -32,8 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-
-import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
 import java.io.IOException;
@@ -337,37 +334,6 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     filesView.setSourceFiles(selectedTsFileResourceList);
     // recover target file
     recoverTargetResource(targetFileIdentifiers, deletedTargetFileIdentifiers);
-  }
-
-  protected void recoverTargetResource(
-      List<TsFileIdentifier> targetFileIdentifiers,
-      List<TsFileIdentifier> deletedTargetFileIdentifiers) {
-    if (targetFileIdentifiers.isEmpty()) {
-      filesView.setTargetFile(Collections.emptyList());
-      return;
-    }
-    TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
-    File tmpTargetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
-    targetIdentifier.setFilename(
-        targetIdentifier
-            .getFilename()
-            .replace(
-                CompactionUtils.getTmpFileSuffix(getCompactionTaskType()),
-                TsFileConstant.TSFILE_SUFFIX));
-    File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
-    if (tmpTargetFile != null) {
-      filesView.setTargetFile(new TsFileResource(tmpTargetFile));
-    } else if (targetFile != null) {
-      filesView.setTargetFile(new TsFileResource(targetFile));
-    } else {
-      // target file does not exist, then create empty resource
-      filesView.setTargetFile(new TsFileResource(new File(targetIdentifier.getFilePath())));
-    }
-    // check if target file is deleted after compaction or not
-    if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
-      // target file is deleted after compaction
-      filesView.targetFilesInLog.get(0).forceMarkDeleted();
-    }
   }
 
   @Override
