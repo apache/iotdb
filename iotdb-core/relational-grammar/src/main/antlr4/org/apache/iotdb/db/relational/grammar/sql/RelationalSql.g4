@@ -100,6 +100,7 @@ statement
     | showQueriesStatement
     | killQueryStatement
     | loadConfigurationStatement
+    | setConfigurationStatement
 
     // auth Statement
 
@@ -331,6 +332,11 @@ killQueryStatement
 
 loadConfigurationStatement
     : LOAD CONFIGURATION localOrClusterMode?
+    ;
+
+// Set Configuration
+setConfigurationStatement
+    : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
     ;
 
 localOrClusterMode
