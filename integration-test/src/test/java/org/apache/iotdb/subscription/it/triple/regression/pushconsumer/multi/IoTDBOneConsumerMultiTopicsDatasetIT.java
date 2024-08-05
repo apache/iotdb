@@ -170,13 +170,18 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
     subs.getSubscriptions().forEach((System.out::println));
     assertEquals(subs.getSubscriptions().size(), 2, "show subscriptions after subscription");
 
-    try {
-      insert_data(System.currentTimeMillis(), device);
-      insert_data(System.currentTimeMillis(), device2);
-    } catch (Exception e) {
-      return;
-    }
-
+    Thread thread =
+        new Thread(
+            () -> {
+              try {
+                insert_data(System.currentTimeMillis(), device);
+                insert_data(System.currentTimeMillis(), device2);
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            });
+    thread.start();
+    thread.join();
     String sql =
         "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-01";
     String sql2 = "select count(s_0) from " + device2;
