@@ -103,7 +103,7 @@ public interface Metadata {
    *     are not STRING or Category, Type of any missing ColumnSchema is null
    */
   Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context);
+      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable);
 
   /**
    * This method is used for table device validation and should be invoked after column validation.

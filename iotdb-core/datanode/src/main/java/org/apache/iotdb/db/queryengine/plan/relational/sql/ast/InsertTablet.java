@@ -52,11 +52,6 @@ public class InsertTablet extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().get();
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
