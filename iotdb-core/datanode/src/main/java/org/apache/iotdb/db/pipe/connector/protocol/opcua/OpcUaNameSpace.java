@@ -105,15 +105,25 @@ public class OpcUaNameSpace extends ManagedNamespace {
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
       final MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       final String name = measurementSchema.getMeasurementId();
-      final UaVariableNode node =
-          new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-              .setNodeId(newNodeId(currentFolder + name))
-              .setAccessLevel(AccessLevel.READ_WRITE)
-              .setBrowseName(newQualifiedName(name))
-              .setDisplayName(LocalizedText.english(name))
-              .setDataType(Identifiers.String)
-              .setTypeDefinition(Identifiers.BaseDataVariableType)
-              .build();
+      final NodeId nodeId = newNodeId(currentFolder + name);
+      if (!getNodeManager().containsNode(nodeId)) {
+        final UaVariableNode measurementNode =
+            new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                .setNodeId(newNodeId(currentFolder + name))
+                .setAccessLevel(AccessLevel.READ_WRITE)
+                .setBrowseName(newQualifiedName(name))
+                .setDisplayName(LocalizedText.english(name))
+                .setDataType(Identifiers.String)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        getNodeManager().addNode(measurementNode);
+        measurementNode.addReference(
+            new Reference(
+                measurementNode.getNodeId(),
+                Identifiers.Organizes,
+                Identifiers.ObjectsFolder.expanded(),
+                false));
+      }
 
       int lastNonnullIndex = -1;
       for (int j = 0; j < tablet.rowSize; ++j) {
