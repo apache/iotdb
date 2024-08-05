@@ -27,7 +27,7 @@ import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionIT {
+public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionIT {
 
   protected BaseEnv sender;
   protected BaseEnv receiver1;

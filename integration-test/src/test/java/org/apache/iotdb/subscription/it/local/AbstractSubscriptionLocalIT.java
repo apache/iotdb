@@ -25,7 +25,7 @@ import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
+public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
