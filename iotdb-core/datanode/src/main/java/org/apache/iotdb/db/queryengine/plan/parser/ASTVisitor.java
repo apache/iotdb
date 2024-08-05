@@ -2195,7 +2195,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private String parseStringLiteral(String src) {
+  public static String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
       String unWrappedString = src.substring(1, src.length() - 1);

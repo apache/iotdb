@@ -210,7 +210,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
         case ID:
           // +1 for skip the table name segment
           String idColumnValue =
-              (String) currentDeviceEntry.getDeviceID().segment(columnsIndexArray[i] + 1);
+              (String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1);
           valueColumns[i] = getIdOrAttributeValueColumn(idColumnValue, positionCount);
           break;
         case ATTRIBUTE:

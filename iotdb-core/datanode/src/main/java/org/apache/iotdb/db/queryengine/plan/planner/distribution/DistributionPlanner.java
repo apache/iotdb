@@ -218,8 +218,7 @@ public class DistributionPlanner {
       setSinkForRootInstance(subPlan, fragmentInstances);
     }
 
-    return new DistributedQueryPlan(
-        logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+    return new DistributedQueryPlan(subPlan, fragmentInstances);
   }
 
   // Convert fragment to detailed instance

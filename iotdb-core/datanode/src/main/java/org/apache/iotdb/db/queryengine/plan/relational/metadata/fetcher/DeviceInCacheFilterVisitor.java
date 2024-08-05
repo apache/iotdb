@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,15 +48,12 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
 
   @Override
   public boolean visitIdFilter(final IdFilter filter, final DeviceEntry deviceEntry) {
-    final IDeviceID deviceID = deviceEntry.getDeviceID();
     // The first segment is "tableName", skip it
     final int index = filter.getIndex() + 1;
     // If index out of array bound, means that value will be null
     return filter
         .getChild()
-        .accept(
-            StringValueFilterVisitor.getInstance(),
-            deviceID.segmentNum() <= index ? null : (String) deviceID.segment(index));
+        .accept(StringValueFilterVisitor.getInstance(), (String) deviceEntry.getNthSegment(index));
   }
 
   @Override

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -349,5 +350,9 @@ public class MPPQueryContext {
 
   public void setTableQuery(boolean tableQuery) {
     isTableQuery = tableQuery;
+  }
+
+  public Optional<String> getDatabaseName() {
+    return session.getDatabaseName();
   }
 }

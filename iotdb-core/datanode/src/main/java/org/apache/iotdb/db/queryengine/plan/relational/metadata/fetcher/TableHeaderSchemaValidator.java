@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
@@ -78,7 +79,7 @@ public class TableHeaderSchemaValidator {
   }
 
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context) {
+      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
@@ -98,11 +99,15 @@ public class TableHeaderSchemaValidator {
       // auto create missing table
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
-      autoCreateTable(database, tableSchema);
-      table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-      if (table == null) {
-        throw new IllegalStateException(
-            "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
+      if (allowCreateTable) {
+        autoCreateTable(database, tableSchema);
+        table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+        if (table == null) {
+          throw new IllegalStateException(
+              "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
+        }
+      } else {
+        throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
       }
     }
 
@@ -183,10 +188,8 @@ public class TableHeaderSchemaValidator {
     for (final ColumnSchema columnSchema : columnSchemas) {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
       if (category == null) {
-        throw new SemanticException(
-            "Cannot create column category for column "
-                + columnSchema.getName()
-                + " category is not provided");
+        throw new ColumnCreationFailException(
+            "Cannot create column " + columnSchema.getName() + " category is not provided");
       }
       final String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
@@ -195,10 +198,8 @@ public class TableHeaderSchemaValidator {
       }
       final TSDataType dataType = getTSDataType(columnSchema.getType());
       if (dataType == null) {
-        throw new SemanticException(
-            "Cannot create column category for column "
-                + columnSchema.getName()
-                + " datatype is not provided");
+        throw new ColumnCreationFailException(
+            "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
     }

@@ -16,32 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+package org.apache.iotdb.db.utils.annotations;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public class DistributedQueryPlan {
-  private final SubPlan rootSubPlan;
-  private final List<FragmentInstance> instances;
-
-  public DistributedQueryPlan(SubPlan rootSubPlan, List<FragmentInstance> instances) {
-    this.rootSubPlan = rootSubPlan;
-    this.instances = instances;
-  }
-
-  @TestOnly
-  public List<PlanFragment> getFragments() {
-    return instances.stream().map(FragmentInstance::getFragment).collect(Collectors.toList());
-  }
-
-  public SubPlan getRootSubPlan() {
-    return rootSubPlan;
-  }
-
-  public List<FragmentInstance> getInstances() {
-    return instances;
-  }
-}
+/**
+ * This annotation indicates that the related filed, method, or constructor is only used for
+ * TreeModel.
+ */
+@Target({ElementType.METHOD, ElementType.FIELD, ElementType.CONSTRUCTOR})
+@Retention(RetentionPolicy.SOURCE)
+public @interface TreeModel {}

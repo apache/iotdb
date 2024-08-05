@@ -50,11 +50,6 @@ public class InsertRow extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().orElse(null);
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }

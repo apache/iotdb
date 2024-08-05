@@ -107,6 +107,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
@@ -141,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -161,9 +163,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -176,6 +180,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -383,8 +388,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private Node visitInsertValues(
-      QualifiedName tableName, List<Identifier> identifiers, Values queryBody) {
-    String tableNameString = tableName.toString();
+      QualifiedName qualifiedTableName, List<Identifier> identifiers, Values queryBody) {
+    Optional<String> databaseName = qualifiedTableName.getPrefix().map(QualifiedName::toString);
+    String tableName = qualifiedTableName.getSuffix();
+
     List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
@@ -408,17 +415,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int finalTimeColumnIndex = timeColumnIndex;
     List<InsertRowStatement> rowStatements =
         rows.stream()
-            // Row -> List<Expression>
             .map(
                 r ->
                     toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableNameString))
+                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName))
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
-    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableNameString}));
+    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableName}));
+    databaseName.ifPresent(insertRowsStatement::setDatabaseName);
     insertRowsStatement.setMeasurements(columnNameArray);
     return new InsertRows(insertRowsStatement, null);
   }
@@ -688,6 +695,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitLoadConfigurationStatement(
       RelationalSqlParser.LoadConfigurationStatementContext ctx) {
     return super.visitLoadConfigurationStatement(ctx);
+  }
+
+  @Override
+  public Node visitSetConfigurationStatement(
+      RelationalSqlParser.SetConfigurationStatementContext ctx) {
+    SetConfigurationStatement setConfigurationStatement =
+        new SetConfigurationStatement(StatementType.SET_CONFIGURATION);
+    int nodeId =
+        Integer.parseInt(ctx.INTEGER_VALUE() == null ? "-1" : ctx.INTEGER_VALUE().getText());
+    Map<String, String> configItems = new HashMap<>();
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+    for (Property property : properties) {
+      String key = parseStringLiteral(property.getName().getValue());
+      String value = parseStringLiteral(property.getNonDefaultValue().toString());
+      configItems.put(key, value);
+    }
+    setConfigurationStatement.setNodeId(nodeId);
+    setConfigurationStatement.setConfigItems(configItems);
+    return new SetConfiguration(setConfigurationStatement, null);
   }
 
   @Override

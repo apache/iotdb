@@ -129,13 +129,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       if (node.getPredicate() != null) {
 
+        predicate = node.getPredicate();
+
         // when exist diff function, predicate can not be pushed down into TableScanNode
-        if (containsDiffFunction(node.getPredicate())) {
+        if (containsDiffFunction(predicate)) {
           node.setChild(node.getChild().accept(this, context));
           return node;
         }
-
-        predicate = node.getPredicate();
 
         if (node.getChild() instanceof TableScanNode) {
           // child of FilterNode is TableScanNode, means FilterNode must get from where clause
