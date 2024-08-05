@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -460,6 +461,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }
 
+  @TableModel
   public IDeviceID getTableDeviceID() {
     if (deviceID == null) {
       String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
@@ -475,11 +477,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     return deviceID;
   }
 
+  @TableModel
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRow(this, context);
   }
 
+  @TableModel
   @Override
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
@@ -489,6 +493,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     values = tmpValues;
   }
 
+  @TableModel
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);

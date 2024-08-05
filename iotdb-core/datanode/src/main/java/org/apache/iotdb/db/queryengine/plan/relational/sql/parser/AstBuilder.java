@@ -376,8 +376,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private Node visitInsertValues(
-      QualifiedName tableName, List<Identifier> identifiers, Values queryBody) {
-    String tableNameString = tableName.toString();
+      QualifiedName qualifiedTableName, List<Identifier> identifiers, Values queryBody) {
+    Optional<String> databaseName = qualifiedTableName.getPrefix().map(QualifiedName::toString);
+    String tableName = qualifiedTableName.getSuffix();
+
     List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
@@ -401,17 +403,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int finalTimeColumnIndex = timeColumnIndex;
     List<InsertRowStatement> rowStatements =
         rows.stream()
-            // Row -> List<Expression>
             .map(
                 r ->
                     toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableNameString))
+                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName))
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
-    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableNameString}));
+    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableName}));
+    databaseName.ifPresent(insertRowsStatement::setDatabaseName);
     insertRowsStatement.setMeasurements(columnNameArray);
     return new InsertRows(insertRowsStatement, null);
   }

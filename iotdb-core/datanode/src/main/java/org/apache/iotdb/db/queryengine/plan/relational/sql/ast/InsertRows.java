@@ -55,11 +55,6 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().orElse(null);
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
@@ -84,13 +79,13 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = context.getSession().getDatabaseName().orElse(null);
+    String databaseName = getDatabase();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
       final TableSchema realSchema =
           metadata
-              .validateTableHeaderSchema(databaseName, incomingTableSchema, context)
+              .validateTableHeaderSchema(databaseName, incomingTableSchema, context, false)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
