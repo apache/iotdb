@@ -575,6 +575,7 @@ public class TSDIFFBOSVTest {
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
+
                     final_k_start_value = k_start_value;
                     final_x_l_plus = x_l_plus_value;
                     final_k_end_value = k_end_value;
@@ -583,7 +584,7 @@ public class TSDIFFBOSVTest {
 
             }
         }
-
+//        System.out.println(min_bits/4);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 //        System.out.println(encode_pos);
@@ -607,7 +608,10 @@ public class TSDIFFBOSVTest {
         encode_pos+= 4;
 
         for (int i = 0; i < block_num; i++) {
+//            int start_encode_pos = encode_pos;
             encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
+//            System.out.println(encode_pos-start_encode_pos);
+//            System.out.println("------------------------------------------");
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -984,7 +988,8 @@ public class TSDIFFBOSVTest {
     public void BOSVaryBlockSize() throws IOException {
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1029,7 +1034,7 @@ public class TSDIFFBOSVTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
         int repeatTime2 = 1;
-        for (int file_i = 8; file_i < 9; file_i++) {
+        for (int file_i = 3; file_i < 4; file_i++) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1078,8 +1083,8 @@ public class TSDIFFBOSVTest {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-//                for (int block_size_i = 6; block_size_i > 5; block_size_i--) {
-                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;

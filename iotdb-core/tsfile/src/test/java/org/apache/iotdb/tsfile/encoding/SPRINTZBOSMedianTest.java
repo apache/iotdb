@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static java.lang.Math.pow;
+import static java.lang.Math.*;
 
 public class SPRINTZBOSMedianTest {
 
@@ -506,10 +506,10 @@ public class SPRINTZBOSMedianTest {
         int right_number = 0;
 
         int length_outlier = block_size;
-        for(int value:findMedianArray){
-            if(value<=median) left_number++;
-            if (value >= median)  right_number ++;
-        }
+//        for(int value:findMedianArray){
+//            if(value<=median) left_number++;
+//            if (value >= median)  right_number ++;
+//        }
 
 
         int final_k_start_value = -1; // x_l_minus
@@ -545,15 +545,16 @@ public class SPRINTZBOSMedianTest {
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta);
-            int xu = median + pow_beta ;
-            int xl = median - pow_beta;
+            int pow_beta = (int) pow(2,beta-1);
+            int xu = min(max_delta_value+1, median + pow_beta) ;
+            int xl = max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
             cur_bits += left_number * getBitWith(xl);
-            cur_bits += right_number * getBitWith(max_delta_value-xu);
+            cur_bits += right_number * getBitWith(max_delta_value - xu);
             cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
+
                 final_k_start_value = xl;
                 final_x_l_plus = xl + 1;
                 final_k_end_value = xu;

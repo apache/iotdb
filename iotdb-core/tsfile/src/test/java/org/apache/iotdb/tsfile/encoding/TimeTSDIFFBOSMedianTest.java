@@ -10,11 +10,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 
-import static java.lang.Math.*;
+import static java.lang.Math.pow;
 
-public class TSDIFFBOSMedianTest {
+public class TimeTSDIFFBOSMedianTest {
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -666,7 +665,8 @@ public class TSDIFFBOSMedianTest {
         arr[i] = arr[j];
         arr[j] = temp;
     }
-    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) {
+    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte,
+                                       long[] time) {
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
@@ -677,6 +677,8 @@ public class TSDIFFBOSMedianTest {
 
 
         int max_bit_width = getBitWith(max_delta_value) + 1;
+        long s = System.nanoTime();
+
 
 
         int[] findMedianArray = new int[block_size];
@@ -684,8 +686,9 @@ public class TSDIFFBOSMedianTest {
 
         int median = findMedian(findMedianArray);
 
+        long e = System.nanoTime();
 
-
+        time[0] +=  (e-s);
         //        int xl=  median;
         //        int xu = median;
         // xl = 2 median - xu
@@ -694,10 +697,10 @@ public class TSDIFFBOSMedianTest {
         int right_number = 0;
 
         int length_outlier = block_size;
-//        for(int value:findMedianArray){
-//            if(value <=median) left_number++;
-//            if (value >= median)  right_number ++;
-//        }
+        for(int value:findMedianArray){
+            if(value<=median) left_number++;
+            if (value >= median)  right_number ++;
+        }
 
 
         int final_k_start_value = -1; // x_l_minus
@@ -725,22 +728,23 @@ public class TSDIFFBOSMedianTest {
             }else{
                 count_0 ++;
             }
+
+
         }
 
 
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
-            int xu = min(max_delta_value+1, median + pow_beta) ;
-            int xl = max(median - pow_beta,-1);
+            int pow_beta = (int) pow(2,beta);
+            int xu = median + pow_beta ;
+            int xl = median - pow_beta;
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
             cur_bits += left_number * getBitWith(xl);
-            cur_bits += right_number * getBitWith(max_delta_value - xu);
+            cur_bits += right_number * getBitWith(max_delta_value-xu);
             cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
-
                 final_k_start_value = xl;
                 final_x_l_plus = xl + 1;
                 final_k_end_value = xu;
@@ -752,7 +756,6 @@ public class TSDIFFBOSMedianTest {
 //
 //        }
 //        else
-//        System.out.println(min_bits/8);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 
@@ -773,7 +776,7 @@ public class TSDIFFBOSMedianTest {
     }
 
     public static int BOSEncoder(
-            int[] data, int block_size, byte[] encoded_result) {
+            int[] data, int block_size, byte[] encoded_result, long[] time) {
         block_size++;
 
         int length_all = data.length;
@@ -786,12 +789,10 @@ public class TSDIFFBOSMedianTest {
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
 
+
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
-//            int start_encode_pos = encode_pos;
-            encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
-//            System.out.println(encode_pos-start_encode_pos);
-//            System.out.println("------------------------------------------");
+            encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result, time);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -808,7 +809,7 @@ public class TSDIFFBOSMedianTest {
             int remaining = length_all-start;
 
 
-            encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result);
+            encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result, time);
 
         }
 
@@ -1025,7 +1026,7 @@ public class TSDIFFBOSMedianTest {
     public void PruneBOSTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1046,7 +1047,7 @@ public class TSDIFFBOSMedianTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
+            dataset_block_size.add(4096);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -1076,292 +1077,13 @@ public class TSDIFFBOSMedianTest {
 
         int repeatTime2 = 100;
 
-//        for (int file_i = 0; file_i < 1; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                f= tempList[1];
-
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for(int i = 0;i<data2.size();i++){
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length*4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-
-                String[] record = {
-                        f.toString(),
-                        "TS_2DIFF+BOS-M",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-                System.out.println(ratio);
-
-//                break;
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void ExpTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_test";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("Synthetic_Exp_100");
-        dataset_name.add("Synthetic_Exp_1000");
-        dataset_name.add("Synthetic_Exp_10000");
-        dataset_name.add("Synthetic_Exp_100000");
-        dataset_name.add("Synthetic_Exp_1000000");
-        dataset_name.add("Synthetic_Normal_100");
-        dataset_name.add("Synthetic_Normal_1000");
-        dataset_name.add("Synthetic_Normal_10000");
-        dataset_name.add("Synthetic_Normal_100000");
-        dataset_name.add("Synthetic_Normal_1000000");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
-        }
-
-        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
-//        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Normal_1000.csv"); //4
-//        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Normal_10000.csv");//5
-        output_path_list.add(output_parent_dir + "/Normal_100000.csv");//5
-        output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
-//        dataset_block_size.add(2048);
-
-        int repeatTime2 = 1;
-
-//        for (int file_i = 0; file_i < 1; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                f= tempList[1];
-
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for(int i = 0;i<data2.size();i++){
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length*4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-
-                String[] record = {
-                        f.toString(),
-                        "TS_2DIFF+BOS-M",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-                System.out.println(ratio);
-
-//                break;
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void BOSVaryBlockSize() throws IOException {
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-
-        int repeatTime2 = 1;
-        int[] file_i_list = {3};
+        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
         for(int file_i :file_i_list){
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
-
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -1375,7 +1097,6 @@ public class TSDIFFBOSMedianTest {
                     "Decoding Time",
                     "Points",
                     "Compressed Size",
-                    "Block Size",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
@@ -1383,6 +1104,8 @@ public class TSDIFFBOSMedianTest {
             assert tempList != null;
 
             for (File f : tempList) {
+//                f= tempList[1];
+
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1392,7 +1115,6 @@ public class TSDIFFBOSMedianTest {
 
 
                 loader.readHeaders();
-
                 while (loader.readRecord()) {
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
@@ -1403,51 +1125,53 @@ public class TSDIFFBOSMedianTest {
                     data2_arr[i] = data2.get(i);
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
-
-                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
-//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
-                    int block_size = (int) Math.pow(2, block_size_i);
-                    System.out.println(block_size);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
 
 
-                    long s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
-                    }
+                int length = 0;
 
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        BOSDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-
-                    String[] record = {
-                            f.toString(),
-                            "TS_2DIFF+BOS-M",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(block_size_i),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-
+                long[] time = new long[1];
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result,time);
                 }
 
+                long e = System.nanoTime();
+                System.out.println(time[0]);
+                System.out.println((e - s));
+                encodeTime += ((e - s) / repeatTime2);
+
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "TS_2DIFF+BOS-M",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+//                System.out.println(ratio);
+
+//                break;
             }
             writer.close();
 
         }
     }
+
 
 }

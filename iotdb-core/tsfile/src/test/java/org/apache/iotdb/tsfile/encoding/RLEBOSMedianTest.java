@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static java.lang.Math.pow;
+import static java.lang.Math.*;
 
 public class RLEBOSMedianTest {
 
@@ -535,10 +535,10 @@ public class RLEBOSMedianTest {
         int right_number = 0;
 
         int length_outlier = block_size;
-        for(int value:findMedianArray){
-            if(value<=median) left_number++;
-            if (value >= median)  right_number ++;
-        }
+//        for(int value:findMedianArray){
+//            if(value<=median) left_number++;
+//            if (value >= median)  right_number ++;
+//        }
 
 
         int final_k_start_value = -1; // x_l_minus
@@ -570,19 +570,19 @@ public class RLEBOSMedianTest {
 
         }
 
-
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta);
-            int xu = median + pow_beta ;
-            int xl = median - pow_beta;
+            int pow_beta = (int) pow(2,beta-1);
+            int xu = min(max_delta_value+1, median + pow_beta) ;
+            int xl = max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
             cur_bits += left_number * getBitWith(xl);
-            cur_bits += right_number * getBitWith(max_delta_value-xu);
+            cur_bits += right_number * getBitWith(max_delta_value - xu);
             cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
+
                 final_k_start_value = xl;
                 final_x_l_plus = xl + 1;
                 final_k_end_value = xu;
@@ -590,7 +590,6 @@ public class RLEBOSMedianTest {
             }
 
         }
-
 
         encode_pos = BOSEncodeBits(ts_block_delta,init_block_size,  final_k_start_value,final_x_l_plus, final_k_end_value,final_x_u_minus,
                 max_delta_value, min_delta,repeat_count, encode_pos , cur_byte);
@@ -1023,8 +1022,8 @@ public class RLEBOSMedianTest {
 
     @Test
     public void ExpTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_m";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1064,10 +1063,10 @@ public class RLEBOSMedianTest {
         output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
 //        dataset_block_size.add(2048);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 1000;
 //        for (int file_i = 8; file_i < 9; file_i++) {
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);

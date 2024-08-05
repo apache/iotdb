@@ -109,9 +109,9 @@ public class PFORTest {
 
 
     public static void main(@NotNull String[] args) throws IOException {
-        //String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/pfor_ratio/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/pfor_ratio/";
         //String output_parent_dir = parent_dir + "pfor_ratio/";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -119,7 +119,7 @@ public class PFORTest {
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<String> encoding_list = new ArrayList<>();
         ArrayList<String> encoding_list0 = new ArrayList<>();
-        int blocksize = 2048;
+        int blocksize = 1024;
 
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");

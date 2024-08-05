@@ -1010,7 +1010,7 @@ public class SPRINTZBOSBTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 100;
+                int repeatTime2 = 500;
 
                 int length = 0;
 
