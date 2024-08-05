@@ -37,8 +37,9 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
-import org.awaitility.core.ConditionFactory;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -49,12 +50,10 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.awaitility.Awaitility.await;
-
 public class TestConfig extends AbstractSubscriptionTripleIT {
+
   public String SRC_HOST;
   public String DEST_HOST;
   public String DEST_HOST2;
@@ -71,12 +70,19 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
   public Session session_dest2;
   private static final String dropDatabaseSql = "drop database ";
 
-  public static final ConditionFactory AWAIT =
-      await()
-          .pollInSameThread()
-          .pollDelay(10, TimeUnit.SECONDS)
-          .pollInterval(10, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS);
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    beforeSuite();
+  }
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    afterSuite();
+    super.tearDown();
+  }
 
   public void beforeSuite() throws IoTDBConnectionException, StatementExecutionException {
     SRC_HOST = sender.getIP();
@@ -119,11 +125,6 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
 
   public void afterSuite() throws IoTDBConnectionException, StatementExecutionException {
     System.out.println("TestConfig afterClass");
-    //        if(session_src.checkTimeseriesExists("root.**")) {
-    //            session_dest.executeNonQueryStatement("drop database root.**");
-    //            session_dest2.executeNonQueryStatement("drop database root.**");
-    //            session_src.executeNonQueryStatement("drop database root.**");
-    //        }
     session_src.close();
     session_dest.close();
     session_dest2.close();
@@ -249,7 +250,6 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
     while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
       long result = rowRecord.getFields().get(0).getLongV();
-      //            System.out.println(sql+" result="+result);
       return result;
     }
     return 0;
@@ -283,7 +283,6 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
             it.hasNext(); ) {
           final Tablet tablet = it.next();
           session.insertTablet(tablet);
-          //                    System.out.println("consume data:"+tablet.rowSize);
         }
       }
       consumer.commitSync(messages);
@@ -309,7 +308,8 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
     AtomicInteger onReceived = new AtomicInteger(0);
     while (true) {
       Thread.sleep(1000);
-      // 就是 consumer poll 如果在 timeout 内没有拉取到消息就会一直拉取，直到拉取到消息或者是时间超过了 timeout
+      // That is, the consumer poll will keep pulling if no messages are fetched within the timeout,
+      // until a message is fetched or the time exceeds the timeout.
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
@@ -374,15 +374,45 @@ public class TestConfig extends AbstractSubscriptionTripleIT {
     consume_data(consumer, session_dest);
   }
 
-  public static void assertEquals(int actual, int expected, String message) {
+  //////////////////////////// assertions ////////////////////////////
+
+  public static void assertEquals(int actual, int expected) {
     Assert.assertEquals(expected, actual);
+  }
+
+  public static void assertEquals(Integer actual, int expected) {
+    Assert.assertEquals(expected, (Object) actual);
+  }
+
+  public static void assertEquals(int actual, Integer expected) {
+    Assert.assertEquals((Object) expected, actual);
+  }
+
+  public static void assertEquals(Integer actual, Integer expected) {
+    Assert.assertEquals(expected, actual);
+  }
+
+  public static void assertEquals(int actual, int expected, String message) {
+    Assert.assertEquals(message, expected, actual);
+  }
+
+  public static void assertEquals(Integer actual, int expected, String message) {
+    Assert.assertEquals(message, expected, (Object) actual);
+  }
+
+  public static void assertEquals(int actual, Integer expected, String message) {
+    Assert.assertEquals(message, (Object) expected, actual);
+  }
+
+  public static void assertEquals(Integer actual, Integer expected, String message) {
+    Assert.assertEquals(message, expected, actual);
   }
 
   public static void assertEquals(long actual, long expected, String message) {
-    Assert.assertEquals(expected, actual);
+    Assert.assertEquals(message, expected, actual);
   }
 
   public static void assertTrue(boolean condition, String message) {
-    Assert.assertTrue(condition);
+    Assert.assertTrue(message, condition);
   }
 }
