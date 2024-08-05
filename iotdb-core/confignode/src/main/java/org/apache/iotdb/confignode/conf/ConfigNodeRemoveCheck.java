@@ -20,11 +20,9 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,53 +46,43 @@ public class ConfigNodeRemoveCheck {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRemoveCheck.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-
+  private final SyncConfigNodeClientPool configNodeClientPool;
   private final File systemPropertiesFile;
   private final Properties systemProperties;
 
   public ConfigNodeRemoveCheck() {
-    systemPropertiesFile =
-        new File(CONF.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
-    systemProperties = new Properties();
+    this(ConfigNodeDescriptor.getInstance().getConf(), SyncConfigNodeClientPool.getInstance());
+  }
+
+  public ConfigNodeRemoveCheck(
+      ConfigNodeConfig conf, SyncConfigNodeClientPool configNodeClientPool) {
+    this.configNodeClientPool = configNodeClientPool;
+    this.systemPropertiesFile =
+        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
+    this.systemProperties = new Properties();
   }
 
   public TConfigNodeLocation removeCheck(String args) {
-    TConfigNodeLocation nodeLocation = new TConfigNodeLocation();
     if (!systemPropertiesFile.exists()) {
       LOGGER.error("The system properties file is not exists. IoTDB-ConfigNode is shutdown.");
-      return nodeLocation;
+      return null;
     }
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       if (isNumeric(args)) {
         int id = Integer.parseInt(args);
-        nodeLocation =
-            getConfigNodeList().stream()
-                .filter(e -> e.getConfigNodeId() == id)
-                .findFirst()
-                .orElse(null);
+        return getConfigNodeList().stream()
+            .filter(e -> e.getConfigNodeId() == id)
+            .findFirst()
+            .orElse(null);
       } else {
-        try {
-          TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args);
-          nodeLocation =
-              getConfigNodeList().stream()
-                  .filter(e -> e.getInternalEndPoint().equals(endPoint))
-                  .findFirst()
-                  .orElse(null);
-        } catch (BadNodeUrlException e) {
-          LOGGER.info(
-              "Usage: remove-confignode.sh <confignode-id> "
-                  + "or remove-confignode.sh <internal_address>:<internal_port>",
-              e);
-          return nodeLocation;
-        }
+        LOGGER.error("Invalid format. Expected a numeric node id, but got: {}", args);
       }
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
 
-    return nodeLocation;
+    return null;
   }
 
   public void removeConfigNode(TConfigNodeLocation removedNode)
@@ -108,11 +96,10 @@ public class ConfigNodeRemoveCheck {
     for (TConfigNodeLocation configNodeLocation : configNodeList) {
       status =
           (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      configNodeLocation.getInternalEndPoint(),
-                      removedNode,
-                      CnToCnNodeRequestType.REMOVE_CONFIG_NODE);
+              configNodeClientPool.sendSyncRequestToConfigNodeWithRetry(
+                  configNodeLocation.getInternalEndPoint(),
+                  removedNode,
+                  CnToCnNodeRequestType.REMOVE_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }

@@ -48,8 +48,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
   // join an established cluster
   public static final String MODE_START = "-s";
-  // send a request to remove a node, more arguments: ip-of-removed-node
-  // metaport-of-removed-node
+  // send a request to remove a node, more arguments: node id of node that should be removed
   public static final String MODE_REMOVE = "-r";
 
   private final ConfigNodeInfo configNodeInfo;
@@ -114,20 +113,20 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   /**
    * remove data-nodes from cluster
    *
-   * @param args id or ip:rpc_port for removed datanode
+   * @param args id for removed datanode
    */
   private int doRemoveDataNode(String[] args)
       throws BadNodeUrlException, TException, IoTDBException, ClientManagerException {
 
     if (args.length != 2) {
-      LOGGER.info("Usage: <node-id>/<ip>:<rpc-port>");
+      LOGGER.info("Usage: <node-id>");
       return -1;
     }
 
     // REMARK: Don't need null or empty-checks for args[0] or args[1], as if they were
     // empty, the JVM would have not received them.
 
-    LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
+    LOGGER.info("Starting to remove DataNode, parameter: {}, {}", args[0], args[1]);
 
     // Load ConfigNodeList from system.properties file
     configNodeInfo.loadConfigNodeList();
@@ -158,7 +157,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   /**
    * fetch all datanode info from ConfigNode, then compare with input 'args'
    *
-   * @param args datanode id or ip:rpc_port
+   * @param args datanode id
    * @return TDataNodeLocation list
    */
   private List<TDataNodeLocation> buildDataNodeLocations(String args) {
