@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -49,6 +50,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class OpcUaNameSpace extends ManagedNamespace {
@@ -122,17 +124,26 @@ public class OpcUaNameSpace extends ManagedNamespace {
       }
 
       if (lastNonnullIndex != -1) {
-        node.setValue(
-            new DataValue(
-                new Variant(tablet.values[i]),
-                StatusCode.GOOD,
-                new DateTime(tablet.timestamps[lastNonnullIndex]),
-                new DateTime(System.currentTimeMillis())));
+        final long utcTimestamp = timestampToUtc(tablet.timestamps[lastNonnullIndex]);
+        if (Objects.isNull(node.getValue())
+            || Objects.requireNonNull(node.getValue().getSourceTime()).getUtcTime()
+                < utcTimestamp) {
+          node.setValue(
+              new DataValue(
+                  new Variant(tablet.values[i]),
+                  StatusCode.GOOD,
+                  new DateTime(utcTimestamp),
+                  new DateTime()));
+        }
       }
 
       getNodeManager().addNode(node);
       folderNode.addOrganizes(node);
     }
+  }
+
+  private static long timestampToUtc(final long timeStamp) {
+    return TimestampPrecisionUtils.currPrecision.toMillis(timeStamp * 10000L) + 116444736000000000L;
   }
 
   /**
