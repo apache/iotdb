@@ -172,7 +172,7 @@ git checkout rel/x.x
 
 ### 编译其他模块
 
-通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
+通过添加 `-P with-cpp` 可以进行c++客户端API的编译。
 
 **注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
