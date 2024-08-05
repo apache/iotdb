@@ -78,14 +78,7 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
       long startTime,
       long endTime) {
     return new PipeLastPointTabletEvent(
-        tablet,
-        System.currentTimeMillis(),
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pipePattern,
-        startTime,
-        endTime);
+        tablet, captureTime, pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
   }
 
   @Override
@@ -108,7 +101,7 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
   @Override
   public String toString() {
     return String.format(
-            "PipeLastPointTabletEvent{tablets=%s, captureTime=%s, allocatedMemoryBlock=%s}",
+            "PipeLastPointTabletEvent{tablet=%s, captureTime=%s, allocatedMemoryBlock=%s}",
             tablet, captureTime, allocatedMemoryBlock)
         + " - "
         + super.toString();
@@ -116,7 +109,7 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
 
   /////////////////////////// Getter ///////////////////////////
 
-  public Tablet getTablets() {
+  public Tablet getTablet() {
     return tablet;
   }
 

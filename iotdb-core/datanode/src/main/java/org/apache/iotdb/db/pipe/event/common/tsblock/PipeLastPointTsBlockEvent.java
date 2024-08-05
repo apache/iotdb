@@ -129,7 +129,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   public PipeLastPointTabletEvent toPipeLastPointTabletEvent() {
     return new PipeLastPointTabletEvent(
-        convertToTablets(),
+        convertToTablet(),
         captureTime,
         pipeName,
         creationTime,
@@ -141,7 +141,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   /////////////////////////// convertToTablet ///////////////////////////
 
-  private Tablet convertToTablets() {
+  private Tablet convertToTablet() {
     Object[] values = new Object[tsBlock.getValueColumnCount()];
     for (int i = 0; i < tsBlock.getValueColumnCount(); ++i) {
       Column column = tsBlock.getColumn(i);
@@ -177,7 +177,8 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
           values[i] = column.getBinaries();
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported" + type);
+          throw new UnSupportedDataTypeException(
+              "TsBlock format to Tablet format does not support type " + type);
       }
     }
 
@@ -199,7 +200,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
   @Override
   public String toString() {
     return String.format(
-            "LastPointTsBlockEvent{tsBlock=%s, partialPath=%s, measurementSchemas=%s, captureTime=%s, pipeMemoryBlock=%s}",
+            "PipeLastPointTsBlockEvent{tsBlock=%s, partialPath=%s, measurementSchemas=%s, captureTime=%s, pipeMemoryBlock=%s}",
             tsBlock, partialPath, measurementSchemas, captureTime, pipeMemoryBlock)
         + " - "
         + super.toString();
