@@ -51,7 +51,7 @@ public class SkipOnSetUpAndTearDownFailure implements TestRule {
           base.evaluate();
         } catch (final Throwable e) {
           // Trace back the exception stack to determine whether the exception was thrown during the
-          // setUp phase.
+          // setUp or tearDown phase.
           for (final StackTraceElement stackTraceElement : e.getStackTrace()) {
             if (setUpMethodName.equals(stackTraceElement.getMethodName())
                 && description.getClassName().equals(stackTraceElement.getClassName())
