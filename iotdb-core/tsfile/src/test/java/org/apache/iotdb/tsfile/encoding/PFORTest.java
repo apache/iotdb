@@ -109,9 +109,9 @@ public class PFORTest {
 
 
     public static void main(@NotNull String[] args) throws IOException {
-        //String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/pfor_ratio/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/pfor_ratio/";
         //String output_parent_dir = parent_dir + "pfor_ratio/";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -119,7 +119,7 @@ public class PFORTest {
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<String> encoding_list = new ArrayList<>();
         ArrayList<String> encoding_list0 = new ArrayList<>();
-        int blocksize = 2048;
+        int blocksize = 1024;
 
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
@@ -317,6 +317,8 @@ public class PFORTest {
                                                 offset = endindex;
                                             }
                                             decodeTime += System.nanoTime() - s;
+                                            boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                            System.out.println("equal? " + areEqual1);
                                             final_ratio += 1.0 * outBlock.size() / origin.length;
                                             final_compressed_size += outBlock.size() * 4;
                                             break;
@@ -391,6 +393,8 @@ public class PFORTest {
                                                 offset = endindex;
                                             }
                                             decodeTime += System.nanoTime() - s;
+                                            boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                            System.out.println("equal? " + areEqual1);
                                             final_ratio += 1.0 * outBlock.size() / origin.length;
                                             final_compressed_size += outBlock.size() * 4;
                                             break;
@@ -503,6 +507,8 @@ public class PFORTest {
                                                 k++;
                                             }
                                             decodeTime += System.nanoTime() - s;
+                                            boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                            System.out.println("equal? " + areEqual1);
                                             final_ratio += 1.0 * outBlock.size() / origin.length;
                                             final_compressed_size += outBlock.size() * 4;
                                             break;
@@ -576,7 +582,7 @@ public class PFORTest {
                                             }
                                             int[] slice = Arrays.copyOfRange(origin, offset, endindex);
                                             int[] tmp = getAbsDeltaTsBlock(slice, min);
-                                            compressed = new int[tmp.length + 1024];
+                                            compressed = new int[tmp.length + blocksize];
                                             inputoffset = new IntWrapper(0);
                                             outputoffset = new IntWrapper(0);
                                             codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
@@ -594,7 +600,7 @@ public class PFORTest {
                                             minList[i] = value;
                                             i++;
                                         }
-                                        compressed = new int[minList.length + 1024];
+                                        compressed = new int[minList.length + blocksize];
                                         inputoffset = new IntWrapper(0);
                                         outputoffset = new IntWrapper(0);
                                         codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
@@ -645,6 +651,8 @@ public class PFORTest {
                                             offset = endindex;
                                         }
                                         decodeTime += System.nanoTime() - s;
+                                        boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                        System.out.println("equal? " + areEqual1);
 
 
                                         final_ratio += 1.0 * outBlock.size() / origin.length;
@@ -712,7 +720,7 @@ public class PFORTest {
                                             }
                                             int[] slice = Arrays.copyOfRange(origin, offset, endindex);
                                             int[] tmp = getAbsDeltaTsBlockSPRINTZ(slice, min);
-                                            compressed = new int[tmp.length + 1024];
+                                            compressed = new int[tmp.length + blocksize];
                                             inputoffset = new IntWrapper(0);
                                             outputoffset = new IntWrapper(0);
                                             codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
@@ -730,7 +738,7 @@ public class PFORTest {
                                             minList[i] = value;
                                             i++;
                                         }
-                                        compressed = new int[minList.length + 1024];
+                                        compressed = new int[minList.length + blocksize];
                                         inputoffset = new IntWrapper(0);
                                         outputoffset = new IntWrapper(0);
                                         codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
@@ -780,7 +788,8 @@ public class PFORTest {
                                             offset = endindex;
                                         }
                                         decodeTime += System.nanoTime() - s;
-
+                                        boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                        System.out.println("equal? " + areEqual1);
 
                                         final_ratio += 1.0 * outBlock.size() / origin.length;
                                         final_compressed_size += outBlock.size() * 4;
@@ -858,7 +867,7 @@ public class PFORTest {
                                             for (int value : repeat_list) {
                                                 repeat[i++] = value;
                                             }
-                                            compressed = new int[tmp.length + 1024];
+                                            compressed = new int[tmp.length + blocksize];
                                             inputoffset = new IntWrapper(0);
                                             outputoffset = new IntWrapper(0);
                                             codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
@@ -868,7 +877,7 @@ public class PFORTest {
                                             for (i = 0; i < compressed.length; i++) {
                                                 outBlock.add(compressed[i]);
                                             }
-                                            compressed = new int[repeat.length + 1024];
+                                            compressed = new int[repeat.length + blocksize];
                                             inputoffset = new IntWrapper(0);
                                             outputoffset = new IntWrapper(0);
                                             codec.compress(repeat, inputoffset, repeat.length, compressed, outputoffset);
@@ -886,7 +895,7 @@ public class PFORTest {
                                             minList[i] = value;
                                             i++;
                                         }
-                                        compressed = new int[minList.length + 1024];
+                                        compressed = new int[minList.length + blocksize];
                                         inputoffset = new IntWrapper(0);
                                         outputoffset = new IntWrapper(0);
                                         codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
@@ -961,7 +970,8 @@ public class PFORTest {
                                             offset = endindex;
                                         }
                                         decodeTime += System.nanoTime() - s;
-
+                                        boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                        System.out.println("equal? " + areEqual1);
 
                                         final_ratio += 1.0 * outBlock.size() / origin.length;
                                         final_compressed_size += outBlock.size() * 4;
@@ -1019,7 +1029,7 @@ public class PFORTest {
                                         // TS_2DIFF
                                         inputoffset = new IntWrapper(0);
                                         outputoffset = new IntWrapper(0);
-                                        compressed = new int[origin.length + 1024];
+                                        compressed = new int[origin.length + blocksize];
                                         codec.compress(origin, inputoffset, origin.length, compressed, outputoffset);
                                         long s = System.nanoTime();
                                         compressed = Arrays.copyOf(compressed, outputoffset.intValue());
@@ -1029,6 +1039,8 @@ public class PFORTest {
                                         IntWrapper recoffset = new IntWrapper(0);
                                         codec.uncompress(compressed, new IntWrapper(0), compressed.length,
                                                 uncompressed, recoffset);
+                                        boolean areEqual1 = Arrays.equals(origin, uncompressed);
+                                        System.out.println("equal? " + areEqual1);
                                         decodeTime += System.nanoTime() - s;
 
 

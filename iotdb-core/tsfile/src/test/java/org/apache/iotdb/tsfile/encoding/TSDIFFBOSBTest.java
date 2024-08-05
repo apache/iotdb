@@ -12,10 +12,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-
 import static java.lang.Math.pow;
 
-public class TSDIFFBOSVTest {
+public class TSDIFFBOSBTest {
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -528,6 +527,57 @@ public class TSDIFFBOSVTest {
         }
 
         int k_start_value = -1; // x_l_minus
+//        int beta_max_all = getBitWith(max_delta_value)+1;
+//        int[][] hash_table_count = new int[unique_value_count][beta_max_all];
+//        int[][] hash_table_value = new int[unique_value_count][beta_max_all];
+//        int cur_value = getUniqueValue(sorted_value_list[0], left_shift) ;
+//        int next_value = getUniqueValue(sorted_value_list[1], left_shift) ;
+//
+//        for (int value_i = 0; value_i < unique_value_count; value_i++) {
+//
+//
+//            next_value = getUniqueValue(sorted_value_list[value_i + 1], left_shift) ;
+//            long k_start_valueL = sorted_value_list[value_i];
+//            hash_table_count[value_i][0] = getCount(k_start_valueL,mask);
+//
+//            int beta_max = getBitWith(max_delta_value - cur_value);
+//            for(int beta = 1; beta <= beta_max; beta++){
+//
+//            }
+//            cur_value =  next_value ;
+//
+//        }
+
+
+        int gamma_max = getBitWith(max_delta_value);
+        int[] gamma_count_list = new int[gamma_max+1];
+        int[] x_u_minus_value_list = new int[gamma_max+1];
+        int[] x_u_plus_value_list = new int[gamma_max+1];
+        int end_i = unique_value_count - 1;
+        for(int gamma = 0; gamma <= gamma_max; gamma++) {
+            int x_u_plus_pow_beta = (int) (max_delta_value - pow(2, gamma) + 1);
+            for (; end_i > 0; end_i--) {
+                x_u_minus_value = getUniqueValue(sorted_value_list[end_i - 1], left_shift);
+                int x_u_plus_value = getUniqueValue(sorted_value_list[end_i], left_shift);
+                if (x_u_minus_value < x_u_plus_pow_beta && x_u_plus_value >= x_u_plus_pow_beta){
+                    gamma_count_list[gamma] = getCount(sorted_value_list[end_i-1],mask);
+                    x_u_minus_value_list[gamma] = x_u_minus_value;
+                    x_u_plus_value_list[gamma] = x_u_plus_value;
+                } else if (x_u_minus_value < x_u_plus_pow_beta) {
+                    break;
+                }
+            }
+        }
+        for(int gamma = 1; gamma < gamma_max; gamma++) {
+            if(gamma_count_list[gamma]==0){
+                gamma_count_list[gamma] = gamma_count_list[gamma-1];
+                x_u_minus_value_list[gamma] = x_u_minus_value_list[gamma-1];
+                x_u_plus_value_list[gamma] = x_u_plus_value_list[gamma-1];
+            }
+        }
+//        System.out.println(Arrays.toString(gamma_count_list));
+//        System.out.println(Arrays.toString(x_u_minus_value_list));
+//        System.out.println(Arrays.toString(x_u_plus_value_list));
 
         for (int start_value_i = 0; start_value_i < unique_value_count-1; start_value_i++) {
             long k_start_valueL = sorted_value_list[start_value_i];
@@ -557,36 +607,106 @@ public class TSDIFFBOSVTest {
                 final_x_u_minus = max_delta_value;
             }
 
-            for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
+            int beta_max = getBitWith(max_delta_value - x_l_plus_value);
+            int end_value_i = start_value_i + 1;
 
-                x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
-                k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+            int lower_outlier_cost = cur_k1 * getBitWith(k_start_value);
+            for(int beta = 0; beta < beta_max; beta++){
+                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta));
 
-                cur_bits = 0;
-                cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+                for (; end_value_i < unique_value_count; end_value_i++) {
 
-                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
-                cur_bits += cur_k1 * getBitWith(k_start_value);
-                if (cur_k1 + cur_k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
-                if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
+                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+                    k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+                    if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
+                        cur_bits = 0;
+                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+
+                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+                        cur_bits += lower_outlier_cost;
+                        if (cur_k1 + cur_k2 != block_size)
+                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
+                        if (cur_k2 != 0)
+                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
 
 
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-
-                    final_k_start_value = k_start_value;
-                    final_x_l_plus = x_l_plus_value;
-                    final_k_end_value = k_end_value;
-                    final_x_u_minus = x_u_minus_value;
+                        if (cur_bits < min_bits) {
+                            min_bits = cur_bits;
+                            final_k_start_value = k_start_value;
+                            final_x_l_plus = x_l_plus_value;
+                            final_k_end_value = k_end_value;
+                            final_x_u_minus = x_u_minus_value;
+                        }
+                    } else if (x_u_minus_value >= x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta) {
+                        break;
+                    }
                 }
+            }
+
+
+            for(int gamma = 0; gamma < beta_max; gamma++){
+//                int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
+                x_u_minus_value = x_u_minus_value_list[gamma];
+                k_end_value =  x_u_plus_value_list[gamma];
+                    cur_bits = 0;
+                    cur_k2 = block_size - gamma_count_list[gamma];
+
+                    cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+                    cur_bits += lower_outlier_cost;
+                    if (cur_k1 + cur_k2 != block_size)
+                        cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
+                    if (cur_k2 != 0)
+                        cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
+
+
+                    if (cur_bits < min_bits) {
+                        min_bits = cur_bits;
+                        final_k_start_value = k_start_value;
+                        final_x_l_plus = x_l_plus_value;
+                        final_k_end_value = k_end_value;
+                        final_x_u_minus = x_u_minus_value;
+                    }
 
             }
+
+
+//            end_value_i = unique_value_count - 1;
+//            for(int gamma = 0; gamma <= beta_max; gamma++){
+//                for (; end_value_i > start_value_i; end_value_i--) {
+//                    int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
+//                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+//                    k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+//                    if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
+//                        cur_bits = 0;
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+//
+//                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+//                        cur_bits += cur_k1 * getBitWith(k_start_value);
+//                        if (cur_k1 + cur_k2 != block_size)
+//                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
+//                        if (cur_k2 != 0)
+//                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
+//
+//
+//                        if (cur_bits < min_bits) {
+//                            min_bits = cur_bits;
+//                            final_k_start_value = k_start_value;
+//                            final_x_l_plus = x_l_plus_value;
+//                            final_k_end_value = k_end_value;
+//                            final_x_u_minus = x_u_minus_value;
+//                        }
+//                    } else if (x_u_minus_value < x_u_plus_pow_beta && k_end_value < x_u_plus_pow_beta) {
+//                        break;
+//                    }
+//                }
+//            }
+//
+
         }
-//        System.out.println(min_bits/4);
+
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
+
 //        System.out.println(encode_pos);
 
         return encode_pos;
@@ -608,10 +728,7 @@ public class TSDIFFBOSVTest {
         encode_pos+= 4;
 
         for (int i = 0; i < block_num; i++) {
-//            int start_encode_pos = encode_pos;
             encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
-//            System.out.println(encode_pos-start_encode_pos);
-//            System.out.println("------------------------------------------");
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -843,7 +960,7 @@ public class TSDIFFBOSVTest {
     public void BOSOptimalTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_b";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -892,9 +1009,9 @@ public class TSDIFFBOSVTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 500;
 //        for (int file_i = 9; file_i < 10; file_i++) {
-
+//
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -969,7 +1086,7 @@ public class TSDIFFBOSVTest {
 
                 String[] record = {
                         f.toString(),
-                        "TS_2DIFF+BOS-V",
+                        "TS_2DIFF+BOS-B",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -988,8 +1105,7 @@ public class TSDIFFBOSVTest {
     public void BOSVaryBlockSize() throws IOException {
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_b";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1033,9 +1149,9 @@ public class TSDIFFBOSVTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 1;
-        for (int file_i = 3; file_i < 4; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 500;
+//        for (int file_i = 9; file_i < 10; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1083,8 +1199,8 @@ public class TSDIFFBOSVTest {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
-//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 6; block_size_i > 5; block_size_i--) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
@@ -1110,7 +1226,7 @@ public class TSDIFFBOSVTest {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+BOS-V",
+                            "TS_2DIFF+BOS-B",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),

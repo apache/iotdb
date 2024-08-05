@@ -1,5 +1,7 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -9,9 +11,6 @@ import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
@@ -23,13 +22,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-public class EncodeTest {
+public class EncodeTS2DIFFTest {
 
   public static void main(@NotNull String[] args) throws IOException {
 
     String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";
 //    String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-    String output_parent_dir = parent_dir + "icde0802/compression_ratio/sota_ratio/";
+    String output_parent_dir = parent_dir + "icde0802/compression_ratio/tsdiff/";
     String input_parent_dir = parent_dir + "trans_data/";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -82,7 +81,7 @@ public class EncodeTest {
       String Output = output_path_list.get(file_i);
 
       // speed
-      int repeatTime = 10; // set repeat time
+      int repeatTime = 100; // set repeat time
       String dataTypeName = "int"; // set dataType
 
       File file = new File(inputPath);
@@ -90,13 +89,13 @@ public class EncodeTest {
 
       // select encoding algorithms
       TSEncoding[] encodingList = {
-                    TSEncoding.PLAIN ,
+//                    TSEncoding.PLAIN ,
         TSEncoding.TS_2DIFF,
-        TSEncoding.RLE,
-        TSEncoding.SPRINTZ,
-        TSEncoding.GORILLA,
-        TSEncoding.RLBE,
-              TSEncoding.CHIMP,
+//        TSEncoding.RLE,
+//        TSEncoding.SPRINTZ,
+//        TSEncoding.GORILLA,
+//        TSEncoding.RLBE,
+//              TSEncoding.CHIMP,
 //              TSEncoding.BUFF
       };
 

@@ -10,10 +10,11 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static java.lang.Math.*;
 
-public class TSDIFFBOSHTest {
+public class TSDIFFBOSMedianTest {
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -349,9 +350,129 @@ public class TSDIFFBOSHTest {
         return result_list;
     }
 
+//    private static int BOSEncodeBits(int[] ts_block_delta,
+//                                     int final_k_start_value,
+//                                     int final_k_end_value,
+//                                     int max_delta_value,
+//                                     int[] min_delta,
+//                                     int encode_pos,
+//                                     byte[] cur_byte) {
+//        int block_size = ts_block_delta.length;
+//
+//        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+//        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+//        ArrayList<Integer> final_left_outlier = new ArrayList<>();
+//        ArrayList<Integer> final_right_outlier = new ArrayList<>();
+//        ArrayList<Integer> final_normal = new ArrayList<>();
+//        int k1 = 0;
+//        int k2 = 0;
+//
+//        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+//        int index_bitmap_outlier = 0;
+//        int cur_index_bitmap_outlier_bits = 0;
+//        for (int i = 0; i < block_size; i++) {
+//            int cur_value = ts_block_delta[i];
+//            if ( cur_value<= final_k_start_value) {
+//                final_left_outlier.add(cur_value);
+//                final_left_outlier_index.add(i);
+//                if (cur_index_bitmap_outlier_bits % 8 != 7) {
+//                    index_bitmap_outlier <<= 2;
+//                    index_bitmap_outlier += 3;
+//                    cur_index_bitmap_outlier_bits += 2;
+//                } else {
+//                    index_bitmap_outlier <<= 1;
+//                    index_bitmap_outlier += 1;
+//                    bitmap_outlier.add(index_bitmap_outlier);
+//                    index_bitmap_outlier = 1;
+//                    cur_index_bitmap_outlier_bits = 1;
+//                }
+//                k1++;
+//
+//
+//            } else if (cur_value >= final_k_end_value) {
+//                final_right_outlier.add(cur_value - final_k_end_value);
+//                final_right_outlier_index.add(i);
+//                if (cur_index_bitmap_outlier_bits % 8 != 7) {
+//                    index_bitmap_outlier <<= 2;
+//                    index_bitmap_outlier += 2;
+//                    cur_index_bitmap_outlier_bits += 2;
+//                } else {
+//                    index_bitmap_outlier <<= 1;
+//                    index_bitmap_outlier += 1;
+//                    bitmap_outlier.add(index_bitmap_outlier);
+//                    index_bitmap_outlier = 0;
+//                    cur_index_bitmap_outlier_bits = 1;
+//                }
+//                k2++;
+//
+//            } else {
+//                final_normal.add(cur_value - final_k_start_value-1);
+//                index_bitmap_outlier <<= 1;
+//                cur_index_bitmap_outlier_bits += 1;
+//            }
+//            if (cur_index_bitmap_outlier_bits % 8 == 0) {
+//                bitmap_outlier.add(index_bitmap_outlier);
+//                index_bitmap_outlier = 0;
+//            }
+//        }
+//        if (cur_index_bitmap_outlier_bits % 8 != 0) {
+//
+//            index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
+//
+//            index_bitmap_outlier &= 0xFF;
+//            bitmap_outlier.add(index_bitmap_outlier);
+//        }
+//
+//        int final_alpha = ((k1 + k2) * getBitWith(block_size-1)) <= (block_size + k1 + k2) ? 1 : 0;
+//
+//
+//        int k_byte = (k1 << 1);
+//        k_byte += final_alpha;
+//        k_byte += (k2 << 16);
+//
+//
+//        int2Bytes(k_byte,encode_pos,cur_byte);
+//        encode_pos += 4;
+//
+//        int2Bytes(min_delta[0],encode_pos,cur_byte);
+//        encode_pos += 4;
+//        int2Bytes(min_delta[1],encode_pos,cur_byte);
+//        encode_pos += 4;
+//        int2Bytes(final_k_start_value,encode_pos,cur_byte);
+//        encode_pos += 4;
+//        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
+//        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+//        encode_pos += 1;
+//        int left_bit_width = getBitWith(final_k_start_value);//final_left_max
+//        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
+//        intByte2Bytes(left_bit_width,encode_pos,cur_byte);
+//        encode_pos += 1;
+//        intByte2Bytes(right_bit_width,encode_pos,cur_byte);
+//        encode_pos += 1;
+//        if (final_alpha == 0) { // 0
+//
+//            for (int i : bitmap_outlier) {
+//
+//                intByte2Bytes(i,encode_pos,cur_byte);
+//                encode_pos += 1;
+//            }
+//        } else {
+//            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+//            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+//        }
+//        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+//        if (k1 != 0)
+//            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
+//        if (k2 != 0)
+//            encode_pos = encodeOutlier2Bytes(final_right_outlier, right_bit_width,encode_pos,cur_byte);
+//        return encode_pos;
+//
+//    }
     private static int BOSEncodeBits(int[] ts_block_delta,
                                      int final_k_start_value,
+                                     int final_x_l_plus,
                                      int final_k_end_value,
+                                     int final_x_u_minus,
                                      int max_delta_value,
                                      int[] min_delta,
                                      int encode_pos,
@@ -405,7 +526,7 @@ public class TSDIFFBOSHTest {
                 k2++;
 
             } else {
-                final_normal.add(cur_value - final_k_start_value-1);
+                final_normal.add(cur_value - final_x_l_plus);
                 index_bitmap_outlier <<= 1;
                 cur_index_bitmap_outlier_bits += 1;
             }
@@ -437,28 +558,46 @@ public class TSDIFFBOSHTest {
         encode_pos += 4;
         int2Bytes(min_delta[1],encode_pos,cur_byte);
         encode_pos += 4;
-        int2Bytes(final_k_start_value,encode_pos,cur_byte);
-        encode_pos += 4;
-        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
-        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
-        encode_pos += 1;
+
+        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
         int left_bit_width = getBitWith(final_k_start_value);//final_left_max
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
-        intByte2Bytes(left_bit_width,encode_pos,cur_byte);
-        encode_pos += 1;
-        intByte2Bytes(right_bit_width,encode_pos,cur_byte);
-        encode_pos += 1;
-        if (final_alpha == 0) { // 0
 
-            for (int i : bitmap_outlier) {
+        if(k1==0 && k2==0){
+            intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+            encode_pos += 1;
 
-                intByte2Bytes(i,encode_pos,cur_byte);
-                encode_pos += 1;
-            }
-        } else {
-            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
-            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+//            encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+//            return encode_pos;
         }
+        else{
+            int2Bytes(final_x_l_plus,encode_pos,cur_byte);
+            encode_pos += 4;
+            int2Bytes(final_k_end_value,encode_pos,cur_byte);
+            encode_pos += 4;
+
+            bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
+            intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+            encode_pos += 1;
+            intByte2Bytes(left_bit_width,encode_pos,cur_byte);
+            encode_pos += 1;
+            intByte2Bytes(right_bit_width,encode_pos,cur_byte);
+            encode_pos += 1;
+            if (final_alpha == 0) { // 0
+
+                for (int i : bitmap_outlier) {
+
+                    intByte2Bytes(i,encode_pos,cur_byte);
+                    encode_pos += 1;
+                }
+            } else {
+                encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+                encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+            }
+        }
+
+
+//        if(k1+k2!=block_size)
         encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
             encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
@@ -485,550 +624,138 @@ public class TSDIFFBOSHTest {
         }
     }
 
+
+    public static int findMedian(int[] arr) {
+        if (arr == null || arr.length == 0) {
+            throw new IllegalArgumentException("数组不能为空");
+        }
+        int n = arr.length;
+        return quickSelect(arr, 0, n - 1, n / 2);
+    }
+
+    private static int quickSelect(int[] arr, int left, int right, int k) {
+        if (left == right) {
+            return arr[left];
+        }
+
+        int pivotIndex = partition(arr, left, right);
+        if (k == pivotIndex) {
+            return arr[k];
+        } else if (k < pivotIndex) {
+            return quickSelect(arr, left, pivotIndex - 1, k);
+        } else {
+            return quickSelect(arr, pivotIndex + 1, right, k);
+        }
+    }
+
+    private static int partition(int[] arr, int left, int right) {
+        int pivot = arr[right];
+        int i = left;
+        for (int j = left; j < right; j++) {
+            if (arr[j] <= pivot) {
+                swap(arr, i, j);
+                i++;
+            }
+        }
+        swap(arr, i, right);
+        return i;
+    }
+
+    private static void swap(int[] arr, int i, int j) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) {
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
+//        System.out.println(Arrays.toString(ts_block_delta));
 
         block_size = remaining - 1;
         int max_delta_value = min_delta[2];
 
-        int boundary_index = (int) ((double) block_size / (double) (getBitWith(block_size-1)-1));
 
         int max_bit_width = getBitWith(max_delta_value) + 1;
-        int[] lambda_list = {getBitWith(block_size-1),1};
-        int lambda_0 = lambda_list[0];
 
-        int count_x_min = 0;
-        int count_x_max = 0;
-        GroupL[] groupL = new GroupL[max_bit_width];
-        GroupU[] groupU = new GroupU[max_bit_width];
-        for (int i = 0; i < max_bit_width; i++) {
-            int[] numbers = new int[block_size];
-            int count = 0;
-            groupL[i] = new GroupL(numbers, count, i);
-            int[] numbersU = new int[block_size];
-            groupU[i] = new GroupU(numbersU, count, i);
-        }
-        for (int value : ts_block_delta) {
-            int alpha_i = getBitWith(value);
-            if (value == 0) {
-                count_x_min++;
-            } else {
-                groupL[alpha_i].addNumber(value); // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
+
+        int[] findMedianArray = new int[block_size];
+        System.arraycopy(ts_block_delta, 0, findMedianArray, 0, block_size);
+
+        int median = findMedian(findMedianArray);
+
+
+
+        //        int xl=  median;
+        //        int xu = median;
+        // xl = 2 median - xu
+        // xl = xu - 2 ^ beta
+        int left_number = 0;
+        int right_number = 0;
+
+        int length_outlier = block_size;
+//        for(int value:findMedianArray){
+//            if(value <=median) left_number++;
+//            if (value >= median)  right_number ++;
+//        }
+
+
+        int final_k_start_value = -1; // x_l_minus
+        int final_x_l_plus = 0; // x_l_plus
+        int final_k_end_value = max_delta_value+1; // x_u_plus
+        int final_x_u_minus = max_delta_value; // x_u_minus
+
+        int min_bits = (getBitWith(final_k_end_value - final_k_start_value - 2) * (block_size));
+//        min_bits +=;
+
+
+        int[] count_left = new int[max_bit_width];
+        int[] count_right = new int[max_bit_width];
+        int count_0 = 0;
+
+
+        for(int i=0;i<length_outlier;i++){
+            int cur_value = ts_block_delta[i];
+            if(cur_value > median){
+                int beta = getBitWith(cur_value - median) ;
+                count_right[beta] ++;
+            } else if (cur_value < median) {
+                int beta = getBitWith(median - cur_value) ;
+                count_left[beta] ++;
+            }else{
+                count_0 ++;
             }
-            int gamma_i = getBitWith(max_delta_value - value);
-            if (value == max_delta_value) {
-                count_x_max++;
-            } else {
-                groupU[gamma_i].addNumber(value);// (x_max-2^{gamma_i},x_max-2^{gamma_i-1})
-            }
-        }
-        int[] alpha_list = new int[max_bit_width];
-        int num_of_alpha_list = 0;
-        int[] gamma_list = new int[max_bit_width];
-        int num_of_gamma_list = 0;
-        for (int i = 1; i < max_bit_width; i++) {
-            if(groupL[i].count!=0){
-                groupL[i].setCount_array();
-                alpha_list[num_of_alpha_list] = i;
-                num_of_alpha_list ++;
-            }
-            if(groupU[i].count!=0){
-                groupU[i].setCount_array(max_delta_value);
-                gamma_list[num_of_gamma_list] = i;
-                num_of_gamma_list ++;
-            }
         }
 
 
-        int final_k_start_value = -1;//getUniqueValue(sorted_value_list[0], left_shift);
-        int final_k_end_value = max_delta_value + 1;
-
-        int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value - 2) * (block_size));
-
-        int alpha_size = getBitWith(max(max_delta_value-1,0));
-
-        if( num_of_alpha_list ==0 && num_of_gamma_list==0){
-            encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
-                    min_delta, encode_pos , cur_byte);
-            return  encode_pos;
-        }
-
-
-        // -------------x_min-------------------
-        // lower: x_min
-        // upper: x_max
-        int k1 =    count_x_min;
-        int k1_start = 0;
-        int k2 = count_x_max;
-        int k2_end = max_delta_value;
-        int cur_bits = Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-        cur_bits += k1;
-        cur_bits += k2;
-        cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-        if (cur_bits < min_bits) {
-            min_bits = cur_bits;
-            final_k_start_value = k1_start;
-            final_k_end_value = k2_end;
-        }
-
-        // lower: x_min
-        // upper:  x_max - 1, x_max - 2, x_max - 4  ...
-        //(x_max - 2^{gamma}, x_max - 2^{gamma-1} ]
-
-        for (int gamma_i = 0; gamma_i < num_of_gamma_list-1; gamma_i++) {
-
-            int gamma = gamma_list[gamma_i];
-
-            int gap_gamma = (int) pow(2, gamma - 1);
-            k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1}  gamma : 1 to alpha_size-1
-
-            GroupU cur_group_gamma = groupU[gamma];
-
-            long[] gamma_sorted = cur_group_gamma.sorted_value_list;
-            int gamma_unique_number = cur_group_gamma.unique_number;
-            int cur_gamma_count = cur_group_gamma.count;
-
-            for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
-                int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
-                int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-
-
-                cur_bits = 0;
-                cur_bits += k1;
-                cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
-
-                if (k1 + unique_i_cur_k2 != block_size)
-                    cur_bits += (block_size - k1 - unique_i_cur_k2) *
-                            getBitWith(k2_end - x_u_i - 2);
-                cur_bits += unique_i_cur_k2 * gamma;//min_upper_outlier
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start;
-                    final_k_end_value = k2_end - x_u_i;
-                }
-            }
-            k2 += cur_gamma_count;
-
-        }
-
-        // lower: x_min
-        // k2_end = x_max - 2^{alpha_size-1}
-        // upper: (0,x_max - 2^{alpha_size-1}]
-
-        int gap_gamma = (int) pow(2,alpha_size-1);
-        k2_end = max_delta_value - gap_gamma;
-        GroupU cur_group_gamma = groupU[alpha_size];
-
-        long[] gamma_sorted = cur_group_gamma.sorted_value_list;
-        int gamma_unique_number = cur_group_gamma.unique_number;
-
-        for(int unique_i=0;unique_i<gamma_unique_number-1;unique_i++){
-            int  unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
-            int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-
-
-            cur_bits = 0;
-            cur_bits += k1;
-            cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
-
-            if (k1 + unique_i_cur_k2 != block_size)
-                cur_bits += (block_size - k1 - unique_i_cur_k2) *
-                        getBitWith(k2_end - x_u_i - 2);
-            cur_bits += unique_i_cur_k2 * alpha_size;
+        for(int beta = max_bit_width - 1; beta > 0 ; beta --){
+            left_number += count_left[beta];
+            right_number += count_right[beta];
+            int pow_beta = (int) pow(2,beta-1);
+            int xu = min(max_delta_value+1, median + pow_beta) ;
+            int xl = max(median - pow_beta,-1);
+            int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
+            cur_bits += left_number * getBitWith(xl);
+            cur_bits += right_number * getBitWith(max_delta_value - xu);
+            cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
-                final_k_start_value = k1_start;
-                final_k_end_value = k2_end - x_u_i;
+
+                final_k_start_value = xl;
+                final_x_l_plus = xl + 1;
+                final_k_end_value = xu;
+                final_x_u_minus = xu -1;
             }
-        }
-
-        // -------------x_min-------------------
-
-
-
-
-        // [x_min+2^{alpha-1},x_min+2^{alpha}) alpha = 1 to alphasize - 1
-        // -----------------[x_min+2^{alpha-1},x_min+2^{alpha})-------------------
-        // alpha_size = getBitWith(max_delta_value);
-
-        for (int alpha_i = 0; alpha_i < num_of_alpha_list-1; alpha_i++) {
-
-            int alpha = alpha_list[alpha_i];
-            int gap_alpha = (int) pow(2,alpha-1);
-            k1_start = gap_alpha;
-            GroupL cur_group_alpha = groupL[alpha];
-
-
-            // lower: [x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-            // upper: x_max
-
-            int alpha_value_count = cur_group_alpha.count;
-            long[] alpha_sorted = cur_group_alpha.sorted_value_list;
-            int alpha_unique_number = cur_group_alpha.unique_number;
-
-            // k1; count[x_min, x_min+2^{alpha-1}]
-            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-
-                int unique_i_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
-                int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
-                k2 = count_x_max;
-                k2_end = max_delta_value;
-                cur_bits = Math.min((unique_i_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_i_cur_k1 + k2);
-                cur_bits += unique_i_cur_k1 * alpha;
-                cur_bits += k2;
-                if (unique_i_cur_k1 + k2 != block_size)
-                    cur_bits += (block_size - unique_i_cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start + x_l_i;
-                    final_k_end_value = k2_end;
-                }
-            }
-
-
-            int pow_2_alpha = (int) pow(2, alpha);
-            // lower: [x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-            // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]:  k2_end - gap_gamma, k2_end
-
-
-            int cur_k1 = k1; //count[x_min, x_min+2^{alpha-1}]
-
-            // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-            // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}]:  k2_end - gap_gamma, k2_end
-            // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
-            int gamma_size = (int) (log(max_delta_value - (int) pow(2, alpha)) / log(2));
-
-            int max_pow_2_lambda = (int) pow(2, lambda_0);
-            int max_lambda = lambda_0;
-            int cur_k2 = k2; // count(x_max)
-            int gamma_i = 0;
-            for (; gamma_i < num_of_gamma_list; gamma_i++) {
-                int gamma = gamma_list[gamma_i];
-                if(gamma > gamma_size){
-                    break;
-                }
-
-                // k1: count[x_min,x_min+2^{alpha-1}]
-
-                gap_gamma = (int) pow(2, gamma - 1);
-                k2_end = max_delta_value - gap_gamma;
-                cur_group_gamma = groupU[gamma]; // (x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                int gamma_value_count = cur_group_gamma.count;
-                gamma_sorted = cur_group_gamma.sorted_value_list;
-                gamma_unique_number = cur_group_gamma.unique_number;
-
-
-                int pow_2_gamma = gap_gamma*2;
-
-                // prop 5.7
-
-                int cur_k1_start = k1_start + gap_alpha - 1;
-                int cur_k2_end = k2_end - gap_gamma + 1;
-                int cur_k2_start_of_lambda = cur_k2 + gamma_value_count;// count[x_max - 2^{gamma}+1, x_max]
-                int cur_k1_start_of_lambda = k1 + alpha_value_count; // count[x_min, 2^{alpha}-1]
-
-                cur_bits = 0;
-                cur_bits +=  Math.min((cur_k1_start_of_lambda + cur_k2_start_of_lambda) * lambda_0, block_size + cur_k1_start_of_lambda + cur_k2_start_of_lambda); // (lambda * (cur_cur_k1 + cur_k2_start_of_lambda) + zeta);
-                cur_bits += (cur_k1_start_of_lambda * alpha);
-                cur_bits += (cur_k2_start_of_lambda * gamma);
-                cur_bits += ((block_size - cur_k1_start_of_lambda - cur_k2_start_of_lambda) * getBitWith(cur_k2_end - cur_k1_start - 2));
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = cur_k1_start;
-                    final_k_end_value = cur_k2_end;
-                }
-
-                // prop 5.4
-                int prop_5_4_k1 = cur_k1 + alpha_value_count; //count[x_min, x_min+2^{alpha}-1]
-
-                cur_bits = 0;
-                cur_bits += Math.min((prop_5_4_k1 + cur_k2) * lambda_0, block_size + prop_5_4_k1 + cur_k2); //(lambda * (prop_5_4_k1 + prop_5_4_k2) + zeta);
-                cur_bits += (prop_5_4_k1 * alpha);
-                cur_bits += (cur_k2 * gamma);
-                cur_bits += ((block_size - prop_5_4_k1 - cur_k2) * getBitWith(k2_end - k1_start - gap_alpha  - 1));
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start + gap_alpha - 1;
-                    final_k_end_value = k2_end;
-                }
-
-                // prop 5.5
-                int prop_5_5_k2 = cur_k2 + gamma_value_count; // count[x_max - 2^{gamma}+1,x_max}
-
-                cur_bits = 0;
-                cur_bits += Math.min((cur_k1 + prop_5_5_k2) * lambda_0, block_size + cur_k1 + prop_5_5_k2);// (lambda * (prop_5_5_k1 + prop_5_5_k2) + zeta);
-                cur_bits += (cur_k1 * alpha);
-                cur_bits += (prop_5_5_k2 * gamma);
-                cur_bits += ((block_size - cur_k1 - prop_5_5_k2) * getBitWith(k2_end - gap_gamma - k1_start - 1));
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start;
-                    final_k_end_value = k2_end - gap_gamma + 1;
-                }
-
-                // prop 5.6
-
-                cur_bits = 0;
-                cur_bits += Math.min((cur_k1 + cur_k2) * lambda_0, block_size + cur_k1 + cur_k2);//(lambda * (prop_5_6_k1 + prop_5_6_k2) + zeta);
-                cur_bits += (cur_k1 * alpha);
-                cur_bits += (cur_k2 * gamma);
-                cur_bits += ((block_size - cur_k1 - cur_k2) * getBitWith(k2_end - k1_start - 2));
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start;
-                    final_k_end_value = k2_end;
-                }
-
-
-
-                if ((max_pow_2_lambda + 1) * pow_2_alpha + pow_2_gamma <= max_delta_value
-                        && pow_2_alpha + (max_pow_2_lambda + 1) * pow_2_gamma <= max_delta_value) {
-
-
-                }
-                else {
-
-                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-                    // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}):  k2_end - gap_gamma, k2_end
-                    // beta: getBitWidth(x_max - 2^{gamma} -(x_min+2^{alpha})) to getBitWidth(x_max - 2^{gamma-1}-(x_min+2^{alpha-1}) )
-                    int min_beta = getBitWith(max_delta_value-pow_2_gamma-pow_2_alpha);
-                    int max_beta = getBitWith(k2_end-k1_start);
-
-
-
-                    for(int beta = min_beta;beta <= max_beta;beta++) {
-                        int pow_2_beta = (int) pow(2, beta);
-                        if (beta >= alpha + max_lambda && beta <= gamma + 1 && pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value) {
-
-                        }
-                        else if (beta <= alpha + 1 && beta >= gamma + max_lambda && pow_2_beta + pow_2_alpha / 2 + pow_2_gamma >= max_delta_value) {
-
-                        }
-                        else if (beta <= alpha + 1 && beta <= gamma + 1 && pow_2_beta + pow_2_alpha / 2 + gap_gamma > max_delta_value) {
-
-                        } else {
-                            int cur_cur_k1;
-                            for (int unique_j = 0; unique_j < alpha_unique_number; unique_j++) {
-                                cur_cur_k1 = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
-                                int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
-
-                                int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
-
-                                int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                                int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
-
-
-                                for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
-                                    int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-                                    if(x_u_i < x_u_i_start){
-                                        continue;
-                                    }
-                                    if(x_u_i > x_u_i_end){
-                                        break;
-                                    }
-                                    cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
-
-                                    cur_bits = 0;
-                                    cur_bits += Math.min((cur_cur_k1 + cur_cur_k2) * lambda_0, block_size + cur_cur_k1 + cur_cur_k2);
-                                    // (lambda * (cur_k1_start_of_lambda + cur_cur_k2) + zeta); // Math.min((cur_k1 + cur_cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
-                                    cur_bits += cur_cur_k1 * alpha;
-                                    if (cur_cur_k1 + cur_cur_k2 != block_size)
-                                        cur_bits += (block_size - cur_cur_k1 - cur_cur_k2) *
-                                                getBitWith(k2_end - x_u_i - k1_start - x_l_i - 2);
-                                    cur_bits += cur_cur_k2 * gamma;
-                                    if (cur_bits < min_bits) {
-                                        min_bits = cur_bits;
-                                        final_k_start_value = k1_start + x_l_i;
-                                        final_k_end_value = k2_end - x_u_i;
-                                    }
-
-                                }
-                            }
-                        }
-
-                    }
-
-                }
-
-                cur_k2 = cur_k2 + gamma_value_count; // += count(x_max - 2^{gamma}, x_max - 2^{gamma-1})
-
-                if(cur_k1+cur_k2>boundary_index){
-                    max_pow_2_lambda = (int) pow(2, 1);
-                    max_lambda = 1;
-                }
-
-            }
-
-
-            k2 = cur_k2;
-
-            // gamma:  gamma_size+1 to ....
-            // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
-            //k2_end = x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
-            // lower: [x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-            // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
-
-
-            for (; gamma_i < num_of_gamma_list; gamma_i++) {
-                int gamma = gamma_list[gamma_i];
-                gap_gamma = (int) pow(2, gamma-1);
-                cur_group_gamma = groupU[gamma];
-                k2_end = max_delta_value - gap_gamma;
-
-                if(k2_end <= k1_start){
-                    break;
-                }
-                int gamma_value_count = cur_group_gamma.count;
-
-                gamma_unique_number = cur_group_gamma.unique_number;
-                gamma_sorted = cur_group_gamma.sorted_value_list;
-
-                for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-                    int unique_j_cur_k1 = cur_k1+ cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
-                    int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
-
-
-                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
-                        int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-                        if(k2_end - x_u_i <= k1_start+x_l_i){
-                            break;
-                        }
-                        int unique_i_cur_k2 = cur_k2+ cur_group_gamma.getCount(gamma_sorted[unique_i]);
-                        cur_bits = 0;
-                        cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
-                        cur_bits += unique_j_cur_k1*alpha;
-                        if (unique_j_cur_k1 + unique_i_cur_k2 != block_size)
-                            cur_bits += (block_size - unique_j_cur_k1 - unique_i_cur_k2) *
-                                    getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
-                        cur_bits += unique_i_cur_k2 * gamma;
-                        if (cur_bits < min_bits) {
-                            min_bits = cur_bits;
-                            final_k_start_value = k1_start + x_l_i;
-                            final_k_end_value = k2_end - x_u_i;
-                        }
-                    }
-
-                }
-                cur_k2 += gamma_value_count;
-            }
-
-            k1 += alpha_value_count;
-        }
-        // -------------------[x_min+2^{alpha-1},x_min+2^{alpha})-----------------
-
-
-        //  [x_min+2^{alpha_size-1},x_max)
-        // ----------------[x_min+2^{alpha_size-1},x_max)--------------------
-
-        // x_min+2^{alpha_size-1} < x_max && x_min+2^{alpha_size} >= x_max
-        // alpha_size - 1  < log(xmax) && alpha_size >= log(xmax)
-        // alpha_size = \lceil log(x_max-1+1) \rceil
-
-        alpha_size = alpha_list[num_of_alpha_list-1];
-        int gap_alpha = (int) pow(2,alpha_size-1);
-        k1_start = gap_alpha;
-        GroupL cur_group_alpha = groupL[alpha_size];
-        int alpha_value_count = cur_group_alpha.count;
-
-
-        // lower: [x_min+2^{alpha_size-1},x_max)
-        // ----------------- [x_min+2^{alpha_size-1},x_max)----------------------
-        long[] alpha_sorted = cur_group_alpha.sorted_value_list;
-        int alpha_unique_number = cur_group_alpha.unique_number;
-
-        int x_l_i_end = max_delta_value - k1_start; // [1, x_max - x_min+2^{alpha_size-1})
-        for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-
-            int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
-            if (x_l_i >= x_l_i_end) {
-                break;
-            }
-            int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
-
-            // lower: [x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
-            // upper: x_max
-            k2 = count_x_max;
-            k2_end = max_delta_value;
-
-            cur_bits = 0;
-            cur_bits += Math.min((unique_j_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + k2);
-            cur_bits += unique_j_cur_k1 * alpha_size;
-            cur_bits += k2;
-            if (unique_j_cur_k1 + k2 != block_size)
-                cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k1_start + x_l_i;
-                final_k_end_value = k2_end;
-            }
-        }
-        // lower: (x_min+2^{alpha_size-1},x_max)
-        // upper: (x_max - 2^{gamma}, x_max)
-        // gamma:  gamma_size+1 to ....
-        // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
-        // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}] : k2_end - gap_gamma, k2_end
-
-        int max_pow_2_lambda = (int) pow(2, lambda_0);
-        int max_lambda = lambda_0;
-        for (int gamma_i = 0; gamma_i < num_of_gamma_list; gamma_i++) {
-            int gamma =  gamma_list[gamma_i];
-            gap_gamma = (int) pow(2, gamma-1);
-            k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ;
-
-            if(k2_end<=k1_start){
-                break;
-            }
-            cur_group_gamma = groupU[gamma];
-
-            int gamma_value_count = cur_group_gamma.count;
-            gamma_sorted = cur_group_gamma.sorted_value_list;
-            gamma_unique_number = cur_group_gamma.unique_number;
-
-            int pow_2_gamma = gap_gamma*2;
-            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-                int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
-                int x_u_i_end = k2_end - k1_start - x_l_i; // x_u_i>= k2_end - k1_start - x_l_i; break ;
-
-                if(x_u_i_end <= 0 || x_l_i >= x_l_i_end){
-                    break;
-                }
-                int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
-                x_u_i_end = Math.min(x_u_i_end,gap_gamma);
-
-
-                for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
-
-                    int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-                    if(x_u_i>=x_u_i_end){
-                        break;
-                    }
-
-                    int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
-                    cur_bits = 0;
-                    cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
-                    cur_bits += unique_j_cur_k1*alpha_size;
-                    if (unique_j_cur_k1 + unique_i_cur_k2 != block_size)
-                        cur_bits += (block_size - unique_j_cur_k1 - unique_i_cur_k2) *
-                                getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
-                    cur_bits += unique_i_cur_k2 * gamma;
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        final_k_start_value = k1_start + x_l_i;
-                        final_k_end_value = k2_end - x_u_i;
-                    }
-                }
-            }
-            k2 += gamma_value_count;
-
-
 
         }
-        // ------------------ [x_min+2^{alpha_size-1},x_max)--------------------
-        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
-                min_delta, encode_pos , cur_byte);
+//        if(min_bits == bp_cost){
+//
+//        }
+//        else
+//        System.out.println(min_bits/8);
+        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+                max_delta_value, min_delta, encode_pos , cur_byte);
+
 
         return encode_pos;
     }
@@ -1059,8 +786,12 @@ public class TSDIFFBOSHTest {
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
 
+//        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
+//            int start_encode_pos = encode_pos;
             encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
+//            System.out.println(encode_pos-start_encode_pos);
+//            System.out.println("------------------------------------------");
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1103,81 +834,95 @@ public class TSDIFFBOSHTest {
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
-        int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
-        decode_pos += 4;
-
-        int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-
-        int left_bit_width = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-        int right_bit_width = bytes2Integer(encoded, decode_pos, 1);
-        decode_pos += 1;
-
         ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_left_outlier = new ArrayList<>();
         ArrayList<Integer> final_right_outlier = new ArrayList<>();
         ArrayList<Integer> final_normal= new ArrayList<>();;
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+        int final_k_start_value = 0;
+        int final_k_end_value = 0;
+        int bit_width_final = 0;
+        int left_bit_width = 0;
+        int right_bit_width = 0;
 
+        if(k1!=0 || k2 != 0){
+             final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
+            decode_pos += 4;
 
-        if (final_alpha == 0) {
-            int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
-            for (int i = 0; i < bitmap_bytes; i++) {
-                bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
-                decode_pos += 1;
-            }
-            int bitmap_outlier_i = 0;
-            int remaining_bits = 8;
-            int tmp = bitmap_outlier.get(bitmap_outlier_i);
-            bitmap_outlier_i++;
-            int i = 0;
-            while (i < block_size ) {
-                if (remaining_bits > 1) {
-                    int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
-                    remaining_bits -= 1;
-                    if (bit_i == 1) {
-                        int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+            final_k_end_value = bytes2Integer(encoded, decode_pos, 4);
+            decode_pos += 4;
+
+            bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+
+            left_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+            right_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+
+            if (final_alpha == 0) {
+                int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
+                for (int i = 0; i < bitmap_bytes; i++) {
+                    bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
+                    decode_pos += 1;
+                }
+                int bitmap_outlier_i = 0;
+                int remaining_bits = 8;
+                int tmp = bitmap_outlier.get(bitmap_outlier_i);
+                bitmap_outlier_i++;
+                int i = 0;
+                while (i < block_size ) {
+                    if (remaining_bits > 1) {
+                        int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
                         remaining_bits -= 1;
-                        if (bit_left_right == 1) {
-                            final_left_outlier_index.add(i);
-                        } else {
-                            final_right_outlier_index.add(i);
+                        if (bit_i == 1) {
+                            int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+                            remaining_bits -= 1;
+                            if (bit_left_right == 1) {
+                                final_left_outlier_index.add(i);
+                            } else {
+                                final_right_outlier_index.add(i);
+                            }
                         }
-                    }
-                    if (remaining_bits == 0) {
+                        if (remaining_bits == 0) {
+                            remaining_bits = 8;
+                            if (bitmap_outlier_i >= bitmap_bytes) break;
+                            tmp = bitmap_outlier.get(bitmap_outlier_i);
+                            bitmap_outlier_i++;
+                        }
+                    } else if (remaining_bits == 1) {
+                        int bit_i = tmp & 0x1;
                         remaining_bits = 8;
                         if (bitmap_outlier_i >= bitmap_bytes) break;
                         tmp = bitmap_outlier.get(bitmap_outlier_i);
                         bitmap_outlier_i++;
-                    }
-                } else if (remaining_bits == 1) {
-                    int bit_i = tmp & 0x1;
-                    remaining_bits = 8;
-                    if (bitmap_outlier_i >= bitmap_bytes) break;
-                    tmp = bitmap_outlier.get(bitmap_outlier_i);
-                    bitmap_outlier_i++;
-                    if (bit_i == 1) {
-                        int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
-                        remaining_bits -= 1;
-                        if (bit_left_right == 1) {
-                            final_left_outlier_index.add(i);
-                        } else {
-                            final_right_outlier_index.add(i);
+                        if (bit_i == 1) {
+                            int bit_left_right = (tmp >> (remaining_bits - 1)) & 0x1;
+                            remaining_bits -= 1;
+                            if (bit_left_right == 1) {
+                                final_left_outlier_index.add(i);
+                            } else {
+                                final_right_outlier_index.add(i);
+                            }
                         }
                     }
+                    i++;
                 }
-                i++;
+            } else {
+                ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
+                final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k1, decode_pos_result_left);
+                decode_pos = (decode_pos_result_left.get(0));
+                ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
+                final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k2, decode_pos_result_right);
+                decode_pos = (decode_pos_result_right.get(0));
             }
-        } else {
-            ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
-            final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k1, decode_pos_result_left);
-            decode_pos = (decode_pos_result_left.get(0));
-            ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
-            final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size-1), k2, decode_pos_result_right);
-            decode_pos = (decode_pos_result_right.get(0));
+        }else {
+            bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
         }
+
+
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
@@ -1198,7 +943,7 @@ public class TSDIFFBOSHTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v = value0;
-        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
+//        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
 
 
         for (int i = 0; i < block_size; i++) {
@@ -1278,8 +1023,9 @@ public class TSDIFFBOSHTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1330,6 +1076,7 @@ public class TSDIFFBOSHTest {
 
         int repeatTime2 = 100;
 
+//        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1403,7 +1150,7 @@ public class TSDIFFBOSHTest {
 
                 String[] record = {
                         f.toString(),
-                        "TS_2DIFF+BOS-P",
+                        "TS_2DIFF+BOS-M",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -1412,11 +1159,295 @@ public class TSDIFFBOSHTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
+
+//                break;
             }
             writer.close();
 
         }
     }
 
+    @Test
+    public void ExpTest() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_test";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("Synthetic_Exp_100");
+        dataset_name.add("Synthetic_Exp_1000");
+        dataset_name.add("Synthetic_Exp_10000");
+        dataset_name.add("Synthetic_Exp_100000");
+        dataset_name.add("Synthetic_Exp_1000000");
+        dataset_name.add("Synthetic_Normal_100");
+        dataset_name.add("Synthetic_Normal_1000");
+        dataset_name.add("Synthetic_Normal_10000");
+        dataset_name.add("Synthetic_Normal_100000");
+        dataset_name.add("Synthetic_Normal_1000000");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Normal_1000.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Normal_10000.csv");//5
+        output_path_list.add(output_parent_dir + "/Normal_100000.csv");//5
+        output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
+//        dataset_block_size.add(2048);
+
+        int repeatTime2 = 1;
+
+//        for (int file_i = 0; file_i < 1; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+//                f= tempList[1];
+
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "TS_2DIFF+BOS-M",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+
+//                break;
+            }
+            writer.close();
+
+        }
+    }
+
+    @Test
+    public void BOSVaryBlockSize() throws IOException {
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+
+        int repeatTime2 = 1;
+        int[] file_i_list = {3};
+//        for (int file_i = 9; file_i < 10; file_i++) {
+        for(int file_i :file_i_list){
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Block Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+
+                loader.readHeaders();
+
+                while (loader.readRecord()) {
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+
+                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+                    int block_size = (int) Math.pow(2, block_size_i);
+                    System.out.println(block_size);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
+                    double ratio = 0;
+                    double compressed_size = 0;
+
+
+                    long s = System.nanoTime();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
+                    }
+
+                    long e = System.nanoTime();
+                    encodeTime += ((e - s) / repeatTime2);
+                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                    ratio += ratioTmp;
+                    s = System.nanoTime();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        BOSDecoder(encoded_result);
+                    e = System.nanoTime();
+                    decodeTime += ((e - s) / repeatTime2);
+
+                    String[] record = {
+                            f.toString(),
+                            "TS_2DIFF+BOS-M",
+                            String.valueOf(encodeTime),
+                            String.valueOf(decodeTime),
+                            String.valueOf(data1.size()),
+                            String.valueOf(compressed_size),
+                            String.valueOf(block_size_i),
+                            String.valueOf(ratio)
+                    };
+                    writer.writeRecord(record);
+                    System.out.println(ratio);
+
+                }
+
+            }
+            writer.close();
+
+        }
+    }
 
 }
