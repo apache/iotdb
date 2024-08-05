@@ -207,6 +207,37 @@ public class SubscriptionInfo implements SnapshotProcessor {
     throw new SubscriptionException(exceptionMessage);
   }
 
+  public void validatePipePluginUsageByTopic(String pipePluginName) throws SubscriptionException {
+    acquireReadLock();
+    try {
+      validatePipePluginUsageByTopicInternal(pipePluginName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void validatePipePluginUsageByTopicInternal(String pipePluginName)
+      throws SubscriptionException {
+    acquireReadLock();
+    try {
+      topicMetaKeeper
+          .getAllTopicMeta()
+          .forEach(
+              meta -> {
+                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                  final String exceptionMessage =
+                      String.format(
+                          "PipePlugin '%s' is already used by Topic '%s' as a processor.",
+                          pipePluginName, meta.getTopicName());
+                  LOGGER.warn(exceptionMessage);
+                  throw new SubscriptionException(exceptionMessage);
+                }
+              });
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
     acquireReadLock();
     try {
