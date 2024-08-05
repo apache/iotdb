@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -187,7 +188,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         || analysis.getStatement() instanceof ExplainAnalyzeStatement
         || analysis.getStatement() instanceof ShowQueriesStatement
         || (analysis.getStatement() instanceof ShowTimeSeriesStatement
-            && ((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat())) {
+            && (((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat()
+                || ((ShowTimeSeriesStatement) analysis.getStatement()).hasOrderByComponent()))
+        || (analysis.getStatement() instanceof ShowDevicesStatement
+            && ((ShowDevicesStatement) analysis.getStatement()).hasOrderByComponent())) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

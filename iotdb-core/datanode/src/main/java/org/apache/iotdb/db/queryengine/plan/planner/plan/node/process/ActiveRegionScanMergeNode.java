@@ -25,12 +25,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -70,13 +73,20 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputCount
-        ? ColumnHeaderConstant.countDevicesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnName)
-            .collect(Collectors.toList())
-        : ColumnHeaderConstant.showDevicesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnName)
-            .collect(Collectors.toList());
+    if (!outputCount || !needMerge) {
+      return children.get(0).getOutputColumnNames();
+    }
+    if (children.get(0) instanceof DeviceRegionScanNode) {
+      return ColumnHeaderConstant.showDevicesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnName)
+          .collect(Collectors.toList());
+    } else if (children.get(0) instanceof TimeSeriesSchemaScanNode) {
+      return ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnName)
+          .collect(Collectors.toList());
+    } else {
+      return Collections.emptyList();
+    }
   }
 
   public static ActiveRegionScanMergeNode deserialize(ByteBuffer byteBuffer) {

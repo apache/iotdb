@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,6 +47,7 @@ public class ShowDevicesStatement extends ShowStatement {
   private boolean hasSgCol;
   private SchemaFilter schemaFilter;
   private WhereCondition timeCondition;
+  private OrderByComponent orderByComponent = null;
 
   public ShowDevicesStatement(PartialPath pathPattern) {
     super();
@@ -82,6 +84,18 @@ public class ShowDevicesStatement extends ShowStatement {
 
   public boolean hasTimeCondition() {
     return timeCondition != null;
+  }
+
+  public void setOrderByComponent(OrderByComponent orderByComponent) {
+    this.orderByComponent = orderByComponent;
+  }
+
+  public OrderByComponent getOrderByComponent() {
+    return orderByComponent;
+  }
+
+  public boolean hasOrderByComponent() {
+    return orderByComponent != null;
   }
 
   @Override

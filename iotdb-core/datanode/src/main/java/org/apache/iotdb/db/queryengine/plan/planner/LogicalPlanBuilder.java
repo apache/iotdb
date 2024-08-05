@@ -1131,11 +1131,11 @@ public class LogicalPlanBuilder {
       try {
         storageGroupPath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
-        for (PartialPath pathPattern :
-            patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          // pathPattern has been deduplicated, no need to deduplicate again
-          overlappedPatternTree.appendFullPath(pathPattern);
+        for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+          if (pathPattern.overlapWithFullPathPrefix(storageGroupPath)) {
+            // pathPattern has been deduplicated, no need to deduplicate again
+            overlappedPatternTree.appendFullPath(pathPattern);
+          }
         }
         this.root.addChild(
             new DeviceSchemaFetchScanNode(

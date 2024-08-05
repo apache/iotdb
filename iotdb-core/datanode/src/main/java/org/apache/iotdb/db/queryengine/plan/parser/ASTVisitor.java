@@ -624,6 +624,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowTimeSeriesStatement(
               new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      if (orderByHeat) {
+        throw new SemanticException("ORDER BY and LATEST cannot be used at the same time.");
+      }
+      List<IoTDBSqlParser.OrderByAttributeClauseContext> orderByAttributeClauseContexts =
+          ctx.orderByClause().orderByAttributeClause();
+
+      if (orderByAttributeClauseContexts.size() > 1
+          || orderByAttributeClauseContexts.get(0).sortKey() == null
+          || !OrderByKey.TIMESERIES.equalsIgnoreCase(
+              orderByAttributeClauseContexts.get(0).sortKey().getText())) {
+        throw new SemanticException("SHOW TIMESERIES only supports ORDER BY TIMESERIES now.");
+      }
+      showTimeSeriesStatement.setOrderByComponent(
+          parseOrderByClause(ctx.orderByClause(), ImmutableSet.of(OrderByKey.TIMESERIES)));
+    }
+
     if (ctx.timeseriesWhereClause() != null) {
       if (ctx.timeConditionClause() != null) {
         throw new SemanticException(
@@ -724,6 +743,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             "DEVICE condition and TIME condition cannot be used at the same time.");
       }
       showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
+    }
+    if (ctx.orderByClause() != null) {
+      List<IoTDBSqlParser.OrderByAttributeClauseContext> orderByAttributeClauseContexts =
+          ctx.orderByClause().orderByAttributeClause();
+
+      if (orderByAttributeClauseContexts.size() > 1
+          || orderByAttributeClauseContexts.get(0).sortKey() == null
+          || !OrderByKey.DEVICE.equalsIgnoreCase(
+              orderByAttributeClauseContexts.get(0).sortKey().getText())) {
+        throw new SemanticException("SHOW DEVICES only supports ORDER BY DEVICE now.");
+      }
+      showDevicesStatement.setOrderByComponent(
+          parseOrderByClause(ctx.orderByClause(), ImmutableSet.of(OrderByKey.DEVICE)));
     }
     if (ctx.timeConditionClause() != null) {
       showDevicesStatement.setTimeCondition(

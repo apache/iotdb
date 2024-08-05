@@ -134,9 +134,11 @@ public class LocalExecutionPlanContext {
 
   // for schema region
   public LocalExecutionPlanContext(
-      FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
+      TypeProvider typeProvider,
+      FragmentInstanceContext instanceContext,
+      ISchemaRegion schemaRegion) {
     this.allSensorsMap = new ConcurrentHashMap<>();
-    this.typeProvider = null;
+    this.typeProvider = typeProvider;
     this.nextOperatorId = new AtomicInteger(0);
     this.nextPipelineId = new AtomicInteger(0);
 

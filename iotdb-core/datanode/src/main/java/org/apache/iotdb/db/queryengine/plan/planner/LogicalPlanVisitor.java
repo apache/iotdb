@@ -513,15 +513,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowTimeSeries(
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    ColumnHeaderConstant.showTimeSeriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
-          planBuilder
-              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
-              .planLimit(limit)
-              .planOffset(offset);
+          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
+      if (showTimeSeriesStatement.hasOrderByComponent()) {
+        planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
+      }
+      planBuilder.planLimit(limit).planOffset(offset);
       return planBuilder.getRoot();
     }
 
@@ -552,6 +558,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.getAuthorityScope())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
+    boolean hasOrderBy = showTimeSeriesStatement.hasOrderByComponent();
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
         && null != analysis.getDataPartitionInfo()
@@ -559,29 +566,38 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context).planLast(analysis, null).getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
+      hasOrderBy = false;
     }
 
-    if (canPushDownOffsetLimit) {
-      return planBuilder.getRoot();
+    if (hasOrderBy) {
+      planBuilder.planOrderBy(showTimeSeriesStatement.getOrderByComponent().getSortItemList());
+    }
+    if (!canPushDownOffsetLimit) {
+      planBuilder
+          .planOffset(showTimeSeriesStatement.getOffset())
+          .planLimit(showTimeSeriesStatement.getLimit());
     }
 
-    return planBuilder
-        .planOffset(showTimeSeriesStatement.getOffset())
-        .planLimit(showTimeSeriesStatement.getLimit())
-        .getRoot();
+    return planBuilder.getRoot();
   }
 
   @Override
   public PlanNode visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-
+    ColumnHeaderConstant.showDevicesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     if (showDevicesStatement.hasTimeCondition()) {
-      planBuilder =
-          planBuilder
-              .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+      planBuilder.planDeviceRegionScan(analysis.getDevicePathToContextMap(), false);
+      if (showDevicesStatement.hasOrderByComponent()) {
+        planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
+      }
+      planBuilder
+          .planLimit(showDevicesStatement.getLimit())
+          .planOffset(showDevicesStatement.getOffset());
       return planBuilder.getRoot();
     }
 
@@ -610,12 +626,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showDevicesStatement.getAuthorityScope())
             .planSchemaQueryMerge(false);
 
-    if (!canPushDownOffsetLimit) {
-      return planBuilder
-          .planOffset(showDevicesStatement.getOffset())
-          .planLimit(showDevicesStatement.getLimit())
-          .getRoot();
+    if (showDevicesStatement.hasOrderByComponent()) {
+      planBuilder.planOrderBy(showDevicesStatement.getOrderByComponent().getSortItemList());
     }
+    if (!canPushDownOffsetLimit) {
+      planBuilder
+          .planOffset(showDevicesStatement.getOffset())
+          .planLimit(showDevicesStatement.getLimit());
+    }
+
     return planBuilder.getRoot();
   }
 
