@@ -87,7 +87,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void executeFromValidate(final ConfigNodeProcedureEnv env)
+  protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
@@ -133,6 +133,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     // Validate AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.executeFromValidate(env);
+    return true;
   }
 
   @Override

@@ -142,20 +142,24 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   /////////////////////////////// Topic ///////////////////////////////
 
-  public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
+  public boolean validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     acquireReadLock();
     try {
-      checkBeforeCreateTopicInternal(createTopicReq);
+      return checkBeforeCreateTopicInternal(createTopicReq);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
+  private boolean checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     if (!isTopicExisted(createTopicReq.getTopicName())) {
-      return;
+      return true;
+    }
+
+    if (createTopicReq.isSetIfNotExistsCondition() && createTopicReq.isIfNotExistsCondition()) {
+      return false;
     }
 
     final String exceptionMessage =
@@ -201,6 +205,37 @@ public class SubscriptionInfo implements SnapshotProcessor {
             topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
+  }
+
+  public void validatePipePluginUsageByTopic(String pipePluginName) throws SubscriptionException {
+    acquireReadLock();
+    try {
+      validatePipePluginUsageByTopicInternal(pipePluginName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void validatePipePluginUsageByTopicInternal(String pipePluginName)
+      throws SubscriptionException {
+    acquireReadLock();
+    try {
+      topicMetaKeeper
+          .getAllTopicMeta()
+          .forEach(
+              meta -> {
+                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                  final String exceptionMessage =
+                      String.format(
+                          "PipePlugin '%s' is already used by Topic '%s' as a processor.",
+                          pipePluginName, meta.getTopicName());
+                  LOGGER.warn(exceptionMessage);
+                  throw new SubscriptionException(exceptionMessage);
+                }
+              });
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {

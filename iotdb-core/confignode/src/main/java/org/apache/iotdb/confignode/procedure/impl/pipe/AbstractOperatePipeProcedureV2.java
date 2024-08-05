@@ -185,7 +185,7 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
-   * @return true if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
+   * @return false if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
    *     pipe without runtime exception)
    * @throws PipeException if validation for pipe parameters failed
    */
@@ -224,8 +224,8 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          if (executeFromValidateTask(env)) {
-            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
+          if (!executeFromValidateTask(env)) {
+            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the pipe
             // command corresponding to this procedure is "Msg: The statement is executed
             // successfully."

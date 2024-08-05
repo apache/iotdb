@@ -28,15 +28,15 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class DropPipePluginTask implements IConfigTask {
 
-  private final String pluginName;
+  private final DropPipePluginStatement dropPipePluginStatement;
 
   public DropPipePluginTask(DropPipePluginStatement dropPipePluginStatement) {
-    this.pluginName = dropPipePluginStatement.getPluginName();
+    this.dropPipePluginStatement = dropPipePluginStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropPipePlugin(pluginName);
+    return configTaskExecutor.dropPipePlugin(dropPipePluginStatement);
   }
 }

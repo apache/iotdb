@@ -152,7 +152,7 @@ public class PipeInfoTest {
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     // Drop pipe plugin test plugin
-    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName, false);
     DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan(pluginName);
     pipeInfo.getPipePluginInfo().dropPipePlugin(dropPipePluginPlan);
   }

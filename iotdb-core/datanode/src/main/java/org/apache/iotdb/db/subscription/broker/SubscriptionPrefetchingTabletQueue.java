@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
@@ -53,8 +54,9 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
+    super(brokerId, topicName, inputPendingQueue, commitIdGenerator);
 
     this.currentBatchRef.set(
         new SubscriptionPipeTabletEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));

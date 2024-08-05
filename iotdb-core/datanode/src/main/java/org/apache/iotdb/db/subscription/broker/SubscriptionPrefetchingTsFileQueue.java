@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -46,7 +50,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
@@ -66,8 +73,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
+    super(brokerId, topicName, inputPendingQueue, commitIdGenerator);
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
     this.currentBatchRef.set(
@@ -429,7 +437,17 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   private SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
     // consider non-critical by default, meaning the client can retry
-    return super.generateSubscriptionPollErrorResponse(errorMessage, false);
+    return new SubscriptionEvent(
+        new SubscriptionPipeEmptyEvent(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, false),
+            new SubscriptionCommitContext(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                PipeDataNodeAgent.runtime().getRebootTimes(),
+                topicName,
+                brokerId,
+                INVALID_COMMIT_ID)));
   }
 
   /////////////////////////////// stringify ///////////////////////////////
