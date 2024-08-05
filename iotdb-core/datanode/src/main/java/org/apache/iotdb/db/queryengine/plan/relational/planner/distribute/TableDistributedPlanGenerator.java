@@ -404,12 +404,14 @@ public class TableDistributedPlanGenerator
   }
 
   private void processSortProperty(
-      TableScanNode tableScanNode, List<PlanNode> resultTableScanNodeList, PlanContext context) {
-    List<Symbol> newOrderingSymbols = new ArrayList<>();
-    List<SortOrder> newSortOrders = new ArrayList<>();
-    OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
+      final TableScanNode tableScanNode,
+      final List<PlanNode> resultTableScanNodeList,
+      final PlanContext context) {
+    final List<Symbol> newOrderingSymbols = new ArrayList<>();
+    final List<SortOrder> newSortOrders = new ArrayList<>();
+    final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
 
-    for (Symbol symbol : expectedOrderingScheme.getOrderBy()) {
+    for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
       if (TIMESTAMP_STR.equalsIgnoreCase(symbol.getName())) {
         if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
           // TODO(beyyes) move scan order judgement into logical plan optimizer
@@ -430,20 +432,13 @@ public class TableDistributedPlanGenerator
       return;
     }
 
-    List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
-    for (Symbol symbol : newOrderingSymbols) {
-      int idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
+    final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
+    for (final Symbol symbol : newOrderingSymbols) {
+      final int idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
       if (tableScanNode.getAssignments().get(symbol).getColumnCategory()
           == TsTableColumnCategory.ID) {
         // segments[0] is always tableName
-        orderingRules.add(
-            deviceEntry -> {
-              if (idx + 1 >= deviceEntry.getDeviceID().segmentNum()) {
-                return null;
-              } else {
-                return (String) deviceEntry.getDeviceID().getSegments()[idx + 1];
-              }
-            });
+        orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
       } else {
         orderingRules.add(deviceEntry -> deviceEntry.getAttributeColumnValues().get(idx));
       }
@@ -468,7 +463,7 @@ public class TableDistributedPlanGenerator
                   .reversed();
     }
     for (int i = 1; i < orderingRules.size(); i++) {
-      Comparator<DeviceEntry> thenComparator;
+      final Comparator<DeviceEntry> thenComparator;
       if (newSortOrders.get(i).isNullsFirst()) {
         thenComparator =
             newSortOrders.get(i).isAscending()
@@ -489,14 +484,14 @@ public class TableDistributedPlanGenerator
       comparator = comparator.thenComparing(thenComparator);
     }
 
-    OrderingScheme newOrderingScheme =
+    final OrderingScheme newOrderingScheme =
         new OrderingScheme(
             newOrderingSymbols,
             IntStream.range(0, newOrderingSymbols.size())
                 .boxed()
                 .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
-    for (PlanNode planNode : resultTableScanNodeList) {
-      TableScanNode scanNode = (TableScanNode) planNode;
+    for (final PlanNode planNode : resultTableScanNodeList) {
+      final TableScanNode scanNode = (TableScanNode) planNode;
       nodeOrderingMap.put(scanNode.getPlanNodeId(), newOrderingScheme);
       scanNode.getDeviceEntries().sort(comparator);
     }

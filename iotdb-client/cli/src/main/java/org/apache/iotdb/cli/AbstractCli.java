@@ -822,12 +822,14 @@ public abstract class AbstractCli {
     ctx.getPrinter().printBlockLine(maxSizeList);
     ctx.getPrinter().printRow(lists, 0, maxSizeList);
     ctx.getPrinter().printBlockLine(maxSizeList);
-    for (int i = 1; i < lists.get(0).size(); i++) {
-      ctx.getPrinter().printRow(lists, i, maxSizeList);
+    if (!lists.isEmpty()) {
+      for (int i = 1; i < lists.get(0).size(); i++) {
+        ctx.getPrinter().printRow(lists, i, maxSizeList);
+      }
     }
     ctx.getPrinter().printBlockLine(maxSizeList);
     if (isReachEnd) {
-      lineCount += lists.get(0).size() - 1;
+      lineCount += lists.isEmpty() ? 0 : lists.get(0).size() - 1;
       ctx.getPrinter().printCount(lineCount);
     } else {
       lineCount += maxPrintRowCount;

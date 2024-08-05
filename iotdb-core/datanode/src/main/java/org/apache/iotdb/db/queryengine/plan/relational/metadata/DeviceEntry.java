@@ -57,6 +57,12 @@ public class DeviceEntry implements Accountable {
     return deviceID;
   }
 
+  // if segmentIndex >= deviceID.segmentNum(), just return null, because we already trimmed tailing
+  // null in DeviceID
+  public Object getNthSegment(int segmentIndex) {
+    return segmentIndex < deviceID.segmentNum() ? deviceID.segment(segmentIndex) : null;
+  }
+
   public List<String> getAttributeColumnValues() {
     return attributeColumnValues;
   }
