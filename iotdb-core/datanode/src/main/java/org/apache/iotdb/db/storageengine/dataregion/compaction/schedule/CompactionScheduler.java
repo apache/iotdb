@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
@@ -164,7 +165,7 @@ public class CompactionScheduler {
               .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
     }
     long startTime = System.currentTimeMillis();
-    List<AbstractCompactionTask> innerSpaceTaskList =
+    List<InnerSpaceCompactionTask> innerSpaceTaskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
             sequence
                 ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)

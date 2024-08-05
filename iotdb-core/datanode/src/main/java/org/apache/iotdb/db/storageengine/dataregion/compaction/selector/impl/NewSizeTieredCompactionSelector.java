@@ -22,8 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.NewInnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -73,18 +72,18 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   @Override
-  public List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+  public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     this.tsFileResourceCandidateList =
         tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
     return super.selectInnerSpaceTask(tsFileResources);
   }
 
   @Override
-  protected List<AbstractCompactionTask> selectTaskBaseOnLevel()
+  protected List<InnerSpaceCompactionTask> selectTaskBaseOnLevel()
       throws IOException, DiskSpaceInsufficientException {
     int maxLevel = searchMaxFileLevel();
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
-      List<AbstractCompactionTask> selectedResourceList = selectTasksByLevel(currentLevel);
+      List<InnerSpaceCompactionTask> selectedResourceList = selectTasksByLevel(currentLevel);
       if (!selectedResourceList.isEmpty()) {
         return selectedResourceList;
       }
@@ -93,7 +92,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   @SuppressWarnings("java:S135")
-  private List<AbstractCompactionTask> selectTasksByLevel(int level)
+  private List<InnerSpaceCompactionTask> selectTasksByLevel(int level)
       throws IOException, DiskSpaceInsufficientException {
     InnerSpaceCompactionTaskSelection levelTaskSelection = new InnerSpaceCompactionTaskSelection();
     for (TsFileResourceCandidate currentFile : tsFileResourceCandidateList) {
@@ -124,7 +123,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   private class InnerSpaceCompactionTaskSelection {
-    List<AbstractCompactionTask> selectedTaskList = new ArrayList<>();
+    List<InnerSpaceCompactionTask> selectedTaskList = new ArrayList<>();
 
     List<TsFileResource> currentSelectedResources = new ArrayList<>();
     List<TsFileResource> currentSkippedResources = new ArrayList<>();
@@ -187,16 +186,16 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
                   .collect(Collectors.toList());
           currentSkippedResources.clear();
         }
-        AbstractCompactionTask task = createInnerSpaceCompactionTask();
+        InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
         selectedTaskList.add(task);
       } finally {
         reset();
       }
     }
 
-    private AbstractCompactionTask createInnerSpaceCompactionTask()
+    private InnerSpaceCompactionTask createInnerSpaceCompactionTask()
         throws DiskSpaceInsufficientException, IOException {
-      return new NewInnerSpaceCompactionTask(
+      return new InnerSpaceCompactionTask(
           timePartition,
           tsFileManager,
           currentSelectedResources,
@@ -206,7 +205,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           tsFileManager.getNextCompactionTaskId());
     }
 
-    private List<AbstractCompactionTask> getSelectedTaskList() {
+    private List<InnerSpaceCompactionTask> getSelectedTaskList() {
       return selectedTaskList;
     }
   }

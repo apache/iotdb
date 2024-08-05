@@ -31,6 +31,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
@@ -41,7 +42,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   protected boolean isEmptyFile;
 
-  protected TsFileResource targetResource;
   protected final long sizeForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
@@ -49,19 +49,19 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    this.targetResource = targetFileResource;
-    this.fileWriter =
-        new CompactionTsFileWriter(
-            targetFileResource.getTsFile(),
-            sizeForFileWriter,
-            targetResource.isSeq()
-                ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION);
+    this(Collections.singletonList(targetFileResource));
+  }
+
+  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources)
+      throws IOException {
+    this.targetResources = targetFileResources;
+    this.fileWriter = getAvailableWriter();
     isEmptyFile = true;
   }
 
   @Override
   public void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException {
+    fileWriter = getAvailableWriter();
     fileWriter.startChunkGroup(deviceId);
     this.isAlign = isAlign;
     this.deviceId = deviceId;
@@ -73,7 +73,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
           new CompactionTsFileWriter(
               targetResources.get(currentFileIndex).getTsFile(),
               sizeForFileWriter,
-              CompactionType.INNER_SEQ_COMPACTION);
+              targetResources.get(currentFileIndex).isSeq()
+                  ? CompactionType.INNER_SEQ_COMPACTION
+                  : CompactionType.INNER_UNSEQ_COMPACTION);
       return fileWriter;
     }
     boolean shouldSwitchToNextWriter =
@@ -105,7 +107,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endChunkGroup() throws IOException {
-    CompactionUtils.updateResource(targetResource, fileWriter, deviceId);
+    CompactionUtils.updateResource(targetResources.get(currentFileIndex), fileWriter, deviceId);
     fileWriter.endChunkGroup();
   }
 
@@ -129,13 +131,17 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endFile() throws IOException {
-    if (fileWriter == null) {
+    if (targetResources == null) {
+      System.out.println();
+    }
+    for (int i = currentFileIndex + 1; i < targetResources.size(); i++) {
+      targetResources.get(i).forceMarkDeleted();
+    }
+    if (fileWriter == null || fileWriter.isEmptyTargetFile()) {
+      targetResources.get(currentFileIndex).forceMarkDeleted();
       return;
     }
     fileWriter.endFile();
-    if (fileWriter.isEmptyTargetFile()) {
-      targetResource.forceMarkDeleted();
-    }
   }
 
   @Override

@@ -39,6 +39,11 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     super(targetFileResource);
   }
 
+  public ReadPointInnerCompactionWriter(List<TsFileResource> targetFileResources)
+      throws IOException {
+    super(targetFileResources);
+  }
+
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
     TimeColumn timestamps = tsBlock.getTimeColumn();

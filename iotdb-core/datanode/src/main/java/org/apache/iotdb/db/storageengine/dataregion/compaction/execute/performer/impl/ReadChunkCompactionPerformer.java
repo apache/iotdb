@@ -107,7 +107,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         }
       }
     } finally {
-      if (currentWriter != null) {
+      for (int i = currentTargetFileIndex + 1; i < targetResources.size(); i++) {
+        targetResources.get(i).forceMarkDeleted();
+      }
+      if (currentWriter == null) {
+        targetResources.get(currentTargetFileIndex).forceMarkDeleted();
+      } else {
         currentWriter.endFile();
         currentWriter.close();
         if (currentWriter.isEmptyTargetFile()) {
