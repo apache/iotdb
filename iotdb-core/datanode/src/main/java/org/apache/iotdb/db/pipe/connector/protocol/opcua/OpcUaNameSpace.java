@@ -78,10 +78,11 @@ public class OpcUaNameSpace extends ManagedNamespace {
       throw new PipeRuntimeCriticalException("The segments of tablets must exist");
     }
     final StringBuilder currentStr = new StringBuilder();
-    UaFolderNode folderNode = null;
+    UaFolderNode folderNode;
+    NodeId folderNodeId = null;
     for (final String segment : segments) {
       currentStr.append(segment);
-      final NodeId folderNodeId = newNodeId(currentStr.toString());
+      folderNodeId = newNodeId(currentStr.toString());
       currentStr.append("/");
 
       if (!getNodeManager().containsNode(folderNodeId)) {
@@ -101,13 +102,24 @@ public class OpcUaNameSpace extends ManagedNamespace {
       }
     }
 
+    folderNode =
+        (UaFolderNode)
+            getNodeManager()
+                .getNode(folderNodeId)
+                .orElseThrow(
+                    () ->
+                        new PipeRuntimeCriticalException(
+                            String.format(
+                                "The folder node for %s does not exist.", tablet.deviceId)));
+
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
       final MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       final String name = measurementSchema.getMeasurementId();
       final NodeId nodeId = newNodeId(currentFolder + name);
+      final UaVariableNode measurementNode;
       if (!getNodeManager().containsNode(nodeId)) {
-        final UaVariableNode measurementNode =
+        measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                 .setNodeId(newNodeId(currentFolder + name))
                 .setAccessLevel(AccessLevel.READ_WRITE)
@@ -123,6 +135,17 @@ public class OpcUaNameSpace extends ManagedNamespace {
                 Identifiers.Organizes,
                 Identifiers.ObjectsFolder.expanded(),
                 false));
+        folderNode.addOrganizes(measurementNode);
+      } else {
+        // This must exist
+        measurementNode =
+            (UaVariableNode)
+                getNodeManager()
+                    .getNode(nodeId)
+                    .orElseThrow(
+                        () ->
+                            new PipeRuntimeCriticalException(
+                                String.format("The Node %s does not exist.", nodeId)));
       }
 
       int lastNonnullIndex = -1;
@@ -135,10 +158,10 @@ public class OpcUaNameSpace extends ManagedNamespace {
 
       if (lastNonnullIndex != -1) {
         final long utcTimestamp = timestampToUtc(tablet.timestamps[lastNonnullIndex]);
-        if (Objects.isNull(node.getValue())
-            || Objects.requireNonNull(node.getValue().getSourceTime()).getUtcTime()
+        if (Objects.isNull(measurementNode.getValue())
+            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
                 < utcTimestamp) {
-          node.setValue(
+          measurementNode.setValue(
               new DataValue(
                   new Variant(tablet.values[i]),
                   StatusCode.GOOD,
@@ -147,8 +170,7 @@ public class OpcUaNameSpace extends ManagedNamespace {
         }
       }
 
-      getNodeManager().addNode(node);
-      folderNode.addOrganizes(node);
+      getNodeManager().addNode(measurementNode);
     }
   }
 
