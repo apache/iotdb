@@ -68,7 +68,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
-  private boolean shouldConvertDataTypeOnTypeMismatch =
+  protected boolean shouldConvertDataTypeOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
   @Override
