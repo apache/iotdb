@@ -327,11 +327,17 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // compaction cnt
     calculateRenamedTargetFiles(needToAdjustSourceFilesPosition);
 
-    filesView.targetFilesInPerformer =
-        TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
-            filesView.sortedAllSourceFilesInTask.subList(
-                filesView.renamedTargetFiles.size(), requiredPositionNum),
-            filesView.sequence);
+    if (needToAdjustSourceFilesPosition) {
+      filesView.targetFilesInPerformer =
+          TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
+              filesView.sortedAllSourceFilesInTask.subList(
+                  filesView.renamedTargetFiles.size(), requiredPositionNum),
+              filesView.sequence);
+    } else {
+      filesView.targetFilesInPerformer =
+          TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
+              availablePositionForTargetFiles.subList(0, requiredPositionNum), filesView.sequence);
+    }
     filesView.targetFilesInLog =
         new ArrayList<>(
             filesView.targetFilesInPerformer.size() + filesView.renamedTargetFiles.size());

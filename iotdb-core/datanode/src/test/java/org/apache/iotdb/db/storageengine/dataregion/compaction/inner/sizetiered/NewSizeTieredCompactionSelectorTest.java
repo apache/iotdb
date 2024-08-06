@@ -58,7 +58,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     for (InnerSpaceCompactionTask innerSpaceCompactionTask : innerSpaceCompactionTasks) {
-      System.out.println(innerSpaceCompactionTask.getAllSourceTsFiles());
+      innerSpaceCompactionTask.start();
     }
   }
 }
