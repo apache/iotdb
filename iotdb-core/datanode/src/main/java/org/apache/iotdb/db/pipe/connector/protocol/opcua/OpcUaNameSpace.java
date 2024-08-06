@@ -221,7 +221,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   private static long timestampToUtc(final long timeStamp) {
-    return TimestampPrecisionUtils.currPrecision.toMillis(timeStamp * 10000L) + 116444736000000000L;
+    return TimestampPrecisionUtils.currPrecision.toNanos(timeStamp) / 100L + 116444736000000000L;
   }
 
   /**
