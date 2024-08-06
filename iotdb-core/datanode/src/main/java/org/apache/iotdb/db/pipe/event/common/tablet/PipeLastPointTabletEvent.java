@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
+import org.apache.iotdb.db.pipe.processor.downsampling.lastpoint.LastPointFilter;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 
@@ -37,9 +39,12 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
+  private PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache;
+
   public PipeLastPointTabletEvent(
       final Tablet tablet,
       final long captureTime,
+      final PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -49,6 +54,7 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
     super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
     this.tablet = tablet;
     this.captureTime = captureTime;
+    this.partialPathToLatestTimeCache = partialPathToLatestTimeCache;
   }
 
   @Override
@@ -78,7 +84,15 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
       long startTime,
       long endTime) {
     return new PipeLastPointTabletEvent(
-        tablet, captureTime, pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
+        tablet,
+        captureTime,
+        partialPathToLatestTimeCache,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        pipePattern,
+        startTime,
+        endTime);
   }
 
   @Override

@@ -32,6 +32,11 @@ public class PipeProcessorConstant {
       "processor.down-sampling.memory-limit-in-bytes";
   public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
 
+  public static final String PROCESSOR_LAST_POINT_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY =
+      "processor.last-point-sampling.memory-limit-in-bytes";
+  public static final long PROCESSOR_LAST_POINT_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE =
+      16 * MB;
+
   public static final String PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY =
       "processor.output.max-delay-seconds";
   public static final long PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE = -1;

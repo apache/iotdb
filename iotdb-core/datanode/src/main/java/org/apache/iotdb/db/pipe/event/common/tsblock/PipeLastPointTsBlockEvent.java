@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeLastPointTabletEvent;
+import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
+import org.apache.iotdb.db.pipe.processor.downsampling.lastpoint.LastPointFilter;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
@@ -127,10 +129,12 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   /////////////////////////// PipeLastPointTabletEvent ///////////////////////////
 
-  public PipeLastPointTabletEvent toPipeLastPointTabletEvent() {
+  public PipeLastPointTabletEvent toPipeLastPointTabletEvent(
+      PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache) {
     return new PipeLastPointTabletEvent(
         convertToTablet(),
         captureTime,
+        partialPathToLatestTimeCache,
         pipeName,
         creationTime,
         pipeTaskMeta,
