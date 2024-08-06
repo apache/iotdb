@@ -28,7 +28,7 @@ public class IoTDBSubscriptionITConstant {
 
   private static final long AWAITILITY_POLL_DELAY_SECOND = 1L;
   private static final long AWAITILITY_POLL_INTERVAL_SECOND = 1L;
-  private static final long AWAITILITY_AT_MOST_SECOND = 600L;
+  private static final long AWAITILITY_AT_MOST_SECOND = 300L;
 
   public static final ConditionFactory AWAIT =
       Awaitility.await()
@@ -39,5 +39,5 @@ public class IoTDBSubscriptionITConstant {
           .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS);
 
   public static final long SLEEP_NS = 1_000_000_000L;
-  public static final long POLL_TIMEOUT_MS = 30_000L;
+  public static final long POLL_TIMEOUT_MS = 10_000L;
 }
