@@ -386,15 +386,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         filesView.targetFilesInLog,
         timePartition);
 
-    // get the write lock of them to delete them
-    for (int i = 0; i < filesView.sourceFilesInLog.size(); ++i) {
-      filesView.sourceFilesInLog.get(i).writeLock();
-      isHoldingWriteLock[i] = true;
-    }
-
-    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
-        filesView.sourceFilesInLog, filesView.sequence);
-
+    // Some target files are not used in the performer, so these files are not generated during
+    // compaction.
+    // If we delete source files before recording the deleted target files and encounter a crash
+    // after this operation, the recovery task cannot find complete source files or target files.
+    // Therefore, we should log the deleted target files before removing the source files.
     for (TsFileResource targetTsFileResource : filesView.targetFilesInLog) {
       if (!targetTsFileResource.isDeleted()) {
         FileMetrics.getInstance()
@@ -411,6 +407,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         targetTsFileResource.remove();
       }
     }
+    // get the write lock of them to delete them
+    for (int i = 0; i < filesView.sourceFilesInLog.size(); ++i) {
+      filesView.sourceFilesInLog.get(i).writeLock();
+      isHoldingWriteLock[i] = true;
+    }
+
+    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
+        filesView.sourceFilesInLog, filesView.sequence);
+
     CompactionMetrics.getInstance().recordSummaryInfo(summary);
   }
 

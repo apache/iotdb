@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -46,6 +45,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private final long totalFileNumThreshold;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
+  private final boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
       String storageGroupName,
@@ -66,9 +66,12 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
     this.totalFileNumThreshold = config.getFileLimitPerInnerTask();
     this.totalFileSizeThreshold =
-        Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
+        Math.min(
+            config.getInnerCompactionTotalFileSizeThreshold(),
+            maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
+    this.isActiveTimePartition = this.tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
   @Override
@@ -79,8 +82,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   @Override
-  protected List<InnerSpaceCompactionTask> selectTaskBaseOnLevel()
-      throws IOException, DiskSpaceInsufficientException {
+  protected List<InnerSpaceCompactionTask> selectTaskBaseOnLevel() throws IOException {
     int maxLevel = searchMaxFileLevel();
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
       List<InnerSpaceCompactionTask> selectedResourceList = selectTasksByLevel(currentLevel);
@@ -92,8 +94,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   @SuppressWarnings("java:S135")
-  private List<InnerSpaceCompactionTask> selectTasksByLevel(int level)
-      throws IOException, DiskSpaceInsufficientException {
+  private List<InnerSpaceCompactionTask> selectTasksByLevel(int level) throws IOException {
     InnerSpaceCompactionTaskSelection levelTaskSelection = new InnerSpaceCompactionTaskSelection();
     for (TsFileResourceCandidate currentFile : tsFileResourceCandidateList) {
       long innerCompactionCount = currentFile.resource.getTsFileID().getInnerCompactionCount();
@@ -133,7 +134,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
         throws IOException {
-      return resourceCandidate.getDevices().stream().anyMatch(currentSelectedDevices::contains);
+      return currentSelectedDevices.isEmpty()
+          || resourceCandidate.getDevices().stream().anyMatch(currentSelectedDevices::contains);
     }
 
     private void addSelectedResource(TsFileResourceCandidate currentFile) throws IOException {
@@ -152,9 +154,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private void reset() {
-      currentSelectedResources.clear();
-      currentSkippedResources.clear();
-      currentSelectedDevices.clear();
+      currentSelectedResources = new ArrayList<>();
+      currentSkippedResources = new ArrayList<>();
+      currentSelectedDevices = new HashSet<>();
       currentSelectedFileTotalSize = 0;
       currentSkippedFileTotalSize = 0;
     }
@@ -168,7 +170,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           || currentSelectedResources.size() + 1 > totalFileNumThreshold;
     }
 
-    private void endCurrentTaskSelection() throws DiskSpaceInsufficientException, IOException {
+    private void endCurrentTaskSelection() {
       try {
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
         int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
@@ -176,25 +178,31 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           return;
         }
 
-        boolean canCompactAllFiles =
-            totalFileSize < singleFileSizeThreshold
-                && totalFileNum < config.getFileLimitPerInnerTask();
+        boolean canCompactAllFiles = totalFileSize <= singleFileSizeThreshold;
         if (canCompactAllFiles) {
           currentSelectedResources =
               Stream.concat(currentSelectedResources.stream(), currentSkippedResources.stream())
                   .sorted(TsFileResource::compareFileName)
                   .collect(Collectors.toList());
           currentSkippedResources.clear();
+          currentSelectedFileTotalSize += currentSkippedFileTotalSize;
+          currentSkippedFileTotalSize = 0;
         }
-        InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
-        selectedTaskList.add(task);
+
+        boolean isSatisfied =
+            currentSelectedResources.size() >= totalFileNumThreshold
+                || !isActiveTimePartition
+                || currentSelectedFileTotalSize >= singleFileSizeThreshold;
+        if (isSatisfied) {
+          InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
+          selectedTaskList.add(task);
+        }
       } finally {
         reset();
       }
     }
 
-    private InnerSpaceCompactionTask createInnerSpaceCompactionTask()
-        throws DiskSpaceInsufficientException, IOException {
+    private InnerSpaceCompactionTask createInnerSpaceCompactionTask() {
       return new InnerSpaceCompactionTask(
           timePartition,
           tsFileManager,
