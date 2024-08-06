@@ -23,12 +23,12 @@ import java.util.Objects;
 
 public class LastPointFilter<T> {
 
-  /** The last point time and value we compare current point against Timestamp and Value */
+  /** The last point time and value we compare current point against timestamp and value */
   private long lastPointTimestamp;
 
   private T lastPointValue;
 
-  // Record whether it is consumed by Sink
+  // Record whether it is consumed by sink
   private boolean isConsumed;
 
   public LastPointFilter(final long firstTimestamp, final T firstValue) {
