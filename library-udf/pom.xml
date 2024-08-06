@@ -72,8 +72,7 @@
         <dependency>
             <groupId>com.github.ggalmazor</groupId>
             <artifactId>lt_downsampling_java8</artifactId>
-            <!-- This version is only available in the jitpack.io repo -->
-            <version>0.0.6</version>
+            <version>0.1.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
