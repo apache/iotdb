@@ -23,24 +23,26 @@ import java.util.Objects;
 
 public class LastPointFilter<T> {
 
-  private long lastStoredTimestamp;
+  /** The last point time and value we compare current point against Timestamp and Value */
+  private long lastPointTimestamp;
 
-  private T lastStoredValue;
+  private T lastPointValue;
 
+  // Record whether it is consumed by Sink
   private boolean isConsumed;
 
   public LastPointFilter(final long firstTimestamp, final T firstValue) {
-    this.lastStoredTimestamp = firstTimestamp;
-    this.lastStoredValue = firstValue;
+    this.lastPointTimestamp = firstTimestamp;
+    this.lastPointValue = firstValue;
     this.isConsumed = false;
   }
 
   public boolean filter(final long timestamp, final T value) {
-    if (this.lastStoredTimestamp > timestamp) {
+    if (this.lastPointTimestamp > timestamp) {
       return false;
     }
 
-    if (this.lastStoredTimestamp == timestamp && Objects.equals(lastStoredValue, value)) {
+    if (this.lastPointTimestamp == timestamp && Objects.equals(lastPointValue, value)) {
       return false;
     }
 
@@ -49,8 +51,8 @@ public class LastPointFilter<T> {
   }
 
   private void reset(final long timestamp, final T value) {
-    this.lastStoredTimestamp = timestamp;
-    this.lastStoredValue = value;
+    this.lastPointTimestamp = timestamp;
+    this.lastPointValue = value;
     this.isConsumed = false;
   }
 
