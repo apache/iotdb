@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.leaf;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -54,9 +53,7 @@ public class TimeSeriesOperand extends LeafOperand {
 
   public static TimeSeriesOperand constructColumnHeaderExpression(
       String columnName, TSDataType dataType) {
-    MeasurementPath measurementPath =
-        new MeasurementPath(new PartialPath(columnName, false), dataType);
-    return new TimeSeriesOperand(measurementPath);
+    return new TimeSeriesOperand(new PartialPath(columnName, false));
   }
 
   public PartialPath getPath() {
