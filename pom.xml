@@ -372,6 +372,17 @@
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
+                <artifactId>sdk-core</artifactId>
+                <version>${milo.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.sun.activation</groupId>
+                        <artifactId>jakarta.activation</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
                 <artifactId>stack-server</artifactId>
                 <version>${milo.version}</version>
             </dependency>
