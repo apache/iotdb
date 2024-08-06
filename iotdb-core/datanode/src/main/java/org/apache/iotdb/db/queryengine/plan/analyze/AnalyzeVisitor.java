@@ -1083,8 +1083,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .add(rawExpression);
 
       Map<String, String> tagMap =
-          ((MeasurementPath)
-                  ((TimeSeriesOperand) measurementExpression.getExpressions().get(0)).getPath())
+          ((MeasurementPath) ((TimeSeriesOperand) rawExpression.getExpressions().get(0)).getPath())
               .getTagMap();
       List<String> tagValues = new ArrayList<>();
       for (String tagKey : tagKeys) {

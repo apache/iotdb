@@ -375,7 +375,7 @@ public class ExpressionTypeAnalyzer {
             timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
       }
 
-      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
+      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getType());
     }
 
     @Override

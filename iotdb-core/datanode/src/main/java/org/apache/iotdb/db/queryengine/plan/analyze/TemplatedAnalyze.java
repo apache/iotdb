@@ -130,7 +130,8 @@ public class TemplatedAnalyze {
           } else if (paginationController.hasCurLimit()) {
             String measurementName = entry.getKey();
             TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(new PartialPath(new String[] {measurementName}));
+                new TimeSeriesOperand(
+                    new PartialPath(new String[] {measurementName}), entry.getValue().getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, null));
@@ -151,7 +152,9 @@ public class TemplatedAnalyze {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
             TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(new PartialPath(new String[] {measurementName}));
+                new TimeSeriesOperand(
+                    new PartialPath(new String[] {measurementName}),
+                    template.getSchemaMap().get(measurementName).getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));

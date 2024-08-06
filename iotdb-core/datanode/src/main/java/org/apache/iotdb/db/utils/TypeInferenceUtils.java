@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -267,8 +266,7 @@ public class TypeInferenceUtils {
                     ExpressionUtils.reconstructBinaryExpression(
                         keepExpression,
                         new TimeSeriesOperand(
-                            new MeasurementPath(
-                                ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
+                            ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64),
                         rightExpression)));
             return;
           } else {

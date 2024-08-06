@@ -43,8 +43,16 @@ public class TimeSeriesOperand extends LeafOperand {
 
   private PartialPath path;
 
+  // if path is MeasurementPath or AlignedPath, this type is null
+  private transient TSDataType type;
+
   public TimeSeriesOperand(PartialPath path) {
     this.path = path;
+  }
+
+  public TimeSeriesOperand(PartialPath path, TSDataType dataType) {
+    this.path = path;
+    this.type = dataType;
   }
 
   public TimeSeriesOperand(ByteBuffer byteBuffer) {
@@ -53,15 +61,15 @@ public class TimeSeriesOperand extends LeafOperand {
 
   public static TimeSeriesOperand constructColumnHeaderExpression(
       String columnName, TSDataType dataType) {
-    return new TimeSeriesOperand(new PartialPath(columnName, false));
+    return new TimeSeriesOperand(new PartialPath(columnName, false), dataType);
   }
 
   public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(PartialPath path) {
-    this.path = path;
+  public TSDataType getType() {
+    return type != null ? type : path.getSeriesType();
   }
 
   @Override
