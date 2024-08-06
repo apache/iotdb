@@ -307,11 +307,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       availablePositionForTargetFiles.addFirst(resource1);
     }
 
-    long availableSizeForTargetFiles =
-        availablePositionForTargetFiles.size()
-            * IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    int requiredPositionNum =
+        Math.min(
+            (int)
+                    (filesView.selectedFileSize
+                        / IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize())
+                + 1,
+            filesView.sortedAllSourceFilesInTask.size());
     boolean needToAdjustSourceFilesPosition =
-        availableSizeForTargetFiles < filesView.selectedFileSize;
+        requiredPositionNum > availablePositionForTargetFiles.size();
     filesView.targetFilesInLog = new ArrayList<>();
 
     if (needToAdjustSourceFilesPosition) {
@@ -325,7 +329,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     filesView.targetFilesInPerformer =
         TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
-            availablePositionForTargetFiles, filesView.sequence);
+            filesView.sortedAllSourceFilesInTask.subList(
+                filesView.renamedTargetFiles.size(), requiredPositionNum),
+            filesView.sequence);
     filesView.targetFilesInLog =
         new ArrayList<>(
             filesView.targetFilesInPerformer.size() + filesView.renamedTargetFiles.size());
@@ -339,7 +345,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!needAdjustSourceFilePosition) {
       return;
     }
-    for (TsFileResource resource : filesView.skippedSourceFiles) {
+    for (int i = 0; i < filesView.skippedSourceFiles.size(); i++) {
+      TsFileResource resource = filesView.sortedAllSourceFilesInTask.get(i);
       File file = resource.getTsFile();
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(file.getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
