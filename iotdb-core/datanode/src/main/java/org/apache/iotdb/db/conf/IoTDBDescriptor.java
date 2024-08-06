@@ -616,6 +616,22 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+    conf.setInnerCompactionTotalFileSizeThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                Long.toString(conf.getInnerCompactionTotalFileSizeThreshold()))));
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                Integer.toString(conf.getInnerCompactionTotalFileNumThreshold()))));
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                Integer.toString(conf.getMaxLevelGapInInnerCompaction()))));
+
     conf.setTargetChunkSize(
         Long.parseLong(
             properties.getProperty("target_chunk_size", Long.toString(conf.getTargetChunkSize()))));

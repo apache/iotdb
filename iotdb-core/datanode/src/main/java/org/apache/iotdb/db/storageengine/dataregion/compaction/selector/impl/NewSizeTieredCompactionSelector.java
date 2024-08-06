@@ -43,6 +43,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private List<TsFileResourceCandidate> tsFileResourceCandidateList = new ArrayList<>();
   private final long totalFileSizeThreshold;
   private final long totalFileNumThreshold;
+  private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
   private final boolean isActiveTimePartition;
@@ -64,7 +65,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
             .getValue();
     long maxDiskSizeForTempFiles = (long) availableDisk / config.getCompactionThreadCount();
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
-    this.totalFileNumThreshold = config.getFileLimitPerInnerTask();
+    this.totalFileNumThreshold = config.getInnerCompactionTotalFileNumThreshold();
+    this.totalFileNumLowerBound = config.getFileLimitPerInnerTask();
     this.totalFileSizeThreshold =
         Math.min(
             config.getInnerCompactionTotalFileSizeThreshold(),
@@ -190,7 +192,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         }
 
         boolean isSatisfied =
-            currentSelectedResources.size() >= totalFileNumThreshold
+            currentSelectedResources.size() >= totalFileNumLowerBound
                 || !isActiveTimePartition
                 || currentSelectedFileTotalSize >= singleFileSizeThreshold;
         if (isSatisfied) {
