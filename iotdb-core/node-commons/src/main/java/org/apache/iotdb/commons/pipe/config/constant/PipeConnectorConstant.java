@@ -131,7 +131,7 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
 
   public static final String CONNECTOR_OPC_UA_MODEL_KEY = "connector.opcua.model";
-  public static final String SINK_OPC_UA_MODEL_KEY = "sink.opcua.tcp.model";
+  public static final String SINK_OPC_UA_MODEL_KEY = "sink.opcua.model";
   public static final String CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE = "client-server";
   public static final String CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE = "pub-sub";
   public static final String CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE =
