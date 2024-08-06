@@ -35,13 +35,13 @@ public class ArrayConverter {
   private static final Converter[][] CONVERTER =
       new Converter[TSDataType.values().length][TSDataType.values().length];
 
-  private static final Converter NO_CHANGE_CONVERTER =
+  private static final Converter DO_NOTHING_CONVERTER =
       (sourceDataType, targetDataType, sourceValues) -> sourceValues;
 
   static {
     for (final TSDataType sourceDataType : TSDataType.values()) {
       for (final TSDataType targetDataType : TSDataType.values()) {
-        CONVERTER[sourceDataType.ordinal()][targetDataType.ordinal()] = NO_CHANGE_CONVERTER;
+        CONVERTER[sourceDataType.ordinal()][targetDataType.ordinal()] = DO_NOTHING_CONVERTER;
       }
     }
 
@@ -93,8 +93,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.BOOLEAN.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.BOOLEAN.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.BOOLEAN.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.BOOLEAN.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.BOOLEAN.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final boolean[] boolValues = (boolean[]) sourceValues;
@@ -180,8 +180,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.INT32.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.INT32.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.INT32.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.INT32.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.INT32.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final int[] intValues = (int[]) sourceValues;
@@ -267,8 +267,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.INT64.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.INT64.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.INT64.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.INT64.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.INT64.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final long[] longValues = (long[]) sourceValues;
@@ -354,8 +354,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.FLOAT.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.FLOAT.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.FLOAT.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.FLOAT.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.FLOAT.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final float[] floatValues = (float[]) sourceValues;
@@ -441,8 +441,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.DOUBLE.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.DOUBLE.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.DOUBLE.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.DOUBLE.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.DOUBLE.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final double[] doubleValues = (double[]) sourceValues;
@@ -528,8 +528,8 @@ public class ArrayConverter {
         };
     CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.TEXT.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> sourceValues;
-    CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.TEXT.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final Binary[] textValues = (Binary[]) sourceValues;
@@ -569,12 +569,12 @@ public class ArrayConverter {
 
     // VECTOR
     for (int i = 0; i < TSDataType.values().length; i++) {
-      CONVERTER[TSDataType.VECTOR.ordinal()][i] = NO_CHANGE_CONVERTER;
+      CONVERTER[TSDataType.VECTOR.ordinal()][i] = DO_NOTHING_CONVERTER;
     }
 
     // UNKNOWN
     for (int i = 0; i < TSDataType.values().length; i++) {
-      CONVERTER[TSDataType.UNKNOWN.ordinal()][i] = NO_CHANGE_CONVERTER;
+      CONVERTER[TSDataType.UNKNOWN.ordinal()][i] = DO_NOTHING_CONVERTER;
     }
 
     // TIMESTAMP
@@ -632,8 +632,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> sourceValues;
     CONVERTER[TSDataType.TIMESTAMP.ordinal()][TSDataType.DATE.ordinal()] =
@@ -719,8 +719,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.DATE.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.DATE.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.DATE.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.DATE.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.DATE.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final int[] dateValues = (int[]) sourceValues;
@@ -806,8 +806,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.BLOB.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.BLOB.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.BLOB.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.BLOB.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.BLOB.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final Binary[] blobValues = (Binary[]) sourceValues;
@@ -893,8 +893,8 @@ public class ArrayConverter {
           }
           return textValues;
         };
-    CONVERTER[TSDataType.STRING.ordinal()][TSDataType.VECTOR.ordinal()] = NO_CHANGE_CONVERTER;
-    CONVERTER[TSDataType.STRING.ordinal()][TSDataType.UNKNOWN.ordinal()] = NO_CHANGE_CONVERTER;
+    CONVERTER[TSDataType.STRING.ordinal()][TSDataType.VECTOR.ordinal()] = DO_NOTHING_CONVERTER;
+    CONVERTER[TSDataType.STRING.ordinal()][TSDataType.UNKNOWN.ordinal()] = DO_NOTHING_CONVERTER;
     CONVERTER[TSDataType.STRING.ordinal()][TSDataType.TIMESTAMP.ordinal()] =
         (sourceDataType, targetDataType, sourceValues) -> {
           final Binary[] stringValues = (Binary[]) sourceValues;
