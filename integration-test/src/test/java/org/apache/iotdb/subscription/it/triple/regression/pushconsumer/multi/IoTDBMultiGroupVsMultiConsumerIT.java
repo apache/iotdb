@@ -555,7 +555,6 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     thread.start();
     thread.join();
 
-    Thread.sleep(600000);
     System.out.println(databasePrefix + "1.d_0:[src]" + getCount(session_src, sql1));
     System.out.println(databasePrefix + "2.d_0:[src]" + getCount(session_src, sql2));
     System.out.println(databasePrefix + "3.d_0:[src]" + getCount(session_src, sql3));
