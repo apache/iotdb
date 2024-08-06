@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
@@ -138,6 +139,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
       final MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       final String name = measurementSchema.getMeasurementId();
+      final TSDataType type = measurementSchema.getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
       final UaVariableNode measurementNode;
       if (!getNodeManager().containsNode(nodeId)) {
@@ -148,7 +150,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .setUserAccessLevel(AccessLevel.READ_ONLY)
                 .setBrowseName(newQualifiedName(name))
                 .setDisplayName(LocalizedText.english(name))
-                .setDataType(Identifiers.String)
+                .setDataType(convertToOpcDataType(type))
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
         getNodeManager().addNode(measurementNode);
@@ -180,12 +182,37 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 < utcTimestamp) {
           measurementNode.setValue(
               new DataValue(
-                  new Variant(tablet.values[i]),
+                  new Variant(getTabletObjectValue(tablet.values[i], lastNonnullIndex, type)),
                   StatusCode.GOOD,
                   new DateTime(utcTimestamp),
                   new DateTime()));
         }
       }
+    }
+  }
+
+  private static Object getTabletObjectValue(
+      final Object column, final int rowIndex, final TSDataType type) {
+    switch (type) {
+      case BOOLEAN:
+        return ((boolean[]) column)[rowIndex];
+      case INT32:
+        return ((int[]) column)[rowIndex];
+      case DATE:
+        return ((LocalDate[]) column)[rowIndex];
+      case INT64:
+      case TIMESTAMP:
+        return ((long[]) column)[rowIndex];
+      case FLOAT:
+        return ((float[]) column)[rowIndex];
+      case DOUBLE:
+        return ((double[]) column)[rowIndex];
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return ((Binary[]) column)[rowIndex];
+      default:
+        throw new UnSupportedDataTypeException("UnSupported dataType " + type);
     }
   }
 
