@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -50,7 +51,9 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 
+import java.sql.Date;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -182,7 +185,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 < utcTimestamp) {
           measurementNode.setValue(
               new DataValue(
-                  new Variant(getTabletObjectValue(tablet.values[i], lastNonnullIndex, type)),
+                  new Variant(getTabletObjectValue4Opc(tablet.values[i], lastNonnullIndex, type)),
                   StatusCode.GOOD,
                   new DateTime(utcTimestamp),
                   new DateTime()));
@@ -191,7 +194,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
   }
 
-  private static Object getTabletObjectValue(
+  private static Object getTabletObjectValue4Opc(
       final Object column, final int rowIndex, final TSDataType type) {
     switch (type) {
       case BOOLEAN:
@@ -199,10 +202,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case INT32:
         return ((int[]) column)[rowIndex];
       case DATE:
-        return ((LocalDate[]) column)[rowIndex];
+        return new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
       case INT64:
-      case TIMESTAMP:
         return ((long[]) column)[rowIndex];
+      case TIMESTAMP:
+        return new DateTime(timestampToUtc(((long[]) column)[rowIndex]));
       case FLOAT:
         return ((float[]) column)[rowIndex];
       case DOUBLE:
@@ -254,7 +258,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         // Time --> TimeStamp
-        eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
+        eventNode.setTime(new DateTime(timestampToUtc(tablet.timestamps[rowIndex])));
 
         // Message --> Value
         switch (dataType) {
@@ -271,13 +275,20 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           case DATE:
             eventNode.setMessage(
                 LocalizedText.english(
-                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex]).toString()));
+                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex])
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toString()));
             break;
           case INT64:
-          case TIMESTAMP:
             eventNode.setMessage(
                 LocalizedText.english(
                     Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case TIMESTAMP:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    DateTimeUtils.convertLongToDate(
+                        ((long[]) tablet.values[columnIndex])[rowIndex])));
             break;
           case FLOAT:
             eventNode.setMessage(
@@ -317,9 +328,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case INT32:
         return Identifiers.Int32;
       case DATE:
+      case TIMESTAMP:
         return Identifiers.DateTime;
       case INT64:
-      case TIMESTAMP:
         return Identifiers.Int64;
       case FLOAT:
         return Identifiers.Float;
