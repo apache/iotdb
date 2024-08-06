@@ -33,11 +33,11 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.github.ggalmazor.ltdownsampling.LTThreeBuckets;
-import com.github.ggalmazor.ltdownsampling.Point;
+import com.ggalmazor.ltdownsampling.DoublePoint;
+import com.ggalmazor.ltdownsampling.LTThreeBuckets;
+import com.ggalmazor.ltdownsampling.Point;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -132,9 +132,9 @@ public class UDTFSample implements UDTF {
         List<Point> input = new LinkedList<>();
         for (int i = 0; i < n; i++) {
           Row row = rowWindow.getRow(i);
-          BigDecimal time = BigDecimal.valueOf(row.getTime());
-          BigDecimal data = BigDecimal.valueOf(Util.getValueAsDouble(row));
-          input.add(new Point(time, data));
+          Number time = row.getTime();
+          Number data = Util.getValueAsDouble(row);
+          input.add(DoublePoint.of(time, data));
         }
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
@@ -142,16 +142,16 @@ public class UDTFSample implements UDTF {
           for (Point p : output) {
             switch (dataType) {
               case INT32:
-                collector.putInt(p.getX().longValue(), p.getY().intValue());
+                collector.putInt((long) p.getX(), (int) p.getY());
                 break;
               case INT64:
-                collector.putLong(p.getX().longValue(), p.getY().longValue());
+                collector.putLong((long) p.getX(), (long) p.getY());
                 break;
               case FLOAT:
-                collector.putFloat(p.getX().longValue(), p.getY().floatValue());
+                collector.putFloat((long) p.getX(), (float) p.getY());
                 break;
               case DOUBLE:
-                collector.putDouble(p.getX().longValue(), p.getY().doubleValue());
+                collector.putDouble((long) p.getX(), p.getY());
                 break;
               default:
                 throw new NoNumberException();

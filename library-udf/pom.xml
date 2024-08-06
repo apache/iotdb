@@ -84,6 +84,13 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <!-- Needed for fetching lt_downsampling_java8 -->
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>
