@@ -32,19 +32,6 @@ public class ArrayConverter {
         final Object sourceValues);
   }
 
-  //   BOOLEAN((byte)0),
-  //  INT32((byte)1),
-  //  INT64((byte)2),
-  //  FLOAT((byte)3),
-  //  DOUBLE((byte)4),
-  //  TEXT((byte)5),
-  //  VECTOR((byte)6),
-  //  UNKNOWN((byte)7),
-  //  TIMESTAMP((byte)8),
-  //  DATE((byte)9),
-  //  BLOB((byte)10),
-  //  STRING((byte)11);
-
   private static final Converter[][] CONVERTER =
       new Converter[TSDataType.values().length][TSDataType.values().length];
 
