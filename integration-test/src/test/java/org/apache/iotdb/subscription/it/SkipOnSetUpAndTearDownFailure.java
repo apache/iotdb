@@ -23,6 +23,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.AssumptionViolatedException;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
+import org.junit.runners.model.MultipleFailureException;
 import org.junit.runners.model.Statement;
 
 import java.lang.reflect.Method;
@@ -50,30 +51,15 @@ public class SkipOnSetUpAndTearDownFailure implements TestRule {
         try {
           base.evaluate();
         } catch (final Throwable e) {
-          // Trace back the exception stack to determine whether the exception was thrown during the
-          // setUp or tearDown phase.
-          for (final StackTraceElement stackTraceElement : e.getStackTrace()) {
-            if (setUpMethodName.equals(stackTraceElement.getMethodName())
-                && description.getClassName().equals(stackTraceElement.getClassName())
-                && isMethodAnnotationWithBefore(stackTraceElement.getMethodName())) {
-              e.printStackTrace();
-              // Skip this test.
-              throw new AssumptionViolatedException(
-                  String.format(
-                      "Skipping test due to setup failure for %s#%s",
-                      description.getClassName(), description.getMethodName()));
-            }
-
-            if (tearDownMethodName.equals(stackTraceElement.getMethodName())
-                && description.getClassName().equals(stackTraceElement.getClassName())
-                && isMethodAnnotationWithAfter(stackTraceElement.getMethodName())) {
-              e.printStackTrace();
-              // Skip this test.
-              throw new AssumptionViolatedException(
-                  String.format(
-                      "Skipping test due to tearDown failure for %s#%s",
-                      description.getClassName(), description.getMethodName()));
-            }
+          // Pay attention to the situation of MultipleFailureException...
+          if ((e instanceof MultipleFailureException
+                  && ((MultipleFailureException) e)
+                      .getFailures().stream().allMatch(this::isExceptionInSetUpOrTearDown))
+              || isExceptionInSetUpOrTearDown(e)) {
+            throw new AssumptionViolatedException(
+                String.format(
+                    "Skipping test due to setup or tearDown failure for %s#%s",
+                    description.getClassName(), description.getMethodName()));
           }
 
           // Re-throw the exception (which means the test has failed).
@@ -82,6 +68,27 @@ public class SkipOnSetUpAndTearDownFailure implements TestRule {
           // Regardless of the circumstances, the method decorated with @After will always be
           // executed.
         }
+      }
+
+      private boolean isExceptionInSetUpOrTearDown(final Throwable e) {
+        // Trace back the exception stack to determine whether the exception was thrown during the
+        // setUp or tearDown phase.
+        for (final StackTraceElement stackTraceElement : e.getStackTrace()) {
+          if (setUpMethodName.equals(stackTraceElement.getMethodName())
+              && description.getClassName().equals(stackTraceElement.getClassName())
+              && isMethodAnnotationWithBefore(stackTraceElement.getMethodName())) {
+            e.printStackTrace();
+            return true;
+          }
+
+          if (tearDownMethodName.equals(stackTraceElement.getMethodName())
+              && description.getClassName().equals(stackTraceElement.getClassName())
+              && isMethodAnnotationWithAfter(stackTraceElement.getMethodName())) {
+            e.printStackTrace();
+            return true;
+          }
+        }
+        return false;
       }
 
       private boolean isMethodAnnotationWithBefore(final String methodName) {
