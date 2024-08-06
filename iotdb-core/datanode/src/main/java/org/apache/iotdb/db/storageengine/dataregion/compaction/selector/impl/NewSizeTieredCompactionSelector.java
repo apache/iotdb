@@ -71,7 +71,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
             maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
-    this.isActiveTimePartition = this.tsFileManager.hasNextTimePartition(timePartition, sequence);
+    this.isActiveTimePartition = !this.tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
   @Override
