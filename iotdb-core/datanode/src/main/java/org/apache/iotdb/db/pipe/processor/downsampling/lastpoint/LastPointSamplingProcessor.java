@@ -78,7 +78,7 @@ public class LastPointSamplingProcessor implements PipeProcessor {
 
     final AtomicReference<Exception> exception = new AtomicReference<>();
 
-    Iterable<TabletInsertionEvent> iterable =
+    final Iterable<TabletInsertionEvent> iterable =
         tabletInsertionEvent.processRowByRow(
             (row, rowCollector) -> {
               processRow(row, rowCollector, exception);
@@ -115,44 +115,41 @@ public class LastPointSamplingProcessor implements PipeProcessor {
 
     final PipeRemarkableRow remarkableRow = new PipeRemarkableRow((PipeRow) row);
 
-    boolean hasLastPointMeasurements = false;
+    boolean hasLatestPointMeasurements = false;
     for (int i = 0, size = row.size(); i < size; i++) {
       if (row.isNull(i)) {
         continue;
       }
       TimeValuePair timeValuePair = null;
-      PartialPath path = null;
+      String fullPath = row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(i);
       try {
-        path =
-            new PartialPath(
-                row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(i));
+        // global latest point filter
+        timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(new PartialPath(fullPath));
       } catch (Exception e) {
         exception.set(e);
-        continue;
       }
 
-      timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(path);
-      final boolean timeValuePairIsNotNull = timeValuePair != null;
-      if (timeValuePairIsNotNull && timeValuePair.getTimestamp() > row.getTime()) {
+      if (timeValuePair != null && timeValuePair.getTimestamp() > row.getTime()) {
         remarkableRow.markNull(i);
         return;
       }
 
+      // local latest point filter
       final LastPointFilter filter =
-          partialPathToLatestTimeCache.getPartialPathLastObject(path.getFullPath());
+          partialPathToLatestTimeCache.getPartialPathLastObject(fullPath);
       if (filter != null) {
         if (filter.filter(row.getTime(), row.getObject(i))) {
-          hasLastPointMeasurements = true;
+          hasLatestPointMeasurements = true;
         } else {
           remarkableRow.markNull(i);
         }
       } else {
-        hasLastPointMeasurements = true;
+        hasLatestPointMeasurements = true;
         partialPathToLatestTimeCache.setPartialPathLastObject(
-            path.getFullPath(), new LastPointFilter<>(row.getTime(), row.getObject(i)));
+            fullPath, new LastPointFilter<>(row.getTime(), row.getObject(i)));
       }
 
-      if (hasLastPointMeasurements) {
+      if (hasLatestPointMeasurements) {
         try {
           rowCollector.collectRow(row);
         } catch (Exception e) {
