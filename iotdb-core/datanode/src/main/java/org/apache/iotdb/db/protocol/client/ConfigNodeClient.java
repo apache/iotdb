@@ -83,6 +83,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -974,6 +976,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus dropPipeExtended(TDropPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropPipeExtended(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TShowPipeResp showPipe(TShowPipeReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showPipe(req), resp -> !updateConfigNodeLeader(resp.status));
@@ -995,6 +1003,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus dropTopic(String topicName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.dropTopic(topicName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropTopicExtended(TDropTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropTopicExtended(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

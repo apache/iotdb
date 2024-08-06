@@ -328,6 +328,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           case DATE:
             values[i] = new int[rowSize];
             break;
+          case TIMESTAMP:
           case INT64:
             values[i] = new long[rowSize];
             break;

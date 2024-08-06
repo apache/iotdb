@@ -673,10 +673,12 @@ struct TCreatePipePluginReq {
   3: required string jarName
   4: required binary jarFile
   5: required string jarMD5
+  6: optional bool ifNotExistsCondition
 }
 
 struct TDropPipePluginReq {
   1: required string pluginName
+  2: optional bool ifExistsCondition
 }
 
 // Get PipePlugin table from config node
@@ -709,6 +711,7 @@ struct TCreatePipeReq {
     2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
+    5: optional bool ifNotExistsCondition
 }
 
 struct TAlterPipeReq {
@@ -719,6 +722,12 @@ struct TAlterPipeReq {
     5: required bool isReplaceAllConnectorAttributes
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
+    8: optional bool ifExistsCondition
+}
+
+struct TDropPipeReq {
+    1: required string pipeName
+    2: optional bool ifExistsCondition
 }
 
 // Deprecated, restored for compatibility
@@ -773,6 +782,12 @@ struct TAlterLogicalViewReq {
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
+    3: optional bool ifNotExistsCondition
+}
+
+struct TDropTopicReq {
+    1: required string topicName
+    2: optional bool ifExistsCondition
 }
 
 struct TShowTopicReq {
@@ -1484,6 +1499,9 @@ service IConfigNodeRPCService {
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
 
+  /** Drop Pipe */
+  common.TSStatus dropPipeExtended(TDropPipeReq req)
+
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
@@ -1504,6 +1522,9 @@ service IConfigNodeRPCService {
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
+
+  /** Drop Topic */
+  common.TSStatus dropTopicExtended(TDropTopicReq req)
 
   /** Show Topic by name, if name is empty, show all Topic */
   TShowTopicResp showTopic(TShowTopicReq req)

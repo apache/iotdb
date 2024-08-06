@@ -115,6 +115,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -808,7 +810,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
-    return configManager.dropPipePlugin(req.getPluginName());
+    return configManager.dropPipePlugin(req);
   }
 
   @Override
@@ -1038,7 +1040,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropPipe(String pipeName) {
-    return configManager.dropPipe(pipeName);
+    return configManager.dropPipe(
+        new TDropPipeReq().setPipeName(pipeName).setIfExistsCondition(false));
+  }
+
+  @Override
+  public TSStatus dropPipeExtended(TDropPipeReq req) {
+    return configManager.dropPipe(req);
   }
 
   @Override
@@ -1068,7 +1076,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropTopic(String topicName) {
-    return configManager.dropTopic(topicName);
+    return configManager.dropTopic(
+        new TDropTopicReq().setTopicName(topicName).setIfExistsCondition(false));
+  }
+
+  @Override
+  public TSStatus dropTopicExtended(TDropTopicReq req) throws TException {
+    return configManager.dropTopic(req);
   }
 
   @Override
