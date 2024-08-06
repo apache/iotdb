@@ -144,7 +144,8 @@ public class OpcUaConnector implements PipeConnector {
                                           CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
                                       CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
                                   .equals(CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
-                      newServer.startup();
+                      nameSpace.startup();
+                      newServer.startup().get();
                       return new Pair<>(new AtomicInteger(0), nameSpace);
                     } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);

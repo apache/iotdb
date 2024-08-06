@@ -32,9 +32,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.Reference;
+import org.eclipse.milo.opcua.sdk.server.Lifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.DataItem;
-import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespace;
+import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
@@ -53,13 +54,27 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public class OpcUaNameSpace extends ManagedNamespace {
+public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
   private final boolean isClientServerModel;
 
   OpcUaNameSpace(final OpcUaServer server, final boolean isClientServerModel) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
+
+    getLifecycleManager()
+        .addLifecycle(
+            new Lifecycle() {
+              @Override
+              public void startup() {
+                // Do nothing
+              }
+
+              @Override
+              public void shutdown() {
+                getServer().shutdown();
+              }
+            });
   }
 
   void transfer(final Tablet tablet) throws UaException {
@@ -78,39 +93,46 @@ public class OpcUaNameSpace extends ManagedNamespace {
       throw new PipeRuntimeCriticalException("The segments of tablets must exist");
     }
     final StringBuilder currentStr = new StringBuilder();
-    UaFolderNode folderNode;
-    NodeId folderNodeId = null;
+    UaFolderNode folderNode = null;
+    NodeId folderNodeId;
     for (final String segment : segments) {
+      final UaFolderNode nextFolderNode;
+
       currentStr.append(segment);
       folderNodeId = newNodeId(currentStr.toString());
       currentStr.append("/");
 
       if (!getNodeManager().containsNode(folderNodeId)) {
-        folderNode =
+        nextFolderNode =
             new UaFolderNode(
                 getNodeContext(),
                 folderNodeId,
                 newQualifiedName(segment),
                 LocalizedText.english(segment));
-        getNodeManager().addNode(folderNode);
-        folderNode.addReference(
-            new Reference(
-                folderNode.getNodeId(),
-                Identifiers.Organizes,
-                Identifiers.ObjectsFolder.expanded(),
-                false));
+        getNodeManager().addNode(nextFolderNode);
+        if (Objects.nonNull(folderNode)) {
+          folderNode.addOrganizes(nextFolderNode);
+        } else {
+          nextFolderNode.addReference(
+              new Reference(
+                  folderNodeId,
+                  Identifiers.Organizes,
+                  Identifiers.ObjectsFolder.expanded(),
+                  false));
+        }
+        folderNode = nextFolderNode;
+      } else {
+        folderNode =
+            (UaFolderNode)
+                getNodeManager()
+                    .getNode(folderNodeId)
+                    .orElseThrow(
+                        () ->
+                            new PipeRuntimeCriticalException(
+                                String.format(
+                                    "The folder node for %s does not exist.", tablet.deviceId)));
       }
     }
-
-    folderNode =
-        (UaFolderNode)
-            getNodeManager()
-                .getNode(folderNodeId)
-                .orElseThrow(
-                    () ->
-                        new PipeRuntimeCriticalException(
-                            String.format(
-                                "The folder node for %s does not exist.", tablet.deviceId)));
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
@@ -123,18 +145,13 @@ public class OpcUaNameSpace extends ManagedNamespace {
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                 .setNodeId(newNodeId(currentFolder + name))
                 .setAccessLevel(AccessLevel.READ_WRITE)
+                .setUserAccessLevel(AccessLevel.READ_ONLY)
                 .setBrowseName(newQualifiedName(name))
                 .setDisplayName(LocalizedText.english(name))
                 .setDataType(Identifiers.String)
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
         getNodeManager().addNode(measurementNode);
-        measurementNode.addReference(
-            new Reference(
-                measurementNode.getNodeId(),
-                Identifiers.Organizes,
-                Identifiers.ObjectsFolder.expanded(),
-                false));
         folderNode.addOrganizes(measurementNode);
       } else {
         // This must exist
@@ -310,9 +327,5 @@ public class OpcUaNameSpace extends ManagedNamespace {
   @Override
   public void onMonitoringModeChanged(final List<MonitoredItem> list) {
     // Do nothing
-  }
-
-  void shutdown() {
-    getServer().shutdown();
   }
 }
