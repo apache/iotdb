@@ -192,9 +192,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         }
 
         boolean isSatisfied =
-            currentSelectedResources.size() >= totalFileNumLowerBound
-                || !isActiveTimePartition
-                || currentSelectedFileTotalSize >= singleFileSizeThreshold;
+            (currentSelectedResources.size() >= totalFileNumLowerBound
+                    || !isActiveTimePartition
+                    || currentSelectedFileTotalSize >= singleFileSizeThreshold)
+                && currentSelectedResources.size() > 1;
         if (isSatisfied) {
           InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
           selectedTaskList.add(task);
