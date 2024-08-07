@@ -72,7 +72,7 @@ public class IoTDBHistoryRootTsFilePushConsumerIT extends AbstractSubscriptionRe
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
-    createTopic_s(topicName, pattern, null, "2024-02-13 07:59:59+08:00", true);
+    createTopic_s(topicName, pattern, null, "2024-02-13T07:59:59+08:00", true);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(

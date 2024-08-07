@@ -65,8 +65,10 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
-    createTopic_s(topicName, pattern, "2024-01-01", "2024-03-01", false);
-    createTopic_s(topicName2, pattern2, "2024-01-01", "2024-03-13", false);
+    createTopic_s(
+        topicName, pattern, "2024-01-01T00:00:00+08:00", "2024-03-01T00:00:00+08:00", false);
+    createTopic_s(
+        topicName2, pattern2, "2024-01-01T00:00:00+08:00", "2024-03-13T00:00:00+08:00", false);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(

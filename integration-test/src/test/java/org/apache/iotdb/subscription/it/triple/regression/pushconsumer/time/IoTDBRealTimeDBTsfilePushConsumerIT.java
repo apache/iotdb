@@ -67,7 +67,7 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
-    createTopic_s(topicName, pattern, "2024-01-31 08:02:00+08:00", null, true);
+    createTopic_s(topicName, pattern, "2024-01-31T08:02:00+08:00", null, true);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(

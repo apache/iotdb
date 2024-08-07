@@ -81,8 +81,8 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     createTopic_s(
         topicName,
         pattern,
-        "2024-01-01",
-        "2024-03-31",
+        "2024-01-01T00:00:00+08:00",
+        "2024-03-31T00:00:00+08:00",
         true,
         TopicConstant.MODE_LIVE_VALUE,
         TopicConstant.LOOSE_RANGE_TIME_VALUE);

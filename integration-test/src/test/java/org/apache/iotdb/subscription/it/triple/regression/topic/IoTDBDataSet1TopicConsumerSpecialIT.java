@@ -60,7 +60,8 @@ public class IoTDBDataSet1TopicConsumerSpecialIT extends AbstractSubscriptionReg
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
-    createTopic_s(topicName, pattern, "2024-01-01", "2024-03-01", false);
+    createTopic_s(
+        topicName, pattern, "2024-01-01T00:00:00+08:00", "2024-03-01T00:00:00+08:00", false);
     session_src.createTimeseries(
         pattern, TSDataType.INT32, TSEncoding.GORILLA, CompressionType.SNAPPY);
     session_src.createTimeseries(

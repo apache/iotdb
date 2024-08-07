@@ -77,8 +77,8 @@ public class IoTDBLooseAllTsDatasetPushConsumerSnapshotIT extends AbstractSubscr
     createTopic_s(
         topicName,
         pattern,
-        "2024-01-01",
-        "2024-02-13 08:00:02",
+        "2024-01-01T00:00:00+08:00",
+        "2024-02-13T08:00:02+08:00",
         false,
         TopicConstant.MODE_SNAPSHOT_VALUE,
         TopicConstant.LOOSE_RANGE_ALL_VALUE);

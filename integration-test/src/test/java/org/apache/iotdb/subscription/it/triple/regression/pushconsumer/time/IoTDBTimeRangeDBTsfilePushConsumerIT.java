@@ -70,7 +70,8 @@ public class IoTDBTimeRangeDBTsfilePushConsumerIT extends AbstractSubscriptionRe
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
-    createTopic_s(topicName, pattern, "2024-01-01", "2024-03-31", true);
+    createTopic_s(
+        topicName, pattern, "2024-01-01T00:00:00+08:00", "2024-03-31T00:00:00+08:00", true);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(
