@@ -666,7 +666,7 @@ public class RegionMaintainHandler {
    * @param originalDataNode The DataNode where the region locates
    */
   public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
-      throws ProcedureException {
+      throws ProcedureException, InterruptedException {
     // find new leader
     final int findNewLeaderTimeLimitSecond = 10;
     long startTime = System.nanoTime();
@@ -689,6 +689,10 @@ public class RegionMaintainHandler {
             && RATIS_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       final int MAX_RETRY_TIME = 10;
       int retryTime = 0;
+      long sleepTime =
+          (CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()
+                  + CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs())
+              / 2;
       while (true) {
         TRegionLeaderChangeResp resp =
             SyncDataNodeClientPool.getInstance()
@@ -702,7 +706,9 @@ public class RegionMaintainHandler {
           LOGGER.warn("[RemoveRegion] Ratis transfer leader fail, but procedure will continue.");
           return;
         }
-        LOGGER.warn("Call changeRegionLeader fail for the {} time", retryTime);
+        LOGGER.warn(
+            "Call changeRegionLeader fail for the {} time, will sleep {} ms", retryTime, sleepTime);
+        Thread.sleep(sleepTime);
       }
     }
 
