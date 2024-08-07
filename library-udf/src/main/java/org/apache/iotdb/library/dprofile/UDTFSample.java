@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.dprofile.util.LTThreeBuckets;
 import org.apache.iotdb.library.util.NoNumberException;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
@@ -33,9 +34,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.ggalmazor.ltdownsampling.DoublePoint;
-import com.ggalmazor.ltdownsampling.LTThreeBuckets;
-import com.ggalmazor.ltdownsampling.Point;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
@@ -129,29 +127,29 @@ public class UDTFSample implements UDTF {
 
     if (this.k < n) {
       if (this.method == Method.TRIANGLE) {
-        List<Point> input = new LinkedList<>();
+        List<Pair<Long, Double>> input = new LinkedList<>();
         for (int i = 0; i < n; i++) {
           Row row = rowWindow.getRow(i);
-          Number time = row.getTime();
-          Number data = Util.getValueAsDouble(row);
-          input.add(DoublePoint.of(time, data));
+          long time = row.getTime();
+          double data = Util.getValueAsDouble(row);
+          input.add(Pair.of(time, data));
         }
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
-          List<Point> output = LTThreeBuckets.sorted(input, k - 2);
-          for (Point p : output) {
+          List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
+          for (Pair<Long, Double> p : output) {
             switch (dataType) {
               case INT32:
-                collector.putInt((long) p.getX(), (int) p.getY());
+                collector.putInt(p.getLeft(), p.getRight().intValue());
                 break;
               case INT64:
-                collector.putLong((long) p.getX(), (long) p.getY());
+                collector.putLong(p.getLeft(), p.getRight().longValue());
                 break;
               case FLOAT:
-                collector.putFloat((long) p.getX(), (float) p.getY());
+                collector.putFloat(p.getLeft(), p.getRight().floatValue());
                 break;
               case DOUBLE:
-                collector.putDouble((long) p.getX(), p.getY());
+                collector.putDouble(p.getLeft(), p.getRight());
                 break;
               default:
                 throw new NoNumberException();

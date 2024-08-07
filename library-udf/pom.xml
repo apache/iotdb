@@ -68,12 +68,6 @@
             <groupId>com.github.wendykierp</groupId>
             <artifactId>JTransforms</artifactId>
         </dependency>
-        <!-- Sampling  -->
-        <dependency>
-            <groupId>com.github.ggalmazor</groupId>
-            <artifactId>lt_downsampling_java8</artifactId>
-            <version>0.1.0</version>
-        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -84,13 +78,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <!-- Needed for fetching lt_downsampling_java8 -->
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>
