@@ -46,7 +46,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
-  private final boolean isActiveTimePartition;
+  private boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
       String storageGroupName,
@@ -73,14 +73,20 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
             maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
-    this.isActiveTimePartition = !this.tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
   @Override
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+    this.isActiveTimePartition = checkIsActiveTimePartition();
     this.tsFileResourceCandidateList =
         tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
     return super.selectInnerSpaceTask(tsFileResources);
+  }
+
+  private boolean checkIsActiveTimePartition() {
+    TsFileResource lastResource = tsFileResources.get(tsFileResources.size() - 1);
+    return (System.currentTimeMillis() - lastResource.getTsFileID().getTimestamp())
+        < 2 * config.getCompactionScheduleIntervalInMs();
   }
 
   @Override
@@ -105,7 +111,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         continue;
       }
 
-      if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) >= maxLevelGap) {
+      if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) > maxLevelGap) {
         levelTaskSelection.endCurrentTaskSelection();
         continue;
       }
