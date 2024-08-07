@@ -63,7 +63,7 @@ public class RegionGroup {
     this.totalTimeSlotCount = new AtomicLong(0);
   }
 
-  public long getCreateTime() {
+  public synchronized long getCreateTime() {
     return createTime;
   }
 
