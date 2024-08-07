@@ -39,6 +39,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunNoArgs() throws Exception {
@@ -51,6 +54,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunStart() throws Exception {
@@ -63,6 +69,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(0, result);
     Mockito.verify(configNodeMock, Mockito.times(1)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunRemoveNoCoordinates() throws Exception {
@@ -75,6 +84,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunRemoveValidIdCoordinates() throws Exception {
@@ -82,7 +94,7 @@ public class ConfigNodeCommandLineTest extends TestCase {
     ConfigNodeRemoveCheck nodeRemoveCheckMock = Mockito.mock(ConfigNodeRemoveCheck.class);
     TEndPoint internalEndpoint = Mockito.mock(TEndPoint.class);
     TEndPoint externalEndpoint = Mockito.mock(TEndPoint.class);
-    Mockito.when(nodeRemoveCheckMock.removeCheck("23")).thenReturn(new TConfigNodeLocation());
+    Mockito.when(nodeRemoveCheckMock.removeCheck("23")).thenReturn(null);
     Mockito.when(nodeRemoveCheckMock.removeCheck("42"))
         .thenReturn(new TConfigNodeLocation(42, internalEndpoint, externalEndpoint));
 
@@ -93,6 +105,8 @@ public class ConfigNodeCommandLineTest extends TestCase {
     Assert.assertEquals(0, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
     Mockito.verify(nodeRemoveCheckMock, Mockito.times(1)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(1))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunRemoveInvalidIdCoordinates() throws Exception {
@@ -111,6 +125,8 @@ public class ConfigNodeCommandLineTest extends TestCase {
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
     Mockito.verify(nodeRemoveCheckMock, Mockito.times(1)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunRemoveRpcCoordinates() throws Exception {
@@ -123,6 +139,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(1)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunRemoveTooManyCoordinates() throws Exception {
@@ -135,6 +154,9 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 
   public void testTestRunInvalidCommand() throws Exception {
@@ -147,5 +169,8 @@ public class ConfigNodeCommandLineTest extends TestCase {
 
     Assert.assertEquals(-1, result);
     Mockito.verify(configNodeMock, Mockito.times(0)).active();
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0)).removeCheck(Mockito.anyString());
+    Mockito.verify(nodeRemoveCheckMock, Mockito.times(0))
+        .removeConfigNode(Mockito.any(TConfigNodeLocation.class));
   }
 }
