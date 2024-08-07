@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.converter;
+package org.apache.iotdb.db.pipe.receiver.transform.converter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -928,8 +928,10 @@ public class ArrayConverter {
 
   public static Object convert(
       final TSDataType sourceDataType, final TSDataType targetDataType, final Object sourceValues) {
-    return CONVERTER[sourceDataType.ordinal()][targetDataType.ordinal()].convert(
-        sourceDataType, targetDataType, sourceValues);
+    return sourceValues == null
+        ? null
+        : CONVERTER[sourceDataType.ordinal()][targetDataType.ordinal()].convert(
+            sourceDataType, targetDataType, sourceValues);
   }
 
   private ArrayConverter() {
