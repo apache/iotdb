@@ -59,22 +59,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
 
-  // For load
-  @Override
-  public void updateOneDeviceFlushedTime(long timePartitionId, IDeviceID deviceId, long time) {
-    ILastFlushTime flushTimeMapForPartition =
-        partitionLatestFlushedTime.computeIfAbsent(
-            timePartitionId, id -> new DeviceLastFlushTime());
-    long lastFlushTime = flushTimeMapForPartition.getLastFlushTime(deviceId);
-    if (lastFlushTime == Long.MIN_VALUE) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.ramBytesUsed();
-      memCostForEachPartition.compute(
-          timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
-    }
-    flushTimeMapForPartition.updateLastFlushTime(deviceId, time);
-  }
-
-  // For recover
+  // For recover and load
   @Override
   public void updateMultiDeviceFlushedTime(
       long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
@@ -82,7 +67,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new DeviceLastFlushTime());
 
-    long memIncr = 0;
+    long memIncr = 0L;
     for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
@@ -94,10 +79,53 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
   }
 
+  // For recover only
   @Override
-  public void updateOneDeviceGlobalFlushedTime(IDeviceID path, long time) {
-    globalLatestFlushedTimeForEachDevice.compute(
-        path, (k, v) -> v == null ? time : Math.max(v, time));
+  public void upgradeAndUpdateMultiDeviceFlushedTime(
+      long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
+    ILastFlushTime flushTimeMapForPartition =
+        partitionLatestFlushedTime.computeIfAbsent(
+            timePartitionId, id -> new DeviceLastFlushTime());
+    // upgrade
+    if (flushTimeMapForPartition instanceof PartitionLastFlushTime) {
+      long maxFlushTime = flushTimeMapForPartition.getLastFlushTime(null);
+      ILastFlushTime newDeviceLastFlushTime = new DeviceLastFlushTime();
+      long memIncr = 0;
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
+        newDeviceLastFlushTime.updateLastFlushTime(entry.getKey(), entry.getValue());
+        maxFlushTime = Math.max(maxFlushTime, entry.getValue());
+      }
+      long finalMemIncr = memIncr;
+      memCostForEachPartition.compute(
+          timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
+    } else {
+      // should not go here
+      long memIncr = 0;
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
+          memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
+        }
+        flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
+      }
+      long finalMemIncr = memIncr;
+      memCostForEachPartition.compute(
+          timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
+    }
+  }
+
+  // For recover
+  @Override
+  public void updatePartitionFlushedTime(long timePartitionId, long maxFlushedTime) {
+    ILastFlushTime flushTimeMapForPartition =
+        partitionLatestFlushedTime.computeIfAbsent(
+            timePartitionId, id -> new PartitionLastFlushTime(maxFlushedTime));
+
+    long memIncr = Long.BYTES;
+    flushTimeMapForPartition.updateLastFlushTime(null, maxFlushedTime);
+    ;
+    memCostForEachPartition.compute(
+        timePartitionId, (k1, v1) -> v1 == null ? memIncr : v1 + memIncr);
   }
 
   @Override
@@ -108,9 +136,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public boolean checkAndCreateFlushedTimePartition(long timePartitionId) {
+  public boolean checkAndCreateFlushedTimePartition(
+      long timePartitionId, boolean usingDeviceFlushTime) {
     if (!partitionLatestFlushedTime.containsKey(timePartitionId)) {
-      partitionLatestFlushedTime.put(timePartitionId, new DeviceLastFlushTime());
+      partitionLatestFlushedTime.put(
+          timePartitionId,
+          usingDeviceFlushTime
+              ? new DeviceLastFlushTime()
+              : new PartitionLastFlushTime(Long.MIN_VALUE));
       return false;
     }
     return true;

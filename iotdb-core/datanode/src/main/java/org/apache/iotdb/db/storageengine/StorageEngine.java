@@ -134,19 +134,21 @@ public class StorageEngine implements IService {
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
-  private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
+  private final AtomicBoolean isReadyForReadAndWrite = new AtomicBoolean();
+
+  private final AtomicBoolean isReady = new AtomicBoolean();
 
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
-  private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+  private final TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   /** used to do short-lived asynchronous tasks */
   private ExecutorService cachedThreadPool;
 
   // add customized listeners here for flush and close events
-  private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
-  private List<FlushListener> customFlushListeners = new ArrayList<>();
+  private final List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
+  private final List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
   private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
@@ -178,16 +180,17 @@ public class StorageEngine implements IService {
     }
   }
 
-  public boolean isAllSgReady() {
-    return isAllSgReady.get();
+  public boolean isReadyForReadAndWrite() {
+    return isReadyForReadAndWrite.get();
   }
 
-  public void setAllSgReady(boolean allSgReady) {
-    isAllSgReady.set(allSgReady);
+  public boolean isReady() {
+    return isReady.get();
   }
 
-  public void asyncRecover() throws StartupException {
-    setAllSgReady(false);
+  private void asyncRecoverDataRegion() throws StartupException {
+    isReady.set(false);
+    isReadyForReadAndWrite.set(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
 
@@ -208,8 +211,7 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
-              recoverRepairData();
-              setAllSgReady(true);
+              isReadyForReadAndWrite.set(true);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -283,11 +285,11 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    asyncRecover();
-
-    LOGGER.info("start ttl check thread successfully.");
+    asyncRecoverDataRegion();
 
     startTimedService();
+
+    asyncRecoverTsFileResource();
   }
 
   private void startTimedService() {
@@ -333,6 +335,28 @@ public class StorageEngine implements IService {
         dataRegion.timedFlushUnseqMemTable();
       }
     }
+  }
+
+  private void asyncRecoverTsFileResource() {
+    List<Future<Void>> futures = new LinkedList<>();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        List<Callable<Void>> asyncTsFileResourceRecoverTasks =
+            dataRegion.getAsyncTsFileResourceRecoverTaskList();
+        for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
+          futures.add(cachedThreadPool.submit(task));
+        }
+      }
+    }
+    Thread recoverEndTrigger =
+        new Thread(
+            () -> {
+              checkResults(futures, "async recover tsfile resource meets error.");
+              recoverRepairData();
+              isReadyForReadAndWrite.set(true);
+            },
+            ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
+    recoverEndTrigger.start();
   }
 
   @Override
@@ -645,8 +669,6 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
-   *
-   * @param listener
    */
   public void registerFlushListener(FlushListener listener) {
     customFlushListeners.add(listener);
@@ -655,8 +677,6 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen file close events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
-   *
-   * @param listener
    */
   public void registerCloseFileListener(CloseFileListener listener) {
     customCloseFileListeners.add(listener);
@@ -672,7 +692,7 @@ public class StorageEngine implements IService {
   }
 
   // When registering a new region, the coordinator needs to register the corresponding region with
-  // the local storageengine before adding the corresponding consensusGroup to the consensus layer
+  // the local storage before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg) throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);

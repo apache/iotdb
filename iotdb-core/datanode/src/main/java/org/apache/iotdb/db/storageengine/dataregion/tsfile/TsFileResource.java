@@ -60,6 +60,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -290,6 +291,15 @@ public class TsFileResource {
         }
       }
     }
+  }
+
+  public ByteBuffer serializeFileTimeIndexToByteBuffer() {
+    ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES);
+    buffer.putLong(tsFileID.fileVersion);
+    buffer.putLong(tsFileID.compactionVersion);
+    buffer.putLong(timeIndex.getMinStartTime());
+    buffer.putLong(timeIndex.getMaxEndTime());
+    return buffer;
   }
 
   public void updateStartTime(IDeviceID device, long time) {

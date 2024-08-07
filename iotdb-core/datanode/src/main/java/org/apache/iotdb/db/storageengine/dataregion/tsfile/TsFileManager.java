@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,7 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TsFileManager {
   private final String storageGroupName;
   private String dataRegionId;
-  private final String storageGroupDir;
+  private final String dataRegionSysDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -52,9 +54,9 @@ public class TsFileManager {
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId, String dataRegionSysDir) {
     this.storageGroupName = storageGroupName;
-    this.storageGroupDir = storageGroupDir;
+    this.dataRegionSysDir = dataRegionSysDir;
     this.dataRegionId = dataRegionId;
   }
 
@@ -248,6 +250,14 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
+      File storageGroupDirFile = new File(this.dataRegionSysDir);
+      FileTimeIndexCacheRecorder.getInstance()
+          .compactFileTimeIndexIfNeeded(
+              storageGroupDirFile,
+              Integer.parseInt(dataRegionId),
+              timePartition,
+              sequenceFiles.get(timePartition),
+              unsequenceFiles.get(timePartition));
       for (TsFileResource resource : targetFileResources) {
         if (!resource.isDeleted()) {
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
@@ -260,6 +270,7 @@ public class TsFileManager {
                 .computeIfAbsent(timePartition, t -> new TsFileResourceList())
                 .keepOrderInsert(resource);
           }
+          FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(storageGroupDirFile, resource);
         }
       }
     } finally {
@@ -339,8 +350,8 @@ public class TsFileManager {
     return storageGroupName;
   }
 
-  public String getStorageGroupDir() {
-    return storageGroupDir;
+  public String getDataRegionSysDir() {
+    return dataRegionSysDir;
   }
 
   public Set<Long> getTimePartitions() {
