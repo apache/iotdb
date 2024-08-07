@@ -77,6 +77,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
   @Override
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+    if (tsFileResources.isEmpty()) {
+      return Collections.emptyList();
+    }
     this.isActiveTimePartition = checkIsActiveTimePartition(tsFileResources);
     this.tsFileResourceCandidateList =
         tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
