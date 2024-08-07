@@ -486,23 +486,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
-  private TSStatus executeStatementWithRetryOnDataTypeMismatch(final Statement statement)
-      throws Exception {
+  private TSStatus executeStatementWithRetryOnDataTypeMismatch(final Statement statement) {
     if (statement == null) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    try {
-      return executeStatement(statement);
-    } catch (final Exception e) {
-      if (!shouldConvertDataTypeOnTypeMismatch) {
-        throw e;
-      }
-      return statement
-          .accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, e)
-          .orElseThrow(() -> e);
-    }
+    final TSStatus status = executeStatement(statement);
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || !shouldConvertDataTypeOnTypeMismatch
+        ? status
+        : statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status);
   }
 
   private static TSStatus executeStatement(final Statement statement) {
