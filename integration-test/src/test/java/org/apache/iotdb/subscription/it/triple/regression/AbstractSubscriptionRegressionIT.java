@@ -45,6 +45,7 @@ import org.junit.Before;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -104,6 +105,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
             .port(SRC_PORT)
             .username("root")
             .password("root")
+            .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_dest =
         new Session.Builder()
@@ -111,6 +113,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
             .port(DEST_PORT)
             .username("root")
             .password("root")
+            .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_dest2 =
         new Session.Builder()
@@ -118,6 +121,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
             .port(DEST_PORT2)
             .username("root")
             .password("root")
+            .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_src.open(false);
     session_dest.open(false);
