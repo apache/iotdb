@@ -58,7 +58,7 @@ public class TypeInferenceUtils {
     } catch (NumberFormatException e) {
       return false;
     }
-    return true;
+    return !s.endsWith("F") && !s.endsWith("f") && !s.endsWith("D") && !s.endsWith("d");
   }
 
   private static boolean isBoolean(String s) {
