@@ -1706,6 +1706,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
+          isAllSuccessful = false;
           results.add(status);
         } finally {
           addStatementExecutionLatency(
