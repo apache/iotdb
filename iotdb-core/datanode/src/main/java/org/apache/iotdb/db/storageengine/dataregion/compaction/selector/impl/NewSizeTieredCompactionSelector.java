@@ -84,7 +84,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   }
 
   private boolean checkIsActiveTimePartition(List<TsFileResource> resources) {
-    TsFileResource lastResource = resources.get(tsFileResources.size() - 1);
+    TsFileResource lastResource = resources.get(resources.size() - 1);
     return (System.currentTimeMillis() - lastResource.getTsFileID().getTimestamp())
         < 2 * config.getCompactionScheduleIntervalInMs();
   }
