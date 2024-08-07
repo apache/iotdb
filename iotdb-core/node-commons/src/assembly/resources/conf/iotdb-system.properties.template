@@ -1877,12 +1877,22 @@ load_active_listening_enable=true
 # The default directory is 'ext/load/pending'.
 # effectiveMode: hot_reload
 # Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
+# load_active_listening_dirs=ext\\load\\pending
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
 
 # The directory where tsfile are moved if the loading process fails.
 # Only one directory can be configured.
 # effectiveMode: hot_reload
 # Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
+# load_active_listening_fail_dir=ext\\load\\fail
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_fail_dir=ext/load/fail
 
 # The maximum number of threads that can be used simultaneously to load tsfile.

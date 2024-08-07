@@ -95,6 +95,7 @@ public class LoadTsFileManager {
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
+    AutoLoadTsFileService.getInstance().registerPeriodicalJob();
   }
 
   private void registerCleanupTaskExecutor() {

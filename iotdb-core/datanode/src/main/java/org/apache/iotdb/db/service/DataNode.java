@@ -67,7 +67,6 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.receiver.load.AutoLoadTsFileService;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -656,9 +655,6 @@ public class DataNode implements DataNodeMBean {
     // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
     registerManager.register(PipeDataNodeAgent.runtime());
-
-    // Register listening tsfile directory service
-    registerManager.register(AutoLoadTsFileService.getInstance());
   }
 
   /** Set up RPC and protocols after DataNode is available */

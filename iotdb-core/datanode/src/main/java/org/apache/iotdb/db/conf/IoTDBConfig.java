@@ -1122,6 +1122,16 @@ public class IoTDBConfig {
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
+  private boolean loadActiveListeningEnable = true;
+
+  private String[] loadActiveListeningDirs = new String[0];
+
+  private String loadActiveListeningFailDir = "";
+
+  private long loadActiveListeningCheckIntervalSeconds = 20L;
+
+  private int loadActiveListeningMaxThreadNum = 8;
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -1140,72 +1150,7 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
-  private Boolean loadActiveListeningEnable = true;
-
-  private String[] loadActiveListeningDirs = new String[0];
-
-  private String loadActiveListeningFailDir =
-      IoTDBConstant.EXT_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
-          + File.separator
-          + "fail";
-
-  private Long loadActiveListeningCheckIntervalSeconds = 5L;
-
-  private Integer loadActiveListeningMaxThreadNum = 8;
-
   IoTDBConfig() {}
-
-  public Integer getLoadActiveListeningMaxThreadNum() {
-    return loadActiveListeningMaxThreadNum;
-  }
-
-  public void setLoadActiveListeningMaxThreadNum(Integer loadActiveListeningMaxThreadNum) {
-    this.loadActiveListeningMaxThreadNum = loadActiveListeningMaxThreadNum;
-  }
-
-  public Long getLoadActiveListeningCheckIntervalSeconds() {
-    return loadActiveListeningCheckIntervalSeconds;
-  }
-
-  public void setLoadActiveListeningCheckIntervalSeconds(
-      Long loadActiveListeningCheckIntervalSeconds) {
-    this.loadActiveListeningCheckIntervalSeconds = loadActiveListeningCheckIntervalSeconds;
-  }
-
-  public String getLoadActiveListeningFailDir() {
-    return loadActiveListeningFailDir;
-  }
-
-  public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
-    this.loadActiveListeningFailDir = loadActiveListeningFailDir;
-  }
-
-  public String[] getLoadActiveListeningDirs() {
-    return (Objects.isNull(this.loadActiveListeningDirs)
-            || this.loadActiveListeningDirs.length == 0)
-        ? new String[] {
-          IoTDBConstant.EXT_FOLDER_NAME
-              + File.separator
-              + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
-              + File.separator
-              + "pending"
-        }
-        : this.loadActiveListeningDirs;
-  }
-
-  public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
-    this.loadActiveListeningDirs = loadActiveListeningDirs;
-  }
-
-  public Boolean getLoadActiveListeningEnable() {
-    return loadActiveListeningEnable;
-  }
-
-  public void setLoadActiveListeningEnable(Boolean loadActiveListeningEnable) {
-    this.loadActiveListeningEnable = loadActiveListeningEnable;
-  }
 
   public int getMaxLogEntriesNumPerBatch() {
     return maxLogEntriesNumPerBatch;
@@ -1352,6 +1297,10 @@ public class IoTDBConfig {
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
+    for (int i = 0; i < loadActiveListeningDirs.length; i++) {
+      loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+    }
+    loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
@@ -3949,6 +3898,58 @@ public class IoTDBConfig {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadActiveListeningMaxThreadNum() {
+    return loadActiveListeningMaxThreadNum;
+  }
+
+  public void setLoadActiveListeningMaxThreadNum(int loadActiveListeningMaxThreadNum) {
+    this.loadActiveListeningMaxThreadNum = loadActiveListeningMaxThreadNum;
+  }
+
+  public long getLoadActiveListeningCheckIntervalSeconds() {
+    return loadActiveListeningCheckIntervalSeconds;
+  }
+
+  public void setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
+    this.loadActiveListeningCheckIntervalSeconds = loadActiveListeningCheckIntervalSeconds;
+  }
+
+  public String getLoadActiveListeningFailDir() {
+    return Objects.equals(loadActiveListeningFailDir, "")
+        ? extDir + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME + File.separator + "fail"
+        : this.loadActiveListeningFailDir;
+  }
+
+  public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
+    this.loadActiveListeningFailDir = loadActiveListeningFailDir;
+  }
+
+  public String[] getLoadActiveListeningDirs() {
+    return (Objects.isNull(this.loadActiveListeningDirs)
+            || this.loadActiveListeningDirs.length == 0)
+        ? new String[] {
+          extDir
+              + File.separator
+              + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+              + File.separator
+              + "pending"
+        }
+        : this.loadActiveListeningDirs;
+  }
+
+  public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
+    this.loadActiveListeningDirs = loadActiveListeningDirs;
+  }
+
+  public boolean getLoadActiveListeningEnable() {
+    return loadActiveListeningEnable;
+  }
+
+  public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
+    this.loadActiveListeningEnable = loadActiveListeningEnable;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

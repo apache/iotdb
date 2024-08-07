@@ -1015,8 +1015,6 @@ public class IoTDBDescriptor {
     // Author cache
     loadAuthorCache(properties);
 
-    loadListeningAndAutoLoadTsFile(properties);
-
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
@@ -1039,41 +1037,6 @@ public class IoTDBDescriptor {
 
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
-  }
-
-  private void loadListeningAndAutoLoadTsFile(Properties properties) {
-    conf.setLoadActiveListeningEnable(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "load_active_listening_enable",
-                Boolean.toString(conf.getLoadActiveListeningEnable()))));
-
-    conf.setLoadActiveListeningDirs(
-        Arrays.stream(
-                properties
-                    .getProperty(
-                        "load_active_listening_dirs",
-                        String.join(",", conf.getLoadActiveListeningDirs()))
-                    .trim()
-                    .split(","))
-            .filter(dir -> !dir.isEmpty())
-            .toArray(String[]::new));
-
-    conf.setLoadActiveListeningFailDir(
-        properties.getProperty(
-            "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
-
-    conf.setLoadActiveListeningCheckIntervalSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "load_active_listening_check_interval_seconds",
-                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
-
-    conf.setLoadActiveListeningMaxThreadNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "load_active_listening_max_thread_num",
-                Integer.toString(conf.getLoadActiveListeningMaxThreadNum()))));
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
@@ -1797,6 +1760,7 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
+      loadTsFileActiveListeningProps(properties);
       StorageEngine.getInstance().rebootTimedService();
       // update params of creating schema automatically
       loadAutoCreateSchemaProps(properties);
@@ -2198,6 +2162,62 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                Boolean.toString(conf.getLoadActiveListeningEnable()))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(",", conf.getLoadActiveListeningDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_check_interval_seconds",
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
+    conf.setLoadActiveListeningMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_active_listening_max_thread_num",
+                Integer.toString(conf.getLoadActiveListeningMaxThreadNum()))));
+  }
+
+  private void loadTsFileActiveListeningProps(Properties properties) throws IOException {
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_active_listening_enable"))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(
+                            ",",
+                            ConfigurationFileUtils.getConfigurationDefaultValue(
+                                "load_active_listening_dirs")))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir",
+            ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

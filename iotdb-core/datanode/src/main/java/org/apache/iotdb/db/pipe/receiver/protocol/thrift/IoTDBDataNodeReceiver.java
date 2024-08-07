@@ -338,7 +338,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-  public TSStatus loadTsFile(final String fileAbsolutePath) throws FileNotFoundException {
+  private TSStatus loadTsFile(final String fileAbsolutePath) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
     statement.setDeleteAfterLoad(true);
