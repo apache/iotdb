@@ -296,10 +296,11 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
+      logger.warn("Exception during wal flush", e);
       throw new WriteProcessException(
           String.format(
-              "%s: %s write WAL failed",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+              "%s: %s write WAL failed: %s",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
           e);
     } finally {
       // recordScheduleWalCost
@@ -370,10 +371,11 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
+      logger.warn("Exception during wal flush", e);
       throw new WriteProcessException(
           String.format(
-              "%s: %s write WAL failed",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+              "%s: %s write WAL failed: %s",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
           e);
     } finally {
       // recordScheduleWalCost
