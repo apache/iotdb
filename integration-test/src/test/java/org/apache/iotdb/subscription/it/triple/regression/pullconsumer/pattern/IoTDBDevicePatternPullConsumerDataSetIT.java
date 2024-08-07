@@ -91,10 +91,14 @@ public class IoTDBDevicePatternPullConsumerDataSetIT extends AbstractSubscriptio
   @Override
   @After
   public void tearDown() throws Exception {
-    consumer.close();
-    subs.dropTopic(topicName);
-    dropDB(database);
-    dropDB(database2);
+    try {
+      consumer.close();
+    } catch (Exception e) {
+    } finally {
+      subs.dropTopic(topicName);
+      dropDB(database);
+      dropDB(database2);
+    }
     super.tearDown();
   }
 

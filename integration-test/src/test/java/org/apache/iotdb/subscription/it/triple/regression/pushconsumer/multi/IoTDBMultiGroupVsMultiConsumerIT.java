@@ -71,8 +71,8 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @Category({MultiClusterIT2SubscriptionRegression.class})
 public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegressionIT {
 
-  private String topicNamePrefix = "topic_MultiGroupVsMultiConsumer_";
-  private String databasePrefix = "root.test.MultiGroupVsMultiConsumer_";
+  private String topicNamePrefix = "topic_pushMultiGroupVsMultiConsumer_";
+  private String databasePrefix = "root.test.pushMultiGroupVsMultiConsumer_";
   private int tsCount = 10;
   private int consumertCount = 10;
   private static List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -152,9 +152,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     for (int i = 0; i < tsCount; i++) {
       subs.dropTopic(topicNamePrefix + i);
     }
-    for (int i = 0; i < tsCount; i++) {
-      dropDB(databasePrefix + i);
-    }
+    dropDB(databasePrefix);
     super.tearDown();
   }
 

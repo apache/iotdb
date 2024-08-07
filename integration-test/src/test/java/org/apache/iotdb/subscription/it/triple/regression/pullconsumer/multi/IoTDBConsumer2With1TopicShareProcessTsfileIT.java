@@ -128,11 +128,10 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
         subs.getSubscriptions(topicName).size(), 0, "Show subscriptions before subscribing");
     consumer.subscribe(topicName);
     consumer2.subscribe(topicName);
-    //        Thread.sleep(1000);
-    System.out.println("After subscription:");
     subs.getSubscriptions(topicName).forEach((System.out::println));
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after subscription");
+    // insert 1000 records
     Thread thread =
         new Thread(
             () -> {
@@ -182,7 +181,15 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     System.out.println("rowCount2=" + rowCount2.get());
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCount1.get() + rowCount2.get(), 1000, "consumer share process");
+          assertEquals(
+              rowCount1.get() + rowCount2.get(),
+              1000,
+              "consumer share process rowCount1="
+                  + rowCount1.get()
+                  + " rowCount2="
+                  + rowCount2.get()
+                  + " src="
+                  + getCount(session_src, "select count(s_0) from " + device));
           assertTrue(rowCount1.get() > 0);
           assertTrue(rowCount2.get() > 0);
         });

@@ -153,7 +153,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
-    System.out.println("src: " + getCount(session_src, sql));
+    System.out.println("LooseAllTsDatasetPushConsumer src1: " + getCount(session_src, sql));
 
     consumer =
         new SubscriptionPushConsumer.Builder()
@@ -186,7 +186,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
     insert_data(1706745600000L, device2); // 2024-02-01 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
 
-    System.out.println("src: " + getCount(session_src, sql));
+    System.out.println("LooseAllTsDatasetPushConsumer src2: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
         () -> {
@@ -205,7 +205,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
-    System.out.println("src: " + getCount(session_src, sql));
+    System.out.println("LooseAllTsDatasetPushConsumer src3: " + getCount(session_src, sql));
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
     AWAIT.untilAsserted(

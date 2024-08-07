@@ -45,10 +45,10 @@ import java.util.List;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
 public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegressionIT {
-  private static final String database = "root.test.MultiGroupVsMultiConsumer";
+  private static final String database = "root.test.pullMultiGroupVsMultiConsumer";
   private static final String device = database + ".d_0";
   private static List<MeasurementSchema> schemaList = new ArrayList<>();
-  private String topicNamePrefix = "TopicMultiGroupVsMultiConsumer_";
+  private String topicNamePrefix = "TopicPullMultiGroupVsMultiConsumer_";
   private int tsCount = 10;
   private int consumertCount = 10;
   private List<SubscriptionPullConsumer> consumers = new ArrayList<>(consumertCount);

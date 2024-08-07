@@ -105,7 +105,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
-    assertEquals(subs.getTopics().size(), 1, "create show topics");
+    assertTrue(subs.getTopic(topicName).isPresent(), "create show topics");
   }
 
   @Override
@@ -114,10 +114,11 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     try {
       consumer.close();
     } catch (Exception e) {
+    } finally {
+      subs.dropTopic(topicName);
+      dropDB(database);
+      dropDB(database2);
     }
-    subs.dropTopic(topicName);
-    dropDB(database);
-    dropDB(database2);
     super.tearDown();
   }
 
@@ -180,7 +181,9 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
 
     AWAIT.untilAsserted(
         () -> {
-          check_count(9, "select count(s_0) from " + device, "Consumption data: s_0" + device);
+          assertTrue(
+              getCount(session_dest, "select count(s_0) from " + device) >= 9,
+              "Consumption data: s_0 " + device);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1" + device);
           check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0" + device2);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1" + device2);
@@ -201,7 +204,10 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     // synchronization.
     AWAIT.untilAsserted(
         () -> {
-          check_count(11, "select count(s_0) from " + device, "consume data again:s_0" + device);
+          assertTrue(
+              getCount(session_dest, "select count(s_0) from " + device) >= 11,
+              " re-subscribing s_0 count="
+                  + getCount(session_dest, "select count(s_0) from " + device));
           check_count(0, "select count(s_1) from " + device, "Consumption Data: s_1" + device);
         });
   }

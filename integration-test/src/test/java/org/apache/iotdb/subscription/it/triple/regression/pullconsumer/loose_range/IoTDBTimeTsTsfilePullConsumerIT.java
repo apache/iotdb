@@ -41,7 +41,6 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /***
@@ -160,11 +159,10 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after subscription");
     insert_data(timestamp - 4000, device);
     insert_data(timestamp - 4000, device2);
-    System.out.println(
-        FORMAT.format(new Date())
-            + " src filter:"
-            + getCount(
-                session_src, "select count(s_0) from " + device + " where time <" + timestamp));
+
+    String sql = "select count(s_0) from " + device + " where time <" + timestamp;
+    System.out.println("TimeTsTsfilePullConsumer src1 filter:" + getCount(session_src, sql));
+
     // Consumption data
     List<String> paths = new ArrayList<>(3);
     paths.add(device);
@@ -187,16 +185,13 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
-    System.out.println(
-        FORMAT.format(new Date())
-            + " src filter:"
-            + getCount(
-                session_src, "select count(s_0) from " + device + " where time <" + timestamp));
+    System.out.println("TimeTsTsfilePullConsumer src2 filter:" + getCount(session_src, sql));
 
     rowCountList = consume_tsfile(consumer, paths);
     assertTrue(
         rowCountList.get(0) >= 12,
-        "Unsubscribe and then resubscribe, progress is not retained. Full synchronization.");
+        "Unsubscribe and then resubscribe, progress is not retained. Full synchronization. Actual="
+            + rowCountList.get(0));
     assertEquals(rowCountList.get(1), 0, "Unsubscribe and subscribe again," + device2);
     assertEquals(rowCountList.get(2), 0, "Unsubscribe and then resubscribe," + device3);
   }

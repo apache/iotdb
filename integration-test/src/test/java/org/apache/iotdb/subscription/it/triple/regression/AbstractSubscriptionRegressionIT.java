@@ -48,7 +48,6 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -325,7 +324,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       }
       for (final SubscriptionMessage message : messages) {
         onReceived.incrementAndGet();
-        System.out.println(FORMAT.format(new Date()) + " onReceived=" + onReceived.get());
+        // System.out.println(FORMAT.format(new Date()) + " onReceived=" + onReceived.get());
         final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
         try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
           for (int i = 0; i < devices.size(); i++) {
@@ -337,8 +336,8 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
               rowCounts.get(i).addAndGet(1);
               System.out.println(next.getTimestamp() + "," + next.getFields());
             }
-            System.out.println(
-                FORMAT.format(new Date()) + " consume tsfile " + i + ":" + rowCounts.get(i).get());
+            // System.out.println(FORMAT.format(new Date()) + " consume tsfile " + i + ":" +
+            // rowCounts.get(i).get());
           }
         } catch (IOException e) {
           throw new RuntimeException(e);
