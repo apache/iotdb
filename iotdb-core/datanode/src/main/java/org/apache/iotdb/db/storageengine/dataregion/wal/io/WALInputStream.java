@@ -367,10 +367,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private int readWALBufferFromChannel(ByteBuffer buffer) throws IOException {
     long startTime = System.nanoTime();
-    long startPosition = channel.position();
     int size = channel.read(buffer);
-    WritingMetrics.getInstance()
-        .recordWALRead(channel.position() - startPosition, System.nanoTime() - startTime);
+    WritingMetrics.getInstance().recordWALRead(size, System.nanoTime() - startTime);
     return size;
   }
 
