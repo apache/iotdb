@@ -42,6 +42,7 @@ import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
+import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
@@ -61,11 +62,14 @@ import java.util.UUID;
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
   private final boolean isClientServerModel;
+  private final SubscriptionModel subscriptionModel;
 
   OpcUaNameSpace(final OpcUaServer server, final boolean isClientServerModel) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
 
+    subscriptionModel = new SubscriptionModel(server, this);
+    getLifecycleManager().addLifecycle(subscriptionModel);
     getLifecycleManager()
         .addLifecycle(
             new Lifecycle() {
@@ -214,7 +218,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case TEXT:
       case BLOB:
       case STRING:
-        return ((Binary[]) column)[rowIndex];
+        return ((Binary[]) column)[rowIndex].toString();
       default:
         throw new UnSupportedDataTypeException("UnSupported dataType " + type);
     }
@@ -348,22 +352,22 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   @Override
-  public void onDataItemsCreated(final List<DataItem> list) {
-    // Do nothing
+  public void onDataItemsCreated(final List<DataItem> dataItems) {
+    subscriptionModel.onDataItemsCreated(dataItems);
   }
 
   @Override
-  public void onDataItemsModified(final List<DataItem> list) {
-    // Do nothing
+  public void onDataItemsModified(final List<DataItem> dataItems) {
+    subscriptionModel.onDataItemsModified(dataItems);
   }
 
   @Override
-  public void onDataItemsDeleted(final List<DataItem> list) {
-    // Do nothing
+  public void onDataItemsDeleted(final List<DataItem> dataItems) {
+    subscriptionModel.onDataItemsDeleted(dataItems);
   }
 
   @Override
-  public void onMonitoringModeChanged(final List<MonitoredItem> list) {
-    // Do nothing
+  public void onMonitoringModeChanged(final List<MonitoredItem> monitoredItems) {
+    subscriptionModel.onMonitoringModeChanged(monitoredItems);
   }
 }
