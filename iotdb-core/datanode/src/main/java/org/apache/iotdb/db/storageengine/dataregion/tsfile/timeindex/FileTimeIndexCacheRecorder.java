@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheWriter;
 
 import org.slf4j.Logger;
@@ -32,9 +33,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +52,8 @@ public class FileTimeIndexCacheRecorder {
 
   private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
-  private final Map<Integer, Map<Long, FileTimeIndexCacheWriter>> writerMap = new HashMap<>();
+  private final Map<Integer, Map<Long, FileTimeIndexCacheWriter>> writerMap =
+      new ConcurrentHashMap<>();
 
   private FileTimeIndexCacheRecorder() {
     recordFileIndexThread =
@@ -73,40 +75,68 @@ public class FileTimeIndexCacheRecorder {
     int dataRegionId = tsFileID.regionId;
     long partitionId = tsFileID.timePartitionId;
 
-    FileTimeIndexCacheWriter writer =
-        writerMap
-            .computeIfAbsent(dataRegionId, k -> new HashMap<>())
-            .computeIfAbsent(
-                partitionId,
-                k -> {
-                  File partitionDir =
-                      SystemFileFactory.INSTANCE.getFile(
-                          dataRegionSysDir, String.valueOf(partitionId));
-                  File logFile = SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
-                  try {
-                    if (!partitionDir.exists() && !partitionDir.mkdirs()) {
-                      LOGGER.warn(
-                          "Partition directory has existed，filePath:{}",
-                          partitionDir.getAbsolutePath());
-                    }
-                    if (!logFile.createNewFile()) {
-                      LOGGER.warn(
-                          "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
-                    }
-                    return new FileTimeIndexCacheWriter(logFile, false);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
+    FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
     taskQueue.offer(
         () -> {
           try {
             writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
-            writer.force();
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
         });
+  }
+
+  public void compactFileTimeIndexIfNeeded(
+      File dataRegionSysDir,
+      int dataRegionId,
+      long partitionId,
+      TsFileResourceList sequenceFiles,
+      TsFileResourceList unsequenceFiles) {
+    FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
+    int currentResourceCount = sequenceFiles.size() + unsequenceFiles.size();
+    if (writer.getLogFile().length() > currentResourceCount * (4 * Long.BYTES) * 100) {
+      taskQueue.offer(
+          () -> {
+            try {
+              writer.clearFile();
+              for (TsFileResource tsFileResource : sequenceFiles) {
+                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+              }
+              for (TsFileResource tsFileResource : unsequenceFiles) {
+                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
+    }
+  }
+
+  private FileTimeIndexCacheWriter getWriter(
+      int dataRegionId, long partitionId, File dataRegionSysDir) {
+    return writerMap
+        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(
+            partitionId,
+            k -> {
+              File partitionDir =
+                  SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
+              File logFile = SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
+              try {
+                if (!partitionDir.exists() && !partitionDir.mkdirs()) {
+                  LOGGER.warn(
+                      "Partition directory has existed，filePath:{}",
+                      partitionDir.getAbsolutePath());
+                }
+                if (!logFile.createNewFile()) {
+                  LOGGER.warn(
+                      "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
+                }
+                return new FileTimeIndexCacheWriter(logFile, false);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
   }
 
   public static FileTimeIndexCacheRecorder getInstance() {

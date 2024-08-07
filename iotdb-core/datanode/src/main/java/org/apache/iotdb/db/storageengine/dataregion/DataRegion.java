@@ -869,11 +869,11 @@ public class DataRegion implements IDataRegionForQuery {
         SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
     File logFile = SystemFileFactory.INSTANCE.getFile(partitionSysDir, "FileTimeIndexCache_0");
     if (logFile.exists()) {
-      Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+      Map<TsFileID, FileTimeIndex> fileTimeIndexMap;
       try {
         FileTimeIndexCacheReader logReader =
             new FileTimeIndexCacheReader(logFile, dataRegionId, partitionId);
-        logReader.read(fileTimeIndexMap);
+        fileTimeIndexMap = logReader.read();
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
@@ -945,7 +945,7 @@ public class DataRegion implements IDataRegionForQuery {
           context.incrementRecoveredFilesNum();
         }
       }
-      // TODO: After recover, replace partition last flush time with device last flush time
+      // After recover, replace partition last flush time with device last flush time
       if (config.isEnableSeparateData()) {
         upgradeAndUpdateDeviceLastFlushTime(partitionId, resourceList);
       }

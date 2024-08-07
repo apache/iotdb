@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 
 public class FileTimeIndexCacheWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndexCacheWriter.class);
@@ -54,7 +55,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
     try {
       channel.write(logBuffer);
       if (this.forceEachWrite) {
-        channel.force(true);
+        channel.force(false);
       }
     } catch (ClosedChannelException ignored) {
       logger.warn("someone interrupt current thread, so no need to do write for io safety");
@@ -64,7 +65,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   @Override
   public void force() throws IOException {
     if (channel != null && channel.isOpen()) {
-      channel.force(true);
+      channel.force(false);
     }
   }
 
@@ -72,13 +73,23 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   public void close() throws IOException {
     if (channel != null) {
       if (channel.isOpen()) {
-        channel.force(true);
+        channel.force(false);
       }
       fileOutputStream.close();
       fileOutputStream = null;
       channel.close();
       channel = null;
     }
+  }
+
+  public void clearFile() throws IOException {
+    close();
+    Files.delete(this.logFile.toPath());
+    if (!logFile.createNewFile()) {
+      logger.warn("Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
+    }
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   @Override

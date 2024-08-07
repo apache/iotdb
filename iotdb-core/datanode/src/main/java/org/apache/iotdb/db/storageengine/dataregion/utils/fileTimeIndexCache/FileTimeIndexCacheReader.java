@@ -27,6 +27,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 
 public class FileTimeIndexCacheReader {
@@ -36,15 +37,15 @@ public class FileTimeIndexCacheReader {
   private final int dataRegionId;
   private final long partitionId;
 
-  public FileTimeIndexCacheReader(File logFile, String dataRegionId, long partitionId)
-      throws IOException {
+  public FileTimeIndexCacheReader(File logFile, String dataRegionId, long partitionId) {
     this.logFile = logFile;
     this.fileLength = logFile.length();
     this.dataRegionId = Integer.parseInt(dataRegionId);
     this.partitionId = partitionId;
   }
 
-  public void read(Map<TsFileID, FileTimeIndex> fileTimeIndexMap) throws IOException {
+  public Map<TsFileID, FileTimeIndex> read() throws IOException {
+    Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
     try (DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())))) {
       long readLength = 0L;
@@ -59,5 +60,6 @@ public class FileTimeIndexCacheReader {
         readLength += 4 * Long.BYTES;
       }
     }
+    return fileTimeIndexMap;
   }
 }
