@@ -77,14 +77,14 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
   @Override
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
-    this.isActiveTimePartition = checkIsActiveTimePartition();
+    this.isActiveTimePartition = checkIsActiveTimePartition(tsFileResources);
     this.tsFileResourceCandidateList =
         tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
     return super.selectInnerSpaceTask(tsFileResources);
   }
 
-  private boolean checkIsActiveTimePartition() {
-    TsFileResource lastResource = tsFileResources.get(tsFileResources.size() - 1);
+  private boolean checkIsActiveTimePartition(List<TsFileResource> resources) {
+    TsFileResource lastResource = resources.get(tsFileResources.size() - 1);
     return (System.currentTimeMillis() - lastResource.getTsFileID().getTimestamp())
         < 2 * config.getCompactionScheduleIntervalInMs();
   }
