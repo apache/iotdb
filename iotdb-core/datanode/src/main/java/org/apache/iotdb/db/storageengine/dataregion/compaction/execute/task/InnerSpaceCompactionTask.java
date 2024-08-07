@@ -332,7 +332,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
               filesView.sortedAllSourceFilesInTask.subList(
                   filesView.renamedTargetFiles.size(),
-                  filesView.renamedTargetFiles.size() + requiredPositionNum),
+                  Math.min(
+                      filesView.renamedTargetFiles.size() + requiredPositionNum,
+                      filesView.sortedAllSourceFilesInTask.size())),
               filesView.sequence);
     } else {
       filesView.targetFilesInPerformer =
