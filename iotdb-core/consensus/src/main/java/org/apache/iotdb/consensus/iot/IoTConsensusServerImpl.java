@@ -1142,6 +1142,7 @@ public class IoTConsensusServerImpl {
                 request.getStartSyncIndex(),
                 e);
             Thread.currentThread().interrupt();
+            break;
           }
         }
         long sortTime = System.nanoTime();
