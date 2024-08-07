@@ -466,7 +466,7 @@ public class LogicalPlanBuilder {
               String.format("%s(%s)", partialAggregationName, path.getFullPath()),
               SchemaUtils.getSeriesTypeByPath(
                   ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0))
-                      .getType(),
+                      .getOperandType(),
                   partialAggregationName));
         }
       }

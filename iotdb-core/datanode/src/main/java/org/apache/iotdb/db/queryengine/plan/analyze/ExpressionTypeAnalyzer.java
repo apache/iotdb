@@ -406,7 +406,7 @@ public class ExpressionTypeAnalyzer {
         }
       }
 
-      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getType());
+      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getOperandType());
     }
 
     @Override

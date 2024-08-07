@@ -68,8 +68,14 @@ public class TimeSeriesOperand extends LeafOperand {
     return path;
   }
 
-  public TSDataType getType() {
+  // get TSDataType of this TimeSeriesOperand returning, it will never return null
+  public TSDataType getOperandType() {
     return type != null ? type : path.getSeriesType();
+  }
+
+  // get the type field of this TimeSeriesOperand, it may return null
+  public TSDataType getType() {
+    return type;
   }
 
   @Override

@@ -696,7 +696,7 @@ public class ConfigManager implements IManager {
         Arrays.copyOf(innerPathList.get(0).getNodes(), innerPathList.get(0).getNodeLength() - 1);
     // root.sg1.*.d1
     for (String node : devicePath) {
-      if (node.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      if (node.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
         return Collections.emptyList();
       }
     }
