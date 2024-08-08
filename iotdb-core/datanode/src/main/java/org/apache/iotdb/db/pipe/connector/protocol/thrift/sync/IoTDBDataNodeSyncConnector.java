@@ -87,7 +87,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       final String trustStorePwd,
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
-      boolean shouldReceiverConvertOnTypeMismatch) {
+      final boolean shouldReceiverConvertOnTypeMismatch) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
