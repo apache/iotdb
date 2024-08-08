@@ -328,17 +328,27 @@ public class IoTConsensusServerImpl {
         SnapshotFragmentReader reader =
             new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
         try {
-          while (reader.hasNext()) {
+          reader.hasNext();
+          while (true) {
             // TODO: zero copy ?
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            if (res.getStatus().getCode()
+                == TSStatusCode.SNAPSHOT_CHUNK_MD5_CHECK_NOT_PASS.getStatusCode()) {
+              // maybe network problem, retry
+              logger.info("Snapshot chunk md5 check not pass, automatically retry...");
+              continue;
+            }
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
                   String.format(
                       "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
                       targetPeer));
+            }
+            if (!reader.hasNext()) {
+              break;
             }
           }
           transitedSnapshotSizeSum += reader.getTotalReadSize();

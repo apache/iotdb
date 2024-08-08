@@ -663,16 +663,20 @@ public class RegionMaintainHandler {
    * <p>For RATIS_CONSENSUS, invoking `changeRegionLeader` DataNode RPC method to change the leader.
    *
    * @param regionId The region to be migrated
-   * @param originalDataNode The DataNode where the region locates
+   * @param mustNotChoose The DataNode where the region locates
    */
-  public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
+  public void transferRegionLeader(
+      TConsensusGroupId regionId,
+      TDataNodeLocation mustNotChoose,
+      TDataNodeLocation preferNotChoose)
       throws ProcedureException, InterruptedException {
     // find new leader
     final int findNewLeaderTimeLimitSecond = 10;
     long startTime = System.nanoTime();
     Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
     while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
-      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+      newLeaderNode =
+          filterDataNodeWithOtherRegionReplica(regionId, mustNotChoose, preferNotChoose);
       if (newLeaderNode.isPresent()) {
         break;
       }
@@ -681,6 +685,12 @@ public class RegionMaintainHandler {
         () ->
             new ProcedureException(
                 "Cannot find the new leader after " + findNewLeaderTimeLimitSecond + " seconds"));
+
+    LOGGER.info(
+        "{}, try to change region leader, regionId: {}, newLeaderNode: {}",
+        REGION_MIGRATE_PROCESS,
+        regionId,
+        newLeaderNode);
 
     // ratis needs DataNode to do election by itself
     long timestamp = System.nanoTime();
@@ -697,7 +707,7 @@ public class RegionMaintainHandler {
         TRegionLeaderChangeResp resp =
             SyncDataNodeClientPool.getInstance()
                 .changeRegionLeader(
-                    regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+                    regionId, mustNotChoose.getInternalEndPoint(), newLeaderNode.get());
         if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           timestamp = resp.getConsensusLogicalTimestamp();
           break;
@@ -736,18 +746,29 @@ public class RegionMaintainHandler {
    * <p>`addRegionPeer`, `removeRegionPeer` and `changeRegionLeader` invoke this method.
    *
    * @param regionId The specific RegionId
-   * @param filterLocation The DataNodeLocation that should be filtered
+   * @param mustNotChoose The DataNodeLocation that should be filtered
    * @return A DataNodeLocation that contains other RegionReplica and different from the
    *     filterLocation
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
-      TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
+      TConsensusGroupId regionId, TDataNodeLocation mustNotChoose) {
     return filterDataNodeWithOtherRegionReplica(
-        regionId, filterLocation, NodeStatus.Running, NodeStatus.ReadOnly);
+        regionId, mustNotChoose, null, NodeStatus.Running, NodeStatus.ReadOnly);
   }
 
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
-      TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
+      TConsensusGroupId regionId,
+      TDataNodeLocation mustNotChoose,
+      TDataNodeLocation preferNotChoose) {
+    return filterDataNodeWithOtherRegionReplica(
+        regionId, mustNotChoose, preferNotChoose, NodeStatus.Running, NodeStatus.ReadOnly);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId,
+      TDataNodeLocation mustNotChoose,
+      TDataNodeLocation preferNotChoose,
+      NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
       LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
@@ -761,13 +782,19 @@ public class RegionMaintainHandler {
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
     Collections.shuffle(aliveDataNodes);
+
+    TDataNodeLocation candidate = null;
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
-      if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
-        return Optional.of(aliveDataNode);
+      if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(mustNotChoose)) {
+        if (!aliveDataNode.equals(preferNotChoose)) {
+          return Optional.of(aliveDataNode);
+        } else {
+          candidate = aliveDataNode;
+        }
       }
     }
 
-    return Optional.empty();
+    return Optional.ofNullable(candidate);
   }
 
   /**

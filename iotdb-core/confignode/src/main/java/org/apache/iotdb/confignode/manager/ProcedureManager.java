@@ -679,6 +679,7 @@ public class ProcedureManager {
             .filterDataNodeWithOtherRegionReplica(
                 regionGroupId,
                 destDataNode,
+                null,
                 NodeStatus.Running,
                 NodeStatus.Removing,
                 NodeStatus.ReadOnly)

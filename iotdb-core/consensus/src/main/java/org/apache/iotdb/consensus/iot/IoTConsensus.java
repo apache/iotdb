@@ -369,7 +369,7 @@ public class IoTConsensus implements IConsensus {
       // wait its SyncLog to complete
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
-      throw new ConsensusException(e.getMessage());
+      throw new ConsensusException(e);
     }
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
   }
