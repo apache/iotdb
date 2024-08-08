@@ -64,13 +64,13 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
                 "system")
             .getValue();
     long maxDiskSizeForTempFiles = (long) availableDisk / config.getCompactionThreadCount();
+    maxDiskSizeForTempFiles =
+        maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles;
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
     this.totalFileNumThreshold = config.getInnerCompactionTotalFileNumThreshold();
     this.totalFileNumLowerBound = config.getFileLimitPerInnerTask();
     this.totalFileSizeThreshold =
-        Math.min(
-            config.getInnerCompactionTotalFileSizeThreshold(),
-            maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles);
+        Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
   }
