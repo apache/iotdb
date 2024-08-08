@@ -51,9 +51,9 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 @Ignore // aggregation
-public class IoTDBRecoverIT {
+public class IoTDBRecoverTableIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverIT.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverTableIT.class);
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "temperature";

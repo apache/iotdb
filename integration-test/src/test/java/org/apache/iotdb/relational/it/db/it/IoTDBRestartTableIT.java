@@ -49,9 +49,9 @@ import static org.junit.Assert.fail;
 @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBRestartIT {
+public class IoTDBRestartTableIT {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTDBRestartIT.class);
+  private final Logger logger = LoggerFactory.getLogger(IoTDBRestartTableIT.class);
 
   @Before
   public void setUp() throws Exception {
