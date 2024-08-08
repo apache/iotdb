@@ -562,11 +562,13 @@ public class ColumnTransformerBuilder
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
+          int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
+          if (startIndex <= 0) {
+            throw new SemanticException(
+                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+          }
           return new SubStringFunctionColumnTransformer(
-              first.getType(),
-              first,
-              (int) ((LongLiteral) children.get(1)).getParsedValue(),
-              Integer.MAX_VALUE);
+              first.getType(), first, startIndex, Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
               first.getType(), first, this.process(children.get(1), context));
@@ -574,11 +576,13 @@ public class ColumnTransformerBuilder
       } else {
         // size == 3
         if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
-          return new SubStringFunctionColumnTransformer(
-              first.getType(),
-              first,
-              (int) ((LongLiteral) children.get(1)).getParsedValue(),
-              (int) ((LongLiteral) children.get(2)).getParsedValue());
+          int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
+          int length = (int) ((LongLiteral) children.get(2)).getParsedValue();
+          if (startIndex <= 0 || length <= 0) {
+            throw new SemanticException(
+                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+          }
+          return new SubStringFunctionColumnTransformer(first.getType(), first, startIndex, length);
         } else {
           return new SubString3ColumnTransformer(
               first.getType(),

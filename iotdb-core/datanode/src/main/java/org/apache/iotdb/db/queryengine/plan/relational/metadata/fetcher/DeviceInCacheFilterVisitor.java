@@ -21,49 +21,46 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry> {
 
   private final Map<String, Integer> attributeIndexMap = new HashMap<>();
 
-  DeviceInCacheFilterVisitor(List<String> attributeColumns) {
+  DeviceInCacheFilterVisitor(final List<String> attributeColumns) {
     for (int i = 0; i < attributeColumns.size(); i++) {
       attributeIndexMap.put(attributeColumns.get(i), i);
     }
   }
 
   @Override
-  protected boolean visitNode(SchemaFilter filter, DeviceEntry deviceEntry) {
-    return false;
+  protected Boolean visitNode(final SchemaFilter filter, final DeviceEntry deviceEntry) {
+    throw new UnsupportedOperationException(
+        "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
   }
 
   @Override
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, DeviceEntry deviceEntry) {
-    IDeviceID deviceID = deviceEntry.getDeviceID();
-    // the first segment is "tableName", skip it
-    int index = filter.getIndex() + 1;
-    // if index out of array bound, means that value will be null
-    if (deviceID.segmentNum() <= index) {
-      return filter.getValue() == null;
-    } else {
-      return Objects.equals(deviceID.segment(index), filter.getValue());
-    }
+  public Boolean visitIdFilter(final IdFilter filter, final DeviceEntry deviceEntry) {
+    // The first segment is "tableName", skip it
+    final int index = filter.getIndex() + 1;
+    return filter
+        .getChild()
+        .accept(StringValueFilterVisitor.getInstance(), (String) deviceEntry.getNthSegment(index));
   }
 
   @Override
-  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, DeviceEntry deviceEntry) {
-    return Objects.equals(
-        deviceEntry.getAttributeColumnValues().get(attributeIndexMap.get(filter.getKey())),
-        filter.getValue());
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final DeviceEntry deviceEntry) {
+    return filter
+        .getChild()
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            deviceEntry.getAttributeColumnValues().get(attributeIndexMap.get(filter.getKey())));
   }
 }

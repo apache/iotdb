@@ -140,7 +140,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
-    return getOverlapped(devicePath.concatNode(measurement));
+    return getOverlapped(devicePath.concatAsMeasurementPath(measurement));
   }
 
   /**

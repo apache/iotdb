@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -710,6 +711,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  @SuppressWarnings("java:S2095") // close() do nothing
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
       IDeviceID deviceID,
@@ -925,11 +927,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
         for (String sensor : req.sensors) {
-          PartialPath fullPath;
+          MeasurementPath fullPath;
           if (req.isLegalPathNodes()) {
-            fullPath = devicePath.concatNode(sensor);
+            fullPath = devicePath.concatAsMeasurementPath(sensor);
           } else {
-            fullPath = devicePath.concatNode((new PartialPath(sensor)).getFullPath());
+            fullPath = devicePath.concatAsMeasurementPath((new PartialPath(sensor)).getFullPath());
           }
           TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
           if (timeValuePair == null) {
@@ -1704,9 +1706,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
-          if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
-            isAllSuccessful = false;
-          }
+          isAllSuccessful = false;
           results.add(status);
         } finally {
           addStatementExecutionLatency(

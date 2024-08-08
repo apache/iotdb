@@ -66,7 +66,7 @@ public class OffsetNode extends SingleChildProcessNode {
   }
 
   public static OffsetNode deserialize(ByteBuffer byteBuffer) {
-    long count = ReadWriteIOUtils.read(byteBuffer);
+    long count = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new OffsetNode(planNodeId, null, count);
   }

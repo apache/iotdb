@@ -195,8 +195,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
-      if (!SystemInfo.getInstance()
-          .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
+      if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
             "Total allocated memory for direct buffer will be "
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
@@ -769,7 +768,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
               Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
               Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
-              prefixPath.concatNode(measurements.get(i)));
+              prefixPath.concatAsMeasurementPath(measurements.get(i)));
           if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
             tagOffsets.remove(i);
           }

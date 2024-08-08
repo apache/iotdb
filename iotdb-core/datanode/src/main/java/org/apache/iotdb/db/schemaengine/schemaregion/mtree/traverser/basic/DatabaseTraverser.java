@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -39,12 +40,12 @@ public abstract class DatabaseTraverser<R, N extends IMNode<N>> extends Traverse
    * @param scope traversing scope
    * @throws MetadataException path does not meet the expected rules
    */
-  public DatabaseTraverser(
-      N startNode,
-      PartialPath path,
-      IMTreeStore<N> store,
-      boolean isPrefixMatch,
-      PathPatternTree scope)
+  protected DatabaseTraverser(
+      final N startNode,
+      final PartialPath path,
+      final IMTreeStore<N> store,
+      final boolean isPrefixMatch,
+      final PathPatternTree scope)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
   }

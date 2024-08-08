@@ -14,20 +14,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
@@ -47,16 +39,10 @@ public class SortElimination implements PlanOptimizer {
       return plan;
     }
 
-    return plan.accept(new Rewriter(context.getAnalysis()), new Context());
+    return plan.accept(new Rewriter(), new Context());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
-    private final Analysis analysis;
-
-    public Rewriter(Analysis analysis) {
-      this.analysis = analysis;
-    }
-
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
       PlanNode newNode = node.clone();
@@ -68,60 +54,45 @@ public class SortElimination implements PlanOptimizer {
 
     @Override
     public PlanNode visitSort(SortNode node, Context context) {
-      PlanNode child = node.getChild().accept(this, context);
-      TableScanNode tableScanNode = context.getTableScanNode();
+      Context newContext = new Context();
+      PlanNode child = node.getChild().accept(this, newContext);
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      if (tableScanNode.getDeviceEntries().size() == 1
+      TableScanNode tableScanNode = newContext.getTableScanNode();
+      if (newContext.getTotalDeviceEntrySize() == 1
           && TIMESTAMP_STR.equalsIgnoreCase(orderingScheme.getOrderBy().get(0).getName())) {
         return child;
       }
-      return tryRemoveSortWhenOrderByAllIDsAndTime(node, child, tableScanNode);
+
+      return node.isOrderByAllIdsAndTime() ? child : node;
     }
 
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
       PlanNode child = node.getChild().accept(this, context);
-      TableScanNode tableScanNode = context.getTableScanNode();
-      return tryRemoveSortWhenOrderByAllIDsAndTime(node, child, tableScanNode);
+      return node.isOrderByAllIdsAndTime() ? child : node;
     }
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, Context context) {
+      context.addDeviceEntrySize(node.getDeviceEntries().size());
       context.setTableScanNode(node);
       return node;
-    }
-
-    private PlanNode tryRemoveSortWhenOrderByAllIDsAndTime(
-        SortNode sortNode, PlanNode child, TableScanNode tableScanNode) {
-      Set<Symbol> sortSymbolsBeforeTime = new HashSet<>();
-      Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
-      for (Symbol orderBy : sortNode.getOrderingScheme().getOrderBy()) {
-        if (!tableColumnSchema.containsKey(orderBy)
-            || tableColumnSchema.get(orderBy).getColumnCategory()
-                == TsTableColumnCategory.MEASUREMENT) {
-          return sortNode;
-        } else if (tableColumnSchema.get(orderBy).getColumnCategory()
-            == TsTableColumnCategory.TIME) {
-          break;
-        } else {
-          sortSymbolsBeforeTime.add(orderBy);
-        }
-      }
-
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
-            && !sortSymbolsBeforeTime.contains(entry.getKey())) {
-          return sortNode;
-        }
-      }
-
-      return child;
     }
   }
 
   private static class Context {
+    private int totalDeviceEntrySize = 0;
     private TableScanNode tableScanNode;
+
+    Context() {}
+
+    public void addDeviceEntrySize(int deviceEntrySize) {
+      this.totalDeviceEntrySize += deviceEntrySize;
+    }
+
+    public int getTotalDeviceEntrySize() {
+      return totalDeviceEntrySize;
+    }
 
     public TableScanNode getTableScanNode() {
       return tableScanNode;

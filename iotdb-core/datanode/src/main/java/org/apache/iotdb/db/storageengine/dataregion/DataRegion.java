@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -2109,8 +2110,8 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * @param pattern Must be a pattern start with a precise device path
    */
-  public void deleteByDevice(PartialPath pattern, long startTime, long endTime, long searchIndex)
-      throws IOException {
+  public void deleteByDevice(
+      MeasurementPath pattern, long startTime, long endTime, long searchIndex) throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
@@ -2159,7 +2160,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDataDirectly(
-      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+      MeasurementPath pathToDelete, long startTime, long endTime, long searchIndex)
+      throws IOException {
     logger.info(
         "{} will delete data files directly for deleting data between {} and {}",
         databaseName + "-" + dataRegionId,
@@ -2198,7 +2200,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<WALFlushListener> logDeletionInWAL(
-      long startTime, long endTime, long searchIndex, PartialPath path) {
+      long startTime, long endTime, long searchIndex, MeasurementPath path) {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     if (config.getWalMode() == WALMode.DISABLE) {
       return walFlushListeners;
@@ -2389,7 +2391,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteDataDirectlyInFile(
       List<TsFileResource> tsfileResourceList,
-      PartialPath pathToDelete,
+      MeasurementPath pathToDelete,
       long startTime,
       long endTime)
       throws IOException {
@@ -2764,6 +2766,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       return executeCompaction();
     } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();

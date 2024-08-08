@@ -43,7 +43,7 @@ public final class Use extends Statement {
     this.db = requireNonNull(db, "db is null");
   }
 
-  public Identifier getDatabase() {
+  public Identifier getDatabaseId() {
     return db;
   }
 

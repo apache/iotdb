@@ -170,24 +170,24 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LogicalViewSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.LogicalViewSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.PathsUsingTemplateScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -1496,10 +1496,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     for (Expression projectExpression : projectExpressions) {
       if (context.isBuildPlanUseTemplate()) {
-        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-            expressionTypes, projectExpression, context.getTemplatedInfo());
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TemplateTypeProvider(
+                context.getTemplatedInfo().getSchemaMap()));
       } else {
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TypeProviderWrapper(
+                context.getTypeProvider().getTreeModelTypeMap()));
       }
     }
 
@@ -1618,10 +1625,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LocalExecutionPlanContext context) {
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
     if (context.isBuildPlanUseTemplate()) {
-      ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-          expressionTypes, predicate, context.getTypeProvider().getTemplatedInfo());
+      ExpressionTypeAnalyzer.analyzeExpression(
+          expressionTypes,
+          predicate,
+          new ExpressionTypeAnalyzer.TemplateTypeProvider(
+              context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
     } else {
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, predicate);
+      ExpressionTypeAnalyzer.analyzeExpression(
+          expressionTypes,
+          predicate,
+          new ExpressionTypeAnalyzer.TypeProviderWrapper(
+              context.getTypeProvider().getTreeModelTypeMap()));
     }
 
     // check whether predicate contains Non-Mappable UDF
@@ -1633,10 +1647,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     for (Expression projectExpression : projectExpressions) {
       if (context.isBuildPlanUseTemplate()) {
-        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-            expressionTypes, projectExpression, context.getTypeProvider().getTemplatedInfo());
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TemplateTypeProvider(
+                context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
       } else {
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TypeProviderWrapper(
+                context.getTypeProvider().getTreeModelTypeMap()));
       }
     }
 
@@ -2723,7 +2744,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
-    PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
+    MeasurementPath seriesPath = node.getSeriesPath();
     TimeValuePair timeValuePair = null;
     context.dataNodeQueryContext.lock();
     try {
@@ -2937,7 +2958,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
     List<String> measurementList = alignedPath.getMeasurementList();
     for (int i = 0; i < measurementList.size(); i++) {
-      PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
+      MeasurementPath measurementPath = devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
       try {
         context.dataNodeQueryContext.lock();
@@ -3653,7 +3674,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (Map.Entry<PartialPath, DeviceContext> entry :
         node.getDevicePathToContextMap().entrySet()) {
       PartialPath devicePath = entry.getKey();
-      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
+      IDeviceID deviceID = devicePath.getIDeviceID();
       deviceIDToContext.put(deviceID, entry.getValue());
       ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
     }
@@ -3692,7 +3713,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap :
         node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
       PartialPath devicePath = entryMap.getKey();
-      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath.getNodes());
+      IDeviceID deviceID = devicePath.getIDeviceID();
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);

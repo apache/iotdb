@@ -39,10 +39,18 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+
 public class MeasurementPath extends PartialPath {
+
+  private static final String NODES_LENGTH_ERROR =
+      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
@@ -59,10 +67,16 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String measurementPath) throws IllegalPathException {
     super(measurementPath);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
   }
 
   public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
     super(measurementPath);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
   }
 
@@ -79,28 +93,54 @@ public class MeasurementPath extends PartialPath {
       IMeasurementSchema measurementSchema,
       Boolean isUnderAlignedEntity) {
     super(measurementPath.getNodes());
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     this.measurementSchema = measurementSchema;
     this.isUnderAlignedEntity = isUnderAlignedEntity;
   }
 
-  public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)
-      throws IllegalPathException {
-    this(device.toString(), measurement, measurementSchema);
+  public MeasurementPath(IDeviceID device, String measurement) throws IllegalPathException {
+    super(device, measurement);
   }
 
-  public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)
+  public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)
       throws IllegalPathException {
     super(device, measurement);
     this.measurementSchema = measurementSchema;
   }
 
+  public MeasurementPath(String device, String measurement) throws IllegalPathException {
+    super(device, measurement);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
+  }
+
+  public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)
+      throws IllegalPathException {
+    super(device, measurement);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
+    this.measurementSchema = measurementSchema;
+  }
+
   public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
     super(nodes);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     this.measurementSchema = schema;
   }
 
   public MeasurementPath(String[] nodes) {
     super(nodes);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(
+          "nodes.length for MeasurementPath should always be greater than 2, current is: "
+              + Arrays.toString(nodes));
+    }
   }
 
   @Override
@@ -284,8 +324,8 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
-    measurementPath.device = partialPath.getIDeviceID();
-    measurementPath.fullPath = partialPath.getFullPath();
+    measurementPath.device = measurementPath.getIDeviceID();
+    measurementPath.fullPath = measurementPath.getFullPath();
     return measurementPath;
   }
 
@@ -311,9 +351,35 @@ public class MeasurementPath extends PartialPath {
     return new String(bytes, StandardCharsets.ISO_8859_1);
   }
 
+  @Override
+  protected IDeviceID toDeviceID(String[] nodes) {
+    // remove measurement
+    nodes = Arrays.copyOfRange(nodes, 0, nodes.length - 1);
+    return super.toDeviceID(nodes);
+  }
+
   public static MeasurementPath parseDataFromString(String measurementPathData) {
     return (MeasurementPath)
         PathDeserializeUtil.deserialize(
             ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
+  }
+
+  @Override
+  protected PartialPath createPartialPath(String[] newPathNodes) {
+    return new MeasurementPath(newPathNodes);
+  }
+
+  @Override
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+  }
+
+  public List<PartialPath> getDevicePathPattern() {
+    List<PartialPath> result = new ArrayList<>();
+    result.add(getDevicePath());
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      result.add(new PartialPath(nodes));
+    }
+    return result;
   }
 }

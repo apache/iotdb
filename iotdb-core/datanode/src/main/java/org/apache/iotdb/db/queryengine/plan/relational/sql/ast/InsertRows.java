@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -54,11 +56,6 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().orElse(null);
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
@@ -66,7 +63,7 @@ public class InsertRows extends WrappedInsertStatement {
   @Override
   public List<Object[]> getDeviceIdList() {
     final InsertRowsStatement insertRowStatement = getInnerTreeStatement();
-    return insertRowStatement.getDeviceIdList();
+    return insertRowStatement.getDeviceIdListNoTableName();
   }
 
   @Override
@@ -82,10 +79,19 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public void validateTableSchema(TableSchema realSchema) {
+  public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    String databaseName = getDatabase();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
+      final TableSchema realSchema =
+          metadata
+              .validateTableHeaderSchema(databaseName, incomingTableSchema, context, false)
+              .orElse(null);
+      if (realSchema == null) {
+        throw new SemanticException(
+            "Schema validation failed, table cannot be created: " + incomingTableSchema);
+      }
       validateTableSchema(realSchema, incomingTableSchema, insertRowStatement);
     }
   }
@@ -114,7 +120,8 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<Object[]> getDeviceIdList() {
-        return Collections.singletonList(insertRowStatement.getTableDeviceID().getSegments());
+        Object[] idSegments = insertRowStatement.getTableDeviceID().getSegments();
+        return Collections.singletonList(Arrays.copyOfRange(idSegments, 1, idSegments.length));
       }
 
       @Override

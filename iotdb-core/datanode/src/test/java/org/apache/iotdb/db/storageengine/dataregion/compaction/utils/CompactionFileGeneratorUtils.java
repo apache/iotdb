@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -166,7 +167,7 @@ public class CompactionFileGeneratorUtils {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
-      PartialPath partialPath = new PartialPath(fullPath);
+      PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
               partialPath.getIDeviceID(), (s) -> new ArrayList<>());
@@ -224,7 +225,7 @@ public class CompactionFileGeneratorUtils {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
-      PartialPath partialPath = new PartialPath(fullPath);
+      PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
               partialPath.getIDeviceID(), (s) -> new ArrayList<>());
@@ -288,7 +289,7 @@ public class CompactionFileGeneratorUtils {
       Pair<Long, Long> startTimeEndTime = toDeleteTimeseriesAndTimeEntry.getValue();
       Deletion deletion =
           new Deletion(
-              new PartialPath(fullPath),
+              new MeasurementPath(fullPath),
               Long.MAX_VALUE,
               startTimeEndTime.left,
               startTimeEndTime.right);

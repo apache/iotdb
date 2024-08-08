@@ -131,7 +131,8 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES || !isValidMagicString(channel)) {
+    if (channel.size() < WALFileVersion.V2.getVersionBytes().length
+        || !isValidMagicString(channel)) {
       throw new BrokenWALFileException(logFile);
     }
 
@@ -141,12 +142,7 @@ public class WALMetaData implements SerializedSize {
     try {
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
       WALFileVersion version = WALFileVersion.getVersion(channel);
-      position =
-          channel.size()
-              - Integer.BYTES
-              - (version == WALFileVersion.V2
-                  ? WALWriter.MAGIC_STRING_V2_BYTES
-                  : WALWriter.MAGIC_STRING_V1_BYTES);
+      position = channel.size() - Integer.BYTES - (version.getVersionBytes().length);
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       // load metadata
@@ -178,12 +174,12 @@ public class WALMetaData implements SerializedSize {
   }
 
   private static boolean isValidMagicString(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALFileVersion.V2.getVersionBytes().length);
+    channel.read(magicStringBytes, channel.size() - WALFileVersion.V2.getVersionBytes().length);
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
-    return magicString.equals(WALWriter.MAGIC_STRING_V2)
-        || magicString.contains(WALWriter.MAGIC_STRING_V1);
+    return magicString.equals(WALFileVersion.V2.getVersionString())
+        || magicString.contains(WALFileVersion.V1.getVersionString());
   }
 
   public void setTruncateOffSet(long offset) {

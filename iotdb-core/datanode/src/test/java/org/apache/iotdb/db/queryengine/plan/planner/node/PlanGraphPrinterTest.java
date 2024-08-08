@@ -57,8 +57,10 @@ public class PlanGraphPrinterTest {
             Collections.emptyList(),
             Collections.emptyMap());
 
-    SeriesScanNode scanNode = new SeriesScanNode(new PlanNodeId("3"), new MeasurementPath("s1"));
-    deviceViewNode.addChildDeviceNode(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), scanNode);
+    SeriesScanNode scanNode =
+        new SeriesScanNode(new PlanNodeId("3"), new MeasurementPath("root.db.d1.s1"));
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), scanNode);
 
     topKNode.addChild(deviceViewNode);
 

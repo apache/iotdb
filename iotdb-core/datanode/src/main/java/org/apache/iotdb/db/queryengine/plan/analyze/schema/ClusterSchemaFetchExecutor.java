@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -195,7 +196,7 @@ class ClusterSchemaFetchExecutor {
     PathPatternTree patternTree = new PathPatternTree();
     for (String fullPath : fullPathList) {
       try {
-        patternTree.appendFullPath(new PartialPath(fullPath));
+        patternTree.appendFullPath(new MeasurementPath(fullPath));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }

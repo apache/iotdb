@@ -105,6 +105,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     return super.readMemChunk(metaData);
   }
 
+  @SuppressWarnings("java:S2177")
   public ChunkHeader readChunkHeader(long position) throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position);
   }

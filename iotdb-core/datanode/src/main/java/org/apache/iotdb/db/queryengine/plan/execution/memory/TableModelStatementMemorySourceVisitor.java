@@ -22,13 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.execution.memory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.AddExchangeNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.DistributedPlanGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -39,8 +38,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
+import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
 
 public class TableModelStatementMemorySourceVisitor
@@ -68,23 +67,18 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
                 context.getQueryContext().getSession(),
-                WarningCollector.NOOP)
+                NOOP)
             .plan(context.getAnalysis());
     if (context.getAnalysis().isEmptyDataSource()) {
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
     // generate table model distributed plan
-    DistributedPlanGenerator.PlanContext planContext = new DistributedPlanGenerator.PlanContext();
-    List<PlanNode> distributedPlanResult =
-        new DistributedPlanGenerator(context.getQueryContext(), context.getAnalysis())
-            .genResult(logicalPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
-
-    // add exchange node for distributed plan
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange =
-        new AddExchangeNodes(context.getQueryContext())
-            .addExchangeNodes(distributedPlanResult.get(0), planContext);
+        new TableDistributedPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
+            .generateDistributedPlanWithOptimize(planContext);
 
     List<String> lines =
         outputNodeWithExchange.accept(

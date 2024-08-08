@@ -52,6 +52,14 @@ public class LimitNode extends SingleChildProcessNode {
     return false;
   }
 
+  public boolean isWithTies() {
+    return tiesResolvingScheme.isPresent();
+  }
+
+  public Optional<OrderingScheme> getTiesResolvingScheme() {
+    return tiesResolvingScheme;
+  }
+
   @Override
   public PlanNode clone() {
     return new LimitNode(id, null, count, tiesResolvingScheme);
@@ -80,7 +88,7 @@ public class LimitNode extends SingleChildProcessNode {
   }
 
   public static LimitNode deserialize(ByteBuffer byteBuffer) {
-    long count = ReadWriteIOUtils.read(byteBuffer);
+    long count = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LimitNode(planNodeId, null, count, null);
   }

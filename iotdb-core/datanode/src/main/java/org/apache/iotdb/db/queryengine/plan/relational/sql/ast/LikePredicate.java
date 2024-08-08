@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
@@ -64,7 +65,12 @@ public class LikePredicate extends Expression {
     super(null);
     this.value = Expression.deserialize(byteBuffer);
     this.pattern = Expression.deserialize(byteBuffer);
-    this.escape = Expression.deserialize(byteBuffer);
+    boolean hasEscape = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasEscape) {
+      this.escape = Expression.deserialize(byteBuffer);
+    } else {
+      this.escape = null;
+    }
   }
 
   @Override
@@ -76,7 +82,10 @@ public class LikePredicate extends Expression {
   protected void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(value, stream);
     Expression.serialize(pattern, stream);
-    Expression.serialize(escape, stream);
+    ReadWriteIOUtils.write(escape != null, stream);
+    if (escape != null) {
+      Expression.serialize(escape, stream);
+    }
   }
 
   public Expression getValue() {

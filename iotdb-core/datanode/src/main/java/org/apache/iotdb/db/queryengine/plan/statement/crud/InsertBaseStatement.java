@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -50,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -96,6 +98,8 @@ public abstract class InsertBaseStatement extends Statement {
   /** it is the end of current range. */
   int recordedEndOfLogicalViewSchemaList = 0;
 
+  @TableModel private String databaseName;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -139,6 +143,13 @@ public abstract class InsertBaseStatement extends Statement {
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
+  }
+
+  public TSDataType getDataType(int i) {
+    if (dataTypes == null) {
+      return null;
+    }
+    return dataTypes[i];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
@@ -263,6 +274,13 @@ public abstract class InsertBaseStatement extends Statement {
 
   public TsTableColumnCategory[] getColumnCategories() {
     return columnCategories;
+  }
+
+  public TsTableColumnCategory getColumnCategory(int i) {
+    if (columnCategories == null) {
+      return null;
+    }
+    return columnCategories[i];
   }
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
@@ -524,5 +542,14 @@ public abstract class InsertBaseStatement extends Statement {
     }
   }
 
+  @TableModel
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  @TableModel
+  public Optional<String> getDatabaseName() {
+    return Optional.ofNullable(databaseName);
+  }
   // endregion
 }

@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.commons.schema.filter.impl;
 
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,29 +43,40 @@ public class DeviceFilterUtil {
   // root.db.table.*.*..
   // e.g. input (db, table[c1, c2], [[]]), return [root.db.table.*.*]
   public static List<PartialPath> convertToDevicePattern(
-      String database,
-      String tableName,
-      int idColumnNum,
-      List<List<SchemaFilter>> idDeterminedFilterList) {
-    List<PartialPath> pathList = new ArrayList<>();
-    int length = idColumnNum + 3;
-    for (List<SchemaFilter> idFilterList : idDeterminedFilterList) {
-      String[] nodes = new String[length];
+      final String database,
+      final String tableName,
+      final int idColumnNum,
+      final List<List<SchemaFilter>> idDeterminedFilterList) {
+    final List<PartialPath> pathList = new ArrayList<>();
+    final int length = idColumnNum + 3;
+    for (final List<SchemaFilter> idFilterList : idDeterminedFilterList) {
+      final String[] nodes = new String[length];
       Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
       nodes[0] = PATH_ROOT;
       nodes[1] = database;
       nodes[2] = tableName;
-      for (SchemaFilter schemaFilter : idFilterList) {
-        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-          DeviceIdFilter deviceIdFilter = (DeviceIdFilter) schemaFilter;
-          nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
+      final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
+      for (final SchemaFilter schemaFilter : idFilterList) {
+        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
+          final int index = ((IdFilter) schemaFilter).getIndex() + 3;
+          final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
+          if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+            // If there is a precise filter, other filters on the same id are processed and thus
+            // not exist here
+            nodes[index] = ((PreciseFilter) childFilter).getValue();
+          } else {
+            partialPath.addMatchFunction(
+                index,
+                node ->
+                    Boolean.TRUE.equals(
+                        childFilter.accept(StringValueFilterVisitor.getInstance(), node)));
+          }
         } else {
           throw new IllegalStateException("Input single filter must be DeviceIdFilter");
         }
       }
-      pathList.add(new PartialPath(nodes));
+      pathList.add(partialPath);
     }
-
     return pathList;
   }
 }

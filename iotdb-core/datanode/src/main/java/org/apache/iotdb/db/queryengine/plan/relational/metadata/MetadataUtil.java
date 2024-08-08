@@ -70,15 +70,15 @@ public class MetadataUtil {
       SessionInfo session, Node node, QualifiedName name) {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
-    if (name.getParts().size() > 3) {
+    if (name.getParts().size() > 2) {
       throw new SemanticException(String.format("Too many dots in table name: %s", name));
     }
 
     List<String> parts = Lists.reverse(name.getParts());
     String objectName = parts.get(0);
     String databaseName =
-        (parts.size() > 2)
-            ? parts.get(2)
+        (parts.size() > 1)
+            ? parts.get(1)
             : session
                 .getDatabaseName()
                 .orElseThrow(

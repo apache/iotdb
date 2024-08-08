@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.parser;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -544,7 +545,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
-    statement.setPath(new PartialPath(req.path));
+    statement.setPath(new MeasurementPath(req.path));
     statement.setDataType(TSDataType.deserialize((byte) req.dataType));
     statement.setEncoding(TSEncoding.deserialize((byte) req.encoding));
     statement.setCompressor(CompressionType.deserialize((byte) req.compressor));
@@ -559,7 +560,7 @@ public class StatementGenerator {
   public static CreateAlignedTimeSeriesStatement createStatement(TSCreateAlignedTimeseriesReq req)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct create aligned timeseries statement
+    // construct create aligned time series statement
     CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -589,9 +590,9 @@ public class StatementGenerator {
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct create multi timeseries statement
-    List<PartialPath> paths = new ArrayList<>();
+    List<MeasurementPath> paths = new ArrayList<>();
     for (String path : req.paths) {
-      paths.add(new PartialPath(path));
+      paths.add(new MeasurementPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Integer dataType : req.dataTypes) {
@@ -634,9 +635,9 @@ public class StatementGenerator {
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     DeleteDataStatement statement = new DeleteDataStatement();
-    List<PartialPath> pathList = new ArrayList<>();
+    List<MeasurementPath> pathList = new ArrayList<>();
     for (String path : req.getPaths()) {
-      pathList.add(new PartialPath(path));
+      pathList.add(new MeasurementPath(path));
     }
     statement.setPathList(pathList);
     statement.setDeleteStartTime(req.getStartTime());

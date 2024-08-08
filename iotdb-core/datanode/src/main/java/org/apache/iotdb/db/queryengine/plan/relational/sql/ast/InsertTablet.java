@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class InsertTablet extends WrappedInsertStatement {
@@ -51,11 +52,6 @@ public class InsertTablet extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().get();
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
@@ -66,11 +62,8 @@ public class InsertTablet extends WrappedInsertStatement {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
       IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
-      Object[] deviceIdSegments = new Object[deviceID.segmentNum()];
-      for (int j = 0; j < deviceIdSegments.length; j++) {
-        deviceIdSegments[j] = deviceID.segment(j);
-      }
-      deviceIdList.add(deviceIdSegments);
+      Object[] segments = deviceID.getSegments();
+      deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
     return deviceIdList;
   }

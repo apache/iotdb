@@ -44,7 +44,7 @@ public class SchemaTestUtils {
 
   public static NonAlignedFullPath getNonAlignedFullPath(String pathPatternString)
       throws MetadataException {
-    PartialPath path = new PartialPath(pathPatternString);
+    PartialPath path = new MeasurementPath(pathPatternString);
     return new NonAlignedFullPath(
         path.getIDeviceID(),
         new MeasurementSchema(

@@ -79,6 +79,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -167,6 +168,7 @@ public class Session implements ISession {
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
   // used to update datanodeList periodically
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile ScheduledExecutorService executorService;
 
   protected INodeSupplier availableNodes;
@@ -3360,13 +3362,19 @@ public class Session implements ISession {
         }
         return sortedValues;
       case INT32:
-      case DATE:
         int[] intValues = (int[]) valueList;
         int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedIntValues[i] = intValues[index[i]];
         }
         return sortedIntValues;
+      case DATE:
+        LocalDate[] date = (LocalDate[]) valueList;
+        LocalDate[] sortedDateValues = new LocalDate[date.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedDateValues[i] = date[index[i]];
+        }
+        return sortedDateValues;
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) valueList;

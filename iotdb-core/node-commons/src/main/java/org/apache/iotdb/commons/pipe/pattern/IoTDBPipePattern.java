@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -80,7 +81,7 @@ public class IoTDBPipePattern extends PipePattern {
   public boolean coversDb(final String db) {
     try {
       return patternPartialPath.include(
-          new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+          new MeasurementPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -90,7 +91,7 @@ public class IoTDBPipePattern extends PipePattern {
   public boolean coversDevice(final IDeviceID device) {
     try {
       return patternPartialPath.include(
-          new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -115,7 +116,7 @@ public class IoTDBPipePattern extends PipePattern {
     }
 
     try {
-      return patternPartialPath.matchFullPath(new PartialPath(device, measurement));
+      return patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -140,7 +141,7 @@ public class IoTDBPipePattern extends PipePattern {
    */
   public boolean matchDevice(final String devicePath) {
     try {
-      return patternPartialPath.overlapWith(new PartialPath(devicePath, "*"));
+      return patternPartialPath.overlapWith(new MeasurementPath(devicePath, "*"));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -161,7 +162,7 @@ public class IoTDBPipePattern extends PipePattern {
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
-          ? Collections.singletonList(patternPartialPath)
+          ? Collections.singletonList(partialPath)
           : Collections.emptyList();
     }
     return partialPath.intersectWithPrefixPattern(patternPartialPath);

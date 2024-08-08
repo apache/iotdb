@@ -101,7 +101,7 @@ public class QualifiedName {
     }
   }
 
-  private static String mapIdentifier(Identifier identifier) {
+  public static String mapIdentifier(Identifier identifier) {
     return identifier.getValue().toLowerCase(ENGLISH);
   }
 

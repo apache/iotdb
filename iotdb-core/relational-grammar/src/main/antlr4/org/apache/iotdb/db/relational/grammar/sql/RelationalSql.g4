@@ -100,6 +100,7 @@ statement
     | showQueriesStatement
     | killQueryStatement
     | loadConfigurationStatement
+    | setConfigurationStatement
 
     // auth Statement
 
@@ -233,14 +234,14 @@ loadTsFileStatement
 
 // -------------------------------------------- Show Statement ---------------------------------------------------------
 showDevicesStatement
-    : SHOW DEVICES (FROM tableName=qualifiedName)?
+    : SHOW DEVICES FROM tableName=qualifiedName
         (WHERE where=booleanExpression)?
         (OFFSET offset=rowCount (ROW | ROWS)?)?
         (LIMIT limit=limitRowCount)?
     ;
 
 countDevicesStatement
-    : COUNT DEVICES (FROM tableName=qualifiedName)? (WHERE where=booleanExpression)?
+    : COUNT DEVICES FROM tableName=qualifiedName (WHERE where=booleanExpression)?
     ;
 
 // show timeseries and count timeseries have no meaning in relational model
@@ -331,6 +332,11 @@ killQueryStatement
 
 loadConfigurationStatement
     : LOAD CONFIGURATION localOrClusterMode?
+    ;
+
+// Set Configuration
+setConfigurationStatement
+    : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
     ;
 
 localOrClusterMode
@@ -442,10 +448,10 @@ timeValue
     ;
 
 dateExpression
-    : datetimeLiteral ((PLUS | MINUS) timeDuration)*
+    : datetime ((PLUS | MINUS) timeDuration)*
     ;
 
-datetimeLiteral
+datetime
     : DATETIME_VALUE
     | NOW '(' ')'
     ;
@@ -543,6 +549,7 @@ valueExpression
 
 primaryExpression
     : literalExpression                                                                   #literal
+    | dateExpression                                                                      #dateTimeExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
@@ -570,6 +577,7 @@ literalExpression
     | number                                                                              #numericLiteral
     | booleanValue                                                                        #booleanLiteral
     | string                                                                              #stringLiteral
+    | datetime                                                                            #datetimeLiteral
     | BINARY_LITERAL                                                                      #binaryLiteral
     | QUESTION_MARK                                                                       #parameter
     ;

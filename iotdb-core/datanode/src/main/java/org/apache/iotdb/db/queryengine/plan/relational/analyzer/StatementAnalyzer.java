@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -245,7 +246,8 @@ public class StatementAnalyzer {
       Scope returnScope = super.process(node, scope);
       if (node instanceof CreateDevice
           || node instanceof FetchDevice
-          || node instanceof ShowDevice) {
+          || node instanceof ShowDevice
+          || node instanceof CountDevice) {
         return returnScope;
       }
       checkState(
@@ -389,6 +391,7 @@ public class StatementAnalyzer {
       final MPPQueryContext context = insert.getContext();
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
+      innerInsert.semanticCheck();
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
@@ -2474,17 +2477,22 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(CreateDevice node, Optional<Scope> context) {
+    protected Scope visitCreateDevice(final CreateDevice node, final Optional<Scope> context) {
       return null;
     }
 
     @Override
-    protected Scope visitFetchDevice(FetchDevice node, Optional<Scope> context) {
+    protected Scope visitFetchDevice(final FetchDevice node, final Optional<Scope> context) {
       return null;
     }
 
     @Override
-    protected Scope visitShowDevice(ShowDevice node, Optional<Scope> context) {
+    protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+      return null;
+    }
+
+    @Override
+    protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
       return null;
     }
   }

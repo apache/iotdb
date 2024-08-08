@@ -37,7 +37,7 @@ public class TableDeviceSchemaCache {
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   public TableDeviceSchemaCache() {
-    DualKeyCacheBuilder<TableId, TableDeviceId, TableDeviceCacheEntry> dualKeyCacheBuilder =
+    final DualKeyCacheBuilder<TableId, TableDeviceId, TableDeviceCacheEntry> dualKeyCacheBuilder =
         new DualKeyCacheBuilder<>();
     dualKeyCache =
         dualKeyCacheBuilder
@@ -50,11 +50,12 @@ public class TableDeviceSchemaCache {
             .build();
   }
 
+  // The input deviceId shall have its tailing nulls trimmed
   public Map<String, String> getDeviceAttribute(
-      String database, String tableName, String[] deviceId) {
+      final String database, final String tableName, final String[] deviceId) {
     readWriteLock.readLock().lock();
     try {
-      TableDeviceCacheEntry entry =
+      final TableDeviceCacheEntry entry =
           dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
       return entry == null ? null : entry.getAttributeMap();
     } finally {
@@ -62,8 +63,12 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  // The input deviceId shall have its tailing nulls trimmed
   public void put(
-      String database, String tableName, String[] deviceId, Map<String, String> attributeMap) {
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.put(
@@ -75,7 +80,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void invalidate(String database) {
+  public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
     try {
       dualKeyCache.invalidateForTable(database);
@@ -84,7 +89,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void invalidate(String database, String tableName) {
+  public void invalidate(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       dualKeyCache.invalidate(new TableId(database, tableName));

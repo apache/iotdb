@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -50,11 +51,6 @@ public class InsertRow extends WrappedInsertStatement {
   }
 
   @Override
-  public String getDatabase() {
-    return context.getSession().getDatabaseName().orElse(null);
-  }
-
-  @Override
   public String getTableName() {
     return getInnerTreeStatement().getDevicePath().getFullPath();
   }
@@ -62,7 +58,8 @@ public class InsertRow extends WrappedInsertStatement {
   @Override
   public List<Object[]> getDeviceIdList() {
     final InsertRowStatement insertRowStatement = getInnerTreeStatement();
-    return Collections.singletonList(insertRowStatement.getTableDeviceID().getSegments());
+    Object[] segments = insertRowStatement.getTableDeviceID().getSegments();
+    return Collections.singletonList(Arrays.copyOfRange(segments, 1, segments.length));
   }
 
   @Override

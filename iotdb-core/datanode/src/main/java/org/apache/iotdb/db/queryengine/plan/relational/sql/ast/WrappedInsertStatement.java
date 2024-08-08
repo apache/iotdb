@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -78,14 +79,11 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         columnSchemas.add(
             new ColumnSchema(
                 insertBaseStatement.getMeasurements()[i],
-                insertBaseStatement.getDataTypes() != null
-                        && insertBaseStatement.getDataTypes()[i] != null
-                    ? TypeFactory.getType(insertBaseStatement.getDataTypes()[i])
+                insertBaseStatement.getDataType(i) != null
+                    ? TypeFactory.getType(insertBaseStatement.getDataType(i))
                     : null,
                 false,
-                insertBaseStatement.getColumnCategories() != null
-                    ? insertBaseStatement.getColumnCategories()[i]
-                    : null));
+                insertBaseStatement.getColumnCategory(i)));
       } else {
         columnSchemas.add(null);
       }
@@ -93,10 +91,19 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     return new TableSchema(tableName, columnSchemas);
   }
 
-  public void validateTableSchema(TableSchema realSchema) {
-    final TableSchema incomingTableSchema = getTableSchema();
+  public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    String databaseName = getDatabase();
+    final TableSchema incomingSchema = getTableSchema();
+    final TableSchema realSchema =
+        metadata
+            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+            .orElse(null);
+    if (realSchema == null) {
+      throw new SemanticException(
+          "Schema validation failed, table cannot be created: " + incomingSchema);
+    }
     InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
-    validateTableSchema(realSchema, incomingTableSchema, innerTreeStatement);
+    validateTableSchema(realSchema, incomingSchema, innerTreeStatement);
   }
 
   protected void validateTableSchema(
@@ -161,8 +168,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         return;
       }
     }
-    if (incoming.getType() == null) {
+    if (incoming.getType() == null
+        || incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
       // sql insertion does not provide type
+      // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!incoming.getType().equals(real.getType())) {
       SemanticException semanticException =
@@ -199,5 +208,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
     metadata.validateDeviceSchema(this, context);
+  }
+
+  public String getDatabase() {
+    String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
+    if (databaseName == null) {
+      throw new SemanticException("database is not specified");
+    }
+    return databaseName;
   }
 }

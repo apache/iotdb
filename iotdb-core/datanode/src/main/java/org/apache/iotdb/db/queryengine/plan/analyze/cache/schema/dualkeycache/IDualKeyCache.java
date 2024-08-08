@@ -82,7 +82,7 @@ public interface IDualKeyCache<FK, SK, V> {
    * statistics won't be clear and they can still be accessed via cache.stats().
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(List<PartialPath> partialPathList);
+  void invalidate(List<? extends PartialPath> partialPathList);
 
   /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.

@@ -616,12 +616,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
     }
-    if (node.getPushDownOffset() > 0) {
-      boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
-    }
-    if (node.getPushDownLimit() > 0) {
-      boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
-    }
+    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
+    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
+    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
     boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
@@ -688,6 +685,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitStreamSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("StreamSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(String.format("StreamCompareKeyEndIndex: %s", node.getStreamCompareKeyEndIndex()));
+    boxValue.add(String.format("OrderByAllIdsAndTime: %s", node.isOrderByAllIdsAndTime()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
       GraphContext context) {
@@ -695,6 +704,27 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitCollect(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Collect-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTopK(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
     return render(node, boxValue, context);
   }
 

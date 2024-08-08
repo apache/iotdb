@@ -30,11 +30,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V1;
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V1_BYTES;
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2;
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2_BYTES;
-
 /** Check whether the wal file is broken and repair it. */
 public class WALRepairWriter {
   private final File logFile;
@@ -47,21 +42,12 @@ public class WALRepairWriter {
     // locate broken data
     long truncateSize;
     WALFileVersion version = WALFileVersion.getVersion(logFile);
-    if (version == WALFileVersion.UNKNOWN) {
-      truncateSize = 0;
-    } else if (version == WALFileVersion.V2) {
-      if (readTailMagic(MAGIC_STRING_V2_BYTES).equals(MAGIC_STRING_V2)) { // complete file
-        return;
-      } else { // file with broken magic string
-        truncateSize = metaData.getTruncateOffSet();
-      }
-    } else {
-      if (readTailMagic(MAGIC_STRING_V1_BYTES).contains(MAGIC_STRING_V1)) {
-        return;
-      } else {
-        truncateSize = metaData.getTruncateOffSet();
-      }
+    if (version.getVersionString().equals(readTailMagic(version))) { // complete file
+      return;
+    } else { // file with broken magic string
+      truncateSize = metaData.getTruncateOffSet();
     }
+
     // truncate broken data
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
       channel.truncate(truncateSize);
@@ -72,7 +58,11 @@ public class WALRepairWriter {
     }
   }
 
-  private String readTailMagic(int size) throws IOException {
+  private String readTailMagic(WALFileVersion version) throws IOException {
+    int size = version.getVersionBytes().length;
+    if (logFile.length() < size) {
+      return null;
+    }
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
       ByteBuffer magicStringBytes = ByteBuffer.allocate(size);
       channel.read(magicStringBytes, channel.size() - size);

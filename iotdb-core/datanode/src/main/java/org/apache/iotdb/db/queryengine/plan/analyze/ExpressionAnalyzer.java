@@ -329,7 +329,7 @@ public class ExpressionAnalyzer {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
-          PartialPath concatPath = prefixPath.concatPath(rawPath);
+          PartialPath concatPath = prefixPath.concatAsMeasurementPath(rawPath);
           actualPaths.add(concatPath);
         }
       }

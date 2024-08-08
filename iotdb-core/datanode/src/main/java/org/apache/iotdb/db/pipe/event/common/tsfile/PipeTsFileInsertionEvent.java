@@ -62,6 +62,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
   private final boolean isGeneratedByPipeConsensus;
+  private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
@@ -71,13 +72,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   public PipeTsFileInsertionEvent(
-      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
+      final TsFileResource resource,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe,
+      final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
         true,
         isLoaded,
         isGeneratedByPipe,
+        isGeneratedByHistoricalExtractor,
         null,
         0,
         null,
@@ -91,6 +96,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
+      final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -109,6 +115,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -290,6 +297,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         isWithMod,
         isLoaded,
         isGeneratedByPipe,
+        isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -363,6 +371,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   /** The method is used to prevent circular replication in PipeConsensus */
   public boolean isGeneratedByPipeConsensus() {
     return isGeneratedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByHistoricalExtractor() {
+    return isGeneratedByHistoricalExtractor;
   }
 
   private TsFileInsertionDataContainer initDataContainer() {

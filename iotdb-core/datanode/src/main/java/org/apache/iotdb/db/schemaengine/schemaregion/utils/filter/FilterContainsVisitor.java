@@ -22,19 +22,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 
 /** This Visitor is used to determine if the SchemaFilter tree contains a certain type of Filter. */
 public class FilterContainsVisitor extends SchemaFilterVisitor<SchemaFilterType> {
 
   @Override
-  protected boolean visitNode(SchemaFilter filter, SchemaFilterType schemaFilterType) {
+  protected Boolean visitNode(SchemaFilter filter, SchemaFilterType schemaFilterType) {
     return filter != null && filter.getSchemaFilterType().equals(schemaFilterType);
-  }
-
-  @Override
-  public boolean visitAndFilter(AndFilter andFilter, SchemaFilterType schemaFilterType) {
-    return andFilter.getLeft().accept(this, schemaFilterType)
-        || andFilter.getRight().accept(this, schemaFilterType);
   }
 }

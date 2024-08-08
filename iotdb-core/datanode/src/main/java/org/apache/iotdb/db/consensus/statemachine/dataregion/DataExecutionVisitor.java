@@ -21,7 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -240,8 +240,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
     try {
-      for (PartialPath path : node.getPathList()) {
-        PartialPath databaseToDelete = new PartialPath(dataRegion.getDatabaseName() + ".**");
+      for (MeasurementPath path : node.getPathList()) {
+        MeasurementPath databaseToDelete =
+            new MeasurementPath(dataRegion.getDatabaseName() + ".**");
         if (path.matchFullPath(databaseToDelete)
             || path.getFullPath().equals(databaseToDelete.getFullPath())) {
           LOGGER.info(

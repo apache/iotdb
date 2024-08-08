@@ -133,6 +133,8 @@ public enum Metric {
   UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
   UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
   UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
+  PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
+  PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
   PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
   PIPE_EXTRACTOR_HEARTBEAT_SUPPLY("pipe_extractor_heartbeat_supply"),

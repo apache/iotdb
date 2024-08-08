@@ -132,74 +132,77 @@ public class OpcUaServerBuilder {
     final DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
-    LOGGER.info(
-        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
-        pkiDir.getAbsolutePath());
+    final OpcUaServerConfig serverConfig;
+    try (DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir)) {
+      LOGGER.info(
+          "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+          pkiDir.getAbsolutePath());
 
-    final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+      final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-    final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
-        new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-    httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
-    final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
+      final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
+          new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
+      httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
+      HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+      final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
-    final DefaultServerCertificateValidator certificateValidator =
-        new DefaultServerCertificateValidator(trustListManager);
+      final DefaultServerCertificateValidator certificateValidator =
+          new DefaultServerCertificateValidator(trustListManager);
 
-    final UsernameIdentityValidator identityValidator =
-        new UsernameIdentityValidator(
-            true,
-            authChallenge -> {
-              String inputUsername = authChallenge.getUsername();
-              String inputPassword = authChallenge.getPassword();
+      final UsernameIdentityValidator identityValidator =
+          new UsernameIdentityValidator(
+              true,
+              authChallenge -> {
+                String inputUsername = authChallenge.getUsername();
+                String inputPassword = authChallenge.getPassword();
 
-              return inputUsername.equals(user) && inputPassword.equals(password);
-            });
+                return inputUsername.equals(user) && inputPassword.equals(password);
+              });
 
-    final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+      final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
-    final X509Certificate certificate =
-        certificateManager.getCertificates().stream()
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError, "No certificate found"));
+      final X509Certificate certificate =
+          certificateManager.getCertificates().stream()
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError, "No certificate found"));
 
-    final String applicationUri =
-        CertificateUtil.getSanUri(certificate)
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError,
-                        "Certificate is missing the application URI"));
+      final String applicationUri =
+          CertificateUtil.getSanUri(certificate)
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError,
+                          "Certificate is missing the application URI"));
 
-    final Set<EndpointConfiguration> endpointConfigurations =
-        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+      final Set<EndpointConfiguration> endpointConfigurations =
+          createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
 
-    final OpcUaServerConfig serverConfig =
-        OpcUaServerConfig.builder()
-            .setApplicationUri(applicationUri)
-            .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
-            .setEndpoints(endpointConfigurations)
-            .setBuildInfo(
-                new BuildInfo(
-                    "urn:apache:iotdb:opc-ua-server",
-                    "apache",
-                    "Apache IoTDB OPC UA server",
-                    OpcUaServer.SDK_VERSION,
-                    "",
-                    DateTime.now()))
-            .setCertificateManager(certificateManager)
-            .setTrustListManager(trustListManager)
-            .setCertificateValidator(certificateValidator)
-            .setHttpsKeyPair(httpsKeyPair)
-            .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
-            .setIdentityValidator(new CompositeValidator(identityValidator, x509IdentityValidator))
-            .setProductUri("urn:apache:iotdb:opc-ua-server")
-            .build();
+      serverConfig =
+          OpcUaServerConfig.builder()
+              .setApplicationUri(applicationUri)
+              .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
+              .setEndpoints(endpointConfigurations)
+              .setBuildInfo(
+                  new BuildInfo(
+                      "urn:apache:iotdb:opc-ua-server",
+                      "apache",
+                      "Apache IoTDB OPC UA server",
+                      OpcUaServer.SDK_VERSION,
+                      "",
+                      DateTime.now()))
+              .setCertificateManager(certificateManager)
+              .setTrustListManager(trustListManager)
+              .setCertificateValidator(certificateValidator)
+              .setHttpsKeyPair(httpsKeyPair)
+              .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
+              .setIdentityValidator(
+                  new CompositeValidator(identityValidator, x509IdentityValidator))
+              .setProductUri("urn:apache:iotdb:opc-ua-server")
+              .build();
+    }
 
     // Setup server to enable event posting
     final OpcUaServer server = new OpcUaServer(serverConfig);

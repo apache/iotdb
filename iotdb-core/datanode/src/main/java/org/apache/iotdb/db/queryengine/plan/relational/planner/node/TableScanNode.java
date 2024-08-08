@@ -118,7 +118,10 @@ public class TableScanNode extends SourceNode {
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
-      Expression pushDownPredicate) {
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice) {
     super(id);
     this.qualifiedObjectName = qualifiedObjectName;
     this.outputSymbols = outputSymbols;
@@ -128,6 +131,9 @@ public class TableScanNode extends SourceNode {
     this.scanOrder = scanOrder;
     this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
+    this.pushLimitToEachDevice = pushLimitToEachDevice;
   }
 
   @Override
@@ -154,7 +160,10 @@ public class TableScanNode extends SourceNode {
         idAndAttributeIndexMap,
         scanOrder,
         timePredicate,
-        pushDownPredicate);
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice);
   }
 
   @Override
@@ -214,6 +223,10 @@ public class TableScanNode extends SourceNode {
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
+    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
+    ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
   }
 
   @Override
@@ -264,6 +277,10 @@ public class TableScanNode extends SourceNode {
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+
+    ReadWriteIOUtils.write(pushDownLimit, stream);
+    ReadWriteIOUtils.write(pushDownOffset, stream);
+    ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
   }
 
   public static TableScanNode deserialize(ByteBuffer byteBuffer) {
@@ -314,6 +331,10 @@ public class TableScanNode extends SourceNode {
       pushDownPredicate = Expression.deserialize(byteBuffer);
     }
 
+    long pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
+    long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
+    boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TableScanNode(
@@ -325,7 +346,10 @@ public class TableScanNode extends SourceNode {
         idAndAttributeIndexMap,
         scanOrder,
         timePredicate,
-        pushDownPredicate);
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice);
   }
 
   @Override

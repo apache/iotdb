@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -30,9 +31,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -82,6 +85,17 @@ public class TableModelTypeProviderExtractor {
     }
 
     @Override
+    public Void visitTableDeviceQueryScan(final TableDeviceQueryScanNode node, final Void context) {
+      node.getColumnHeaderList()
+          .forEach(
+              columnHeader ->
+                  beTypeProvider.putTableModelType(
+                      new Symbol(columnHeader.getColumnName()),
+                      TypeFactory.getType(columnHeader.getColumnType())));
+      return null;
+    }
+
+    @Override
     public Void visitProject(ProjectNode node, Void context) {
       node.getChild().accept(this, context);
       for (Map.Entry<Symbol, Expression> entry : node.getAssignments().getMap().entrySet()) {
@@ -117,6 +131,12 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitSort(SortNode node, Void context) {
       node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitTopK(TopKNode node, Void context) {
+      node.getChildren().forEach(c -> c.accept(this, context));
       return null;
     }
 

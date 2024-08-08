@@ -154,7 +154,7 @@ public class QueryExecution implements IQueryExecution {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug("[SkipExecute]");
-      if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+      if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
         constructResultForMemorySource();
@@ -170,7 +170,7 @@ public class QueryExecution implements IQueryExecution {
     if (skipExecute()) {
       // TODO move this judgement to analyze state?
       LOGGER.debug("[SkipExecute After LogicalPlan]");
-      if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+      if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
         constructResultForMemorySource();

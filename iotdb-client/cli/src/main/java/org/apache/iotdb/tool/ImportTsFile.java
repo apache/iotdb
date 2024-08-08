@@ -331,6 +331,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       return CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      Thread.currentThread().interrupt();
       return CODE_ERROR;
     } finally {
       if (sessionPool != null) {
@@ -381,6 +382,7 @@ public class ImportTsFile extends AbstractTsFileTool {
           try {
             thread.join();
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
           }
         });
@@ -434,6 +436,9 @@ public class ImportTsFile extends AbstractTsFileTool {
           }
         }
       }
+    } catch (InterruptedException e) {
+      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
     }

@@ -187,6 +187,7 @@ public class StorageEngine implements IService {
   }
 
   public void asyncRecover() throws StartupException {
+    long startRecoverTime = System.currentTimeMillis();
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -210,6 +211,9 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               recoverRepairData();
               setAllSgReady(true);
+              LOGGER.info(
+                  "Storage Engine recover cost: {}s.",
+                  (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -545,6 +549,8 @@ public class StorageEngine implements IService {
     try {
       repairDataTaskManager.markRepairTaskStopping();
       repairDataTaskManager.abortRepairTask();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (IOException ignored) {
     }
   }
@@ -625,6 +631,9 @@ public class StorageEngine implements IService {
     try {
       ConfigurationFileUtils.updateConfigurationFile(new File(configFileUrl.getFile()), properties);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
 

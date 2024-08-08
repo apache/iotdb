@@ -853,7 +853,8 @@ public class ExpressionAnalyzer {
       Type minType = process(node.getMin(), context);
       Type maxType = process(node.getMax(), context);
 
-      if (valueType.equals(minType) || valueType.equals(maxType)) {
+      if (!isTwoTypeComparable(Arrays.asList(valueType, minType))
+          || !isTwoTypeComparable(Arrays.asList(valueType, maxType))) {
         throw new SemanticException(
             String.format("Cannot check if %s is BETWEEN %s and %s", valueType, minType, maxType));
       }

@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 /** This procedure will never finish. */
 @TestOnly
@@ -81,5 +82,10 @@ public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProced
       return false;
     }
     return getProcId() == ((NeverFinishProcedure) o).getProcId();
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId());
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -72,7 +73,7 @@ public class SchemaRegionTestUtil {
       throws MetadataException {
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath(fullPath),
+            new MeasurementPath(fullPath),
             dataType,
             encoding,
             compressor,
@@ -97,7 +98,7 @@ public class SchemaRegionTestUtil {
     for (int i = 0; i < fullPaths.size(); i++) {
       schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath(fullPaths.get(i)),
+              new MeasurementPath(fullPaths.get(i)),
               dataTypes.get(i),
               encodings.get(i),
               compressors.get(i),
@@ -414,14 +415,14 @@ public class SchemaRegionTestUtil {
   }
 
   public static void createTableDevice(
-      ISchemaRegion schemaRegion, String table, Object[] deviceIds, Map<String, String> attributes)
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final Object[] deviceIds,
+      final Map<String, String> attributes)
       throws MetadataException {
-    String[] fullId = new String[deviceIds.length + 1];
-    fullId[0] = table;
-    System.arraycopy(deviceIds, 0, fullId, 1, deviceIds.length);
     schemaRegion.createTableDevice(
         table,
-        Collections.singletonList(fullId),
+        Collections.singletonList(deviceIds),
         new ArrayList<>(attributes.keySet()),
         Collections.singletonList(
             attributes.values().stream()
@@ -445,26 +446,25 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(
-      ISchemaRegion schemaRegion,
-      String table,
-      int idColumnNum,
-      List<SchemaFilter> idDeterminedFilterList,
-      SchemaFilter idFuzzyFilter)
-      throws MetadataException {
-    List<PartialPath> patternList =
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final int idColumnNum,
+      final List<SchemaFilter> idDeterminedFilterList,
+      final SchemaFilter idFuzzyFilter) {
+    final List<PartialPath> patternList =
         DeviceFilterUtil.convertToDevicePattern(
             schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1),
             table,
             idColumnNum,
             Collections.singletonList(idDeterminedFilterList));
-    List<IDeviceSchemaInfo> result = new ArrayList<>();
-    for (PartialPath pattern : patternList) {
-      try (ISchemaReader<IDeviceSchemaInfo> reader =
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    for (final PartialPath pattern : patternList) {
+      try (final ISchemaReader<IDeviceSchemaInfo> reader =
           schemaRegion.getTableDeviceReader(new ShowTableDevicesPlan(pattern, idFuzzyFilter))) {
         while (reader.hasNext()) {
           result.add(reader.next());
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         throw new RuntimeException(e);
       }
     }

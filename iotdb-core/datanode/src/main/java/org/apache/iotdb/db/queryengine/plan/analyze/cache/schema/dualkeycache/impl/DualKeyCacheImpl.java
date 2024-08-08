@@ -325,7 +325,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void invalidate(List<PartialPath> partialPathList) {
+  public void invalidate(List<? extends PartialPath> partialPathList) {
     int estimateSize = 0;
     for (PartialPath path : partialPathList) {
       String measurement = path.getMeasurement();

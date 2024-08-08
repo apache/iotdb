@@ -49,48 +49,45 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   private final Set<String> idOrAttributeColumnNames;
 
-  public static boolean check(Set<String> idOrAttributeColumnNames, Expression expression) {
+  public static boolean check(
+      final Set<String> idOrAttributeColumnNames, final Expression expression) {
     return new PredicatePushIntoMetadataChecker(idOrAttributeColumnNames).process(expression);
   }
 
-  public PredicatePushIntoMetadataChecker(Set<String> idOrAttributeColumnNames) {
+  public PredicatePushIntoMetadataChecker(final Set<String> idOrAttributeColumnNames) {
     this.idOrAttributeColumnNames = idOrAttributeColumnNames;
   }
 
   @Override
-  public Boolean visitExpression(Expression expression, Void context) {
+  public Boolean visitExpression(final Expression expression, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitInPredicate(InPredicate node, Void context) {
-    return Boolean.FALSE;
-  }
-
-  @Override
-  protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
+  protected Boolean visitInPredicate(final InPredicate node, final Void context) {
     return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    return Boolean.FALSE;
+  protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Void context) {
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
-  protected Boolean visitLikePredicate(LikePredicate node, Void context) {
-    return Boolean.FALSE;
+  protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override
-  protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
-    if (node.getOperator() == LogicalExpression.Operator.AND) {
-      throw new IllegalStateException(
-          "Shouldn't have AND operator in PredicatePushIntoMetadataChecker.");
-    }
-    List<Expression> children = node.getTerms();
-    for (Expression child : children) {
-      Boolean result = process(child, context);
+  protected Boolean visitLikePredicate(final LikePredicate node, final Void context) {
+    return isIdOrAttributeColumn(node.getValue());
+  }
+
+  @Override
+  protected Boolean visitLogicalExpression(final LogicalExpression node, final Void context) {
+    final List<Expression> children = node.getTerms();
+    for (final Expression child : children) {
+      final Boolean result = process(child, context);
       if (result == null) {
         throw new IllegalStateException("Should never return null.");
       }
@@ -102,51 +99,48 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression node, Void context) {
-    return Boolean.FALSE;
+  protected Boolean visitNotExpression(final NotExpression node, final Void context) {
+    return node.getValue().accept(this, context);
   }
 
   @Override
-  protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
-    if (node.getOperator() == ComparisonExpression.Operator.EQUAL) {
-      return (isIdOrAttributeColumn(node.getLeft()) && isStringLiteral(node.getRight()))
-          || (isIdOrAttributeColumn(node.getRight()) && isStringLiteral(node.getLeft()));
-    } else {
-      return Boolean.FALSE;
-    }
+  protected Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
+    return (isIdOrAttributeColumn(node.getLeft()) || isStringLiteral(node.getLeft()))
+        && (isIdOrAttributeColumn(node.getRight()) || isStringLiteral(node.getRight()));
   }
 
-  private boolean isIdOrAttributeColumn(Expression expression) {
+  private boolean isIdOrAttributeColumn(final Expression expression) {
     return isSymbolReference(expression)
         && idOrAttributeColumnNames.contains(((SymbolReference) expression).getName());
   }
 
   @Override
-  protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+  protected Boolean visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+  protected Boolean visitSearchedCaseExpression(
+      final SearchedCaseExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitIfExpression(IfExpression node, Void context) {
+  protected Boolean visitIfExpression(final IfExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
+  protected Boolean visitNullIfExpression(final NullIfExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+  protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Void context) {
     return Boolean.FALSE;
   }
 
-  public static boolean isStringLiteral(Expression expression) {
+  public static boolean isStringLiteral(final Expression expression) {
     return expression instanceof StringLiteral;
   }
 }

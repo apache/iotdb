@@ -419,7 +419,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
             endTime = endTimes[entry.getValue()];
           }
         } else {
-          if (devicePattern.matchFullPath(new PartialPath(entry.getKey().toString()))) {
+          if (devicePattern.matchFullPath(new PartialPath(entry.getKey()))) {
             deviceMatchInfo.add(entry.getKey());
             hasMatchedDevice = true;
             if (startTimes[entry.getValue()] < startTime) {

@@ -206,7 +206,7 @@ public class DataRegionTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
 
-    dataRegion.deleteByDevice(new PartialPath(deviceId, measurementId), 0, 15L, -1);
+    dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), 0, 15L, -1);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -1391,10 +1391,10 @@ public class DataRegionTest {
     }
 
     // delete root.vehicle.d2.s0 data in the second file
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 50, 150, 0);
 
     // delete root.vehicle.d2.s0 data in the third file
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 150, 450, 0);
 
     for (int i = 0; i < dataRegion.getSequenceFileList().size(); i++) {
       TsFileResource resource = dataRegion.getSequenceFileList().get(i);
@@ -1440,10 +1440,10 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is in memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 50, 70, 0);
 
     // delete data which is not in memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1462,13 +1462,13 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is not in flushing memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     // delete data which is in flushing memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 190, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 100, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 190, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
@@ -1486,13 +1486,13 @@ public class DataRegionTest {
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
     // delete data which is not in work memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     // delete data which is in work memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 190, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 100, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 190, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1504,11 +1504,11 @@ public class DataRegionTest {
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
     // delete data which is not in work memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 200, 299, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     // delete data which is in work memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 80, 85, 0);
 
     Assert.assertFalse(tsFileResource.getModFile().exists());
 
@@ -1517,14 +1517,14 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is not in flushing memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 0, 49, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 200, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     // delete data which is in flushing memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 25, 50, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 80, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 99, 150, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
@@ -1547,11 +1547,11 @@ public class DataRegionTest {
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
     // delete data which is not in working memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     // delete data which is in working memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d199.*"), 50, 500, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d199.*"), 50, 500, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1572,7 +1572,7 @@ public class DataRegionTest {
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
     // delete all data which is in flushing memtable
-    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 200, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getTsFile().exists());
@@ -1608,19 +1608,19 @@ public class DataRegionTest {
 
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
     // delete data in work mem, no mods.
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 50, 100, 0);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
     Assert.assertFalse(tsFileResource.getModFile().exists());
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // delete data in closed file, but time not match
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 120, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 120, 0);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
     Assert.assertTrue(tsFileResource.getModFile().exists());
 
     // delete data in closed file, and time all match
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 199, 0);
     Assert.assertFalse(tsFileResource.getTsFile().exists());
     Assert.assertFalse(tsFileResource.getModFile().exists());
   }
@@ -1650,9 +1650,9 @@ public class DataRegionTest {
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
 
     // already closed, will have a mods file.
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 60, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 40, 60, 0);
     // not close yet, just delete in memory.
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 140, 160, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 140, 160, 0);
 
     // delete data in mem table, there is no mods
     Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
@@ -1661,14 +1661,14 @@ public class DataRegionTest {
     Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 80, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 40, 80, 0);
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
     Assert.assertTrue(tsFileResourceUnSeq.getModFile().exists());
 
     // seq file and unseq file have data file and mod file now,
     // this deletion will remove data file and mod file.
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 30, 100, 0);
-    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 30, 100, 0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 199, 0);
 
     Assert.assertFalse(tsFileResourceSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());

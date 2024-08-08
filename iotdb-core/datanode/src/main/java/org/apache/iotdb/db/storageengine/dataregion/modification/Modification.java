@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 
 import java.util.Objects;
 
@@ -27,10 +27,10 @@ import java.util.Objects;
 public abstract class Modification {
 
   protected Type type;
-  protected PartialPath path;
+  protected MeasurementPath path;
   protected long fileOffset;
 
-  Modification(Type type, PartialPath path, long fileOffset) {
+  Modification(Type type, MeasurementPath path, long fileOffset) {
     this.type = type;
     this.path = path;
     this.fileOffset = fileOffset;
@@ -40,7 +40,7 @@ public abstract class Modification {
     return path.getFullPath();
   }
 
-  public PartialPath getPath() {
+  public MeasurementPath getPath() {
     return path;
   }
 
@@ -52,7 +52,7 @@ public abstract class Modification {
     return path.getMeasurement();
   }
 
-  public void setPath(PartialPath path) {
+  public void setPath(MeasurementPath path) {
     this.path = path;
   }
 

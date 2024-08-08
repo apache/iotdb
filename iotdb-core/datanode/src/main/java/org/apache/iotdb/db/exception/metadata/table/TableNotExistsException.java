@@ -26,7 +26,7 @@ public class TableNotExistsException extends MetadataException {
 
   public TableNotExistsException(String database, String tableName) {
     super(
-        String.format("Table %s.%s not exists.", database, tableName),
+        String.format("Table '%s.%s' does not exist.", database, tableName),
         TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
   }
 }

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 
 import java.util.List;
 import java.util.Map;
@@ -57,7 +59,19 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     Analysis analysis = new Analysis(statement, parameterLookup);
-    analysis.setDatabaseName(session.getDatabaseName().get());
+    if (statement instanceof WrappedInsertStatement) {
+      WrappedInsertStatement insertStatement = (WrappedInsertStatement) statement;
+      if (insertStatement.getDatabase() != null) {
+        analysis.setDatabaseName(insertStatement.getDatabase());
+      } else if (session.getDatabaseName().isPresent()) {
+        analysis.setDatabaseName(session.getDatabaseName().get());
+      } else {
+        throw new SemanticException("database is not specified for insert:" + statement);
+      }
+    } else if (session.getDatabaseName().isPresent()) {
+      analysis.setDatabaseName(session.getDatabaseName().get());
+    }
+
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis, session, warningCollector, CorrelationSupport.ALLOWED);

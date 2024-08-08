@@ -202,8 +202,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
-      if (!SystemInfo.getInstance()
-          .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
+      if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
             "Total allocated memory for direct buffer will be "
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
@@ -711,7 +710,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
             Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
             Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
-            prefixPath.concatNode(measurements.get(i)));
+            prefixPath.concatAsMeasurementPath(measurements.get(i)));
         if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
           tagOffsets.remove(i);
         }
@@ -1344,10 +1343,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public void createTableDevice(
-      String tableName,
-      List<Object[]> devicePathList,
-      List<String> attributeNameList,
-      List<Object[]> attributeValueList)
+      final String tableName,
+      final List<Object[]> devicePathList,
+      final List<String> attributeNameList,
+      final List<Object[]> attributeValueList)
       throws MetadataException {
     for (int i = 0; i < devicePathList.size(); i++) {
       int finalI = i;
@@ -1404,16 +1403,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+      final ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
     return mtree.getTableDeviceReader(
         showTableDevicesPlan.getDevicePattern(),
-        showTableDevicesPlan.getAttributeFilter(),
+        showTableDevicesPlan.getDeviceFilter(),
         (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
+      final String table, final List<Object[]> devicePathList) {
     return mtree.getTableDeviceReader(
         table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }

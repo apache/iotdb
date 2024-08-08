@@ -39,4 +39,9 @@ public class SubscriptionIncompatibleHandlerException extends SubscriptionExcept
         && Objects.equals(
             getTimeStamp(), ((SubscriptionIncompatibleHandlerException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

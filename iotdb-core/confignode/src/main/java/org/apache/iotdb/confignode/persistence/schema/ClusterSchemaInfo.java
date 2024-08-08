@@ -92,6 +92,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -1118,7 +1119,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TsTable getTsTable(String database, String tableName) {
+  public Optional<TsTable> getTsTable(String database, String tableName) {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree.getTable(new PartialPath(database), tableName);

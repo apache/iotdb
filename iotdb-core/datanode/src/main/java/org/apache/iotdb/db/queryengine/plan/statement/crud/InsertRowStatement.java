@@ -39,12 +39,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -90,7 +92,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
@@ -228,7 +230,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        if (values[i] != null) {
+        // if the type is binary and the value is already binary, do not convert
+        if (values[i] instanceof String
+            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {
@@ -358,10 +362,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSDataType getDataType(int index) {
-    if (isNeedInferType) {
-      return TypeInferenceUtils.getPredictedDataType(values[index], true);
-    } else {
+    if (isNeedInferType && (dataTypes == null || dataTypes[index] == null)) {
+      if (dataTypes == null) {
+        dataTypes = new TSDataType[measurements.length];
+      }
+      dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values[index], true);
       return dataTypes[index];
+    } else {
+      return dataTypes != null ? dataTypes[index] : null;
     }
   }
 
@@ -454,6 +462,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }
 
+  @TableModel
   public IDeviceID getTableDeviceID() {
     if (deviceID == null) {
       String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
@@ -469,11 +478,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     return deviceID;
   }
 
+  @TableModel
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRow(this, context);
   }
 
+  @TableModel
   @Override
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
@@ -483,6 +494,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     values = tmpValues;
   }
 
+  @TableModel
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);

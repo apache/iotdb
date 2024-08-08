@@ -33,13 +33,14 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
 
   private String[] rawNodes = null;
 
-  public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
+  public ShowDevicesResult(final String name, final Boolean isAligned, final int templateId) {
     super(name);
     this.isAligned = isAligned;
     this.templateId = templateId;
   }
 
-  public ShowDevicesResult(String name, Boolean isAligned, int templateId, String[] rawNodes) {
+  public ShowDevicesResult(
+      final String name, final Boolean isAligned, final int templateId, final String[] rawNodes) {
     super(name);
     this.isAligned = isAligned;
     this.templateId = templateId;
@@ -54,12 +55,12 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
-  public void setAttributeProvider(UnaryOperator<String> attributeProvider) {
+  public void setAttributeProvider(final UnaryOperator<String> attributeProvider) {
     this.attributeProvider = attributeProvider;
   }
 
   @Override
-  public String getAttributeValue(String attributeKey) {
+  public String getAttributeValue(final String attributeKey) {
     return attributeProvider.apply(attributeKey);
   }
 
@@ -75,26 +76,25 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   @Override
   public String toString() {
     return "ShowDevicesResult{"
-        + " name='"
+        + "name='"
         + path
         + '\''
         + ", isAligned = "
         + isAligned
-        + '\''
         + ", templateId = "
         + templateId
         + "}";
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ShowDevicesResult result = (ShowDevicesResult) o;
+    final ShowDevicesResult result = (ShowDevicesResult) o;
     return Objects.equals(path, result.path)
         && isAligned == result.isAligned
         && templateId == result.templateId;

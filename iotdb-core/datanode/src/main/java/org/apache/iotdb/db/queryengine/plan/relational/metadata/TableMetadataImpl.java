@@ -44,6 +44,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -149,7 +150,7 @@ public class TableMetadataImpl implements Metadata {
       if (!isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
               && isNumericType(argumentTypes.get(0))
-              && BOOLEAN.equals(argumentTypes.get(0)))) {
+              && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -159,7 +160,7 @@ public class TableMetadataImpl implements Metadata {
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       }
@@ -168,7 +169,7 @@ public class TableMetadataImpl implements Metadata {
 
       if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function: "
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text or string data type.");
       }
@@ -176,15 +177,15 @@ public class TableMetadataImpl implements Metadata {
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
               && isCharType(argumentTypes.get(0))
-              && isNumericType(argumentTypes.get(1)))
+              && isIntegerNumber(argumentTypes.get(1)))
           && !(argumentTypes.size() == 3
               && isCharType(argumentTypes.get(0))
-              && isNumericType(argumentTypes.get(1))
-              && isNumericType(argumentTypes.get(2)))) {
+              && isIntegerNumber(argumentTypes.get(1))
+              && isIntegerNumber(argumentTypes.get(2)))) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text or string data type.");
+                + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -319,10 +320,10 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context) {
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
     return TableDeviceSchemaFetcher.getInstance()
         .fetchDeviceSchemaForDataQuery(
             tableName.getDatabaseName(),
@@ -334,9 +335,9 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context) {
+      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
     return TableHeaderSchemaValidator.getInstance()
-        .validateTableHeaderSchema(database, tableSchema, context);
+        .validateTableHeaderSchema(database, tableSchema, context, allowCreateTable);
   }
 
   @Override
@@ -425,6 +426,10 @@ public class TableMetadataImpl implements Metadata {
         || TimestampType.TIMESTAMP.equals(type);
   }
 
+  public static boolean isIntegerNumber(Type type) {
+    return INT32.equals(type) || INT64.equals(type);
+  }
+
   public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
     if (argumentTypes.size() != 2) {
       return false;
@@ -436,6 +441,9 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
+    return (isNumericType(left) && isNumericType(right))
+        || (isCharType(left) && isCharType(right))
+        || (isCharType(left) && DateType.DATE.equals(right))
+        || (DateType.DATE.equals(left) && isCharType(right));
   }
 }

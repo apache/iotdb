@@ -67,7 +67,7 @@ public class InternalBatchActivateTemplateStatement extends Statement {
       templatePaths.addAll(templateSetInfo.left.getSchemaMap().keySet());
     }
     return deviceMap.keySet().stream()
-        .flatMap(path -> templatePaths.stream().map(path::concatNode))
+        .flatMap(path -> templatePaths.stream().map(path::concatAsMeasurementPath))
         .collect(Collectors.toList());
   }
 

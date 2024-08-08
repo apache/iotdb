@@ -22,51 +22,40 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 public class InsertStatementTest {
+  @Mock private Metadata metadata;
+  @Mock private MPPQueryContext queryContext;
+  @Mock private SessionInfo sessionInfo;
+  private TableSchema tableSchema;
 
-  @Test
-  public void testValidate() {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setDevicePath(new PartialPath(new String[] {"table1"}));
-    // wrong id order
-    // miss id3
-    // the type of m2 is wrong
-    insertRowStatement.setMeasurements(new String[] {"id2", "attr2", "m1", "m2", "id1"});
-    insertRowStatement.setDataTypes(
-        new TSDataType[] {
-          TSDataType.STRING,
-          TSDataType.STRING,
-          TSDataType.DOUBLE,
-          TSDataType.INT64,
-          TSDataType.STRING
-        });
-    insertRowStatement.setColumnCategories(
-        new TsTableColumnCategory[] {
-          TsTableColumnCategory.ID,
-          TsTableColumnCategory.ATTRIBUTE,
-          TsTableColumnCategory.MEASUREMENT,
-          TsTableColumnCategory.MEASUREMENT,
-          TsTableColumnCategory.ID
-        });
-    insertRowStatement.setValues(new String[] {"id2", "attr2", "m1", "m2", "id1"});
-    InsertRow insertRow = new InsertRow(insertRowStatement, null);
-
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
     List<ColumnSchema> columnSchemas;
     columnSchemas =
         Arrays.asList(
@@ -101,9 +90,46 @@ public class InsertStatementTest {
                 TypeFactory.getType(TSDataType.INT64),
                 false,
                 TsTableColumnCategory.MEASUREMENT));
-    TableSchema tableSchema = new TableSchema("table1", columnSchemas);
+    tableSchema = new TableSchema("table1", columnSchemas);
+    when(metadata.validateTableHeaderSchema(
+            any(String.class),
+            any(TableSchema.class),
+            any(MPPQueryContext.class),
+            any(Boolean.class)))
+        .thenReturn(Optional.of(tableSchema));
+    when(queryContext.getSession()).thenReturn(sessionInfo);
+    when(queryContext.getDatabaseName()).thenReturn(Optional.of("test"));
+    when(sessionInfo.getDatabaseName()).thenReturn(Optional.of("test"));
+  }
 
-    insertRow.validateTableSchema(tableSchema);
+  @Test
+  public void testValidate() {
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {"table1"}));
+    // wrong id order
+    // miss id3
+    // the type of m2 is wrong
+    insertRowStatement.setMeasurements(new String[] {"id2", "attr2", "m1", "m2", "id1"});
+    insertRowStatement.setDataTypes(
+        new TSDataType[] {
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.DOUBLE,
+          TSDataType.INT64,
+          TSDataType.STRING
+        });
+    insertRowStatement.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.ID,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.MEASUREMENT,
+          TsTableColumnCategory.MEASUREMENT,
+          TsTableColumnCategory.ID
+        });
+    insertRowStatement.setValues(new String[] {"id2", "attr2", "m1", "m2", "id1"});
+    InsertRow insertRow = new InsertRow(insertRowStatement, queryContext);
+
+    insertRow.validateTableSchema(metadata, queryContext);
 
     // id3 should be added into the statement to generate right DeviceIds
     assertArrayEquals(
@@ -153,9 +179,16 @@ public class InsertStatementTest {
                 TypeFactory.getType(TSDataType.STRING),
                 false,
                 TsTableColumnCategory.ATTRIBUTE));
-    TableSchema tableSchema = new TableSchema("table1", columnSchemas);
+    tableSchema = new TableSchema("table1", columnSchemas);
+    when(metadata.validateTableHeaderSchema(
+            any(String.class),
+            any(TableSchema.class),
+            any(MPPQueryContext.class),
+            any(Boolean.class)))
+        .thenReturn(Optional.of(tableSchema));
 
-    assertThrows(SemanticException.class, () -> insertRow.validateTableSchema(tableSchema));
+    assertThrows(
+        SemanticException.class, () -> insertRow.validateTableSchema(metadata, queryContext));
   }
 
   @Test
@@ -175,8 +208,15 @@ public class InsertStatementTest {
         Collections.singletonList(
             new ColumnSchema(
                 "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID));
-    TableSchema tableSchema = new TableSchema("table1", columnSchemas);
+    tableSchema = new TableSchema("table1", columnSchemas);
+    when(metadata.validateTableHeaderSchema(
+            any(String.class),
+            any(TableSchema.class),
+            any(MPPQueryContext.class),
+            any(Boolean.class)))
+        .thenReturn(Optional.of(tableSchema));
 
-    assertThrows(SemanticException.class, () -> insertRow.validateTableSchema(tableSchema));
+    assertThrows(
+        SemanticException.class, () -> insertRow.validateTableSchema(metadata, queryContext));
   }
 }

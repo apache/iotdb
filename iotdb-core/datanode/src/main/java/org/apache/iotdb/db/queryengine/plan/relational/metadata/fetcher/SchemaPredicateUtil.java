@@ -19,8 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChildFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -30,13 +40,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 
 public class SchemaPredicateUtil {
 
@@ -45,16 +53,19 @@ public class SchemaPredicateUtil {
   // pair.left is Expressions only contain ID columns
   // pair.right is Expressions contain at least one ATTRIBUTE column
   static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
-      List<Expression> expressionList, TsTable table) {
-    List<Expression> idDeterminedList = new ArrayList<>();
-    List<Expression> idFuzzyList = new ArrayList<>();
-    CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
-    CheckSchemaPredicateVisitor.Context context = new CheckSchemaPredicateVisitor.Context(table);
-    for (Expression expression : expressionList) {
+      final List<Expression> expressionList,
+      final TsTable table,
+      final MPPQueryContext queryContext) {
+    final List<Expression> idDeterminedList = new ArrayList<>();
+    final List<Expression> idFuzzyList = new ArrayList<>();
+    final CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
+    final CheckSchemaPredicateVisitor.Context context =
+        new CheckSchemaPredicateVisitor.Context(table, queryContext);
+    for (final Expression expression : expressionList) {
       if (expression == null) {
         continue;
       }
-      if (expression.accept(visitor, context)) {
+      if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
         idFuzzyList.add(expression);
       } else {
         idDeterminedList.add(expression);
@@ -67,43 +78,40 @@ public class SchemaPredicateUtil {
   // return or concat filter list, inner which all filter is and concat
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
-  static List<List<Expression>> convertDeviceIdPredicateToOrConcatList(
-      List<Expression> schemaFilterList) {
-    List<List<Expression>> orConcatList =
+  static List<Map<Integer, List<SchemaFilter>>> convertDeviceIdPredicateToOrConcatList(
+      final List<Expression> schemaFilterList, final TsTable table) {
+    final ConvertSchemaPredicateToFilterVisitor visitor =
+        new ConvertSchemaPredicateToFilterVisitor();
+    final ConvertSchemaPredicateToFilterVisitor.Context context =
+        new ConvertSchemaPredicateToFilterVisitor.Context(table);
+
+    final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
-            .map(expression -> extractPredicates(LogicalExpression.Operator.OR, expression))
+            .map(IrUtils::extractOrPredicatesWithInExpanded)
             .collect(Collectors.toList());
-    int orSize = orConcatList.size();
-    int finalResultSize = 1;
-    for (List<Expression> filterList : orConcatList) {
-      finalResultSize *= filterList.size();
+    final int orSize = orConcatList.size();
+    int remainingCaseNum = 1;
+    for (final List<Expression> filterList : orConcatList) {
+      remainingCaseNum *= filterList.size();
     }
-    List<List<Expression>> result = new ArrayList<>(finalResultSize);
-    int[] indexes = new int[orSize]; // index count, each case represents one possible result
-    Set<String> checkedColumnNames = new HashSet<>();
+    final List<Map<Integer, List<SchemaFilter>>> result = new ArrayList<>();
+    final int[] indexes = new int[orSize]; // index count, each case represents one possible result
     boolean hasConflictFilter;
     Expression currentExpression;
-    String currentColumnName;
-    while (finalResultSize > 0) {
-      checkedColumnNames.clear();
+    while (remainingCaseNum > 0) {
       hasConflictFilter = false;
-      List<Expression> oneCase = new ArrayList<>(orConcatList.size());
+      final Map<Integer, List<SchemaFilter>> oneCase = new HashMap<>();
       for (int j = 0; j < orSize; j++) {
         currentExpression = orConcatList.get(j).get(indexes[j]);
-        currentColumnName = getColumnName(currentExpression);
-        if (checkedColumnNames.contains(currentColumnName)) {
+        if (!handleFilter(
+            (AbstractSingleChildFilter) currentExpression.accept(visitor, context), oneCase)) {
           hasConflictFilter = true;
           break;
         }
-        checkedColumnNames.add(currentColumnName);
-        oneCase.add(currentExpression);
       }
 
       if (!hasConflictFilter) {
         result.add(oneCase);
-      } else {
-        // TODO table metadata
-        throw new IllegalStateException("have conflict filter!");
       }
 
       for (int k = orSize - 1; k >= 0; k--) {
@@ -113,9 +121,64 @@ public class SchemaPredicateUtil {
         }
         indexes[k] = 0;
       }
-      finalResultSize--;
+      remainingCaseNum--;
     }
     return result;
+  }
+
+  private static boolean handleFilter(
+      final AbstractSingleChildFilter filter,
+      final Map<Integer, List<SchemaFilter>> index2FilterMap) {
+    // We assume that only "not" and "IdFilter" is possible here to be the root filter
+    // There won't be any attribute filters here currently
+
+    // First refactor the not filters
+    AbstractSingleChildFilter currentFilter = filter;
+    boolean isNotFilter = false;
+    while (currentFilter.getSchemaFilterType().equals(SchemaFilterType.NOT)) {
+      currentFilter = (AbstractSingleChildFilter) currentFilter.getChild();
+      isNotFilter = !isNotFilter;
+    }
+
+    final int index = ((IdFilter) currentFilter).getIndex();
+    final SchemaFilter childFilter = currentFilter.getChild();
+
+    // Compress the not filters and put them after idFilter,
+    // to simplify the logics in schema regions
+    if (isNotFilter) {
+      currentFilter.setChild(new NotFilter(childFilter));
+    }
+
+    if (!index2FilterMap.containsKey(index)) {
+      index2FilterMap.computeIfAbsent(index, k -> new ArrayList<>()).add(currentFilter);
+    } else if (!isNotFilter && childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
+      if (index2FilterMap.get(index).stream()
+          .allMatch(
+              existingFilter ->
+                  Boolean.TRUE.equals(
+                      existingFilter.accept(
+                          StringValueFilterVisitor.getInstance(),
+                          ((PreciseFilter) childFilter).getValue())))) {
+        index2FilterMap.put(index, Collections.singletonList(currentFilter));
+      } else {
+        return false;
+      }
+    } else {
+      final SchemaFilter firstFilter = index2FilterMap.get(index).get(0);
+      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.ID))
+          && ((IdFilter) firstFilter)
+              .getChild()
+              .getSchemaFilterType()
+              .equals(SchemaFilterType.PRECISE)) {
+        return Boolean.TRUE.equals(
+            currentFilter.accept(
+                StringValueFilterVisitor.getInstance(),
+                ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue()));
+      } else {
+        index2FilterMap.get(index).add(currentFilter);
+      }
+    }
+    return true;
   }
 
   public static String getColumnName(Expression expression) {
@@ -136,11 +199,21 @@ public class SchemaPredicateUtil {
   }
 
   static List<Integer> extractIdSingleMatchExpressionCases(
-      List<List<Expression>> idDeterminedExpressionList, TsTable tableInstance) {
-    List<Integer> selectedExpressionCases = new ArrayList<>();
-    int idCount = tableInstance.getIdNums();
-    for (int i = 0; i < idDeterminedExpressionList.size(); i++) {
-      if (idDeterminedExpressionList.get(i).size() == idCount) {
+      final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
+      final TsTable tableInstance) {
+    final List<Integer> selectedExpressionCases = new ArrayList<>();
+    final int idCount = tableInstance.getIdNums();
+    for (int i = 0; i < index2FilterMapList.size(); i++) {
+      final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
+      if (filterMap.size() == idCount
+          && filterMap.values().stream()
+              .allMatch(
+                  filterList ->
+                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.ID)
+                          && ((IdFilter) filterList.get(0))
+                              .getChild()
+                              .getSchemaFilterType()
+                              .equals(SchemaFilterType.PRECISE))) {
         selectedExpressionCases.add(i);
       }
     }
@@ -148,19 +221,12 @@ public class SchemaPredicateUtil {
   }
 
   // compact and-concat expression list to one expression
-  static Expression compactDeviceIdFuzzyPredicate(List<Expression> expressionList) {
+  static Expression compactDeviceIdFuzzyPredicate(final List<Expression> expressionList) {
     if (expressionList.isEmpty()) {
       return null;
     }
-    LogicalExpression andExpression;
-    Expression latestExpression = expressionList.get(0);
-    for (int i = 1; i < expressionList.size(); i++) {
-      andExpression =
-          new LogicalExpression(
-              LogicalExpression.Operator.AND,
-              Arrays.asList(latestExpression, expressionList.get(i)));
-      latestExpression = andExpression;
-    }
-    return latestExpression;
+    return expressionList.size() > 1
+        ? new LogicalExpression(LogicalExpression.Operator.AND, expressionList)
+        : expressionList.get(0);
   }
 }

@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@SuppressWarnings("java:S5783")
 public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionAliasAndTagTest.class);

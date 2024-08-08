@@ -174,6 +174,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   @Override
+  @SuppressWarnings("java:S2142")
   public void run() {
     try {
       if (!checkConditionsToStartRepairTask()) {

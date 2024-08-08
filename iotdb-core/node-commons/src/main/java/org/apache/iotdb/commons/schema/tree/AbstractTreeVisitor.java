@@ -119,7 +119,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     this.root = root;
 
     boolean usingDFA = false;
-    // Use DFA if there are ** and no regex node in pathPattern
+    // Use DFA if there are ** and no other regex nodes in pathPattern
     for (String pathNode : pathPattern.getNodes()) {
       if (pathNode == null) {
         continue;
@@ -437,11 +437,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
    * match root.sg.**(pattern) This method should be implemented according to concrete tasks.
    *
-   * <p>Return whether the subtree of given node should be processed. If return true, the traversing
-   * process will keep traversing the subtree. If return false, the traversing process will skip the
-   * subtree of given node.
+   * <p>Return whether the subtree of given node should be processed. If return {@code true}, the
+   * traversing process will keep traversing the subtree. If return {@code false}, the traversing
+   * process will skip the subtree of given node.
    */
-  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node);
+  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(final N node);
 
   /** Only accepted nodes will be considered for hasNext() and next() */
   protected abstract boolean acceptInternalMatchedNode(N node);
@@ -983,8 +983,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // fortunately, the measurement node only match the final state, which means there won't be any
   // multi transition and traceback judge
   protected IFAState tryGetNextState(
-      N node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
-    IFATransition transition = preciseMatchTransitionMap.get(node.getName());
+      final N node,
+      final IFAState sourceState,
+      final Map<String, IFATransition> preciseMatchTransitionMap) {
+    final IFATransition transition = preciseMatchTransitionMap.get(node.getName());
     if (transition == null) {
       return null;
     }
@@ -995,7 +997,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // the transition;
   // fortunately, the measurement node only match the final state, which means there won't be any
   // multi transition and traceback judge
-  protected IFAState tryGetNextState(N node, IFAState sourceState, IFATransition transition) {
+  protected IFAState tryGetNextState(
+      final N node, final IFAState sourceState, final IFATransition transition) {
     if (transition.isMatch(node.getName())) {
       return patternFA.getNextState(sourceState, transition);
     } else {
@@ -1008,7 +1011,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
    * context.
    *
    * @param node node to be checked
-   * @return false is if node must not be accepted. Otherwise, return true.
+   * @return {@code false} is if node must not be accepted. Otherwise, return {@code true}.
    */
-  protected abstract boolean mayTargetNodeType(N node);
+  protected abstract boolean mayTargetNodeType(final N node);
 }

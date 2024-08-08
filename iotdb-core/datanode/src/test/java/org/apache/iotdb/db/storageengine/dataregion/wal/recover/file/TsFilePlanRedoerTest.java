@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -598,7 +599,7 @@ public class TsFilePlanRedoerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(DEVICE1_NAME)),
+            Collections.singletonList(new MeasurementPath(DEVICE1_NAME, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
 

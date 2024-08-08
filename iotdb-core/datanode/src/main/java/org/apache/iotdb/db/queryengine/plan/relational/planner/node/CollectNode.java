@@ -45,12 +45,14 @@ public class CollectNode extends MultiChildProcessNode {
 
   private List<Symbol> outputSymbols;
 
-  public CollectNode(PlanNodeId id) {
+  public CollectNode(PlanNodeId id, List<Symbol> outputSymbols) {
     super(id);
+    this.outputSymbols = outputSymbols;
   }
 
-  public CollectNode(PlanNodeId id, List<PlanNode> children) {
+  public CollectNode(PlanNodeId id, List<PlanNode> children, List<Symbol> outputSymbols) {
     super(id, children);
+    this.outputSymbols = outputSymbols;
   }
 
   @Override
@@ -60,9 +62,7 @@ public class CollectNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    CollectNode collectNode = new CollectNode(id);
-    collectNode.outputSymbols = outputSymbols;
-    return collectNode;
+    return new CollectNode(id, outputSymbols);
   }
 
   public void setOutputSymbols(List<Symbol> outputSymbols) {
@@ -82,7 +82,7 @@ public class CollectNode extends MultiChildProcessNode {
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     checkArgument(children.size() == newChildren.size(), "wrong number of new children");
-    return new CollectNode(id, newChildren);
+    return new CollectNode(id, newChildren, outputSymbols);
   }
 
   @Override
@@ -102,15 +102,13 @@ public class CollectNode extends MultiChildProcessNode {
   }
 
   public static CollectNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Symbol> outputs = new ArrayList<>(size);
+    List<Symbol> outputSymbols = new ArrayList<>(size);
     while (size-- > 0) {
-      outputs.add(Symbol.deserialize(byteBuffer));
+      outputSymbols.add(Symbol.deserialize(byteBuffer));
     }
-    CollectNode collectNode = new CollectNode(planNodeId);
-    collectNode.setOutputSymbols(outputs);
-    return collectNode;
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new CollectNode(planNodeId, outputSymbols);
   }
 
   @Override

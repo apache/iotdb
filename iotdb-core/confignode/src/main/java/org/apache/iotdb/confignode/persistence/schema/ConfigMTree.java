@@ -64,6 +64,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeSet;
@@ -162,7 +163,7 @@ public class ConfigMTree {
     store.deleteChild(cur, databaseMNode.getName());
 
     // delete node a while retain root.a.sg2
-    while (cur.getParent() != null && cur.getChildren().size() == 0) {
+    while (cur.getParent() != null && cur.getChildren().isEmpty()) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }
@@ -718,14 +719,14 @@ public class ConfigMTree {
     return result;
   }
 
-  public TsTable getTable(PartialPath database, String tableName) throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+  public Optional<TsTable> getTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
+      return Optional.empty();
     }
-    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    return tableNode.getTable();
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    return Optional.of(tableNode.getTable());
   }
 
   public void addTableColumn(

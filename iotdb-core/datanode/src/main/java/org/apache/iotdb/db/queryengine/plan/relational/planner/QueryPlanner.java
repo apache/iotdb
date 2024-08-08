@@ -279,7 +279,11 @@ public class QueryPlanner {
 
     return subPlan.withNewRoot(
         new SortNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme.get(), false));
+            queryIdAllocator.genPlanNodeId(),
+            subPlan.getRoot(),
+            orderingScheme.get(),
+            false,
+            false));
   }
 
   private PlanBuilder offset(PlanBuilder subPlan, Optional<Offset> offset) {

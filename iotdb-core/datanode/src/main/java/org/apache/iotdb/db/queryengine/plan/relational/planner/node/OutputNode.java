@@ -32,6 +32,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class OutputNode extends SingleChildProcessNode {
 
   private final List<String> columnNames;
@@ -44,6 +46,9 @@ public class OutputNode extends SingleChildProcessNode {
     super(id, child);
     this.id = id;
     this.child = child;
+    checkArgument(
+        columnNames.size() == outputSymbols.size(),
+        "columnNames and outputSymbols sizes don't match");
     this.columnNames = ImmutableList.copyOf(columnNames);
     this.outputSymbols = ImmutableList.copyOf(outputSymbols);
   }

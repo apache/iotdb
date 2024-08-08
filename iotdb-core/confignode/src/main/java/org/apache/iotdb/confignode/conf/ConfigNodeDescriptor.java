@@ -63,6 +63,8 @@ public class ConfigNodeDescriptor {
     try {
       ConfigurationFileUtils.checkAndMayUpdate(
           systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       LOGGER.error("Failed to update config file", e);
     }

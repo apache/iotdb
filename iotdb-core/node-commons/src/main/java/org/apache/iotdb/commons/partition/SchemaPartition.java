@@ -114,4 +114,9 @@ public class SchemaPartition extends Partition {
         });
     return new ArrayList<>(distributionMap.values());
   }
+
+  @Override
+  public String toString() {
+    return "SchemaPartition{" + "schemaPartitionMap=" + schemaPartitionMap + '}';
+  }
 }

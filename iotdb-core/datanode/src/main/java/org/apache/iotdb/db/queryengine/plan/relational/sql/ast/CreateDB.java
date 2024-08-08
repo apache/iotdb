@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -36,21 +37,21 @@ public class CreateDB extends Statement {
   public CreateDB(boolean ifNotExists, String dbName) {
     super(null);
     this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = null;
   }
 
   public CreateDB(NodeLocation location, boolean ifNotExists, String dbName) {
     super(requireNonNull(location, "location is null"));
     this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = null;
   }
 
   public CreateDB(boolean ifNotExists, String dbName, List<Property> properties) {
     super(null);
     this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
   }
 
@@ -58,7 +59,7 @@ public class CreateDB extends Statement {
       NodeLocation location, boolean ifNotExists, String dbName, List<Property> properties) {
     super(requireNonNull(location, "location is null"));
     this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
   }
 

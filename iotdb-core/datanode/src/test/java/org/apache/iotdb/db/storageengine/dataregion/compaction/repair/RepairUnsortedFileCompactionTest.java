@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -569,7 +569,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
     ModificationFile modFile = seqResource2.getModFile();
     Deletion writedModification =
-        new Deletion(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
+        new Deletion(new MeasurementPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
     modFile.write(writedModification);
     modFile.close();
 

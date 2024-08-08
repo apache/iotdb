@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSort
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
@@ -51,8 +53,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -95,10 +99,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -235,6 +241,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
+      }
+    }
+
+    Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (!outputSet.contains(entry.getKey())
+          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+        measurementColumnCount++;
+        measurementColumnNames.add(entry.getKey().getName());
+        measurementSchemas.add(
+            new MeasurementSchema(
+                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
       }
     }
 
@@ -403,7 +421,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterExpressionColumnTransformerMap,
             commonTransformerList,
             filterOutputDataTypes,
-            inputLocations.size() - 1,
+            inputLocations.size(),
             context.getTypeProvider(),
             metadata);
 
@@ -503,32 +521,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitOutput(OutputNode node, LocalExecutionPlanContext context) {
-    TypeProvider typeProvider = context.getTypeProvider();
-    Optional<Expression> predicate;
-    Operator inputOperator;
-    List<TSDataType> inputDataTypes;
-    Map<Symbol, List<InputLocation>> inputLocations;
-    if (node.getChild() instanceof FilterNode) {
-      FilterNode filterNode = (FilterNode) node.getChild();
-      predicate = Optional.of(filterNode.getPredicate());
-      inputOperator = filterNode.getChild().accept(this, context);
-      inputDataTypes = getInputColumnTypes(filterNode, typeProvider);
-      inputLocations = makeLayout(filterNode.getChildren());
-    } else {
-      predicate = Optional.empty();
-      inputOperator = node.getChild().accept(this, context);
-      inputDataTypes = getInputColumnTypes(node, typeProvider);
-      inputLocations = makeLayout(node.getChildren());
-    }
-
-    return constructFilterAndProjectOperator(
-        predicate,
-        inputOperator,
-        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
-        inputDataTypes,
-        inputLocations,
-        node.getPlanNodeId(),
-        context);
+    return node.getChild().accept(this, context);
   }
 
   @Override
@@ -653,7 +646,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         dataTypes,
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
-        node.getCount(),
+        (int) node.getCount(),
         node.isChildrenDataInOrder());
   }
 
@@ -739,9 +732,26 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitCountMerge(
+      final CountSchemaMergeNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CountMergeOperator.class.getSimpleName());
+    final List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (final PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+    return new CountMergeOperator(operatorContext, children);
+  }
+
+  @Override
   public Operator visitTableDeviceFetch(
-      TableDeviceFetchNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final TableDeviceFetchNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -759,9 +769,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
-  public Operator visitTableDeviceQuery(
-      TableDeviceQueryNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+  public Operator visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -774,7 +784,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
-            node.getIdDeterminedPredicateList(),
+            node.getIdDeterminedFilterList(),
+            node.getIdFuzzyPredicate(),
+            node.getColumnHeaderList()));
+  }
+
+  @Override
+  public Operator visitTableDeviceQueryCount(
+      final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaCountOperator.class.getSimpleName());
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getTableDeviceQuerySource(
+            node.getDatabase(),
+            node.getTableName(),
+            node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
   }

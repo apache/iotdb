@@ -47,7 +47,7 @@ public class Analyzer {
         new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
     if (context.getSession() != null) {
       // for test compatibility
-      analysis.setDatabaseName(context.getSession().getDatabaseName().orElse(null));
+      analysis.setDatabaseName(context.getDatabaseName().orElse(null));
     }
 
     if (statement.isQuery()) {

@@ -21,24 +21,24 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
-import java.util.Objects;
-
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
+
   @Override
-  public boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
+  public Boolean visitNode(final SchemaFilter filter, final IDeviceSchemaInfo info) {
     return true;
   }
 
   @Override
-  public boolean visitPathContainsFilter(
-      PathContainsFilter pathContainsFilter, IDeviceSchemaInfo info) {
+  public Boolean visitPathContainsFilter(
+      final PathContainsFilter pathContainsFilter, final IDeviceSchemaInfo info) {
     if (pathContainsFilter.getContainString() == null) {
       return true;
     }
@@ -46,10 +46,11 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitTemplateFilter(TemplateFilter templateFilter, IDeviceSchemaInfo info) {
-    boolean equalAns;
-    int templateId = info.getTemplateId();
-    String filterTemplateName = templateFilter.getTemplateName();
+  public Boolean visitTemplateFilter(
+      final TemplateFilter templateFilter, final IDeviceSchemaInfo info) {
+    final boolean equalAns;
+    final int templateId = info.getTemplateId();
+    final String filterTemplateName = templateFilter.getTemplateName();
     if (templateId != -1) {
       equalAns =
           ClusterTemplateManager.getInstance()
@@ -65,17 +66,19 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitDeviceIdFilter(DeviceIdFilter filter, IDeviceSchemaInfo info) {
-    String[] nodes = info.getPartialPath().getNodes();
-    if (nodes.length < filter.getIndex() + 3) {
-      return false;
-    } else {
-      return Objects.equals(nodes[filter.getIndex() + 3], filter.getValue());
-    }
+  public Boolean visitIdFilter(final IdFilter filter, final IDeviceSchemaInfo info) {
+    final String[] nodes = info.getPartialPath().getNodes();
+    return filter
+        .getChild()
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            nodes.length > filter.getIndex() + 3 ? nodes[filter.getIndex() + 3] : null);
   }
 
   @Override
-  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, IDeviceSchemaInfo info) {
-    return Objects.equals(filter.getValue(), info.getAttributeValue(filter.getKey()));
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceSchemaInfo info) {
+    return filter
+        .getChild()
+        .accept(StringValueFilterVisitor.getInstance(), info.getAttributeValue(filter.getKey()));
   }
 }

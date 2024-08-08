@@ -26,9 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 /** This class maintains information of {@code HAVING} clause. */
 public class HavingCondition extends StatementNode {
 
-  private Expression predicate;
-
-  public HavingCondition() {}
+  private final Expression predicate;
 
   public HavingCondition(Expression predicate) {
     // cast functionName to lowercase in havingExpression
@@ -37,10 +35,6 @@ public class HavingCondition extends StatementNode {
 
   public Expression getPredicate() {
     return predicate;
-  }
-
-  public void setPredicate(Expression predicate) {
-    this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
   public String toSQLString() {

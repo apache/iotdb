@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -87,12 +86,12 @@ public class ProjectNode extends SingleChildProcessNode {
 
   public static ProjectNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, Expression> map = new HashMap<>(size);
+    Assignments.Builder assignments = Assignments.builder();
     while (size-- > 0) {
-      map.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+      assignments.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ProjectNode(planNodeId, null, new Assignments(map));
+    return new ProjectNode(planNodeId, null, assignments.build());
   }
 
   @Override

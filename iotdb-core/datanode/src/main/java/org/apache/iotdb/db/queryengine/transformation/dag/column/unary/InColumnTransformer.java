@@ -32,6 +32,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.utils.DateUtils;
 
 import java.util.HashSet;
 import java.util.List;
@@ -180,7 +181,6 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     String errorMsg = "\"%s\" cannot be cast to [%s]";
     switch (childType) {
       case INT32:
-      case DATE:
         intSet = new HashSet<>();
         for (Literal value : values) {
           try {
@@ -188,6 +188,12 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }
+        }
+        break;
+      case DATE:
+        intSet = new HashSet<>();
+        for (Literal value : values) {
+          intSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
         }
         break;
       case INT64:

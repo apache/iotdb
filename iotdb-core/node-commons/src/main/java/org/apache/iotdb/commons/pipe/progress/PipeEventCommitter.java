@@ -60,6 +60,7 @@ public class PipeEventCommitter {
     return commitIdGenerator.incrementAndGet();
   }
 
+  @SuppressWarnings("java:S899")
   public synchronized void commit(final EnrichedEvent event) {
     commitQueue.offer(event);
 

@@ -1062,7 +1062,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      WALWriteUtils.write(entry.getKey(), buffer);
+      try {
+        entry.getKey().serialize(buffer);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
       IWritableMemChunkGroup memChunkGroup = entry.getValue();
       WALWriteUtils.write(memChunkGroup instanceof AlignedWritableMemChunkGroup, buffer);
       memChunkGroup.serializeToWAL(buffer);

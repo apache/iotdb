@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -50,9 +51,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -64,14 +67,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 
@@ -167,13 +172,24 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES.contains(key) && !property.isSetToDefault()) {
-        final Expression value = property.getNonDefaultValue();
-        if (!(value instanceof LongLiteral)) {
-          throw new SemanticException(
-              "TTL' value must be a LongLiteral, but now is: " + value.toString());
+      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+        if (!property.isSetToDefault()) {
+          final Expression value = property.getNonDefaultValue();
+          if (value instanceof Literal
+              && Objects.equals(
+                  ((Literal) value).getTsValue(),
+                  TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.get(key))) {
+            // Ignore default values
+            continue;
+          }
+          if (!(value instanceof LongLiteral)) {
+            throw new SemanticException(
+                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+          }
+          map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
         }
-        map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+      } else {
+        throw new SemanticException("Table property " + key + " is currently not allowed.");
       }
     }
     table.setProps(map);
@@ -239,5 +255,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitFlush(Flush node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
+  }
+
+  @Override
+  protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
   }
 }

@@ -75,6 +75,9 @@ public class InternalTypeManager implements TypeManager {
   }
 
   public static TSDataType getTSDataType(Type type) {
+    if (type == null) {
+      return null;
+    }
     TypeEnum typeEnum = type.getTypeEnum();
     switch (typeEnum) {
       case TEXT:

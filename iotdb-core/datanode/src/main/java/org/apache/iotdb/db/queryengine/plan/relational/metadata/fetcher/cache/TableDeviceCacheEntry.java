@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Collections;
 import java.util.Map;
 
 public class TableDeviceCacheEntry {
@@ -34,13 +34,13 @@ public class TableDeviceCacheEntry {
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private final ImmutableMap<String, String> attributeMap;
+  private final Map<String, String> attributeMap;
 
-  public TableDeviceCacheEntry(Map<String, String> attributeMap) {
-    this.attributeMap = ImmutableMap.copyOf(attributeMap);
+  public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
+    this.attributeMap = Collections.unmodifiableMap(attributeMap);
   }
 
-  public String getAttribute(String key) {
+  public String getAttribute(final String key) {
     return attributeMap.get(key);
   }
 

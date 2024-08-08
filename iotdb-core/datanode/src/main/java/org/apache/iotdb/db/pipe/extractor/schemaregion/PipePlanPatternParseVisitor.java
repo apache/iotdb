@@ -19,24 +19,25 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -144,10 +145,18 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
                   group.getDataTypes().get(index),
                   group.getEncodings().get(index),
                   group.getCompressors().get(index));
-              targetMeasurementGroup.addTags(group.getTagsList().get(index));
-              targetMeasurementGroup.addAttributes(group.getAttributesList().get(index));
-              targetMeasurementGroup.addAlias(group.getAliasList().get(index));
-              targetMeasurementGroup.addProps(group.getPropsList().get(index));
+              if (Objects.nonNull(group.getTagsList())) {
+                targetMeasurementGroup.addTags(group.getTagsList().get(index));
+              }
+              if (Objects.nonNull(group.getAttributesList())) {
+                targetMeasurementGroup.addAttributes(group.getAttributesList().get(index));
+              }
+              if (Objects.nonNull(group.getAliasList())) {
+                targetMeasurementGroup.addAlias(group.getAliasList().get(index));
+              }
+              if (Objects.nonNull(group.getPropsList())) {
+                targetMeasurementGroup.addProps(group.getPropsList().get(index));
+              }
             });
     return targetMeasurementGroup;
   }
@@ -270,11 +279,12 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   @Override
   public Optional<PlanNode> visitDeleteData(
       final DeleteDataNode node, final IoTDBPipePattern pattern) {
-    final List<PartialPath> intersectedPaths =
+    final List<MeasurementPath> intersectedPaths =
         node.getPathList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .distinct()
+            .map(d -> (MeasurementPath) d)
             .collect(Collectors.toList());
     return !intersectedPaths.isEmpty()
         ? Optional.of(
