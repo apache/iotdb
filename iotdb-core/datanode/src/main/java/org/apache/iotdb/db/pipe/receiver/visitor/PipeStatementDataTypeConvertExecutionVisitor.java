@@ -96,7 +96,11 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertRows(
       final InsertRowsStatement insertRowsStatement, final TSStatus status) {
-    // TODO: judge if the exception is caused by data type mismatch
+    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
+      return Optional.empty();
+    }
 
     if (insertRowsStatement.getInsertRowStatementList() == null
         || insertRowsStatement.getInsertRowStatementList().isEmpty()) {
@@ -114,7 +118,11 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertRowsOfOneDevice(
       final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, final TSStatus status) {
-    // TODO: judge if the exception is caused by data type mismatch
+    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
+      return Optional.empty();
+    }
 
     if (insertRowsOfOneDeviceStatement.getInsertRowStatementList() == null
         || insertRowsOfOneDeviceStatement.getInsertRowStatementList().isEmpty()) {
@@ -143,7 +151,11 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertMultiTablets(
       final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus status) {
-    // TODO: judge if the exception is caused by data type mismatch
+    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
+      return Optional.empty();
+    }
 
     if (insertMultiTabletsStatement.getInsertTabletStatementList() == null
         || insertMultiTabletsStatement.getInsertTabletStatementList().isEmpty()) {
