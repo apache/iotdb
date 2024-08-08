@@ -61,7 +61,7 @@ public class UDTFValidity implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     try {
-      if (rowWindow.windowSize() > TimeSeriesQuality.WINDOW_SIZE) {
+      if (rowWindow.windowSize() > TimeSeriesQuality.windowSize) {
         TimeSeriesQuality tsq = new TimeSeriesQuality(rowWindow.getRowIterator());
         tsq.valueDetect();
         collector.putDouble(rowWindow.getRow(0).getTime(), tsq.getValidity());

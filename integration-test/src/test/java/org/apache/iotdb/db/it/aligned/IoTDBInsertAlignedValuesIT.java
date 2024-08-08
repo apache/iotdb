@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -44,16 +45,19 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValuesIT {
+  private boolean autoCreateSchemaEnabled;
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    EnvFactory.getEnv().initClusterEnvironment();
+    autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
+    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
+    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
   @Test
@@ -84,17 +88,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getDouble(3), 0.1);
+        assertEquals(17.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getDouble(3), 0.1);
+        assertEquals(20.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(22, resultSet.getDouble(3), 0.1);
+        assertEquals(22, resultSet.getFloat(3), 0.1);
 
         assertFalse(resultSet.next());
       }
@@ -126,7 +130,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getDouble(3), 0.1);
+        assertEquals(17.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
@@ -136,7 +140,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0d, resultSet.getObject(3));
+        assertEquals(22.0f, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -170,17 +174,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getDouble(3), 0.1);
+        assertEquals(17.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getDouble(3), 0.1);
+        assertEquals(20.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0d, resultSet.getObject(3));
+        assertEquals(22.0f, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -200,48 +204,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getDouble(3), 0.1);
+        assertEquals(17.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getDouble(3), 0.1);
+        assertEquals(20.1, resultSet.getFloat(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0d, resultSet.getObject(3));
-
-        assertFalse(resultSet.next());
-      }
-    }
-  }
-
-  @Test
-  public void testInsertAlignedValuesWithSameTimestamp() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.addBatch("insert into root.sg.d1(time,s2) aligned values(1,2)");
-      statement.addBatch("insert into root.sg.d1(time,s1) aligned values(1,2)");
-      statement.executeBatch();
-
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
-
-        assertTrue(resultSet.next());
-        assertEquals(1, resultSet.getLong(1));
-        assertEquals(2.0d, resultSet.getObject(2));
-        assertEquals(2.0d, resultSet.getObject(3));
-
-        assertFalse(resultSet.next());
-      }
-
-      statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
-
-        assertTrue(resultSet.next());
-        assertEquals(1, resultSet.getLong(1));
-        assertEquals(2.0d, resultSet.getObject(2));
-        assertEquals(2.0d, resultSet.getObject(3));
+        assertEquals(22.0f, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -292,62 +265,36 @@ public class IoTDBInsertAlignedValuesIT {
   }
 
   @Test
-  public void testInsertAlignedTimeseriesWithoutAligned() throws SQLException {
+  public void testInsertAlignedTimeseriesWithoutAligned() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS2(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
-      statement.execute("insert into root.lz.dev.GPS2(time,latitude,longitude) values(1,123,456)");
-      // it's supported.
+      statement.execute("insert into root.lz.dev.GPS2(time,latitude,longitude) values(1,1.3,6.7)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains("timeseries under this device are aligned, please use aligned interface"));
     }
   }
 
   @Test
-  public void testInsertTimeseriesWithUnMatchedAlignedType() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("create ALIGNED timeseries root.db.d_aligned(s01 INT64 encoding=RLE)");
-      statement.execute("insert into root.db.d_aligned(time, s01) aligned values (4000, 123)");
-      statement.execute("insert into root.db.d_aligned(time, s01) values (5000, 456)");
-      statement.execute("create timeseries root.db.d_not_aligned.s01 INT64 encoding=RLE");
-      statement.execute("insert into root.db.d_not_aligned(time, s01) values (4000, 987)");
-      statement.execute("insert into root.db.d_not_aligned(time, s01) aligned values (5000, 654)");
-
-      try (ResultSet resultSet = statement.executeQuery("select s01 from root.db.d_aligned")) {
-        assertTrue(resultSet.next());
-        assertEquals(4000, resultSet.getLong(1));
-        assertEquals(123, resultSet.getLong(2));
-
-        assertTrue(resultSet.next());
-        assertEquals(5000, resultSet.getLong(1));
-        assertEquals(456, resultSet.getLong(2));
-
-        assertFalse(resultSet.next());
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("select s01 from root.db.d_not_aligned")) {
-        assertTrue(resultSet.next());
-        assertEquals(4000, resultSet.getLong(1));
-        assertEquals(987, resultSet.getLong(2));
-
-        assertTrue(resultSet.next());
-        assertEquals(5000, resultSet.getLong(1));
-        assertEquals(654, resultSet.getLong(2));
-
-        assertFalse(resultSet.next());
-      }
-    }
-  }
-
-  @Test
-  public void testInsertNonAlignedTimeseriesWithAligned() throws SQLException {
+  public void testInsertNonAlignedTimeseriesWithAligned() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.lz.dev.GPS3.latitude with datatype=INT32");
       statement.execute("CREATE TIMESERIES root.lz.dev.GPS3.longitude with datatype=INT32");
       statement.execute(
-          "insert into root.lz.dev.GPS3(time,latitude,longitude) aligned values(1,123,456)");
-      // it's supported.
+          "insert into root.lz.dev.GPS3(time,latitude,longitude) aligned values(1,1.3,6.7)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains(
+                  "timeseries under this device are not aligned, please use non-aligned interface"));
     }
   }
 

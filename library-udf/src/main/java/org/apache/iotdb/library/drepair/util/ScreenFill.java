@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -31,13 +31,27 @@ import java.util.Arrays;
 // Reference to Screen.java
 public class ScreenFill extends ValueFill {
 
-  private double smin;
-  private double smax;
+  private double smin, smax;
   private double w;
 
   public ScreenFill(RowIterator dataIterator) throws Exception {
     super(dataIterator);
     setParameters();
+  }
+
+  @Override
+  public long[] getTime() {
+    return super.getTime();
+  }
+
+  @Override
+  public double[] getFilled() {
+    return super.getFilled();
+  }
+
+  @Override
+  public void calMeanAndVar() throws UDFException {
+    super.calMeanAndVar();
   }
 
   @Override
@@ -88,17 +102,17 @@ public class ScreenFill extends ValueFill {
         count++;
       }
     }
-    double[] x = new double[2 * count];
-    int tempCount = 0;
+    double x[] = new double[2 * count];
+    int temp_count = 0;
     for (int i = 1; i <= m; i++) {
       if (!Double.isNaN(list.get(index + i).getRight())) {
-        x[tempCount] =
+        x[temp_count] =
             list.get(index + i).getRight()
                 + smin * (list.get(index).getLeft() - list.get(index + i).getLeft());
-        x[tempCount + count] =
+        x[temp_count + count] =
             list.get(index + i).getRight()
                 + smax * (list.get(index).getLeft() - list.get(index + i).getLeft());
-        tempCount++;
+        temp_count++;
       }
     }
     Arrays.sort(x);

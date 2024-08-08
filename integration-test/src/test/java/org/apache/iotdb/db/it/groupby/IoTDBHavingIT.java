@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.groupby;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -107,16 +108,20 @@ public class IoTDBHavingIT {
         "INSERT INTO root.test1.d1(timestamp, code, tem) values(1, '123', 345);",
       };
 
+  private static long prevPartitionInterval;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initClusterEnvironment();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test

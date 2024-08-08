@@ -25,9 +25,6 @@ derby-tsfile-db
 # build generated
 **/target/
 
-# build docker images
-tmp
-
 # intermediately generated locally
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
@@ -38,13 +35,6 @@ src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
-!iotdb-client/client-py/requirements.txt
-!iotdb-client/client-py/requirements_dev.txt
-!iotdb-client/client-cpp/src/main/CMakeLists.txt
-!iotdb-client/client-cpp/src/test/CMakeLists.txt
-!example/rest-client-c-example/CMakeLists.txt
-!example/client-cpp-example/src/CMakeLists.txt
-
 
 *.jar
 !trigger-example.jar
@@ -60,7 +50,12 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 ### CSV ###
 *.csv
 ### Maven ###
+grafana/target/
+!grafana/.mvn/wrapper/maven-wrapper.jar
+grafana/.mvn/
+/.mvn/.gradle-enterprise/
 
+grafana/logs/
 *.log
 
 
@@ -79,10 +74,13 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 **/dist/
 **/nbdist/
 **/.nb-gradle/
+grafana/data/
 
 ### vscode project
 **/.vscode/
 
+
+grafana/data/test.csv
 **/lib/
 /target/
 *.tsfile
@@ -98,7 +96,6 @@ node_identifier
 
 ### temporary file of the distributed version ###
 remote/
-!integration-test/src/main/java/org/apache/iotdb/it/env/remote/
 
 # gitpod
 .theia/
@@ -110,15 +107,15 @@ classes/
 Makefile
 **/CMakeFiles/
 
+### cluster test data
+node1/
+node2/
+node3/
+
 # Exclude copied license
-iotdb-client/client-py/LICENSE
+/client-py/LICENSE
 
 # ANTLR
-iotdb-core/antlr/gen/
-iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
-iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
-iotdb-core/tsfile/gen/
-iotdb-core/tsfile/src/main/antlr4/org/apache/tsfile/parser/gen/
-
-# Develocity
-.mvn/.gradle-enterprise/
+antlr/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens

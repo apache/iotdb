@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -45,25 +47,41 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSameMeasurementsDifferentTypesIT {
 
+  private static final BaseConfig tsFileConfig = ConfigFactory.getConfig();
+  private static int maxNumberOfPointsInPage;
+  private static int pageSizeInByte;
+  private static int groupSizeInByte;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    // use small page
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
+
+    // use small page setting
+    // origin value
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
+
+    // new value
+    ConfigFactory.getConfig()
         .setMaxNumberOfPointsInPage(1000)
         .setPageSizeInByte(1024 * 150)
         .setGroupSizeInByte(1024 * 1000)
         .setMemtableSizeThreshold(1024 * 1000);
 
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
 
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    // recovery value
+    ConfigFactory.getConfig()
+        .setMaxNumberOfPointsInPage(maxNumberOfPointsInPage)
+        .setPageSizeInByte(pageSizeInByte)
+        .setGroupSizeInByte(groupSizeInByte)
+        .setMemtableSizeThreshold(groupSizeInByte);
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   private static void insertData() {

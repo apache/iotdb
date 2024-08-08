@@ -19,16 +19,17 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runners.Parameterized;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -47,12 +48,9 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
-
-  public IoTDBMetadataFetchIT(SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
-  }
+public class IoTDBMetadataFetchIT {
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -85,32 +83,23 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     }
   }
 
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    setUpEnvironment();
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
-  }
-
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
+
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
-    clearSchema();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -118,48 +107,33 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
             "show timeseries root.ln.*.wt01.*", // seriesPath with stars
             "show timeseries", // the same as root
             "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-            "show timeseries root.** where timeseries contains 'tat'",
-            "show timeseries root.ln.** where timeseries contains 'wf01.wt01'",
-            "show timeseries root.ln.** where dataType=BOOLEAN"
           };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
                 Collections.singletonList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,")),
-            new HashSet<>(),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,")),
-            new HashSet<>(
-                Collections.singletonList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,"))
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,",
+                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
+            new HashSet<>()
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -229,15 +203,15 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature",
+            "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature"
           };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,null,",
-                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,null,")),
-            new HashSet<>(),
+                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,",
+                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,")),
+            new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -251,58 +225,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
               builder.append(resultSet.getString(i)).append(",");
             }
             String string = builder.toString();
-            Assert.assertTrue(standard.contains(string));
-            standard.remove(string);
-          }
-          assertEquals(0, standard.size());
-        } catch (SQLException e) {
-          e.printStackTrace();
-          fail(e.getMessage());
-        }
-      }
-    }
-  }
-
-  @Test
-  public void showDevicesWithTemplate() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
-      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE DEVICE TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
-      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg1.d2");
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2.d1");
-      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg2.d2");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg1.d2");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d1");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d2");
-
-      String[] sqls =
-          new String[] {
-            "show devices root.** where template is not null",
-            "show devices root.sg2.** with database where template = 't2'",
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.sg1.d2,true,t2,", "root.sg2.d1,false,t1,", "root.sg2.d2,true,t2,")),
-            new HashSet<>(Arrays.asList("root.sg2.d2,root.sg2,true,t2,")),
-          };
-
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            String string = builder.toString();
+            System.out.println(string);
             Assert.assertTrue(standard.contains(string));
             standard.remove(string);
           }
@@ -320,67 +243,11 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls =
-          new String[] {
-            "show devices root.ln.**",
-            "show devices root.ln.wf01.wt01.temperature",
-            "show devices root.** where device contains 'wt02'",
-          };
+          new String[] {"show devices root.ln.**", "show devices root.ln.wf01.wt01.temperature"};
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList("root.ln.wf01.wt01,false,null,", "root.ln.wf01.wt02,true,null,")),
-            new HashSet<>(),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,null,")),
-          };
-
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            String string = builder.toString();
-            Assert.assertTrue(standard.contains(string));
-            standard.remove(string);
-          }
-          assertEquals(0, standard.size());
-        } catch (SQLException e) {
-          e.printStackTrace();
-          fail(e.getMessage());
-        }
-      }
-    }
-  }
-
-  @Test
-  public void showDevicesWithWildcardTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "show devices root.l*.wf01.w*",
-            "show devices root.ln.*f01.*",
-            "show devices root.l*.*f*.*1",
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,false,null,",
-                    "root.ln.wf01.wt02,true,null,",
-                    "root.ln1.wf01.wt01,false,null,",
-                    "root.ln2.wf01.wt01,false,null,")),
-            new HashSet<>(
-                Arrays.asList("root.ln.wf01.wt01,false,null,", "root.ln.wf01.wt02,true,null,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,false,null,",
-                    "root.ln1.wf01.wt01,false,null,",
-                    "root.ln2.wf01.wt01,false,null,"))
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+            new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -488,49 +355,23 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Ignore(
+      value =
+          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
-      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
+      statement.execute(
+          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
+      statement.execute(
+          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.ln1.** where TAGS(tag1) = v1",
-            "COUNT TIMESERIES where TAGS(tag1) = v1",
-            "COUNT TIMESERIES where TAGS(tag3) = v3"
+            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES where tag1 = v1",
+            "COUNT TIMESERIES where tag3 = v3"
           };
       String[] standards = new String[] {"1,\n", "2,\n", "0,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            builder.append("\n");
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          e.printStackTrace();
-          fail(e.getMessage());
-        }
-      }
-    }
-  }
-
-  @Test
-  public void showCountTimeSeriesWithPathContains() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT TIMESERIES root.** where TIMESERIES contains 'wf01.wt01'",
-            "COUNT TIMESERIES root.ln.** where TIMESERIES contains 's'",
-          };
-      String[] standards = new String[] {"6,\n", "3,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -624,8 +465,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new String[] {
             "COUNT TIMESERIES root.** group by level=1",
             "COUNT TIMESERIES root.** group by level=3",
-            "COUNT TIMESERIES root.**.status group by level=2",
-            "COUNT TIMESERIES root.** group by level=5"
+            "COUNT TIMESERIES root.**.status group by level=2"
           };
       Set<String>[] standards =
           new Set[] {
@@ -637,7 +477,6 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                     "root.ln1.wf01.wt01,2,",
                     "root.ln2.wf01.wt01,2,")),
             new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
-            Collections.emptySet()
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -658,56 +497,50 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Ignore(
+      value =
+          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
-      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
+      statement.execute(
+          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
+      statement.execute(
+          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.** where TAGS(tag1) = v1 group by level=1",
-            "COUNT TIMESERIES root.** where TAGS(tag2) = v2 group by level=3",
-            "COUNT TIMESERIES root.**.status where TAGS(tag1) = v1 group by level=2",
-            "COUNT TIMESERIES root.** where TAGS(tag3) = v3 group by level=2"
+            "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
+            "COUNT TIMESERIES root.** where tag2 = v2 group by level=3",
+            "COUNT TIMESERIES root.**.status where tag1 = v1 group by level=2",
+            "COUNT TIMESERIES root.** where tag3 = v3 group by level=2"
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.ln1,1,", "root.ln2,1,")),
-            new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
-            new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
-            Collections.emptySet(),
-          };
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
-          while (resultSet.next()) {
-            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
-            Assert.assertTrue(standard.contains(string));
-            standard.remove(string);
-          }
-          assertEquals(0, standard.size());
-        } catch (SQLException e) {
-          e.printStackTrace();
-          fail(e.getMessage());
-        }
-      }
-    }
-  }
-
-  @Test
-  public void showCountTimeSeriesGroupByWithPathContains() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT TIMESERIES root.** where TIMESERIES contains 'wf01.wt01' group by level=1",
-            "COUNT TIMESERIES root.ln.** where TIMESERIES contains 's' group by level=3"
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,2,", "root.ln2,2,")),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,1,", "root.ln.wf01.wt02,2,"))
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,0,",
+                    "root.ln.wf01.wt02,0,",
+                    "root.ln1.wf01.wt01,0,",
+                    "root.ln2.wf01.wt01,0,",
+                    "root.sg.d.status,1,",
+                    "root.sg1.d.status,0,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01,0,",
+                    "root.ln1.wf01,0,",
+                    "root.ln2.wf01,0,",
+                    "root.sg.d,1,",
+                    "root.sg1.d,1,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01,0,",
+                    "root.ln1.wf01,0,",
+                    "root.ln2.wf01,0,",
+                    "root.sg.d,0,",
+                    "root.sg1.d,0,")),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -770,8 +603,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
       String[] expected =
           new String[] {
-            "root.sg.d.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,"
+            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,",
+            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},null,null,"
           };
 
       int num = 0;
@@ -800,8 +633,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       Set<String> standard =
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,"));
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,"));
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
@@ -838,9 +671,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       Set<String> standard =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d0.s0,null,root.sg1,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,\n",
-                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,\n",
-                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,\n"));
+                  "root.sg1.d0.s0,null,root.sg1,INT32,RLE,SNAPPY,null,null,null,null,\n",
+                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=2},\n",
+                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},\n"));
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d0.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {

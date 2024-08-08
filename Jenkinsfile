@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 8, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
@@ -58,36 +58,36 @@ pipeline {
             }
         }
 
-//         stage('Deploy site') {
-//             when {
-//                 branch 'master'
-//             }
-//             // Only the nodes labeled 'git-websites' have the credentials to commit to the.
-//             agent {
-//                 node {
-//                     label 'git-websites'
-//                 }
-//             }
-//             steps {
-//                 // Publish the site with the scm-publish plugin.
-//                 sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
-//
-//                 // Clean up the snapshots directory (freeing up more space after deploying).
-//                 dir("target") {
-//                     deleteDir()
-//                 }
-//             }
-//         }
-
-        stage('Build and UT') {
+        stage('Deploy site') {
             when {
-                expression {
-                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
+                branch 'master'
+            }
+            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+            agent {
+                node {
+                    label 'git-websites'
                 }
             }
             steps {
-                echo 'Building and Unit Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -DskipITs"
+                // Publish the site with the scm-publish plugin.
+                sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+
+                // Clean up the snapshots directory (freeing up more space after deploying).
+                dir("target") {
+                    deleteDir()
+                }
+            }
+        }
+
+        stage('Build (not master)') {
+            when {
+                expression {
+                    env.BRANCH_NAME != 'master'
+                }
+            }
+            steps {
+                echo 'Building'
+                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
             }
             post {
                 always {
@@ -97,42 +97,16 @@ pipeline {
             }
         }
 
-        stage('Integration Test') {
+        stage('Build') {
             when {
-                expression {
-                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
-                }
+                branch 'master'
             }
             steps {
-                echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT,with-integration-tests -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
-            }
-            post {
-                always {
-                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-                }
-                failure {
-                    archiveArtifacts 'integration-test/target/cluster-logs/**'
-                    archiveArtifacts 'integration-test/target/pipeIT-logs/**'
-                }
-            }
-        }
-
-        stage('Deploy Prepare') {
-        //             when {
-        //                 branch 'master'
-        //             }
-            when {
-                expression {
-                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
-                }
-            }
-            steps {
-                echo 'Deploy Prepare'
+                echo 'Building'
+                sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh "mvn -T 1C -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -DskipTests"
+                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies
             }
             post {
                 always {
@@ -142,29 +116,27 @@ pipeline {
             }
         }
 
-        // stage('Code Quality') {
-        //     when {
-        //         branch 'master'
-        //     }
-        //     steps {
-        //         echo 'Checking Code Quality on SonarCloud'
-        //         // Main parameters
-        //         script {
-        //             // Then run the analysis
-        //             // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
-        //             withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-        //                 sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Code Quality') {
+            when {
+                branch 'master'
+            }
+            steps {
+                echo 'Checking Code Quality on SonarCloud'
+                // Main parameters
+                script {
+                    // Then run the analysis
+                    // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
+                    withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
+                    }
+                }
+            }
+        }
 
 
         stage('Deploy') {
             when {
-                expression {
-                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
-                }
+                branch 'master'
             }
             steps {
                 echo 'Deploying'
@@ -194,7 +166,7 @@ BUILD-FAILURE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "notifications@iotdb.apache.org"
+                        to: "dev@iotdb.apache.org"
                     )
                 }
             }
@@ -211,7 +183,7 @@ BUILD-UNSTABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "notifications@iotdb.apache.org"
+                        to: "dev@iotdb.apache.org"
                     )
                 }
             }
@@ -228,7 +200,7 @@ BUILD-STABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Is back to normal.
 """,
-                        to: "notifications@iotdb.apache.org"
+                        to: "dev@iotdb.apache.org"
                     )
                 }
             }

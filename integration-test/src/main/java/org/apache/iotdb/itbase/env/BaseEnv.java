@@ -16,118 +16,49 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.itbase.env;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.isession.pool.ISessionPool;
-import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.util.Version;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 
 public interface BaseEnv {
 
-  /** Init a cluster with default number of ConfigNodes and DataNodes. */
-  void initClusterEnvironment();
+  void initBeforeClass() throws InterruptedException;
 
-  /**
-   * Init a cluster with the specified number of ConfigNodes and DataNodes.
-   *
-   * @param configNodesNum the number of ConfigNodes.
-   * @param dataNodesNum the number of DataNodes.
-   */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum);
 
-  /**
-   * Init a cluster with the specified number of ConfigNodes and DataNodes.
-   *
-   * @param configNodesNum the number of ConfigNodes.
-   * @param dataNodesNum the number of DataNodes.
-   * @param testWorkingRetryCount the retry count when testing the availability of cluster
-   */
-  void initClusterEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount);
+  void cleanAfterClass();
 
-  /** Destroy the cluster and all the configurations. */
-  void cleanClusterEnvironment();
+  void initBeforeTest() throws InterruptedException;
 
-  /** Return the {@link ClusterConfig} for developers to set values before test. */
-  ClusterConfig getConfig();
-
-  default String getUrlContent(String urlStr) {
-    StringBuilder sb = new StringBuilder();
-    try {
-      URL url = new URL(urlStr);
-      HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
-      if (httpConnection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-        InputStream in = httpConnection.getInputStream();
-        InputStreamReader isr = new InputStreamReader(in);
-        BufferedReader bufr = new BufferedReader(isr);
-        String str;
-        while ((str = bufr.readLine()) != null) {
-          sb.append(str);
-          sb.append('\n');
-        }
-        bufr.close();
-      } else {
-        return null;
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
-    return sb.toString();
-  }
-
-  /** Return the content of prometheus */
-  List<String> getMetricPrometheusReporterContents();
+  void cleanAfterTest();
 
   default Connection getConnection() throws SQLException {
-    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return getConnection("root", "root");
   }
 
+  Connection getConnection(String username, String password) throws SQLException;
+
   default Connection getConnection(Constant.Version version) throws SQLException {
-    return getConnection(version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return getConnection(version, "root", "root");
   }
 
   Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException;
-
-  Connection getConnection(String username, String password) throws SQLException;
-
-  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
-      throws SQLException {
-    return getWriteOnlyConnectionWithSpecifiedDataNode(
-        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
-  }
-
-  // This is useful when you shut down a dataNode.
-  Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException;
-
-  default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
-      throws SQLException {
-    return getConnectionWithSpecifiedDataNode(
-        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
-  }
-
-  Connection getConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException;
 
   void setTestMethodName(String testCaseName);
 
@@ -135,128 +66,146 @@ public interface BaseEnv {
 
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
+  void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList);
+
   List<DataNodeWrapper> getDataNodeWrapperList();
 
+  void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
+
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
-      throws ClientManagerException, IOException, InterruptedException;
+      throws IOException, InterruptedException;
 
-  ISessionPool getSessionPool(int maxSize);
-
-  ISession getSessionConnection() throws IoTDBConnectionException;
-
-  ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
-
-  ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
-
-  /**
-   * Get the index of the first dataNode with a SchemaRegion leader.
-   *
-   * @return The index of DataNode with SchemaRegion-leader in dataNodeWrapperList
-   */
-  int getFirstLeaderSchemaRegionDataNodeIndex() throws IOException, InterruptedException;
-
-  /**
-   * Get the index of the ConfigNode leader.
-   *
-   * @return The index of ConfigNode-Leader in configNodeWrapperList
-   */
-  int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
-
-  default IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
-    throw new UnsupportedOperationException();
+  default ISession getSessionConnection() throws IoTDBConnectionException {
+    return getSessionConnection(
+        SessionConfig.DEFAULT_HOST,
+        SessionConfig.DEFAULT_PORT,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
-  /** Start an existed ConfigNode. */
+  default ISession getSessionConnection(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            host,
+            rpcPort,
+            username,
+            password,
+            fetchSize,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            enableRedirection,
+            version);
+
+    session.open();
+    return session;
+  }
+
+  default ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            nodeUrls,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
+    session.open();
+    return session;
+  }
+
+  default SessionPool getSessionPool(int maxSize) {
+    return getSessionPool(
+        SessionConfig.DEFAULT_HOST,
+        SessionConfig.DEFAULT_PORT,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  default SessionPool getSessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    SessionPool pool =
+        new SessionPool(
+            host,
+            port,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableRedirection,
+            connectionTimeoutInMs,
+            version,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize);
+    return pool;
+  }
+
+  /** @return The index of ConfigNode-Leader in configNodeWrapperList */
+  int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
+
+  /** Start an existed ConfigNode */
   void startConfigNode(int index);
 
-  /** Start all existed ConfigNodes. */
-  void startAllConfigNodes();
-
-  /** Shutdown an existed ConfigNode. */
+  /** Shutdown an existed ConfigNode */
   void shutdownConfigNode(int index);
 
-  /** Shutdown all existed ConfigNodes. */
-  void shutdownAllConfigNodes();
-
-  /**
-   * Ensure all the nodes being in the corresponding status.
-   *
-   * @param nodes the nodes list to query.
-   * @param targetStatus the target {@link NodeStatus} of each node. It should have the same length
-   *     with nodes.
-   * @throws IllegalStateException if there are some nodes not in the targetStatus after a period
-   *     times of check.
-   */
-  void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus)
-      throws IllegalStateException;
-
-  /**
-   * Get the {@link ConfigNodeWrapper} of the specified index.
-   *
-   * @return The ConfigNodeWrapper of the specified index
-   */
-  ConfigNodeWrapper getConfigNodeWrapper(int index);
-
-  /**
-   * Get the {@link DataNodeWrapper} of the specified index.
-   *
-   * @return The DataNodeWrapper of the specified index
-   */
+  /** @return The TDataNodeLocation of the specified DataNode */
   DataNodeWrapper getDataNodeWrapper(int index);
 
-  /**
-   * Get a {@link ConfigNodeWrapper} randomly.
-   *
-   * @return A random available ConfigNodeWrapper
-   */
-  ConfigNodeWrapper generateRandomConfigNodeWrapper();
+  /** Register a new DataNode */
+  void registerNewDataNode();
 
-  /**
-   * Get a {@link DataNodeWrapper} randomly.
-   *
-   * @return A random available ConfigNodeWrapper
-   */
-  DataNodeWrapper generateRandomDataNodeWrapper();
-
-  /** Register a new DataNode with random ports. */
-  void registerNewDataNode(boolean isNeedVerify);
-
-  /** Register a new DataNode with specified DataNodeWrapper. */
-  void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify);
-
-  /** Register a new ConfigNode with random ports. */
-  void registerNewConfigNode(boolean isNeedVerify);
-
-  /** Register a new DataNode with specified ConfigNodeWrapper. */
-  void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify);
-
-  /** Start an existed DataNode. */
+  /** Start an existed DataNode */
   void startDataNode(int index);
 
-  /** Start all existed DataNodes. */
-  void startAllDataNodes();
-
-  /** Shutdown an existed DataNode. */
+  /** Shutdown an existed DataNode */
   void shutdownDataNode(int index);
 
-  /** Shutdown all existed DataNodes. */
-  void shutdownAllDataNodes();
-
   int getMqttPort();
-
-  String getIP();
-
-  String getPort();
-
-  String getSbinPath();
-
-  String getToolsPath();
-
-  String getLibPath();
-
-  Optional<DataNodeWrapper> dataNodeIdToWrapper(int nodeId);
-
-  void registerConfigNodeKillPoints(List<String> killPoints);
-
-  void registerDataNodeKillPoints(List<String> killPoints);
 }

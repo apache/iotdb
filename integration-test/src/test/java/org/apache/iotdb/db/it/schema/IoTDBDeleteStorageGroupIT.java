@@ -19,14 +19,15 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runners.Parameterized;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -39,28 +40,18 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
+public class IoTDBDeleteStorageGroupIT {
 
-  public IoTDBDeleteStorageGroupIT(SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
-  }
-
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    setUpEnvironment();
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
+  @Before
+  public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    clearSchema();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test

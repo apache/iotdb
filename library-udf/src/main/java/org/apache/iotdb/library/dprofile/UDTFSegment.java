@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.Segment;
@@ -31,7 +30,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /** This function segment input series into linear parts. */
 public class UDTFSegment implements UDTF {
@@ -39,11 +37,9 @@ public class UDTFSegment implements UDTF {
   private int windowSize;
   private double maxError;
   private String method;
-  private static final String METHOD_BOTTOM_UP = "bottom-up";
   private String output;
-  private static final String OUTPUT_FIRST = "first";
-  private static final List<Long> timestamp = new ArrayList<>();
-  private static final List<Double> value = new ArrayList<>();
+  private static final ArrayList<Long> timestamp = new ArrayList<>();
+  private static final ArrayList<Double> value = new ArrayList<>();
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -59,15 +55,13 @@ public class UDTFSegment implements UDTF {
             validator.getParameters().getDoubleOrDefault("error", 0.1))
         .validate(
             x ->
-                ((String) x).equalsIgnoreCase(METHOD_BOTTOM_UP)
-                    || ((String) x).equalsIgnoreCase("swab"),
+                ((String) x).equalsIgnoreCase("bottom-up") || ((String) x).equalsIgnoreCase("swab"),
             "Method is illegal.",
-            validator.getParameters().getStringOrDefault("method", METHOD_BOTTOM_UP))
+            validator.getParameters().getStringOrDefault("method", "bottom-up"))
         .validate(
-            x ->
-                ((String) x).equalsIgnoreCase(OUTPUT_FIRST) || ((String) x).equalsIgnoreCase("all"),
+            x -> ((String) x).equalsIgnoreCase("first") || ((String) x).equalsIgnoreCase("all"),
             "Output type is invalid.",
-            validator.getParameters().getStringOrDefault("output", OUTPUT_FIRST));
+            validator.getParameters().getStringOrDefault("output", "first"));
   }
 
   @Override
@@ -78,9 +72,9 @@ public class UDTFSegment implements UDTF {
     value.clear();
     this.windowSize = parameters.getIntOrDefault("window", 10);
     this.maxError = parameters.getDoubleOrDefault("error", 0.1);
-    this.method = parameters.getStringOrDefault("method", METHOD_BOTTOM_UP);
+    this.method = parameters.getStringOrDefault("method", "bottom-up");
     this.method = this.method.toLowerCase();
-    this.output = parameters.getStringOrDefault("output", OUTPUT_FIRST);
+    this.output = parameters.getStringOrDefault("output", "first");
     this.output = this.output.toLowerCase();
   }
 
@@ -97,19 +91,19 @@ public class UDTFSegment implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     long[] ts = timestamp.stream().mapToLong(Long::valueOf).toArray();
     double[] v = value.stream().mapToDouble(Double::valueOf).toArray();
-    List<double[]> seg = new ArrayList<>();
-    if (method.equals(METHOD_BOTTOM_UP)) {
-      List<double[]> temp = Segment.bottomUp(v, maxError);
+    ArrayList<double[]> seg = new ArrayList<>();
+    if (method.equals("bottom-up")) {
+      ArrayList<double[]> temp = Segment.bottom_up(v, maxError);
       seg.addAll(temp);
     } else if (method.equals("swab")) { // haven't tested yet
-      seg = Segment.swabAlg(v, maxError, windowSize);
+      seg = Segment.swab_alg(v, ts, maxError, windowSize);
     }
     ArrayList<double[]> res = new ArrayList<>();
     for (double[] doubles : seg) {
-      res.add(Segment.approximatedSegment(doubles));
+      res.add(Segment.approximated_segment(doubles));
     }
     int index = 0;
-    if (output.equals(OUTPUT_FIRST)) {
+    if (output.equals("first")) {
       for (double[] doubles : res) {
         collector.putDouble(ts[index], doubles[0]);
         index += doubles.length;

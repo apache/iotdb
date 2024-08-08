@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runners.Parameterized;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,8 +42,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
+public class IoTDBSortedShowTimeseriesIT {
 
   private static String[] sqls =
       new String[] {
@@ -94,37 +95,19 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
         "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
       };
 
-  public IoTDBSortedShowTimeseriesIT(SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
-  }
-
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    SchemaTestMode schemaTestMode = setUpEnvironment();
-    if (schemaTestMode.equals(SchemaTestMode.PBTree)) {
-      allocateMemoryForSchemaRegion(10000);
-    }
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
-  }
-
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
     createSchema();
   }
 
-  @After
-  public void tearDown() throws Exception {
-    clearSchema();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
-  public void showTimeseriesOrderByHeatTest1() {
+  public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
 
     List<String> retArray1 =
         Arrays.asList(
@@ -138,19 +121,19 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
                 + "is a gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
             "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
                 + "is a tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
-            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine this "
+            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine this "
                 + "is a test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
             "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine"
                 + " d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
             "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this"
                 + " is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
-            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine d2"
+            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2"
                 + " this is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
             "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
                 + "test1\",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
             "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test2\",\""
                 + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
-            "root.ln.d1.s0,status,root.ln,INT32,RLE,LZ4,{\"description\":\"ln this is a test3\"},"
+            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
                 + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}");
 
     List<String> retArray2 =
@@ -159,7 +142,7 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
                 + "this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
             "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
                 + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
-            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine d2 this "
+            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
                 + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
             "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
                 + " tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
@@ -171,13 +154,13 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
                 + "test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
             "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine"
                 + " this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
-            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine this is a "
+            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine this is a "
                 + "test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
             "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test1\""
                 + ",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
             "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test2\",\""
                 + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
-            "root.ln.d1.s0,status,root.ln,INT32,RLE,LZ4,{\"description\":\"ln this is a test3\"},"
+            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
                 + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}");
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -251,7 +234,7 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
                     + " this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
                 "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
                     + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
-                "root.turbine.d2.s3,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine d2 this "
+                "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
                     + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
                 "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
                     + "tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
@@ -310,8 +293,7 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet =
-          statement.executeQuery("show LATEST timeseries where TAGS(unit)='cores'");
+      ResultSet resultSet = statement.executeQuery("show LATEST timeseries where 'unit'='cores'");
       int count = 0;
       while (resultSet.next()) {
         String ans =

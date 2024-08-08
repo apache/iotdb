@@ -16,28 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.it.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -49,50 +49,72 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBAutoRegionGroupExtensionIT {
 
-  private static final int TEST_DATA_NODE_NUM = 3;
-  private static final String TEST_DATA_REGION_GROUP_EXTENSION_POLICY = "AUTO";
-  private static final String TEST_CONSENSUS_PROTOCOL_CLASS = ConsensusFactory.RATIS_CONSENSUS;
-  private static final int TEST_REPLICATION_FACTOR = 2;
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
 
-  private static final String DATABASE = "root.db";
-  private static final int TEST_DATABASE_NUM = 2;
-  private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
-  private static final int TEST_MIN_SCHEMA_REGION_GROUP_NUM = 2;
-  private static final int TEST_MIN_DATA_REGION_GROUP_NUM = 2;
+  private static String originalDataRegionGroupExtensionPolicy;
+  private static final String testDataRegionGroupExtensionPolicy = "AUTO";
+
+  private static String originalSchemaRegionConsensusProtocolClass;
+  private static String originalDataRegionConsensusProtocolClass;
+  private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+
+  private static int originalSchemaReplicationFactor;
+  private static int originalDataReplicationFactor;
+  private static final int testReplicationFactor = 1;
+
+  private static long originalTimePartitionInterval;
+
+  private static int originalLeastDataRegionGroupNum;
+
+  private static final String sg = "root.sg";
+  private static final int testSgNum = 2;
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setSchemaRegionConsensusProtocolClass(TEST_CONSENSUS_PROTOCOL_CLASS)
-        .setDataRegionConsensusProtocolClass(TEST_CONSENSUS_PROTOCOL_CLASS)
-        .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
-        .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
-        .setDataRegionGroupExtensionPolicy(TEST_DATA_REGION_GROUP_EXTENSION_POLICY)
-        .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
+    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
+    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+
+    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
+    originalDataReplicationFactor = CONF.getDataReplicationFactor();
+    CONF.setSchemaReplicationFactor(testReplicationFactor);
+    CONF.setDataReplicationFactor(testReplicationFactor);
+
+    originalTimePartitionInterval = CONF.getTimePartitionInterval();
+
+    originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
+
+    originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
+    CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
+
     // Init 1C3D environment
-    EnvFactory.getEnv().initClusterEnvironment(1, TEST_DATA_NODE_NUM);
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    CONF.setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
   }
 
   @Test
-  public void testAutoRegionGroupExtensionPolicy() throws Exception {
+  public void testAutoRegionGroupExtensionPolicy()
+      throws IOException, InterruptedException, TException {
 
     final int retryNum = 100;
 
@@ -102,9 +124,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
       setStorageGroupAndCheckRegionGroupDistribution(client);
 
       // Delete all StorageGroups
-      for (int i = 0; i < TEST_DATABASE_NUM; i++) {
-        String curSg = DATABASE + i;
-        client.deleteDatabase(new TDeleteDatabaseReq(curSg));
+      for (int i = 0; i < testSgNum; i++) {
+        String curSg = sg + i;
+        client.deleteStorageGroup(new TDeleteStorageGroupReq(curSg));
       }
       boolean isAllRegionGroupDeleted = false;
       for (int retry = 0; retry < retryNum; retry++) {
@@ -124,35 +146,21 @@ public class IoTDBAutoRegionGroupExtensionIT {
   }
 
   private void setStorageGroupAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
-      throws TException, IllegalPathException, IOException {
-
-    for (int i = 0; i < TEST_DATABASE_NUM; i++) {
-      String curSg = DATABASE + i;
+      throws TException {
+    for (int i = 0; i < testSgNum; i++) {
+      String curSg = sg + i;
       TSStatus status =
-          client.setDatabase(
-              new TDatabaseSchema(curSg)
-                  .setMinSchemaRegionGroupNum(TEST_MIN_SCHEMA_REGION_GROUP_NUM)
-                  .setMinDataRegionGroupNum(TEST_MIN_DATA_REGION_GROUP_NUM));
+          client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(curSg)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
 
-      // Insert SchemaPartitions to create SchemaRegionGroups
-      String d0 = curSg + ".d0.s";
-      String d1 = curSg + ".d1.s";
-      String d2 = curSg + ".d2.s";
-      String d3 = curSg + ".d3.s";
-      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
-      TSchemaPartitionTableResp schemaPartitionTableResp;
-      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d0, d1, d2, d3});
-      schemaPartitionReq.setPathPatternTree(buffer);
-      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+    for (int i = 0; i < testSgNum; i++) {
+      String curSg = sg + i;
 
-      // Insert DataPartitions to create DataRegionGroups
+      /* Insert a DataPartition to create DataRegionGroups */
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              curSg, 0, 10, 0, 10, TEST_TIME_PARTITION_INTERVAL);
+              curSg, 0, 10, 0, 10, originalTimePartitionInterval);
       TDataPartitionTableResp dataPartitionTableResp =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
       Assert.assertEquals(
@@ -160,51 +168,32 @@ public class IoTDBAutoRegionGroupExtensionIT {
           dataPartitionTableResp.getStatus().getCode());
     }
 
-    /* Check Region distribution */
-    checkRegionDistribution(TConsensusGroupType.SchemaRegion, client);
-    checkRegionDistribution(TConsensusGroupType.DataRegion, client);
-  }
+    // Re-calculate the least DataRegionGroup num based on the test resource
+    int totalCpuCoreNum = 0;
+    TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+    for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+      totalCpuCoreNum += dataNodeInfo.getCpuCoreNum();
+    }
+    final int leastDataRegionGroupNum =
+        Math.min(
+            originalLeastDataRegionGroupNum,
+            (int)
+                Math.ceil((double) totalCpuCoreNum / (double) (testSgNum * testReplicationFactor)));
 
-  private void checkRegionDistribution(
-      TConsensusGroupType type, SyncConfigNodeIServiceClient client) throws TException {
-    TShowRegionResp resp = client.showRegion(new TShowRegionReq().setConsensusGroupType(type));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-    Map<String, Integer> databaseRegionCounter = new TreeMap<>();
-    Map<Integer, Integer> dataNodeRegionCounter = new TreeMap<>();
-    Map<String, Map<Integer, Integer>> databaseDataNodeRegionCounter = new TreeMap<>();
-    resp.getRegionInfoList()
+    /* Check the number of DataRegionGroups */
+    TShowRegionResp showRegionReq = client.showRegion(new TShowRegionReq());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+    Map<String, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
+    showRegionReq
+        .getRegionInfoList()
         .forEach(
-            regionInfo -> {
-              databaseRegionCounter.merge(regionInfo.getDatabase(), 1, Integer::sum);
-              dataNodeRegionCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-              databaseDataNodeRegionCounter
-                  .computeIfAbsent(regionInfo.getDatabase(), empty -> new TreeMap<>())
-                  .merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-            });
-    // The number of RegionGroups should not less than the testMinRegionGroupNum for each database
-    Assert.assertEquals(TEST_DATABASE_NUM, databaseRegionCounter.size());
-    databaseRegionCounter.forEach(
-        (database, regionCount) ->
-            Assert.assertTrue(
-                regionCount
-                    >= (type == TConsensusGroupType.SchemaRegion
-                        ? TEST_MIN_SCHEMA_REGION_GROUP_NUM
-                        : TEST_MIN_DATA_REGION_GROUP_NUM)));
-    // The maximal Region count - minimal Region count should be less than or equal to 1 for each
-    // DataNode
-    Assert.assertEquals(TEST_DATA_NODE_NUM, dataNodeRegionCounter.size());
-    Assert.assertTrue(
-        dataNodeRegionCounter.values().stream().max(Integer::compareTo).orElse(0)
-                - dataNodeRegionCounter.values().stream().min(Integer::compareTo).orElse(0)
-            <= 1);
-    // The maximal Region count - minimal Region count should be less than or equal to 1 for each
-    // Database
-    Assert.assertEquals(TEST_DATABASE_NUM, databaseDataNodeRegionCounter.size());
-    databaseDataNodeRegionCounter.forEach(
-        (database, dataNodeRegionCount) ->
-            Assert.assertTrue(
-                dataNodeRegionCount.values().stream().max(Integer::compareTo).orElse(0)
-                        - dataNodeRegionCount.values().stream().min(Integer::compareTo).orElse(0)
-                    <= 1));
+            regionInfo ->
+                regionCounter
+                    .computeIfAbsent(regionInfo.getStorageGroup(), empty -> new AtomicInteger(0))
+                    .getAndIncrement());
+    Assert.assertEquals(testSgNum, regionCounter.size());
+    regionCounter.forEach(
+        (sg, regionCount) -> Assert.assertEquals(leastDataRegionGroupNum, regionCount.get()));
   }
 }

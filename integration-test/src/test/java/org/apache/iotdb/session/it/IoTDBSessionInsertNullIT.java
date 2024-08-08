@@ -18,20 +18,21 @@
  */
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.Field;
-import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,12 +57,13 @@ public class IoTDBSessionInsertNullIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   private void prepareData(ISession session)
@@ -224,7 +226,7 @@ public class IoTDBSessionInsertNullIT {
           assertEquals(3, nums);
           return;
         } catch (Exception e) {
-          LOGGER.info("read records failed, retry: " + i);
+          LOGGER.info("query records failed, retry: " + i);
           Thread.sleep(1000);
         }
       }

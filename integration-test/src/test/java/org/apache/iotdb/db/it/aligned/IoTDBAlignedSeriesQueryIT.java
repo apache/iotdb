@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -40,15 +41,15 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
-import static org.apache.iotdb.db.utils.constant.TestConstant.count;
-import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxTime;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
-import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.constant.TestConstant.maxTime;
+import static org.apache.iotdb.db.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -59,23 +60,32 @@ import static org.junit.Assert.fail;
 public class IoTDBAlignedSeriesQueryIT {
 
   private static final double DELTA = 1e-6;
+  protected static boolean enableSeqSpaceCompaction;
+  protected static boolean enableUnseqSpaceCompaction;
+  protected static boolean enableCrossSpaceCompaction;
+  protected static int maxTsBlockLineNumber;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initClusterEnvironment();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
   // ------------------------------Raw Query Without Value Filter----------------------------------
@@ -988,54 +998,6 @@ public class IoTDBAlignedSeriesQueryIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select * from root.sg1.d1 where time >= 9 and time <= 33 or s5 = 'aligned_test36' or s5 = 'aligned_test37'")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        Map<String, Integer> map = new HashMap<>();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          map.put(resultSetMetaData.getColumnName(i), i);
-        }
-        assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          builder.append(resultSet.getString(1));
-          for (String columnName : columnNames) {
-            int index = map.get(columnName);
-            builder.append(",").append(resultSet.getString(index));
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void selectAllAlignedWithLimitOffsetTest() {
-
-    String[] retArray =
-        new String[] {
-          "14,14.0,14,14,null,null",
-          "15,15.0,15,15,null,null",
-          "16,16.0,16,16,null,null",
-          "17,17.0,17,17,null,null",
-          "18,18.0,18,18,null,null",
-        };
-
-    String[] columnNames = {
-      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
-    };
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select * from root.sg1.d1 where time >= 9 and time <= 33 offset 5 limit 5")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -2237,6 +2199,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2287,6 +2250,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2335,6 +2299,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithTimeAndValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2383,6 +2348,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2437,6 +2403,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2643,6 +2610,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void countAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "11"};
@@ -2680,6 +2648,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void aggregationFuncAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray =
@@ -2733,6 +2702,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void countAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "6", "6", "9", "11", "6"};
@@ -2772,6 +2742,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void aggregationAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "160016.0", "11", "1", "13"};
@@ -3056,6 +3027,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // Remove after supporting value filter
   @Test
   public void countSumAvgValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =

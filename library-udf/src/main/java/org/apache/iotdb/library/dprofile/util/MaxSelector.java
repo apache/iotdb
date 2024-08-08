@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.dprofile.util;
 
-/** Util for Mode. */
+/** Util for Mode */
 public class MaxSelector {
   int times;
   int intValue;

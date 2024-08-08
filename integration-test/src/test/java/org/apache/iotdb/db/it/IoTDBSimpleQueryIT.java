@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -41,7 +41,6 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -54,12 +53,12 @@ public class IoTDBSimpleQueryIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -123,25 +122,24 @@ public class IoTDBSimpleQueryIT {
           "create timeseries root.turbine.d2.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
       statement.execute("insert into root.turbine.d1(timestamp,s1,s2) values(1,1,2)");
 
-      List<String> expected = Arrays.asList("root.turbine.d1.s1", "root.turbine.d1.s2");
-      List<String> actual = new ArrayList<>();
+      String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
 
+      int count = 0;
       try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
         while (resultSet.next()) {
-          actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
+          String path = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
+          assertEquals(results[count], path);
+          count++;
         }
       }
 
-      assertEquals(expected, actual);
+      assertEquals(2, count);
 
-      actual.clear();
       try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
         while (resultSet.next()) {
-          actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
+          count++;
         }
       }
-
-      assertEquals(Collections.emptyList(), actual);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -389,6 +387,16 @@ public class IoTDBSimpleQueryIT {
         count++;
       }
       assertEquals(15, count);
+
+      // no sdt encoding when merging
+      statement.execute("merge");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(15, count);
+
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -433,6 +441,16 @@ public class IoTDBSimpleQueryIT {
         count++;
       }
       assertEquals(18, count);
+
+      // no sdt encoding when merging
+      statement.execute("merge");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(18, count);
+
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -1116,7 +1134,7 @@ public class IoTDBSimpleQueryIT {
 
       try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.*a*")) {
         while (r1.next()) {
-          Assert.assertEquals(1.1234f, r1.getDouble(2), 0.001);
+          Assert.assertEquals(1.1234f, r1.getFloat(2), 0);
         }
         Assert.assertEquals(3, r1.getMetaData().getColumnCount());
       }

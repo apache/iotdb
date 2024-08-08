@@ -25,14 +25,9 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.utils.Binary;
-
-import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,9 +56,7 @@ public class UDTFRegexMatch implements UDTF {
       throws Exception {
     pattern = Pattern.compile(udfParameters.getString("regex"));
     group = udfParameters.getIntOrDefault("group", 0);
-    udtfConfigurations
-        .setAccessStrategy(new MappableRowByRowAccessStrategy())
-        .setOutputDataType(Type.TEXT);
+    udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
   }
 
   @Override
@@ -71,40 +64,6 @@ public class UDTFRegexMatch implements UDTF {
     Matcher matcher = pattern.matcher(row.getString(0));
     if (matcher.find() && matcher.groupCount() >= group) {
       collector.putString(row.getTime(), matcher.group(group));
-    }
-  }
-
-  @Override
-  public Object transform(Row row) throws IOException {
-    if (row.isNull(0)) {
-      return null;
-    }
-    Matcher matcher = pattern.matcher(row.getString(0));
-    if (matcher.find() && matcher.groupCount() >= group) {
-      return matcher.group(group);
-    }
-
-    return null;
-  }
-
-  @Override
-  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    Binary[] inputs = columns[0].getBinaries();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        String str = inputs[i].toString();
-        Matcher matcher = pattern.matcher(str);
-        if (matcher.find() && matcher.groupCount() >= group) {
-          builder.writeBinary(new Binary(matcher.group(group).getBytes()));
-        } else {
-          builder.appendNull();
-        }
-      }
     }
   }
 }

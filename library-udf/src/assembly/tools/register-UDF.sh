@@ -26,12 +26,14 @@ user=root
 pass=root
 
 # Data Profiling
+
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function distinct as 'org.apache.iotdb.library.dprofile.UDTFDistinct'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function histogram as 'org.apache.iotdb.library.dprofile.UDTFHistogram'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function integral as 'org.apache.iotdb.library.dprofile.UDAFIntegral'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function integralavg as 'org.apache.iotdb.library.dprofile.UDAFIntegralAvg'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function mad as 'org.apache.iotdb.library.dprofile.UDAFMad'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function median as 'org.apache.iotdb.library.dprofile.UDAFMedian'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function mode as 'org.apache.iotdb.library.dprofile.UDAFMode'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function percentile as 'org.apache.iotdb.library.dprofile.UDAFPercentile'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function quantile as 'org.apache.iotdb.library.dprofile.UDAFQuantile'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function period as 'org.apache.iotdb.library.dprofile.UDAFPeriod'"
@@ -41,6 +43,7 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function segment as 'org.apache.iotdb.library.dprofile.UDTFSegment'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function skew as 'org.apache.iotdb.library.dprofile.UDAFSkew'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function spread as 'org.apache.iotdb.library.dprofile.UDAFSpread'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function stddev as 'org.apache.iotdb.library.dprofile.UDAFStddev'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function minmax as 'org.apache.iotdb.library.dprofile.UDTFMinMax'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function zscore as 'org.apache.iotdb.library.dprofile.UDTFZScore'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function spline as 'org.apache.iotdb.library.dprofile.UDTFSpline'"
@@ -77,11 +80,11 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function twosidedfilter as 'org.apache.iotdb.library.anomaly.UDTFTwoSidedFilter'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function iqr as 'org.apache.iotdb.library.anomaly.UDTFIQR'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function missdetect as 'org.apache.iotdb.library.anomaly.UDTFMissDetect'"
-../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function outlier as 'org.apache.iotdb.library.anomaly.UDTFOutlier'"
 
 
 # Frequency Domain
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function fft as 'org.apache.iotdb.library.frequency.UDTFFFT'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function stft as 'org.apache.iotdb.library.frequency.UDTFSTFT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function conv as 'org.apache.iotdb.library.frequency.UDTFConv'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function deconv as 'org.apache.iotdb.library.frequency.UDTFDeconv'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function lowpass as 'org.apache.iotdb.library.frequency.UDTFLowPass'"
@@ -100,5 +103,3 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function strreplace as 'org.apache.iotdb.library.string.UDTFStrReplace'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function regexreplace as 'org.apache.iotdb.library.string.UDTFRegexReplace'"
 
-# Machine Learning
-../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'"

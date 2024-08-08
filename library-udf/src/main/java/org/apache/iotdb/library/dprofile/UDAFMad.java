@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.MADSketch;
 import org.apache.iotdb.library.util.Util;
@@ -31,7 +32,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** calculate the exact or approximate median absolute deviation (mad). */
+/** calculate the exact or approximate median absolute deviation (mad) */
 public class UDAFMad implements UDTF {
 
   private ExactOrderStatistics statistics;
@@ -56,7 +57,9 @@ public class UDAFMad implements UDTF {
     double error = parameters.getDoubleOrDefault("error", 0);
     exact = (error == 0);
     if (exact) {
-      statistics = new ExactOrderStatistics(parameters.getDataType(0));
+      statistics =
+          new ExactOrderStatistics(
+              UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
     } else {
       sketch = new MADSketch(error);
     }

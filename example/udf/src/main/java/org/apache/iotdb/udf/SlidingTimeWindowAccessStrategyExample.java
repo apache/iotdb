@@ -35,57 +35,52 @@ public class SlidingTimeWindowAccessStrategyExample implements UDTF {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SlidingTimeWindowAccessStrategyExample.class);
 
-  public static final String START = "start";
-  public static final String END = "end";
-  public static final String STEP = "step";
-  public static final String INTERVAL = "interval";
+  public SlidingTimeWindowAccessStrategyExample() {}
 
-  @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     LOGGER.info("###### TestSlidingTimeWindow # beforeStart #######");
-    String param = parameters.getAttributes().toString();
-    LOGGER.info("attributes: {}", param);
-    if (parameters.hasAttribute(START) && parameters.hasAttribute(END)) {
-      if (parameters.hasAttribute(STEP)) {
+    LOGGER.info("attributes: {}", parameters.getAttributes().toString());
+    if (parameters.hasAttribute("start") && parameters.hasAttribute("end")) {
+      if (parameters.hasAttribute("step")) {
         configurations
             .setOutputDataType(Type.INT64)
             .setAccessStrategy(
                 new SlidingTimeWindowAccessStrategy(
-                    parameters.getInt(INTERVAL),
-                    parameters.getInt(STEP),
-                    parameters.getLong(START),
-                    parameters.getLong(END)));
+                    (long) parameters.getInt("interval"),
+                    (long) parameters.getInt("step"),
+                    parameters.getLong("start"),
+                    parameters.getLong("end")));
       } else {
         configurations
             .setOutputDataType(Type.INT64)
             .setAccessStrategy(
                 new SlidingTimeWindowAccessStrategy(
-                    parameters.getInt(INTERVAL),
-                    parameters.getInt(INTERVAL),
-                    parameters.getLong(START),
-                    parameters.getLong(END)));
+                    (long) parameters.getInt("interval"),
+                    (long) parameters.getInt("interval"),
+                    parameters.getLong("start"),
+                    parameters.getLong("end")));
       }
     } else {
-      if (parameters.hasAttribute(START) || parameters.hasAttribute(END)) {
-        throw new IllegalArgumentException("start and end must be both existed. ");
+      if (parameters.hasAttribute("start") || parameters.hasAttribute("end")) {
+        throw new RuntimeException("start and end must be both existed. ");
       }
 
-      if (parameters.hasAttribute(STEP)) {
+      if (parameters.hasAttribute("step")) {
         configurations
             .setOutputDataType(Type.INT64)
             .setAccessStrategy(
                 new SlidingTimeWindowAccessStrategy(
-                    parameters.getInt(INTERVAL), parameters.getInt(STEP)));
+                    (long) parameters.getInt("interval"), (long) parameters.getInt("step")));
       } else {
         configurations
             .setOutputDataType(Type.INT64)
-            .setAccessStrategy(new SlidingTimeWindowAccessStrategy(parameters.getInt(INTERVAL)));
+            .setAccessStrategy(
+                new SlidingTimeWindowAccessStrategy((long) parameters.getInt("interval")));
       }
     }
   }
 
-  @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     LOGGER.info("######### TestSlidingTimeWindow # [{}] ########", rowWindow.windowSize());
     long result = 0L;
@@ -99,14 +94,12 @@ public class SlidingTimeWindowAccessStrategyExample implements UDTF {
     collector.putLong(rowWindow.windowStartTime(), result);
   }
 
-  @Override
   public void beforeDestroy() {
     LOGGER.info("###### TestSlidingTimeWindow # beforeDestroy #######");
   }
 
-  @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(INTERVAL);
+    validator.validateRequiredAttribute("interval");
     validator.validateInputSeriesDataType(0, Type.INT64);
   }
 }

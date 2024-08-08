@@ -29,7 +29,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to repair the value of the time series. */
@@ -89,7 +88,7 @@ public class UDTFValueRepair implements UDTF {
       lsGreedy.setCenter(center);
       vr = lsGreedy;
     } else {
-      throw new UDFException("Illegal method.");
+      throw new Exception("Illegal method.");
     }
     vr.repair();
     double[] repaired = vr.getRepaired();

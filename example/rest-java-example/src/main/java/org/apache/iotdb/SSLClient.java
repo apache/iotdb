@@ -30,8 +30,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -40,9 +38,11 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLClient {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SSLClient.class);
+
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
+  private static SSLContextBuilder sslContextBuilder = null;
+  private static ConnectionSocketFactory plainsf = null;
 
   private static class SSLClientInstance {
     private static final SSLClient instance = new SSLClient();
@@ -53,12 +53,8 @@ public class SSLClient {
   }
 
   private SSLClient() {
-    build();
-  }
-
-  private static void build() {
     try {
-      SSLContextBuilder sslContextBuilder =
+      sslContextBuilder =
           new SSLContextBuilder()
               .loadTrustMaterial(
                   null,
@@ -69,7 +65,7 @@ public class SSLClient {
                       return true;
                     }
                   });
-      ConnectionSocketFactory plainsf = PlainConnectionSocketFactory.getSocketFactory();
+      plainsf = PlainConnectionSocketFactory.getSocketFactory();
       sslConnectionSocketFactory =
           new SSLConnectionSocketFactory(
               sslContextBuilder.build(),
@@ -84,15 +80,17 @@ public class SSLClient {
       poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registryBuilder);
       poolingHttpClientConnectionManager.setMaxTotal(10);
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
-      LOGGER.error("Build error", e);
+      e.printStackTrace();
     }
   }
 
   public CloseableHttpClient getHttpClient() {
-    return HttpClients.custom()
-        .setSSLSocketFactory(sslConnectionSocketFactory)
-        .setConnectionManager(poolingHttpClientConnectionManager)
-        .setConnectionManagerShared(true)
-        .build();
+    CloseableHttpClient httpClient =
+        HttpClients.custom()
+            .setSSLSocketFactory(sslConnectionSocketFactory)
+            .setConnectionManager(poolingHttpClientConnectionManager)
+            .setConnectionManagerShared(true)
+            .build();
+    return httpClient;
   }
 }

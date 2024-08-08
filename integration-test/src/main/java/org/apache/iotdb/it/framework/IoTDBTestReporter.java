@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.it.framework;
 
 import java.io.File;
@@ -35,7 +34,7 @@ public class IoTDBTestReporter {
     List<IoTDBTestStat> stats = new ArrayList<>();
     Path outputDirPath =
         Paths.get(
-            System.getProperty("user.dir"), "integration-test", IoTDBTestConstants.statOutputDir);
+            System.getProperty("user.dir"), "integration-test", IoTDBTestListener.statOutputDir);
     File outputDir = outputDirPath.toFile();
     if (!outputDir.exists() || !outputDir.isDirectory()) {
       IoTDBTestLogger.logger.error(
@@ -46,7 +45,7 @@ public class IoTDBTestReporter {
     try (Stream<Path> s = Files.walk(outputDirPath)) {
       s.forEach(
           source -> {
-            if (source.toString().endsWith(IoTDBTestConstants.statExt)) {
+            if (source.toString().endsWith(IoTDBTestListener.statExt)) {
               try {
                 List<String> lines = Files.readAllLines(source);
                 for (String l : lines) {
@@ -69,6 +68,6 @@ public class IoTDBTestReporter {
     for (int i = 0; i < Math.min(30, stats.size()); i++) {
       sb.append(stats.get(i)).append("\n");
     }
-    IoTDBTestLogger.logger.info("{}", sb);
+    IoTDBTestLogger.logger.info(sb.toString());
   }
 }

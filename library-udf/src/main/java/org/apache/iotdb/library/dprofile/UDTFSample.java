@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.NoNumberException;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -31,7 +33,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.type.Type;
 
 import com.github.ggalmazor.ltdownsampling.LTThreeBuckets;
 import com.github.ggalmazor.ltdownsampling.Point;
@@ -54,12 +55,11 @@ public class UDTFSample implements UDTF {
 
   private int k; // sample numbers
   private Method method;
-  private static final String METHOD_RESERVOIR = "reservoir";
   // These variables occurs in pool sampling
   private Pair<Long, Object>[] samples; // sampled data
   private int num = 0; // number of points already sampled
   private Random random;
-  private Type dataType;
+  private TSDataType dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -72,25 +72,21 @@ public class UDTFSample implements UDTF {
         .validate(
             method ->
                 "isometric".equalsIgnoreCase((String) method)
-                    || METHOD_RESERVOIR.equalsIgnoreCase((String) method)
+                    || "reservoir".equalsIgnoreCase((String) method)
                     || "triangle".equalsIgnoreCase((String) method),
             "Illegal sampling method.",
-            validator.getParameters().getStringOrDefault("method", METHOD_RESERVOIR));
+            validator.getParameters().getStringOrDefault("method", "reservoir"));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
-    this.dataType = parameters.getDataType(0);
-    String methodIn = parameters.getStringOrDefault("method", METHOD_RESERVOIR);
-    if ("triangle".equalsIgnoreCase(methodIn)) {
-      this.method = Method.TRIANGLE;
-    } else if ("isometric".equalsIgnoreCase(methodIn)) {
-      this.method = Method.ISOMETRIC;
-    } else {
-      this.method = Method.RESERVOIR;
-    }
+    this.dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    String method = parameters.getStringOrDefault("method", "reservoir");
+    if ("triangle".equalsIgnoreCase(method)) this.method = Method.TRIANGLE;
+    else if ("isometric".equalsIgnoreCase(method)) this.method = Method.ISOMETRIC;
+    else this.method = Method.RESERVOIR;
     if (this.method == Method.ISOMETRIC || this.method == Method.TRIANGLE) {
       configurations
           .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
@@ -141,16 +137,16 @@ public class UDTFSample implements UDTF {
           for (Point p : output) {
             switch (dataType) {
               case INT32:
-                collector.putInt(p.getX().longValue(), p.getY().intValue());
+                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().intValue());
                 break;
               case INT64:
-                collector.putLong(p.getX().longValue(), p.getY().longValue());
+                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().longValue());
                 break;
               case FLOAT:
-                collector.putFloat(p.getX().longValue(), p.getY().floatValue());
+                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().floatValue());
                 break;
               case DOUBLE:
-                collector.putDouble(p.getX().longValue(), p.getY().doubleValue());
+                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().doubleValue());
                 break;
               default:
                 throw new NoNumberException();
@@ -166,7 +162,7 @@ public class UDTFSample implements UDTF {
         }
       } else { // Method.ISOMETRIC
         for (long i = 0; i < this.k; i++) {
-          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
+          long j = Math.floorDiv(i * (long) n, (long) k); // avoid intermediate result overflows
           Row row = rowWindow.getRow((int) j);
           Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
         }

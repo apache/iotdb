@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.udf.api.access.RowIterator;
 
 public class MAFill extends ValueFill {
-  int windowSize = 5;
-  double windowSum = 0;
-  int windowCnt = 0;
+  int window_size = 5;
+  double window_sum = 0;
+  int window_cnt = 0;
   int l = 0;
-  int r = windowSize - 1;
+  int r = window_size - 1;
 
   public MAFill(RowIterator dataIterator) throws Exception {
     super(dataIterator);
@@ -36,20 +35,20 @@ public class MAFill extends ValueFill {
   public void fill() {
     for (int i = l; i < r && i < original.length; i++) {
       if (!Double.isNaN(original[i])) {
-        windowSum += original[i];
-        windowCnt += 1;
+        window_sum += original[i];
+        window_cnt += 1;
       }
     }
     for (int i = 0; i < original.length; i++) {
       if (!Double.isNaN(original[i])) {
         repaired[i] = original[i];
       } else {
-        repaired[i] = windowSum / windowCnt;
+        repaired[i] = window_sum / window_cnt;
       }
-      if (i <= (windowSize - 1) / 2 || i >= original.length - (windowSize - 1) / 2 - 1) continue;
+      if (i <= (window_size - 1) / 2 || i >= original.length - (window_size - 1) / 2 - 1) continue;
       if (!Double.isNaN(original[r])) {
-        windowSum += original[r];
-        windowCnt += 1;
+        window_sum += original[r];
+        window_cnt += 1;
       }
       l += 1;
       r += 1;

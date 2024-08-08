@@ -20,32 +20,21 @@ package org.apache.iotdb.confignode.it.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.thrift.TException;
 import org.junit.Assert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,16 +42,31 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigNodeTestUtils {
+  private static final int retryNum = 30;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeTestUtils.class);
+  public static TShowClusterResp getClusterNodeInfos(
+      IConfigNodeRPCService.Iface client, int expectedConfigNodeNum, int expectedDataNodeNum)
+      throws TException, InterruptedException {
+    TShowClusterResp clusterNodes = null;
+    for (int i = 0; i < retryNum; i++) {
+      clusterNodes = client.showCluster();
+      if (clusterNodes.getConfigNodeListSize() == expectedConfigNodeNum
+          && clusterNodes.getDataNodeListSize() == expectedDataNodeNum) {
+        break;
+      }
+      Thread.sleep(1000);
+    }
+
+    assertEquals(expectedConfigNodeNum, clusterNodes.getConfigNodeListSize());
+    assertEquals(expectedDataNodeNum, clusterNodes.getDataNodeListSize());
+
+    return clusterNodes;
+  }
 
   public static void checkNodeConfig(
       List<TConfigNodeLocation> configNodeList,
@@ -179,197 +183,5 @@ public class ConfigNodeTestUtils {
         Assert.assertTrue(timePartitionTable.containsKey(timePartitionSlot));
       }
     }
-  }
-
-  public static TDataPartitionTableResp getDataPartitionWithRetry(
-      String database,
-      int seriesSlotStart,
-      int seriesSlotEnd,
-      long timeSlotStart,
-      long timeSlotEnd,
-      long timePartitionInterval)
-      throws InterruptedException {
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
-        ConfigNodeTestUtils.constructPartitionSlotsMap(
-            database,
-            seriesSlotStart,
-            seriesSlotEnd,
-            timeSlotStart,
-            timeSlotEnd,
-            timePartitionInterval);
-    TDataPartitionTableResp dataPartitionTableResp;
-    TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-
-    for (int retry = 0; retry < 5; retry++) {
-      // Build new Client since it's unstable
-      try (SyncConfigNodeIServiceClient configNodeClient =
-          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-        dataPartitionTableResp = configNodeClient.getDataPartitionTable(dataPartitionReq);
-        if (dataPartitionTableResp != null
-            && dataPartitionTableResp.getStatus().getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return dataPartitionTableResp;
-        }
-      } catch (Exception e) {
-        // Retry sometimes in order to avoid request timeout
-        LOGGER.error(e.getMessage());
-        TimeUnit.SECONDS.sleep(1);
-      }
-    }
-    Assert.fail("Failed to create DataPartition");
-    return null;
-  }
-
-  public static TDataPartitionTableResp getOrCreateDataPartitionWithRetry(
-      String database,
-      int seriesSlotStart,
-      int seriesSlotEnd,
-      long timeSlotStart,
-      long timeSlotEnd,
-      long timePartitionInterval)
-      throws InterruptedException {
-
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
-        ConfigNodeTestUtils.constructPartitionSlotsMap(
-            database,
-            seriesSlotStart,
-            seriesSlotEnd,
-            timeSlotStart,
-            timeSlotEnd,
-            timePartitionInterval);
-    TDataPartitionTableResp dataPartitionTableResp;
-    TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-
-    for (int retry = 0; retry < 5; retry++) {
-      // Build new Client since it's unstable
-      try (SyncConfigNodeIServiceClient configNodeClient =
-          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-        dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-        if (dataPartitionTableResp != null
-            && dataPartitionTableResp.getStatus().getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          ConfigNodeTestUtils.checkDataPartitionTable(
-              database,
-              seriesSlotStart,
-              seriesSlotEnd,
-              timeSlotStart,
-              timeSlotEnd,
-              timePartitionInterval,
-              configNodeClient.getDataPartitionTable(dataPartitionReq).getDataPartitionTable());
-          return dataPartitionTableResp;
-        }
-      } catch (Exception e) {
-        // Retry sometimes in order to avoid request timeout
-        LOGGER.error(e.getMessage());
-        TimeUnit.SECONDS.sleep(1);
-      }
-    }
-    Assert.fail("Failed to create DataPartition");
-    return null;
-  }
-
-  public static Map<TConsensusGroupId, Integer> countDataPartition(
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-          dataPartitionMap) {
-    Map<TConsensusGroupId, AtomicInteger> counter = new ConcurrentHashMap<>();
-    dataPartitionMap.forEach(
-        ((seriesPartitionSlot, timePartitionSlotMap) ->
-            timePartitionSlotMap.forEach(
-                ((timePartitionSlot, consensusGroupIds) ->
-                    consensusGroupIds.forEach(
-                        (consensusGroupId ->
-                            counter
-                                .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
-                                .incrementAndGet()))))));
-    return counter.entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().get()));
-  }
-
-  public static TConfigNodeLocation generateTConfigNodeLocation(
-      int nodeId, ConfigNodeWrapper configNodeWrapper) {
-    return new TConfigNodeLocation(
-        nodeId,
-        new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()),
-        new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getConsensusPort()));
-  }
-
-  /**
-   * Generate a ConfigNode register request with the given ConfigNodeLocation and default
-   * configurations
-   *
-   * @param clusterName The target cluster name
-   * @param configNodeWrapper The given ConfigNode
-   * @return TConfigNodeRegisterReq for the given ConfigNode
-   */
-  public static TConfigNodeRegisterReq generateTConfigNodeRegisterReq(
-      String clusterName, ConfigNodeWrapper configNodeWrapper) {
-    return new TConfigNodeRegisterReq()
-        .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
-        .setClusterParameters(generateClusterParameters().setClusterName(clusterName));
-  }
-
-  public static TClusterParameters generateClusterParameters() {
-    TClusterParameters clusterParameters = new TClusterParameters();
-    clusterParameters.setClusterName("defaultCluster");
-    clusterParameters.setConfigNodeConsensusProtocolClass(
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    clusterParameters.setDataRegionConsensusProtocolClass(
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    clusterParameters.setSchemaRegionConsensusProtocolClass(
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    clusterParameters.setSeriesPartitionSlotNum(1000);
-    clusterParameters.setSeriesPartitionExecutorClass(
-        "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor");
-    clusterParameters.setDefaultTTL(Long.MAX_VALUE);
-    clusterParameters.setTimePartitionInterval(604800000);
-    clusterParameters.setDataReplicationFactor(1);
-    clusterParameters.setSchemaReplicationFactor(1);
-    clusterParameters.setDataRegionPerDataNode(5.0);
-    clusterParameters.setSchemaRegionPerDataNode(1.0);
-    clusterParameters.setDiskSpaceWarningThreshold(0.01);
-    clusterParameters.setReadConsistencyLevel("strong");
-    clusterParameters.setTimestampPrecision("ms");
-    clusterParameters.setSchemaEngineMode("Memory");
-    clusterParameters.setTagAttributeTotalSize(700);
-    clusterParameters.setDatabaseLimitThreshold(-1);
-    return clusterParameters;
-  }
-
-  public static TDataNodeLocation generateTDataNodeLocation(
-      int nodeId, DataNodeWrapper dataNodeWrapper) {
-    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-    dataNodeLocation.setDataNodeId(nodeId);
-    dataNodeLocation.setClientRpcEndPoint(
-        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getPort()));
-    dataNodeLocation.setInternalEndPoint(
-        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getInternalPort()));
-    dataNodeLocation.setMPPDataExchangeEndPoint(
-        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getMppDataExchangePort()));
-    dataNodeLocation.setDataRegionConsensusEndPoint(
-        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getDataRegionConsensusPort()));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(
-        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getSchemaRegionConsensusPort()));
-    return dataNodeLocation;
-  }
-
-  public static TDataNodeConfiguration generateTDataNodeConfiguration(
-      int nodeId, DataNodeWrapper dataNodeWrapper) {
-    TNodeResource dataNodeResource = new TNodeResource();
-    dataNodeResource.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
-    dataNodeResource.setMaxMemory(Runtime.getRuntime().totalMemory());
-    return new TDataNodeConfiguration(
-        generateTDataNodeLocation(nodeId, dataNodeWrapper), dataNodeResource);
-  }
-
-  public static TDataNodeRegisterReq generateTDataNodeRegisterReq(
-      String clusterName, DataNodeWrapper dataNodeWrapper) {
-    return new TDataNodeRegisterReq(
-        clusterName, generateTDataNodeConfiguration(-1, dataNodeWrapper));
-  }
-
-  public static TDataNodeRestartReq generateTDataNodeRestartReq(
-      String clusterName, int nodeId, DataNodeWrapper dataNodeWrapper) {
-    return new TDataNodeRestartReq(
-        clusterName, generateTDataNodeConfiguration(nodeId, dataNodeWrapper));
   }
 }

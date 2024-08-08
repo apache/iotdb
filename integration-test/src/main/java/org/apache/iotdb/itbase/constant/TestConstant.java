@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.itbase.constant;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-
-import org.apache.tsfile.utils.FilePathUtils;
-import org.apache.tsfile.write.record.TSRecord;
-import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 import java.io.File;
 
@@ -46,8 +45,6 @@ public class TestConstant {
   public static final String s5 = "s5";
   public static final String d1 = "root.vehicle.d1";
   public static final String TIMESTAMP_STR = ColumnHeaderConstant.TIME;
-  public static final String END_TIMESTAMP_STR = ColumnHeaderConstant.ENDTIME;
-  public static final String DEVICE = ColumnHeaderConstant.DEVICE;
   public static boolean testFlag = true;
   public static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
   public static String[] booleanValue = new String[] {"true", "false"};
@@ -111,50 +108,6 @@ public class TestConstant {
 
   public static String minValue(String path) {
     return String.format("min_value(%s)", path);
-  }
-
-  public static String timeDuration(String path) {
-    return String.format("time_duration(%s)", path);
-  }
-
-  public static String mode(String path) {
-    return String.format("mode(%s)", path);
-  }
-
-  public static String stddev(String path) {
-    return String.format("stddev(%s)", path);
-  }
-
-  public static String stddevPop(String path) {
-    return String.format("stddev_pop(%s)", path);
-  }
-
-  public static String stddevSamp(String path) {
-    return String.format("stddev_samp(%s)", path);
-  }
-
-  public static String variance(String path) {
-    return String.format("variance(%s)", path);
-  }
-
-  public static String varPop(String path) {
-    return String.format("var_pop(%s)", path);
-  }
-
-  public static String varSamp(String path) {
-    return String.format("var_samp(%s)", path);
-  }
-
-  public static String countUDAF(String path) {
-    return String.format("count_udaf(%s)", path);
-  }
-
-  public static String sumUDAF(String path) {
-    return String.format("sum_udaf(%s)", path);
-  }
-
-  public static String avgUDAF(String path) {
-    return String.format("avg_udaf(%s)", path);
   }
 
   public static String recordToInsert(TSRecord record) {

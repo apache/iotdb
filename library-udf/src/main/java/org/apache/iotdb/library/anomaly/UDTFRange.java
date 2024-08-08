@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -26,12 +29,11 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect range anomaly of time series. */
 public class UDTFRange implements UDTF {
-  private Type dataType;
+  private TSDataType dataType;
   private double upperBound;
   private double lowerBound;
 
@@ -50,7 +52,7 @@ public class UDTFRange implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.lowerBound = parameters.getDouble("lower_bound");
     this.upperBound = parameters.getDouble("upper_bound");
-    this.dataType = parameters.getDataType(0);
+    this.dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
   }
 
   @Override
@@ -65,34 +67,32 @@ public class UDTFRange implements UDTF {
       case INT32:
         intValue = row.getInt(0);
         if (intValue > upperBound || intValue < lowerBound) {
-          collector.putInt(timestamp, intValue);
+          Util.putValue(collector, dataType, timestamp, intValue);
         }
         break;
       case INT64:
         longValue = row.getLong(0);
         if (longValue > upperBound || longValue < lowerBound) {
-          collector.putLong(timestamp, longValue);
+          Util.putValue(collector, dataType, timestamp, longValue);
         }
         break;
       case FLOAT:
         floatValue = row.getFloat(0);
         if (floatValue > upperBound || floatValue < lowerBound) {
-          collector.putFloat(timestamp, floatValue);
+          Util.putValue(collector, dataType, timestamp, floatValue);
         }
         break;
       case DOUBLE:
         doubleValue = row.getDouble(0);
         if (doubleValue > upperBound || doubleValue < lowerBound) {
-          collector.putDouble(timestamp, doubleValue);
+          Util.putValue(collector, dataType, timestamp, doubleValue);
         }
         break;
       default:
-        throw new UDFException("No such kind of data type.");
+        throw new Exception("No such kind of data type.");
     }
   }
 
   @Override
-  public void terminate(PointCollector collector)
-      throws Exception { // default implementation ignored
-  }
+  public void terminate(PointCollector collector) throws Exception {}
 }

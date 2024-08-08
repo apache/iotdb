@@ -21,17 +21,16 @@ package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.TsFileWriter;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,7 @@ import java.util.Random;
 import java.util.TreeSet;
 
 public class TsFileGenerator implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileGenerator.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileGenerator.class);
 
   private final File tsFile;
   private final TsFileWriter writer;
@@ -70,7 +69,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
-      LOGGER.error("Register same device {}.", path);
+      logger.error(String.format("Register same device %s.", path));
       return;
     }
     writer.registerTimeseries(new Path(path), measurementSchemaList);
@@ -81,7 +80,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
-      LOGGER.error("Register same device {}.", path);
+      logger.error(String.format("Register same device %s.", path));
       return;
     }
     writer.registerAlignedTimeseries(new Path(path), measurementSchemaList);
@@ -89,7 +88,7 @@ public class TsFileGenerator implements AutoCloseable {
     device2MeasurementSchema.put(path, measurementSchemaList);
   }
 
-  public void generateData(String device, int number, long timeGap, boolean isAligned)
+  public void generateData(String device, int number, boolean isAligned)
       throws IOException, WriteProcessException {
     List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
@@ -101,8 +100,7 @@ public class TsFileGenerator implements AutoCloseable {
 
     for (long r = 0; r < number; r++) {
       int row = tablet.rowSize++;
-      startTime += timeGap;
-      timestamps[row] = startTime;
+      timestamps[row] = ++startTime;
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));
@@ -127,49 +125,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    LOGGER.info("Write {} points into device {}", number, device);
-  }
-
-  public void generateData(
-      String device, int number, long timeGap, boolean isAligned, long startTimestamp)
-      throws IOException, WriteProcessException {
-    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
-    TreeSet<Long> timeSet = device2TimeSet.get(device);
-    Tablet tablet = new Tablet(device, schemas);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-    long sensorNum = schemas.size();
-    long startTime = startTimestamp;
-
-    for (long r = 0; r < number; r++) {
-      int row = tablet.rowSize++;
-      startTime += timeGap;
-      timestamps[row] = startTime;
-      timeSet.add(startTime);
-      for (int i = 0; i < sensorNum; i++) {
-        generateDataPoint(values[i], row, schemas.get(i));
-      }
-      // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        if (!isAligned) {
-          writer.write(tablet);
-        } else {
-          writer.writeAligned(tablet);
-        }
-        tablet.reset();
-      }
-    }
-    // write
-    if (tablet.rowSize != 0) {
-      if (!isAligned) {
-        writer.write(tablet);
-      } else {
-        writer.writeAligned(tablet);
-      }
-      tablet.reset();
-    }
-
-    LOGGER.info("Write {} points into device {}", number, device);
+    logger.info(String.format("Write %d points into device %s", number, device));
   }
 
   private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
@@ -193,7 +149,7 @@ public class TsFileGenerator implements AutoCloseable {
         generateTEXT(obj, row);
         break;
       default:
-        LOGGER.error("Wrong data type {}.", schema.getType());
+        logger.error(String.format("Wrong data type %s.", schema.getType()));
     }
   }
 
@@ -224,8 +180,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   private void generateTEXT(Object obj, int row) {
     Binary[] binaries = (Binary[]) obj;
-    binaries[row] =
-        new Binary(String.format("test point %d", random.nextInt()), TSFileConfig.STRING_CHARSET);
+    binaries[row] = new Binary(String.format("test point %d", random.nextInt()));
   }
 
   public void generateDeletion(String device, int number) throws IOException, IllegalPathException {
@@ -257,7 +212,8 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
-        LOGGER.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
+        logger.info(
+            String.format("Delete %d - %d timestamp of device %s", startTime, endTime, device));
       }
     }
   }

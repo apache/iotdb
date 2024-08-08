@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.itbase.constant;
 
 /** All built-in UDFs need to register their function names and classes here. */
@@ -39,6 +38,7 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   SIGN("SIGN"),
   CEIL("CEIL"),
   FLOOR("FLOOR"),
+  ROUND("ROUND"),
   EXP("EXP"),
   LN("LN"),
   LOG10("LOG10"),
@@ -50,6 +50,7 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   STRING_STARTS_WITH("STARTSWITH"),
   STRING_ENDS_WITH("ENDSWITH"),
   STRING_CONCAT("CONCAT"),
+  STRING_SUBSTR("SUBSTR"),
   STRING_UPPER("UPPER"),
   STRING_LOWER("LOWER"),
   STRING_TRIM("TRIM"),
@@ -62,6 +63,7 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE"),
   TOP_K("TOP_K"),
   BOTTOM_K("BOTTOM_K"),
+  CAST("CAST"),
   IN_RANGE("IN_RANGE"),
   ON_OFF("ON_OFF"),
   ZERO_DURATION("ZERO_DURATION"),

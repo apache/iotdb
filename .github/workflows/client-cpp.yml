@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - "rel/*"
+      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -17,6 +18,7 @@ on:
     branches:
       - master
       - "rel/*"
+      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -31,7 +33,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  build-unix:
+  build:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -40,7 +42,7 @@ jobs:
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -51,56 +53,54 @@ jobs:
         run: |
           brew install boost
           brew install bison
-          echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
+          echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
           brew install openssl
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
-        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
       - name: Test with Maven
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
-      - name: Show test result
-        if: failure()
-        run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
+        run: mvn -B clean integration-test -P compile-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dconsensus.test.skip=true -Dcommons.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
 
   build-win:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: liberica
+          java-version: 11
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Install Win_Flex_Bison
-        run: choco install winflexbison3
+        run: mkdir D:\a\cpp ; `
+          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
       - name: Download Boost
-        run: choco install boost-msvc-14.3 --version=1.84.0.1
-      - name: Build IoTDB server
+        run: choco install boost-msvc-14.3 --version=1.78.0
+      - name: Install Boost
+        run: cd C:\local\boost_1_78_0 ; `
+          .\bootstrap.bat ; `
+          .\b2.exe
+      - name: Install OpenSSL
+        run:  choco install openssl
+      - name: Add Flex and Bison Path and OpenSSL
         shell: bash
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
-        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
+        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe  && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Test with Maven
         shell: bash
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
-      - name: Upload Artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cpp-IT-${{ runner.os }}
-          path: iotdb-client/client-cpp/target/build/test/Testing
-          retention-days: 1
+        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/c/local/boost_1_78_0 -Dboost.library.dir=/c/local/boost_1_78_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dconsensus.test.skip=true -Dcommons.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am -Dcmake.url="https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-windows-x86_64.zip" -Dcmake.root.dir=/D/a/iotdb/iotdb/compile-tools/thrift/target/cmake-3.21.6-windows-x86_64/ -Dcmake.generator="Visual Studio 17 2022"

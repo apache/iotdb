@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
 import org.junit.After;
 import org.junit.Before;
@@ -45,28 +47,46 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMultiDeviceIT {
 
+  private static BaseConfig tsFileConfig = ConfigFactory.getConfig();
+  private static int maxNumberOfPointsInPage;
+  private static int pageSizeInByte;
+  private static int groupSizeInByte;
+  private static long prevPartitionInterval;
+
   @Before
   public void setUp() throws Exception {
-    // use small page
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setMaxNumberOfPointsInPage(100)
-        .setPageSizeInByte(1024 * 15)
-        .setGroupSizeInByte(1024 * 100)
-        .setMemtableSizeThreshold(1024 * 100)
-        .setPartitionInterval(100)
-        .setQueryThreadCount(2)
-        .setCompressor("LZ4");
+    // use small page setting
+    // origin value
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
-    EnvFactory.getEnv().initClusterEnvironment();
+    // new value
+    tsFileConfig.setMaxNumberOfPointsInPage(100);
+    tsFileConfig.setPageSizeInByte(1024 * 15);
+    tsFileConfig.setGroupSizeInByte(1024 * 100);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(1024 * 100);
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
+    ConfigFactory.getConfig().setPartitionInterval(100);
+    ConfigFactory.getConfig().setCompressor("LZ4");
+
+    EnvFactory.getEnv().initBeforeTest();
 
     insertData();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    // recovery value
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    ConfigFactory.getConfig().setPageSizeInByte(pageSizeInByte);
+    ConfigFactory.getConfig().setGroupSizeInByte(groupSizeInByte);
+
+    EnvFactory.getEnv().cleanAfterTest();
+
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    ConfigFactory.getConfig().setCompressor("SNAPPY");
   }
 
   private static void insertData() {
@@ -147,6 +167,7 @@ public class IoTDBMultiDeviceIT {
       }
 
       statement.addBatch("flush");
+      statement.addBatch("merge");
 
       // unsequential data, memory data
       for (int time = 1000; time < 1100; time++) {
@@ -249,40 +270,6 @@ public class IoTDBMultiDeviceIT {
         }
         assertEquals(2140, cnt);
       }
-
-      statement.execute("DELETE FROM root.fans.** WHERE time <= 20000");
-      statement.execute("DELETE FROM root.car.** WHERE time <= 20000");
-
-      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
-        int cnt = 0;
-        long before = -1;
-        while (resultSet.next()) {
-          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
-          if (cur <= before) {
-            fail("time order wrong!");
-          }
-          before = cur;
-          cnt++;
-        }
-        assertEquals(49, cnt);
-      }
-
-      statement.execute("DELETE FROM root.** WHERE time >= 20000");
-
-      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
-        int cnt = 0;
-        long before = -1;
-        while (resultSet.next()) {
-          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
-          if (cur <= before) {
-            fail("time order wrong!");
-          }
-          before = cur;
-          cnt++;
-        }
-        assertEquals(0, cnt);
-      }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

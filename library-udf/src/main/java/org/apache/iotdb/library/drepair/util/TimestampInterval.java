@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.drepair.util;
 
 import java.util.ArrayList;
@@ -34,7 +33,7 @@ public class TimestampInterval {
   protected long deltaT;
   protected long start0;
 
-  public TimestampInterval(long[] time, double[] original) {
+  public TimestampInterval(long[] time, double[] original) throws Exception {
     // keep the time series
     this.time = time;
     this.original = original;
@@ -99,6 +98,7 @@ public class TimestampInterval {
   // cluster
   private long getIntervalByCluster() {
     // get array of timestamp intervals
+    HashMap<Object, Integer> map = new LinkedHashMap<>();
     long maxInterval = 0;
     long minInterval = 9999999;
     long[] intervals = new long[n];
@@ -172,18 +172,17 @@ public class TimestampInterval {
       case 2:
         this.start0 = getStart0ByMode();
         break;
-      default:
     }
     return this.start0;
   }
 
   private long getStart0ByLinear() {
-    long sum = 0;
+    long sum_ = 0;
     for (int i = 0; i < n; i++) {
-      sum += time[i];
-      sum -= this.deltaT * i;
+      sum_ += time[i];
+      sum_ -= this.deltaT * i;
     }
-    return sum / n;
+    return sum_ / n;
   }
 
   private long getStart0ByMode() {

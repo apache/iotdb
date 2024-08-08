@@ -44,12 +44,12 @@ public class IoTDBCQIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   // =======================================create cq======================================
@@ -310,7 +310,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()
+            TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()
                 + ": CQ s1_count_cq has already been created.",
             e.getMessage());
       } finally {

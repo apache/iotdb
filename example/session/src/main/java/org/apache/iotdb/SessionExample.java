@@ -19,25 +19,22 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.SessionDataSet.DataIterator;
-import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
-
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.Version;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,7 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-@SuppressWarnings({"squid:S106", "squid:S1144", "squid:S125"})
+@SuppressWarnings("squid:S106")
 public class SessionExample {
 
   private static Session session;
@@ -59,11 +56,7 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
-  private static final String ROOT_SG1 = "root.sg1";
   private static final String LOCAL_HOST = "127.0.0.1";
-  public static final String SELECT_D1 = "select * from root.sg1.d1";
-
-  private static Random random = new Random();
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -73,7 +66,7 @@ public class SessionExample {
             .port(6667)
             .username("root")
             .password("root")
-            .version(Version.V_1_0)
+            .version(Version.V_0_13)
             .build();
     session.open(false);
 
@@ -83,7 +76,7 @@ public class SessionExample {
     try {
       session.createDatabase("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
       }
     }
@@ -100,12 +93,10 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+    //    query();
     //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
+    //    rawDataQuery();
+    //    lastDataQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
@@ -118,7 +109,6 @@ public class SessionExample {
     // set session fetchSize
     sessionEnableRedirect.setFetchSize(10000);
 
-    fastLastDataQueryForOneDevice();
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
@@ -407,7 +397,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = random.nextLong();
+        long value = new Random().nextLong();
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -465,14 +455,6 @@ public class SessionExample {
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
     // Method 1 to add tablet data
-    insertTablet1(schemaList, tablet);
-
-    // Method 2 to add tablet data
-    insertTablet2(schemaList, tablet);
-  }
-
-  private static void insertTablet1(List<MeasurementSchema> schemaList, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
     tablet.initBitMaps();
 
     long timestamp = System.currentTimeMillis();
@@ -480,7 +462,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = random.nextLong();
+        long value = new Random().nextLong();
         // mark null value
         if (row % 3 == s) {
           tablet.bitMaps[s].mark((int) row);
@@ -498,10 +480,8 @@ public class SessionExample {
       session.insertTablet(tablet);
       tablet.reset();
     }
-  }
 
-  private static void insertTablet2(List<MeasurementSchema> schemaList, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
+    // Method 2 to add tablet data
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     BitMap[] bitMaps = new BitMap[schemaList.size()];
@@ -560,7 +540,7 @@ public class SessionExample {
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 3; i++) {
-        long value = random.nextLong();
+        long value = new Random().nextLong();
         tablet1.addValue(schemaList.get(i).getMeasurementId(), row1, value);
         tablet2.addValue(schemaList.get(i).getMeasurementId(), row2, value);
         tablet3.addValue(schemaList.get(i).getMeasurementId(), row3, value);
@@ -628,7 +608,7 @@ public class SessionExample {
   private static void insertText() throws IoTDBConnectionException, StatementExecutionException {
     String device = "root.sg1.text";
     // the first data is String type and the second data is Binary type
-    List<Object> datas = Arrays.asList("String", new Binary("Binary", TSFileConfig.STRING_CHARSET));
+    List<Object> datas = Arrays.asList("String", new Binary("Binary"));
     // insertRecord example
     for (int i = 0; i < datas.size(); i++) {
       // write data of String type or Binary type
@@ -688,7 +668,7 @@ public class SessionExample {
   }
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -757,7 +737,8 @@ public class SessionExample {
 
   private static void queryWithTimeout()
       throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1, 2000)) {
+    try (SessionDataSet dataSet =
+        session.executeQueryStatement("select * from root.sg1.d1", 2000)) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -799,67 +780,9 @@ public class SessionExample {
     }
   }
 
-  private static void fastLastDataQueryForOneDevice()
-      throws IoTDBConnectionException, StatementExecutionException {
-    System.out.println("-------fastLastQuery------");
-    List<String> paths = new ArrayList<>();
-    paths.add("s1");
-    paths.add("s2");
-    paths.add("s3");
-    try (SessionDataSet sessionDataSet =
-        sessionEnableRedirect.executeLastDataQueryForOneDevice(
-            ROOT_SG1, ROOT_SG1_D1, paths, true)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
-    }
-  }
-
-  private static void aggregationQuery()
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
-
-    List<TAggregationType> aggregations = new ArrayList<>();
-    aggregations.add(TAggregationType.COUNT);
-    aggregations.add(TAggregationType.SUM);
-    aggregations.add(TAggregationType.MAX_VALUE);
-    try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
-    }
-  }
-
-  private static void groupByQuery() throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
-
-    List<TAggregationType> aggregations = new ArrayList<>();
-    aggregations.add(TAggregationType.COUNT);
-    aggregations.add(TAggregationType.SUM);
-    aggregations.add(TAggregationType.MAX_VALUE);
-    try (SessionDataSet sessionDataSet =
-        session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
-    }
-  }
-
   private static void queryByIterator()
       throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
 
       DataIterator iterator = dataSet.iterator();
       System.out.println(dataSet.getColumnNames());
@@ -905,9 +828,18 @@ public class SessionExample {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
   }
 
-  private static void setTimeout() throws IoTDBConnectionException {
-    try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000)) {
-      tempSession.setQueryTimeout(60000);
-    }
+  private static void setTimeout() throws StatementExecutionException {
+    Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
+    tempSession.setQueryTimeout(60000);
+  }
+
+  private static void createClusterSession() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    Session clusterSession = new Session(nodeList, "root", "root");
+    clusterSession.open();
+    clusterSession.close();
   }
 }

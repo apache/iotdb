@@ -1,0 +1,228 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# Keywords 
+
+Reserved words（Can not be used as identifier）:
+
+- ROOT
+- TIME
+- TIMESTAMP
+- AND
+- OR
+- NOT
+- NULL
+- CONTAINS
+
+Common Keywords:
+
+- ADD
+- AFTER
+- ALIAS
+- ALIGN
+- ALIGNED
+- ALL
+- ALTER
+- ALTER_TIMESERIES
+- ANY
+- APPEND
+- APPLY_TEMPLATE
+- AS
+- ASC
+- ATTRIBUTES
+- BEFORE
+- BEGIN
+- BLOCKED
+- BOUNDARY
+- BY
+- CACHE
+- CHILD
+- CLEAR
+- CLUSTER
+- CONCAT
+- CONFIGNODES
+- CONFIGURATION
+- CONTINUOUS
+- COUNT
+- CONTAIN
+- CQ
+- CQS
+- CREATE
+- CREATE_CONTINUOUS_QUERY
+- CREATE_FUNCTION
+- CREATE_ROLE
+- CREATE_TIMESERIES
+- CREATE_TRIGGER
+- CREATE_USER
+- DATA
+- DATABASE
+- DATABASES
+- DATANODES
+- DEACTIVATE
+- DEBUG
+- DELETE
+- DELETE_ROLE
+- DELETE_STORAGE_GROUP
+- DELETE_TIMESERIES
+- DELETE_USER
+- DESC
+- DESCRIBE
+- DEVICE
+- DEVICES
+- DISABLE
+- DISCARD
+- DROP
+- DROP_CONTINUOUS_QUERY
+- DROP_FUNCTION
+- DROP_TRIGGER
+- END
+- ENDTIME
+- EVERY
+- EXPLAIN
+- FILL
+- FILE
+- FLUSH
+- FOR
+- FROM
+- FULL
+- FUNCTION
+- FUNCTIONS
+- GLOBAL
+- GRANT
+- GRANT_ROLE_PRIVILEGE
+- GRANT_USER_PRIVILEGE
+- GRANT_USER_ROLE
+- GROUP
+- HAVING
+- INDEX
+- INFO
+- INSERT
+- INSERT_TIMESERIES
+- INTO
+- KILL
+- LABEL
+- LAST
+- LATEST
+- LEVEL
+- LIKE
+- LIMIT
+- LINEAR
+- LINK
+- LIST
+- LIST_ROLE
+- LIST_USER
+- LOAD
+- LOCAL
+- LOCK
+- MERGE
+- METADATA
+- MODIFY_PASSWORD
+- NODES
+- NONE
+- NOW
+- OF
+- OFF
+- OFFSET
+- ON
+- ORDER
+- ONSUCCESS
+- PARTITION
+- PASSWORD
+- PATHS
+- PIPE
+- PIPES
+- PIPESINK
+- PIPESINKS
+- PIPESINKTYPE
+- POLICY
+- PREVIOUS
+- PREVIOUSUNTILLAST
+- PRIVILEGES
+- PROCESSLIST
+- PROPERTY
+- PRUNE
+- QUERIES
+- QUERY
+- RANGE
+- READONLY
+- READ_TEMPLATE
+- READ_TEMPLATE_APPLICATION
+- READ_TIMESERIES
+- REGEXP
+- REGIONID
+- REGIONS
+- REMOVE
+- RENAME
+- RESAMPLE
+- RESOURCE
+- REVOKE
+- REVOKE_ROLE_PRIVILEGE
+- REVOKE_USER_PRIVILEGE
+- REVOKE_USER_ROLE
+- ROLE
+- RUNNING
+- SCHEMA
+- SELECT
+- SERIESSLOTID
+- SET
+- SET_STORAGE_GROUP
+- SETTLE
+- SGLEVEL
+- SHOW
+- SLIMIT
+- SOFFSET
+- STORAGE
+- START
+- STARTTIME
+- STATELESS
+- STATEFUL
+- STOP
+- SYSTEM
+- TAGS
+- TASK
+- TEMPLATE
+- TIMEOUT
+- TIMESERIES
+- TIMESLOTID
+- TO
+- TOLERANCE
+- TOP
+- TRACING
+- TRIGGER
+- TRIGGERS
+- TTL
+- UNLINK
+- UNLOAD
+- UNSET
+- UPDATE
+- UPDATE_TEMPLATE
+- UPSERT
+- URI
+- USER
+- USING
+- VALUES
+- VERIFY
+- VERSION
+- WATERMARK_EMBEDDING
+- WHERE
+- WITH
+- WITHOUT
+- WRITABLE

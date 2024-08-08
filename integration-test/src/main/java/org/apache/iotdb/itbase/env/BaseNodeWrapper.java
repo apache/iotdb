@@ -16,30 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.itbase.env;
+
+import java.util.Properties;
 
 public interface BaseNodeWrapper {
 
-  void createNodeDir();
-
-  void createLogDir();
+  void createDir();
 
   void destroyDir();
+
+  void changeConfig(Properties properties);
 
   void start();
 
   void stop();
 
-  void stopForcibly();
-
-  boolean isAlive();
+  void waitingToShutDown();
 
   String getIp();
 
   int getPort();
-
-  int getMetricPort();
 
   String getId();
 

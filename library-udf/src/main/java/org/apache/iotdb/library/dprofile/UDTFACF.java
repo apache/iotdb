@@ -31,12 +31,11 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /** This function calculates auto-correlation factor of a single input series. */
 public class UDTFACF implements UDTF {
 
-  private final List<Double> valueArrayList = new ArrayList<>();
+  private final ArrayList<Double> valueArrayList = new ArrayList<>();
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -63,7 +62,7 @@ public class UDTFACF implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    List<Double> correlationArrayList =
+    ArrayList<Double> correlationArrayList =
         CrossCorrelation.calculateCrossCorrelation(valueArrayList, valueArrayList);
     for (int i = 0; i < correlationArrayList.size(); i++) {
       collector.putDouble(i, correlationArrayList.get(i));

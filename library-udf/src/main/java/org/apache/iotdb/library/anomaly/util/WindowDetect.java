@@ -55,15 +55,15 @@ public class WindowDetect {
     repair();
   }
 
-  private void repair() {
+  private void repair() throws Exception {
     ArrayList<Double> repairedList = new ArrayList<>();
     ArrayList<Long> timeList = new ArrayList<>();
     for (int i = 0; i < timeLength; i++) {
       long curTime = time[i];
-      final double curValue = original[i];
+      double curValue = original[i];
       double valueBefore = 0.0;
       double valueAfter = 0.0;
-      for (int j = (int) Math.max(0, i - len); j <= Math.min(timeLength - 1.0d, i + len); j++) {
+      for (int j = (int) Math.max(0, i - len); j <= Math.min(timeLength - 1, i + len); j++) {
         if (j < i && Math.abs(time[j] - curTime) <= len * 1000) {
           valueBefore += original[j];
         }
@@ -84,16 +84,12 @@ public class WindowDetect {
     repaired = Util.toDoubleArray(repairedList);
   }
 
-  /**
-   * @return the time
-   */
+  /** @return the time */
   public long[] getTime() {
     return time;
   }
 
-  /**
-   * @return the repaired
-   */
+  /** @return the repaired */
   public double[] getRepaired() {
     return repaired;
   }

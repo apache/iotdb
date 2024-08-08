@@ -68,13 +68,13 @@ public class IoTDBArithmeticIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(INSERTION_SQLS);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -221,24 +221,6 @@ public class IoTDBArithmeticIT {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
-    }
-  }
-
-  @Test
-  public void testNot() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select not(s5), !s5 from root.sg.d1"); ) {
-      String[] retArray = new String[] {"true", "true", "false", "false", "false"};
-      int cnt = 0;
-      while (resultSet.next()) {
-        assertEquals(retArray[cnt], resultSet.getString(2));
-        assertEquals(retArray[cnt], resultSet.getString(3));
-        cnt++;
-      }
-      assertEquals(retArray.length, cnt);
-    } catch (SQLException throwable) {
-      fail();
     }
   }
 }

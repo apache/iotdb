@@ -18,24 +18,24 @@
  */
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.Field;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,11 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
-import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
-import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
-import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
-import static org.apache.iotdb.db.it.utils.TestUtils.revokeUserSeriesPrivilege;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -67,13 +62,13 @@ import static org.junit.Assert.fail;
 public class IoTDBSessionComplexIT {
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123");
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -178,57 +173,6 @@ public class IoTDBSessionComplexIT {
       types.add(TSDataType.INT64);
       types.add(TSDataType.INT64);
 
-      // auth test
-      try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
-        try {
-          authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
-        } catch (Exception e) {
-          if (!e.getMessage()
-              .contains(
-                  "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
-            fail(e.getMessage());
-          }
-        }
-
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
-        try {
-          authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
-        } catch (Exception e) {
-          if (!e.getMessage()
-              .contains(
-                  "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
-            fail(e.getMessage());
-          }
-        }
-
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-        try {
-          authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
-        } catch (Exception e) {
-          if (!e.getMessage()
-              .contains(
-                  "803: No permissions for this operation, please add privilege MANAGE_DATABASE")) {
-            fail(e.getMessage());
-          }
-        }
-
-        grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
-        try {
-          authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
-        } catch (Exception e) {
-          fail(e.getMessage());
-        }
-      } catch (Exception e) {
-        fail(e.getMessage());
-      }
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-      revokeUserSeriesPrivilege("test", PrivilegeType.MANAGE_DATABASE, "root.**");
-
       for (long time = 0; time < 100; time++) {
         session.insertRecord(deviceId, time, measurements, types, 1L, 2L, 3L);
       }
@@ -324,7 +268,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecords(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -373,7 +317,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertMultiTablets(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -401,7 +345,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecordsOfOneDevice(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -451,6 +395,8 @@ public class IoTDBSessionComplexIT {
 
       session.executeNonQueryStatement("FLUSH");
       session.executeNonQueryStatement("FLUSH root.sg1");
+      session.executeNonQueryStatement("MERGE");
+      session.executeNonQueryStatement("FULL MERGE");
 
       List<String> deviceIds = new ArrayList<>();
       queryForBatch(Collections.singletonList("root.sg1.d1"), 400);
@@ -549,110 +495,5 @@ public class IoTDBSessionComplexIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testAuth() {
-    // auth test
-    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d2.**");
-      try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertTablet(authSession, "root.sg1.d1");
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d1"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
-      try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertTablet(authSession, "root.sg1.d1");
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
-          fail(e.getMessage());
-        }
-      }
-
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-      try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertTablet(authSession, "root.sg1.d1");
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
-          fail(e.getMessage());
-        }
-      }
-      try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
-          fail(e.getMessage());
-        }
-      }
-
-      grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
-      try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-        insertTablet(authSession, "root.sg1.d1");
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      } catch (Exception e) {
-        fail(e.getMessage());
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-    executeNonQuery("drop timeseries root.sg1.d1.**, root.sg1.d2.**");
   }
 }

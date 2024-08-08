@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -31,19 +29,20 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.Field;
-import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -77,12 +76,13 @@ public class IoTDBSessionSimpleIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -103,7 +103,7 @@ public class IoTDBSessionSimpleIT {
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
+        tablet.addValue("s3", rowIndex, new Binary("1"));
         if (tablet.rowSize == tablet.getMaxRowNumber()) {
           session.insertTablet(tablet, true);
           tablet.reset();
@@ -124,70 +124,8 @@ public class IoTDBSessionSimpleIT {
         assertEquals(15L, rowRecord.getFields().get(2).getLongV());
       }
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertPartialTabletsTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.createTimeseries(
-          "root.sg.d2.s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
-
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-      schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
-      schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
-
-      Tablet tablet1 = new Tablet("root.sg.d1", schemaList, 10);
-      Tablet tablet2 = new Tablet("root.sg.d2", schemaList, 10);
-      Tablet tablet3 = new Tablet("root.sg.d3", schemaList, 10);
-
-      Map<String, Tablet> tabletMap = new HashMap<>();
-      tabletMap.put("root.sg.d1", tablet1);
-      tabletMap.put("root.sg.d2", tablet2);
-      tabletMap.put("root.sg.d3", tablet3);
-
-      long timestamp = System.currentTimeMillis();
-
-      for (long row = 0; row < 15; row++) {
-        int rowIndex1 = tablet1.rowSize++;
-        tablet1.addTimestamp(rowIndex1, timestamp);
-        tablet1.addValue("s1", rowIndex1, 1L);
-        tablet1.addValue("s2", rowIndex1, 1D);
-        tablet1.addValue("s3", rowIndex1, new Binary("1", TSFileConfig.STRING_CHARSET));
-
-        int rowIndex2 = tablet2.rowSize++;
-        tablet2.addTimestamp(rowIndex2, timestamp);
-        tablet2.addValue("s1", rowIndex2, 1L);
-        tablet2.addValue("s2", rowIndex2, 1D);
-        tablet2.addValue("s3", rowIndex2, new Binary("1", TSFileConfig.STRING_CHARSET));
-
-        int rowIndex3 = tablet3.rowSize++;
-        tablet3.addTimestamp(rowIndex3, timestamp);
-        tablet3.addValue("s1", rowIndex3, 1L);
-        tablet3.addValue("s2", rowIndex3, 1D);
-        tablet3.addValue("s3", rowIndex3, new Binary("1", TSFileConfig.STRING_CHARSET));
-
-        if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
-          session.insertTablets(tabletMap);
-          tablet1.reset();
-          tablet2.reset();
-          tablet3.reset();
-        }
-        timestamp++;
-      }
-
-      if (tablet1.rowSize != 0) {
-        session.insertTablets(tabletMap);
-        tablet1.reset();
-        tablet2.reset();
-        tablet3.reset();
-      }
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
     }
   }
 
@@ -407,7 +345,6 @@ public class IoTDBSessionSimpleIT {
       SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
       int count = 0;
       while (dataSet.hasNext()) {
-        dataSet.next();
         count++;
       }
       assertEquals(10, count);
@@ -437,10 +374,7 @@ public class IoTDBSessionSimpleIT {
             schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
         tablet.addValue(
             schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
-        tablet.addValue(
-            schemaList.get(2).getMeasurementId(),
-            rowIndex,
-            new Binary("test", TSFileConfig.STRING_CHARSET));
+        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary("test"));
         timestamp++;
       }
 
@@ -485,9 +419,7 @@ public class IoTDBSessionSimpleIT {
         tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
         tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
-            rowIndex,
-            new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
+            schemaList.get(5).getMeasurementId(), rowIndex, new Binary(String.valueOf(time)));
       }
 
       BitMap[] bitMaps = new BitMap[schemaList.size()];
@@ -541,10 +473,7 @@ public class IoTDBSessionSimpleIT {
         tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
         tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
         tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
-        tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
-            rowIndex,
-            new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
+        tablet.addValue(schemaList.get(5).getMeasurementId(), rowIndex, new Binary("Text" + time));
         tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
       }
 
@@ -562,93 +491,6 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTabletWithNegativeTimestampTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.RLE));
-
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList);
-      for (long time = 0; time < 10; time++) {
-        int rowIndex = tablet.rowSize++;
-        tablet.addTimestamp(rowIndex, -time);
-
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
-        tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
-            rowIndex,
-            new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
-      }
-
-      if (tablet.rowSize != 0) {
-        session.insertTablet(tablet);
-        tablet.reset();
-      }
-
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
-      long count = 0L;
-      while (dataSet.hasNext()) {
-        count++;
-        RowRecord rowRecord = dataSet.next();
-        assertEquals(count - 10, rowRecord.getTimestamp());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTabletWithWrongTimestampPrecisionTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
-      schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.RLE));
-
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList);
-      for (long time = 1694689856546000000L; time < 1694689856546000010L; time++) {
-        int rowIndex = tablet.rowSize++;
-        tablet.addTimestamp(rowIndex, time);
-
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
-        tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
-            rowIndex,
-            new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
-      }
-
-      if (tablet.rowSize != 0) {
-        session.insertTablet(tablet);
-        tablet.reset();
-      }
-    } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
 
@@ -1021,11 +863,11 @@ public class IoTDBSessionSimpleIT {
         dataSet.getColumnTypes().toArray(new String[0]),
         new String[] {
           String.valueOf(TSDataType.INT64),
-          String.valueOf(TSDataType.DOUBLE),
-          String.valueOf(TSDataType.DOUBLE),
+          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.FLOAT),
           String.valueOf(TSDataType.BOOLEAN),
           String.valueOf(TSDataType.BOOLEAN),
-          String.valueOf(TSDataType.DOUBLE)
+          String.valueOf(TSDataType.FLOAT)
         });
     long time = 1L;
 
@@ -1035,7 +877,7 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {0, 3, 4});
-    assertEquals(5.0f, record.getFields().get(1).getDoubleV(), 0.01);
+    assertEquals(5.0f, record.getFields().get(1).getFloatV(), 0.01);
     assertEquals(Boolean.TRUE, record.getFields().get(2).getBoolV());
 
     assertTrue(dataSet.hasNext());
@@ -1044,8 +886,8 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {1, 2, 3});
-    assertEquals(4, record.getFields().get(0).getDoubleV(), 0.01);
-    assertEquals(3, record.getFields().get(4).getDoubleV(), 0.01);
+    assertEquals(4, record.getFields().get(0).getFloatV(), 0.01);
+    assertEquals(3, record.getFields().get(4).getFloatV(), 0.01);
 
     assertTrue(dataSet.hasNext());
     record = dataSet.next();
@@ -1053,7 +895,7 @@ public class IoTDBSessionSimpleIT {
 
     assertNulls(record, new int[] {0, 1, 2});
     assertFalse(record.getFields().get(3).getBoolV());
-    assertEquals(6, record.getFields().get(4).getDoubleV(), 0.01);
+    assertEquals(6, record.getFields().get(4).getFloatV(), 0.01);
 
     assertFalse(dataSet.hasNext());
     dataSet.closeOperationHandle();
@@ -1442,13 +1284,13 @@ public class IoTDBSessionSimpleIT {
       session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
 
       // excepted
-      String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT"};
+      String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT", "BOOLEAN"};
       String[] excepted = {
-        "0\t0\t1\t0.0\t0.0\ttrue",
-        "2\t1\t2\t1.0\t2.0\tfalse",
-        "4\t2\t3\t2.0\t4.0\ttrue",
-        "6\t3\t4\t3.0\t6.0\tfalse",
-        "8\t4\t5\t4.0\t8.0\ttrue"
+        "0\t0\t1\t0.0\t0.0\ttrue\ttrue",
+        "2\t1\t2\t1.0\t2.0\tfalse\ttrue",
+        "4\t2\t3\t2.0\t4.0\ttrue\ttrue",
+        "6\t3\t4\t3.0\t6.0\tfalse\ttrue",
+        "8\t4\t5\t4.0\t8.0\ttrue\ttrue"
       };
 
       // query
@@ -1513,7 +1355,7 @@ public class IoTDBSessionSimpleIT {
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
+        tablet.addValue("s3", rowIndex, new Binary("1"));
         if (tablet.rowSize == tablet.getMaxRowNumber()) {
           try {
             session.insertTablet(tablet, true);
@@ -1635,42 +1477,6 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void convertRecordsToTabletsTest() {
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
-    List<Object> value = new ArrayList<>();
-    for (int measurement = 0; measurement < 100; measurement++) {
-      types.add(TSDataType.INT64);
-      measurements.add("s" + measurement);
-      value.add((long) measurement);
-    }
-    List<String> devices = new ArrayList<>();
-    List<List<String>> measurementsList = new ArrayList<>();
-    List<List<TSDataType>> typeList = new ArrayList<>();
-    List<List<Object>> values = new ArrayList<>();
-    List<Long> timestamps = new ArrayList<>();
-    for (long row = 0; row < 1000; row++) {
-      devices.add("root.sg1.d1");
-      measurementsList.add(measurements);
-      typeList.add(types);
-      values.add(value);
-      timestamps.add(row);
-    }
-    List<String> queryMeasurement = new ArrayList<>();
-    queryMeasurement.add("root.sg1.d1.s1");
-    List<TAggregationType> queryType = new ArrayList<>();
-    queryType.add(TAggregationType.COUNT);
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.insertRecords(devices, timestamps, measurementsList, typeList, values);
-      SessionDataSet dataSet = session.executeAggregationQuery(queryMeasurement, queryType);
-      assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
     }
   }
 }

@@ -36,7 +36,6 @@
 
 # 简介
 IoTDB (Internet of Things Database) 是一款时序数据库管理系统，可以为用户提供数据收集、存储和分析等服务。IoTDB由于其轻量级架构、高性能和高可用的特性，以及与 Hadoop 和 Spark 生态的无缝集成，满足了工业 IoT 领域中海量数据存储、高吞吐量数据写入和复杂数据查询分析的需求。
-更多功能请见[时序数据库IoTDB：功能详解与行业应用](https://www.timecho.com/archives/shi-xu-shu-ju-ku-iotdb-gong-neng-xiang-jie-yu-xing-ye-ying-yong)。
 
 # 主要特点
 
@@ -136,41 +135,26 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
 
+```
+git checkout release/x.x.x
+```
+
+从0.11.3开始，版本的标签风格改为vx.x.x：
 ```
 git checkout vx.x.x
 ```
 
-或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
+在 iotdb 根目录下执行 maven 编译:
 
 ```
-git checkout rel/x.x
+> mvn clean package -DskipTests
 ```
-
-### 源码编译 IoTDB
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl distribution -am -DskipTests
-```
-
-编译完成后, IoTDB 二进制包将生成在: "distribution/target".
-
-### 只编译 cli
-
-在 iotdb/iotdb-client 目录下执行:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-编译完成后, IoTDB cli 将生成在 "cli/target".
-
-### 编译其他模块
 
 通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
+
+执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 **注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
@@ -183,7 +167,7 @@ git checkout rel/x.x
 * 系统配置模块(`iotdb-datanode.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Config-Manual.html)。
 
 ## 开始
 
@@ -191,15 +175,19 @@ git checkout rel/x.x
 
 ### 启动 IoTDB
 
-可以通过运行 sbin 文件夹下的 start-standalone 脚本启动 1C1D IoTDB。
+可以通过运行 sbin 文件夹下的 start-server 脚本启动 IoTDB。
 
 ```
 # Unix/OS X
-> sbin/start-standalone.sh
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-standalone.bat
+> sbin\start-server.bat -c <conf_path>
 ```
+- "-c"是可选的。
+- 选项 "-c" 指定了配置文件所在的文件夹。
 
 ### 使用 IoTDB
 
@@ -370,15 +358,36 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ```
 # Unix/OS X
-> sbin/stop-standalone.sh
+> sbin/stop-server.sh
 
 # Windows
-> sbin\stop-standalone.bat
+> sbin\stop-server.bat
 ```
+
+## 只编译 server
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl server -am -DskipTests
+```
+
+编译完成后, IoTDB server 将生成在: "server/target/iotdb-server-{project.version}".
+
+
+## 只编译 cli
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Write-And-Delete-Data/CSV-Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)
