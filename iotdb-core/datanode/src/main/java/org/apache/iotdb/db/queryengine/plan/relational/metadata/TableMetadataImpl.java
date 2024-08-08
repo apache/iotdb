@@ -302,10 +302,10 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context) {
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
     return TableDeviceSchemaFetcher.getInstance()
         .fetchDeviceSchemaForDataQuery(
             tableName.getDatabaseName(),

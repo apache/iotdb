@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -64,6 +65,8 @@ public class SchemaFilterSerDeTest {
     final LikeFilter likeFilter = new LikeFilter(parseLikePatternToRegex("__1"));
     final IdFilter idFilter = new IdFilter(preciseFilter, 1);
     final AttributeFilter attributeFilter = new AttributeFilter(likeFilter, "attr");
+    final ComparisonFilter comparisonFilter =
+        new ComparisonFilter(ComparisonFilter.Operator.GREATER_THAN, "s1");
 
     serDeTest(tagFilter);
     serDeTest(pathContainsFilter);
@@ -78,6 +81,7 @@ public class SchemaFilterSerDeTest {
     serDeTest(likeFilter);
     serDeTest(idFilter);
     serDeTest(attributeFilter);
+    serDeTest(comparisonFilter);
   }
 
   private void serDeTest(final SchemaFilter filter) {

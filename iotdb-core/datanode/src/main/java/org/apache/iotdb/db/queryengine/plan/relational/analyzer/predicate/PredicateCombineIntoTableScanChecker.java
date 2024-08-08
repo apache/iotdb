@@ -81,10 +81,6 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   @Override
   protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
-    if (node.getOperator() == LogicalExpression.Operator.AND) {
-      return false;
-    }
-
     List<Expression> children = node.getTerms();
     for (Expression child : children) {
       Boolean result = process(child, context);

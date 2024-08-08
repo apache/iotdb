@@ -118,10 +118,13 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
-      PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
     LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(instanceContext, schemaRegion);
+        new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
     Operator root = generateOperator(instanceContext, context, plan);
 

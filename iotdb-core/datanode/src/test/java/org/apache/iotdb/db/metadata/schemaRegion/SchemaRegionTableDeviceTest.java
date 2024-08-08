@@ -44,7 +44,7 @@ import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
 
-  public SchemaRegionTableDeviceTest(SchemaRegionTestParams testParams) {
+  public SchemaRegionTableDeviceTest(final SchemaRegionTestParams testParams) {
     super(testParams);
   }
 
@@ -53,22 +53,22 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName = "t";
-    List<String[]> deviceIdList =
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName = "t";
+    final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", "p_1", "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
             new String[] {"shandong", "p_1", "d_1"});
 
-    for (String[] deviceId : deviceIdList) {
+    for (final String[] deviceId : deviceIdList) {
       SchemaRegionTestUtil.createTableDevice(
           schemaRegion, tableName, deviceId, Collections.emptyMap());
     }
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(schemaRegion, tableName, deviceIdList);
     Assert.assertEquals(3, deviceSchemaInfoList.size());
-    List<String[]> result =
+    final List<String[]> result =
         deviceSchemaInfoList.stream()
             .map(IDeviceSchemaInfo::getRawNodes)
             .collect(Collectors.toList());
@@ -80,7 +80,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             .sorted()
             .collect(Collectors.toList()));
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     SchemaRegionTestUtil.createTableDevice(
@@ -122,10 +122,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName = "t";
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName = "t";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     SchemaRegionTestUtil.createTableDevice(
@@ -207,10 +207,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName = "t";
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName = "t";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", null);
     SchemaRegionTestUtil.createTableDevice(
@@ -219,17 +219,21 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
     attributeMap.put("cycle", "daily");
+    // The null suffix is trimmed
     SchemaRegionTestUtil.createTableDevice(
-        schemaRegion, tableName, new String[] {"shandong", "p_1", null}, attributeMap);
+        schemaRegion, tableName, new String[] {"shandong", "p_1"}, attributeMap);
+    // Pure null
+    SchemaRegionTestUtil.createTableDevice(schemaRegion, tableName, new String[] {}, attributeMap);
 
-    List<String[]> deviceIdList =
+    final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", null, "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
-            new String[] {"shandong", "p_1", null});
+            new String[] {"shandong", "p_1"},
+            new String[] {});
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(schemaRegion, tableName, deviceIdList);
-    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(4, deviceSchemaInfoList.size());
     Assert.assertEquals(
         deviceIdList.stream().map(Arrays::toString).sorted().collect(Collectors.toList()),
         deviceSchemaInfoList.stream()
@@ -243,9 +247,18 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
+            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 0)),
             null);
     Assert.assertEquals(1, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(new IdFilter(new PreciseFilter((String) null), 1)),
+            null);
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -257,7 +270,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
                 Arrays.asList(
                     new IdFilter(new PreciseFilter((String) null), 2),
                     new AttributeFilter(new PreciseFilter((String) null), "cycle"))));
-    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(4, deviceSchemaInfoList.size());
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -269,6 +282,17 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             null);
 
     Assert.assertEquals(2, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(
+                new IdFilter(new LikeFilter(parseLikePatternToRegex("%")), 2)),
+            null);
+
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
   }
 
   @Test
@@ -276,10 +300,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName = "t";
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName = "t";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     SchemaRegionTestUtil.createTableDevice(
@@ -291,7 +315,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1", "d_1", "r_1"}, attributeMap);
 
-    List<String[]> deviceIdList =
+    final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", "p_1", "d_0"},
             new String[] {"hebei", "p_1", "d_1"},
@@ -332,10 +356,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    String tableName1 = "t1";
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName1 = "t1";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     SchemaRegionTestUtil.createTableDevice(
@@ -360,7 +384,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName2, new String[] {"shandong", "p_1", "d_1", "r_1"}, attributeMap);
 
-    List<String[]> deviceIdList =
+    final List<String[]> deviceIdList =
         Arrays.asList(
             new String[] {"hebei", "p_1", "d_0"},
             new String[] {"hebei", "p_1", "d_1"},

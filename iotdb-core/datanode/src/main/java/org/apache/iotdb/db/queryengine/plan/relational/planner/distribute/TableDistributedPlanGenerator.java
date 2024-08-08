@@ -25,10 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.AbstractTableDeviceQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator.parseDeviceIdArray;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
@@ -405,12 +404,14 @@ public class TableDistributedPlanGenerator
   }
 
   private void processSortProperty(
-      TableScanNode tableScanNode, List<PlanNode> resultTableScanNodeList, PlanContext context) {
-    List<Symbol> newOrderingSymbols = new ArrayList<>();
-    List<SortOrder> newSortOrders = new ArrayList<>();
-    OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
+      final TableScanNode tableScanNode,
+      final List<PlanNode> resultTableScanNodeList,
+      final PlanContext context) {
+    final List<Symbol> newOrderingSymbols = new ArrayList<>();
+    final List<SortOrder> newSortOrders = new ArrayList<>();
+    final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
 
-    for (Symbol symbol : expectedOrderingScheme.getOrderBy()) {
+    for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
       if (TIMESTAMP_STR.equalsIgnoreCase(symbol.getName())) {
         if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
           // TODO(beyyes) move scan order judgement into logical plan optimizer
@@ -431,9 +432,9 @@ public class TableDistributedPlanGenerator
       return;
     }
 
-    List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
-    for (Symbol symbol : newOrderingSymbols) {
-      int idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
+    final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
+    for (final Symbol symbol : newOrderingSymbols) {
+      final int idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
       if (tableScanNode.getAssignments().get(symbol).getColumnCategory()
           == TsTableColumnCategory.ID) {
         // segments[0] is always tableName
@@ -462,7 +463,7 @@ public class TableDistributedPlanGenerator
                   .reversed();
     }
     for (int i = 1; i < orderingRules.size(); i++) {
-      Comparator<DeviceEntry> thenComparator;
+      final Comparator<DeviceEntry> thenComparator;
       if (newSortOrders.get(i).isNullsFirst()) {
         thenComparator =
             newSortOrders.get(i).isAscending()
@@ -483,14 +484,14 @@ public class TableDistributedPlanGenerator
       comparator = comparator.thenComparing(thenComparator);
     }
 
-    OrderingScheme newOrderingScheme =
+    final OrderingScheme newOrderingScheme =
         new OrderingScheme(
             newOrderingSymbols,
             IntStream.range(0, newOrderingSymbols.size())
                 .boxed()
                 .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
-    for (PlanNode planNode : resultTableScanNodeList) {
-      TableScanNode scanNode = (TableScanNode) planNode;
+    for (final PlanNode planNode : resultTableScanNodeList) {
+      final TableScanNode scanNode = (TableScanNode) planNode;
       nodeOrderingMap.put(scanNode.getPlanNodeId(), newOrderingScheme);
       scanNode.getDeviceEntries().sort(comparator);
     }
@@ -558,7 +559,7 @@ public class TableDistributedPlanGenerator
 
       for (final Object[] deviceIdArray : node.getDeviceIdList()) {
         final IDeviceID deviceID =
-            IDeviceID.Factory.DEFAULT_FACTORY.create(parseDeviceIdArray(deviceIdArray));
+            IDeviceID.Factory.DEFAULT_FACTORY.create((String[]) deviceIdArray);
         final TRegionReplicaSet regionReplicaSet =
             databaseMap.get(schemaPartition.calculateDeviceGroupId(deviceID));
         tableDeviceFetchMap

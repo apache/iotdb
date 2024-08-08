@@ -31,11 +31,6 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PreciseFilter extends SchemaFilter {
-
-  // id column index
-  // when used in partialPath, the index of node in path shall be [this.index + 3]
-  // since a partialPath start with {root, db, table}
-
   private final String value;
 
   public PreciseFilter(final String value) {
@@ -51,7 +46,7 @@ public class PreciseFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitPreciseFilter(this, node);
   }
 

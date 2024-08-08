@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -94,6 +95,8 @@ public abstract class SchemaFilter {
         return new InFilter(byteBuffer);
       case LIKE:
         return new LikeFilter(byteBuffer);
+      case COMPARISON:
+        return new ComparisonFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }
@@ -125,7 +128,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public abstract <C> boolean accept(final SchemaFilterVisitor<C> visitor, C node);
+  public abstract <C> Boolean accept(final SchemaFilterVisitor<C> visitor, C node);
 
   public abstract SchemaFilterType getSchemaFilterType();
 

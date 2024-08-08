@@ -67,6 +67,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
+
 public class TableDeviceSchemaFetcher {
 
   private final SqlParser relationSqlParser = new SqlParser();
@@ -96,15 +98,15 @@ public class TableDeviceSchemaFetcher {
   }
 
   Map<TableDeviceId, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
-      FetchDevice statement, MPPQueryContext context) {
-    long queryId = SessionManager.getInstance().requestQueryId();
+      final FetchDevice statement, final MPPQueryContext context) {
+    final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
 
-    String database = statement.getDatabase();
-    String table = statement.getTableName();
-    TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
+    final String database = statement.getDatabase();
+    final String table = statement.getTableName();
+    final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
 
-    ExecutionResult executionResult =
+    final ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
             relationSqlParser,
@@ -121,35 +123,36 @@ public class TableDeviceSchemaFetcher {
               executionResult.status.getMessage(), executionResult.status.getCode()));
     }
 
-    List<ColumnHeader> columnHeaderList =
+    final List<ColumnHeader> columnHeaderList =
         coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
+    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+    final Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
 
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-        Optional<TsBlock> tsBlock;
+        final Optional<TsBlock> tsBlock;
         try {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-        } catch (IoTDBException e) {
+        } catch (final IoTDBException e) {
           t = e;
           throw new RuntimeException("Fetch Table Device Schema failed. ", e);
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-        Column[] columns = tsBlock.get().getValueColumns();
+        final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          String[] nodes = new String[idLength];
-          Map<String, String> attributeMap = new HashMap<>();
+          final String[] nodes = new String[idLength];
+          final Map<String, String> attributeMap = new HashMap<>();
 
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 0, columnHeaderList, columns, tableInstance, i);
 
-          fetchedDeviceSchema.put(new TableDeviceId(nodes), attributeMap);
+          fetchedDeviceSchema.put(
+              new TableDeviceId((String[]) truncateTailingNull(nodes)), attributeMap);
         }
       }
-    } catch (Throwable throwable) {
+    } catch (final Throwable throwable) {
       t = throwable;
       throw throwable;
     } finally {
@@ -264,7 +267,7 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata:  implement deduplicate during schemaRegion execution
     // TODO table metadata:  need further process on input predicates and transform them into
     // disjoint sets
-    Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
+    final Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
     return new ArrayList<>(set);
   }
 
@@ -277,13 +280,14 @@ public class TableDeviceSchemaFetcher {
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths) {
-    final String[] idValues = new String[tableInstance.getIdNums()];
+    String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
+    idValues = (String[]) truncateTailingNull(idValues);
     final Map<String, String> attributeMap =
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
     if (attributeMap == null) {
@@ -301,8 +305,7 @@ public class TableDeviceSchemaFetcher {
         }
         return false;
       }
-      String value = attributeMap.get(attributeKey);
-      attributeValues.add(value);
+      attributeValues.add(attributeMap.get(attributeKey));
     }
 
     final DeviceEntry deviceEntry =
@@ -376,11 +379,12 @@ public class TableDeviceSchemaFetcher {
         }
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          final String[] nodes = new String[idLength + 1];
+          String[] nodes = new String[idLength + 1];
           nodes[0] = table;
           final Map<String, String> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
+          nodes = (String[]) truncateTailingNull(nodes);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
           DeviceEntry deviceEntry =
               new DeviceEntry(

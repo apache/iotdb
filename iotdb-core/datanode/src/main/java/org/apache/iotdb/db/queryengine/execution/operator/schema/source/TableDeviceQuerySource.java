@@ -59,11 +59,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final TsTable table;
 
   public TableDeviceQuerySource(
-      String database,
-      String tableName,
-      List<List<SchemaFilter>> idDeterminedPredicateList,
-      Expression idFuzzyPredicate,
-      List<ColumnHeader> columnHeaderList) {
+      final String database,
+      final String tableName,
+      final List<List<SchemaFilter>> idDeterminedPredicateList,
+      final Expression idFuzzyPredicate,
+      final List<ColumnHeader> columnHeaderList) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
@@ -74,8 +74,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
-    List<PartialPath> devicePatternList = getDevicePatternList();
+  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
+    final List<PartialPath> devicePatternList = getDevicePatternList();
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
@@ -134,7 +134,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
             }
           }
           return false;
-        } catch (Exception e) {
+        } catch (final Exception e) {
           throw new SchemaExecutionException(e.getMessage(), e);
         }
       }
@@ -168,11 +168,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         idDeterminedPredicateList);
   }
 
-  private SchemaFilter getExecutableIdFuzzyFilter(Expression idFuzzyExpression) {
+  private SchemaFilter getExecutableIdFuzzyFilter(final Expression idFuzzyExpression) {
     if (idFuzzyExpression == null) {
       return null;
     }
-    ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
+    final ConvertSchemaPredicateToFilterVisitor visitor =
+        new ConvertSchemaPredicateToFilterVisitor();
     return visitor.process(
         idFuzzyExpression, new ConvertSchemaPredicateToFilterVisitor.Context(table));
   }
@@ -184,17 +185,17 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public void transformToTsBlockColumns(
-      IDeviceSchemaInfo schemaInfo, TsBlockBuilder builder, String database) {
+      final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     int idIndex = 0;
-    String[] pathNodes = schemaInfo.getRawNodes();
-    TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     TsTableColumnSchema columnSchema;
-    for (ColumnHeader columnHeader : columnHeaderList) {
+    for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        if (pathNodes[idIndex + 3] == null) {
+        if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
@@ -203,7 +204,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        final String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
         if (attributeValue == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -32,32 +33,61 @@ import java.util.Objects;
 public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
 
   @Override
-  protected boolean visitNode(final SchemaFilter filter, final String context) {
+  protected Boolean visitNode(final SchemaFilter filter, final String context) {
     return true;
   }
 
   @Override
-  public boolean visitPreciseFilter(final PreciseFilter filter, final String context) {
+  public Boolean visitPreciseFilter(final PreciseFilter filter, final String context) {
     return Objects.equals(filter.getValue(), context);
   }
 
   @Override
-  public boolean visitInFilter(final InFilter filter, final String context) {
+  public Boolean visitComparisonFilter(final ComparisonFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return null;
+    }
+
+    final int result = context.compareTo(filter.getValue());
+
+    switch (filter.getOperator()) {
+      case NOT_EQUAL:
+        return result != 0;
+      case LESS_THAN:
+        return result < 0;
+      case LESS_THAN_OR_EQUAL:
+        return result <= 0;
+      case GREATER_THAN:
+        return result > 0;
+      case GREATER_THAN_OR_EQUAL:
+        return result >= 0;
+    }
+    return false;
+  }
+
+  @Override
+  public Boolean visitInFilter(final InFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return null;
+    }
     return filter.getValues().contains(context);
   }
 
   @Override
-  public boolean visitLikeFilter(final LikeFilter filter, final String context) {
+  public Boolean visitLikeFilter(final LikeFilter filter, final String context) {
+    if (Objects.isNull(context)) {
+      return null;
+    }
     return filter.getPattern().matcher(context).find();
   }
 
   @Override
-  public boolean visitIdFilter(final IdFilter filter, final String context) {
+  public Boolean visitIdFilter(final IdFilter filter, final String context) {
     return filter.getChild().accept(this, context);
   }
 
   @Override
-  public boolean visitAttributeFilter(final AttributeFilter filter, final String context) {
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final String context) {
     return filter.getChild().accept(this, context);
   }
 
