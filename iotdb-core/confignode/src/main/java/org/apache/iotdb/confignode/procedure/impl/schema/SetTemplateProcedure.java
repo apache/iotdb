@@ -260,13 +260,14 @@ public class SetTemplateProcedure
   private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {
     PathPatternTree patternTree = new PathPatternTree();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     PartialPath path = null;
     try {
       path = new PartialPath(templateSetPath);
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.constructTree();
-    } catch (IllegalPathException ignored) {
+      patternTree.serialize(dataOutputStream);
+    } catch (IllegalPathException | IOException ignored) {
     }
     ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 

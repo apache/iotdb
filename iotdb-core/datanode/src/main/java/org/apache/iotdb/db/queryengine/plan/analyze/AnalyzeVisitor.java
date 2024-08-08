@@ -3007,7 +3007,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.generateGlobalTimeFilter(analysis);
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pattern);
-    patternTree.constructTree();
     ISchemaTree schemaTree =
         schemaFetcher.fetchRawSchemaInDeviceLevel(patternTree, authorityScope, context);
     if (schemaTree.isEmpty()) {
@@ -3105,7 +3104,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : deviceSchemaFetchStatement.getPaths()) {
-      patternTree.appendPathPattern(path);
+      patternTree.appendPathPattern(path.concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     }
     patternTree.constructTree();
     SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);

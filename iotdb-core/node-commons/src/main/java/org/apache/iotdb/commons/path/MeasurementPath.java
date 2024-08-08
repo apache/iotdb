@@ -50,7 +50,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 public class MeasurementPath extends PartialPath {
 
   private static final String NODES_LENGTH_ERROR =
-      "nodes.length for MeasurementPath should always be greater than 2, current is: %s";
+      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
@@ -67,14 +67,14 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String measurementPath) throws IllegalPathException {
     super(measurementPath);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
   }
 
   public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
     super(measurementPath);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
     this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
@@ -93,7 +93,7 @@ public class MeasurementPath extends PartialPath {
       IMeasurementSchema measurementSchema,
       Boolean isUnderAlignedEntity) {
     super(measurementPath.getNodes());
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
     this.measurementSchema = measurementSchema;
@@ -112,7 +112,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String device, String measurement) throws IllegalPathException {
     super(device, measurement);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
   }
@@ -120,7 +120,7 @@ public class MeasurementPath extends PartialPath {
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)
       throws IllegalPathException {
     super(device, measurement);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
     this.measurementSchema = measurementSchema;
@@ -128,7 +128,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
     super(nodes);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
     }
     this.measurementSchema = schema;
@@ -136,7 +136,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String[] nodes) {
     super(nodes);
-    if (nodes.length < 3) {
+    if (nodes.length < 2) {
       throw new IllegalArgumentException(
           "nodes.length for MeasurementPath should always be greater than 2, current is: "
               + Arrays.toString(nodes));
