@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBFlushQueryIT {
+public class IoTDBFlushQueryTableIT {
 
   private static String[] sqls =
       new String[] {

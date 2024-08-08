@@ -22,11 +22,10 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -34,10 +33,12 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -46,10 +47,10 @@ import static org.junit.Assert.fail;
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMultiDeviceIT {
+public class IoTDBMultiDeviceTableIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     // use small page
     EnvFactory.getEnv()
         .getConfig()
@@ -67,18 +68,14 @@ public class IoTDBMultiDeviceIT {
     insertData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-
-      for (String sql : TestConstant.createSql) {
-        statement.addBatch(sql);
-      }
 
       statement.addBatch("CREATE DATABASE test");
       statement.addBatch("USE \"test\"");
@@ -102,7 +99,7 @@ public class IoTDBMultiDeviceIT {
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3','%s,%s)", time, time % 4);
+                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
@@ -135,7 +132,7 @@ public class IoTDBMultiDeviceIT {
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3','%s,%s)", time, time % 4);
+                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
@@ -168,7 +165,7 @@ public class IoTDBMultiDeviceIT {
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3','%s,%s)", time, time % 4);
+                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
@@ -203,7 +200,7 @@ public class IoTDBMultiDeviceIT {
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3','%s,%s)", time, time % 4);
+                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
@@ -236,7 +233,7 @@ public class IoTDBMultiDeviceIT {
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3','%s,%s)", time, time % 4);
+                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
@@ -251,7 +248,7 @@ public class IoTDBMultiDeviceIT {
                 "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
-      statement.executeBatch();
+      assertTrue(Arrays.stream(statement.executeBatch()).allMatch(i -> i == 200));
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -285,7 +282,7 @@ public class IoTDBMultiDeviceIT {
           lastTimeMap.put(id, cur);
           cnt++;
         }
-        assertEquals(13740, cnt);
+        assertEquals(16030, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
