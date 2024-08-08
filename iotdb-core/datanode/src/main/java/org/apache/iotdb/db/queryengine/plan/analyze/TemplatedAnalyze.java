@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -130,10 +129,9 @@ public class TemplatedAnalyze {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
             String measurementName = entry.getKey();
-            IMeasurementSchema measurementSchema = entry.getValue();
             TimeSeriesOperand measurementPath =
                 new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+                    new PartialPath(new String[] {measurementName}), entry.getValue().getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, null));
@@ -153,10 +151,10 @@ public class TemplatedAnalyze {
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
-            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
             TimeSeriesOperand measurementPath =
                 new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+                    new PartialPath(new String[] {measurementName}),
+                    template.getSchemaMap().get(measurementName).getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
