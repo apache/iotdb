@@ -181,7 +181,7 @@ public class LastPointSamplingProcessor implements PipeProcessor {
     PipeLastPointTsBlockEvent tsBlockEvent = (PipeLastPointTsBlockEvent) event;
 
     final PipeLastPointTabletEvent pipeLastPointTabletEvent =
-        tsBlockEvent.toPipeLastPointTabletEvent(partialPathToLatestTimeCache);
+        tsBlockEvent.convertToPipeLastPointTabletEvent(partialPathToLatestTimeCache);
 
     eventCollector.collect(pipeLastPointTabletEvent);
   }

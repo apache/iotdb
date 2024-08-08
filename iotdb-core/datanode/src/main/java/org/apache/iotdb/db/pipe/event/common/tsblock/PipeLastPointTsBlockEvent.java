@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -54,7 +55,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   private PipeMemoryBlock pipeMemoryBlock;
 
-  protected PipeLastPointTsBlockEvent(
+  public PipeLastPointTsBlockEvent(
       final TsBlock tsBlock,
       final long captureTime,
       final PartialPath partialPath,
@@ -129,7 +130,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   /////////////////////////// PipeLastPointTabletEvent ///////////////////////////
 
-  public PipeLastPointTabletEvent toPipeLastPointTabletEvent(
+  public PipeLastPointTabletEvent convertToPipeLastPointTabletEvent(
       PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache) {
     return new PipeLastPointTabletEvent(
         convertToTablet(),
@@ -146,10 +147,22 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
   /////////////////////////// convertToTablet ///////////////////////////
 
   private Tablet convertToTablet() {
-    Object[] values = new Object[tsBlock.getValueColumnCount()];
-    for (int i = 0; i < tsBlock.getValueColumnCount(); ++i) {
-      Column column = tsBlock.getColumn(i);
-      TSDataType type = column.getDataType();
+    final int columnCount = tsBlock.getValueColumnCount();
+    Object[] values = new Object[columnCount];
+    BitMap[] bitMaps = new BitMap[columnCount];
+
+    for (int i = 0; i < columnCount; ++i) {
+      final Column column = tsBlock.getColumn(i);
+      final int rowCount = column.getPositionCount();
+      final BitMap bitMap = new BitMap(rowCount);
+      for (int j = 0; j < rowCount; j++) {
+        if (column.isNull(j)) {
+          bitMap.mark(j);
+        }
+      }
+      bitMaps[i] = bitMap;
+
+      final TSDataType type = column.getDataType();
       switch (type) {
         case BOOLEAN:
           values[i] = column.getBooleans();
@@ -192,10 +205,9 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
             measurementSchemas,
             tsBlock.getTimeColumn().getLongs(),
             values,
-            null,
+            bitMaps,
             tsBlock.getValueColumnCount());
 
-    tablet.initBitMaps();
     return tablet;
   }
 
