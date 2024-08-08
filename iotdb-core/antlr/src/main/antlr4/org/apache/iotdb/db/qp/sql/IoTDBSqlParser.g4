@@ -535,7 +535,7 @@ verifyConnection
 
 // Pipe Task =========================================================================================
 createPipe
-    : CREATE PIPE pipeName=identifier
+    : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
         extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause
@@ -575,7 +575,7 @@ connectorAttributeClause
     ;
 
 alterPipe
-    : ALTER PIPE pipeName=identifier
+    : ALTER PIPE (IF EXISTS)? pipeName=identifier
         alterExtractorAttributesClause?
         alterProcessorAttributesClause?
         alterConnectorAttributesClause?
@@ -603,7 +603,7 @@ alterConnectorAttributesClause
     ;
 
 dropPipe
-    : DROP PIPE pipeName=identifier
+    : DROP PIPE (IF EXISTS)? pipeName=identifier
     ;
 
 startPipe
@@ -620,11 +620,11 @@ showPipes
 
 // Pipe Plugin =========================================================================================
 createPipePlugin
-    : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
+    : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 dropPipePlugin
-    : DROP PIPEPLUGIN pluginName=identifier
+    : DROP PIPEPLUGIN (IF EXISTS)? pluginName=identifier
     ;
 
 showPipePlugins
@@ -633,7 +633,7 @@ showPipePlugins
 
 // Topic =========================================================================================
 createTopic
-    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
 topicAttributesClause
@@ -645,7 +645,7 @@ topicAttributeClause
     ;
 
 dropTopic
-    : DROP TOPIC topicName=identifier
+    : DROP TOPIC (IF EXISTS)? topicName=identifier
     ;
 
 showTopics

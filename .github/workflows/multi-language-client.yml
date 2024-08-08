@@ -3,17 +3,29 @@ on:
   push:
     branches:
       - master
-      - "rel/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "rc/*"
+    paths:
+      - 'pom.xml'
+      - 'iotdb-client/pom.xml'
+      - 'iotdb-client/client-py/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'example/client-cpp-example/**'
+      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+      - '.github/workflows/multi-language-client.yml'
   pull_request:
     branches:
       - master
-      - "rel/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "rc/*"
+    paths:
+      - 'pom.xml'
+      - 'iotdb-client/pom.xml'
+      - 'iotdb-client/client-py/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'example/client-cpp-example/**'
+      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+      - '.github/workflows/multi-language-client.yml'
   # allow manually run the action:
   workflow_dispatch:
 

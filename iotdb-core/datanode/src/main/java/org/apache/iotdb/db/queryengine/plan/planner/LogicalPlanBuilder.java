@@ -464,7 +464,10 @@ public class LogicalPlanBuilder {
         for (String partialAggregationName : partialAggregationsNames) {
           typeProvider.setTreeModelType(
               String.format("%s(%s)", partialAggregationName, path.getFullPath()),
-              SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+              SchemaUtils.getSeriesTypeByPath(
+                  ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0))
+                      .getOperandType(),
+                  partialAggregationName));
         }
       }
     } else {

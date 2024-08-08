@@ -143,6 +143,7 @@ public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<State
           statement.getCompressors().get(i));
       group.addProps(new HashMap<>());
     }
+    // Non-null lists
     statement.getTagsList().forEach(group::addTags);
     statement.getAttributesList().forEach(group::addAttributes);
     statement.getAliasList().forEach(group::addAlias);

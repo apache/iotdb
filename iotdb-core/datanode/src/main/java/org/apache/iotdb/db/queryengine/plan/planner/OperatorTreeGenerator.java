@@ -1496,10 +1496,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     for (Expression projectExpression : projectExpressions) {
       if (context.isBuildPlanUseTemplate()) {
-        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-            expressionTypes, projectExpression, context.getTemplatedInfo());
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TemplateTypeProvider(
+                context.getTemplatedInfo().getSchemaMap()));
       } else {
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TypeProviderWrapper(
+                context.getTypeProvider().getTreeModelTypeMap()));
       }
     }
 
@@ -1618,10 +1625,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LocalExecutionPlanContext context) {
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
     if (context.isBuildPlanUseTemplate()) {
-      ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-          expressionTypes, predicate, context.getTypeProvider().getTemplatedInfo());
+      ExpressionTypeAnalyzer.analyzeExpression(
+          expressionTypes,
+          predicate,
+          new ExpressionTypeAnalyzer.TemplateTypeProvider(
+              context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
     } else {
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, predicate);
+      ExpressionTypeAnalyzer.analyzeExpression(
+          expressionTypes,
+          predicate,
+          new ExpressionTypeAnalyzer.TypeProviderWrapper(
+              context.getTypeProvider().getTreeModelTypeMap()));
     }
 
     // check whether predicate contains Non-Mappable UDF
@@ -1633,10 +1647,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     for (Expression projectExpression : projectExpressions) {
       if (context.isBuildPlanUseTemplate()) {
-        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
-            expressionTypes, projectExpression, context.getTypeProvider().getTemplatedInfo());
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TemplateTypeProvider(
+                context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
       } else {
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+        ExpressionTypeAnalyzer.analyzeExpression(
+            expressionTypes,
+            projectExpression,
+            new ExpressionTypeAnalyzer.TypeProviderWrapper(
+                context.getTypeProvider().getTreeModelTypeMap()));
       }
     }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
@@ -101,6 +102,10 @@ public final class AstUtil {
   public static Object expressionToTsValue(Expression expression) {
     if (expression instanceof Literal) {
       return ((Literal) expression).getTsValue();
+    }
+    if (expression instanceof Identifier) {
+      throw new SemanticException(
+          String.format("Cannot insert identifier %s, please use string literal", expression));
     }
     throw new SemanticException("Unsupported expression: " + expression);
   }

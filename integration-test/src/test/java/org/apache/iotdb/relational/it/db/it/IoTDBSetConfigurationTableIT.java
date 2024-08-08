@@ -42,7 +42,7 @@ import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSetConfigurationIT {
+public class IoTDBSetConfigurationTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
