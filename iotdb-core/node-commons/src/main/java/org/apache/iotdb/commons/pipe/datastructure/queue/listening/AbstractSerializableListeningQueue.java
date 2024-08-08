@@ -118,10 +118,13 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
       ReadWriteIOUtils.write(isClosed.get(), fileOutputStream);
       ReadWriteIOUtils.write(serializerType.getType(), fileOutputStream);
       if (serializers.containsKey(serializerType)) {
-        return serializers
-            .get(serializerType)
-            .get()
-            .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
+        final boolean result =
+            serializers
+                .get(serializerType)
+                .get()
+                .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
+        fileOutputStream.getFD().sync();
+        return result;
       } else {
         throw new UnsupportedOperationException(
             "Unknown serializer type: " + serializerType.getType());
