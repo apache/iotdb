@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -58,7 +59,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
+import static org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
+import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR;
 
 @SuppressWarnings("squid:S6548")
 public class FragmentInstanceManager {
@@ -259,8 +262,14 @@ public class FragmentInstanceManager {
                     exchangeManager);
               } catch (Throwable t) {
                 clearFIRelatedResources(instanceId);
-                logger.warn("Execute error caused by ", t);
-                stateMachine.failed(t);
+                // deal with
+                if (t instanceof IllegalStateException && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
+                  logger.warn(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
+                  stateMachine.failed(new IoTDBException(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG, TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                } else {
+                  logger.warn("Execute error caused by ", t);
+                  stateMachine.failed(t);
+                }
                 return null;
               }
             });
