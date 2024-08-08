@@ -358,7 +358,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileResource resource = filesView.sortedAllSourceFilesInTask.get(i);
       File file = resource.getTsFile();
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(file.getName());
-      tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
       String newFileName =
           String.format(
               "%s-%s-%s-%s" + TsFileConstant.TSFILE_SUFFIX,
