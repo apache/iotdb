@@ -94,7 +94,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
-    return false;
+    return true;
   }
 
   @Override

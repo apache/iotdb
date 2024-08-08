@@ -43,11 +43,10 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.AsyncIface {
+public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.Iface {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusRPCServiceProcessor.class);
   private final PipeConsensus pipeConsensus;
@@ -61,28 +60,19 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
   }
 
   @Override
-  public void pipeConsensusTransfer(
-      TPipeConsensusTransferReq req,
-      AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {
-    try {
-      TPipeConsensusTransferResp resp = config.getConsensusPipeReceiver().receive(req);
-      // we need to call onComplete by hand
-      resultHandler.onComplete(resp);
-    } catch (Exception e) {
-      resultHandler.onError(e);
-    }
+  public TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req) {
+    return config.getConsensusPipeReceiver().receive(req);
   }
 
   // TODO: consider batch transfer
   @Override
-  public void pipeConsensusBatchTransfer(
-      TPipeConsensusBatchTransferReq req,
-      AsyncMethodCallback<TPipeConsensusBatchTransferResp> resultHandler)
-      throws TException {}
+  public TPipeConsensusBatchTransferResp pipeConsensusBatchTransfer(
+      TPipeConsensusBatchTransferReq req) throws TException {
+    return new TPipeConsensusBatchTransferResp();
+  }
 
   @Override
-  public void setActive(TSetActiveReq req, AsyncMethodCallback<TSetActiveResp> resultHandler)
-      throws TException {
+  public TSetActiveResp setActive(TSetActiveReq req) throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
@@ -92,18 +82,15 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TSetActiveResp(status));
-      return;
+      return new TSetActiveResp(status);
     }
     impl.setActive(req.isActive);
-    resultHandler.onComplete(new TSetActiveResp(RpcUtils.SUCCESS_STATUS));
+    return new TSetActiveResp(RpcUtils.SUCCESS_STATUS);
   }
 
   @Override
-  public void notifyPeerToCreateConsensusPipe(
-      TNotifyPeerToCreateConsensusPipeReq req,
-      AsyncMethodCallback<TNotifyPeerToCreateConsensusPipeResp> resultHandler)
-      throws TException {
+  public TNotifyPeerToCreateConsensusPipeResp notifyPeerToCreateConsensusPipe(
+      TNotifyPeerToCreateConsensusPipeReq req) throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
@@ -114,8 +101,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TNotifyPeerToCreateConsensusPipeResp(status));
-      return;
+      return new TNotifyPeerToCreateConsensusPipeResp(status);
     }
     TSStatus responseStatus;
     try {
@@ -130,14 +116,12 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       responseStatus.setMessage(e.getMessage());
       LOGGER.warn("Failed to create consensus pipe to target peer with req {}", req, e);
     }
-    resultHandler.onComplete(new TNotifyPeerToCreateConsensusPipeResp(responseStatus));
+    return new TNotifyPeerToCreateConsensusPipeResp(responseStatus);
   }
 
   @Override
-  public void notifyPeerToDropConsensusPipe(
-      TNotifyPeerToDropConsensusPipeReq req,
-      AsyncMethodCallback<TNotifyPeerToDropConsensusPipeResp> resultHandler)
-      throws TException {
+  public TNotifyPeerToDropConsensusPipeResp notifyPeerToDropConsensusPipe(
+      TNotifyPeerToDropConsensusPipeReq req) throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
@@ -148,8 +132,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TNotifyPeerToDropConsensusPipeResp(status));
-      return;
+      return new TNotifyPeerToDropConsensusPipeResp(status);
     }
     TSStatus responseStatus;
     try {
@@ -164,14 +147,12 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       responseStatus.setMessage(e.getMessage());
       LOGGER.warn("Failed to drop consensus pipe to target peer with req {}", req, e);
     }
-    resultHandler.onComplete(new TNotifyPeerToDropConsensusPipeResp(responseStatus));
+    return new TNotifyPeerToDropConsensusPipeResp(responseStatus);
   }
 
   @Override
-  public void checkConsensusPipeCompleted(
-      TCheckConsensusPipeCompletedReq req,
-      AsyncMethodCallback<TCheckConsensusPipeCompletedResp> resultHandler)
-      throws TException {
+  public TCheckConsensusPipeCompletedResp checkConsensusPipeCompleted(
+      TCheckConsensusPipeCompletedReq req) throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
@@ -183,8 +164,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TCheckConsensusPipeCompletedResp(status, true));
-      return;
+      return new TCheckConsensusPipeCompletedResp(status, true);
     }
     TSStatus responseStatus;
     boolean isCompleted;
@@ -203,7 +183,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
           true,
           e);
     }
-    resultHandler.onComplete(new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted));
+    return new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted);
   }
 
   public void handleExit() {}

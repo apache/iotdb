@@ -150,6 +150,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -1492,10 +1495,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropPipePlugin(String pipePluginName) {
+  public TSStatus dropPipePlugin(TDropPipePluginReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipePluginCoordinator().dropPipePlugin(pipePluginName)
+        ? pipeManager.getPipePluginCoordinator().dropPipePlugin(req)
         : status;
   }
 
@@ -2077,10 +2080,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropPipe(String pipeName) {
+  public TSStatus dropPipe(TDropPipeReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().dropPipe(pipeName)
+        ? pipeManager.getPipeTaskCoordinator().dropPipe(req)
         : status;
   }
 
@@ -2109,10 +2112,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropTopic(String topicName) {
+  public TSStatus dropTopic(TDropTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? subscriptionManager.getSubscriptionCoordinator().dropTopic(topicName)
+        ? subscriptionManager.getSubscriptionCoordinator().dropTopic(req)
         : status;
   }
 

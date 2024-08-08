@@ -90,10 +90,11 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   }
 
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) {
+  public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("TopicMetaSyncProcedure: executeFromValidate");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
+    return true;
   }
 
   @Override

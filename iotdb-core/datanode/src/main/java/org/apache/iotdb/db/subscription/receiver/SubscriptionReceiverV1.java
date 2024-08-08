@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -77,11 +78,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
+
+  private static final long POLL_PAYLOAD_MAX_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionPollPayloadMaxSize();
+
+  private static final double POLL_PAYLOAD_SIZE_THRESHOLD = POLL_PAYLOAD_MAX_SIZE * 0.75;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -358,23 +365,44 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       }
 
       // generate response
+      final AtomicLong totalSize = new AtomicLong();
       return PipeSubscribePollResp.toTPipeSubscribeResp(
           RpcUtils.SUCCESS_STATUS,
-          events.parallelStream()
+          events.stream()
               .map(
                   (event) -> {
+                    final SubscriptionCommitContext commitContext = event.getCommitContext();
                     final SubscriptionPollResponse response = event.getCurrentResponse();
                     if (Objects.isNull(response)) {
-                      throw new SubscriptionException("null response");
+                      LOGGER.warn(
+                          "Subscription: consumer {} poll null response for event {} with request: {}",
+                          consumerConfig,
+                          event,
+                          req.getRequest());
+                      // nack
+                      SubscriptionAgent.broker()
+                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                      return null;
                     }
-                    final SubscriptionCommitContext commitContext = response.getCommitContext();
+
                     try {
                       final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
+
+                      // payload size control
+                      final long size = byteBuffer.limit();
+                      if (totalSize.get() + size > POLL_PAYLOAD_SIZE_THRESHOLD) {
+                        throw new SubscriptionException(
+                            String.format(
+                                "payload size will exceed the threshold %s",
+                                POLL_PAYLOAD_SIZE_THRESHOLD));
+                      }
+                      totalSize.getAndAdd(size);
+
                       SubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(
                               SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                   commitContext.getConsumerGroupId(), commitContext.getTopicName()),
-                              byteBuffer.limit());
+                              size);
                       event.resetResponseByteBuffer(false);
                       LOGGER.info(
                           "Subscription: consumer {} poll {} successfully with request: {}",
@@ -391,10 +419,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           e);
                       // nack
                       SubscriptionAgent.broker()
-                          .commit(
-                              consumerConfig,
-                              Collections.singletonList(response.getCommitContext()),
-                              true);
+                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
                       return null;
                     }
                   })
