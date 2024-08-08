@@ -32,11 +32,11 @@ public class ExtendedPartialPath extends PartialPath {
     super(nodes);
   }
 
-  public List<Function<String, Boolean>> getMatchFunctions(final int index) {
+  public boolean match(final int index, final String value) {
     if (!matchFunctions.containsKey(index)) {
-      return new ArrayList<>();
+      return true;
     }
-    return matchFunctions.get(index);
+    return matchFunctions.get(index).stream().allMatch(function -> function.apply(value));
   }
 
   public void addMatchFunction(final int index, final Function<String, Boolean> matchFunction) {

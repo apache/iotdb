@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,7 +63,7 @@ public class InsertRows extends WrappedInsertStatement {
   @Override
   public List<Object[]> getDeviceIdList() {
     final InsertRowsStatement insertRowStatement = getInnerTreeStatement();
-    return insertRowStatement.getDeviceIdList();
+    return insertRowStatement.getDeviceIdListNoTableName();
   }
 
   @Override
@@ -119,7 +120,8 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<Object[]> getDeviceIdList() {
-        return Collections.singletonList(insertRowStatement.getTableDeviceID().getSegments());
+        Object[] idSegments = insertRowStatement.getTableDeviceID().getSegments();
+        return Collections.singletonList(Arrays.copyOfRange(idSegments, 1, idSegments.length));
       }
 
       @Override

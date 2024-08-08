@@ -72,7 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByConditionParameter;

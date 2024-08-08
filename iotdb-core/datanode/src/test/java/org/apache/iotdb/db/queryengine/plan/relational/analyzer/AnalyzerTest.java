@@ -83,6 +83,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -646,6 +647,36 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+
+    // 5. String literal comparisons
+    sql = "SELECT * FROM table1 WHERE tag1 <= 's1'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
+
+    // 6. String column comparisons
+    sql = "SELECT * FROM table1 WHERE tag1 != attr1";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
   }
 
   @Test
@@ -811,11 +842,12 @@ public class AnalyzerTest {
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof FilterNode);
+    assertTrue(getChildrenNode(rootNode, 1) instanceof TableScanNode);
     assertEquals(
         "(((\"time\" > 1) AND (\"s1\" > 1)) OR (\"s2\" < 7) OR ((\"time\" < 10) AND (\"s1\" > 4)))",
-        ((FilterNode) getChildrenNode(rootNode, 1)).getPredicate().toString());
-    assertTrue(getChildrenNode(rootNode, 2) instanceof TableScanNode);
+        Objects.requireNonNull(
+                ((TableScanNode) getChildrenNode(rootNode, 1)).getPushDownPredicate())
+            .toString());
   }
 
   @Test
@@ -860,8 +892,7 @@ public class AnalyzerTest {
         Object[] columns = StatementTestUtils.genColumns();
         for (int i = 0; i < schemaValidation.getDeviceIdList().size(); i++) {
           Object[] objects = schemaValidation.getDeviceIdList().get(i);
-          assertEquals(objects[0].toString(), StatementTestUtils.tableName());
-          assertEquals(objects[1].toString(), ((Binary[]) columns[0])[i].toString());
+          assertEquals(objects[0].toString(), ((Binary[]) columns[0])[i].toString());
         }
         List<String> attributeColumnNameList = schemaValidation.getAttributeColumnNameList();
         assertEquals(Collections.singletonList("attr1"), attributeColumnNameList);
