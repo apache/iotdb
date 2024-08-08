@@ -2552,7 +2552,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TMigrateRegionReq(
               migrateRegionStatement.getRegionId(),
               migrateRegionStatement.getFromId(),
-              migrateRegionStatement.getToId());
+              migrateRegionStatement.getToId(),
+              migrateRegionStatement.needDataVerification());
       final TSStatus status = configNodeClient.migrateRegion(tMigrateRegionReq);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(status.message, status.code));

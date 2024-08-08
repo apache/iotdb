@@ -47,14 +47,15 @@ public class SnapshotFragment {
       long totalSize,
       long startOffset,
       long fragmentSize,
-      ByteBuffer fileChunk) {
+      ByteBuffer fileChunk,
+      boolean needDataVerification) {
     this.snapshotId = snapshotId;
     this.filePath = filePath;
     this.totalSize = totalSize;
     this.startOffset = startOffset;
     this.fragmentSize = fragmentSize;
     this.fileChunk = fileChunk;
-    this.md5 = calculateMd5(fileChunk);
+    this.md5 = needDataVerification ? calculateMd5(fileChunk) : "";
   }
 
   public static String calculateMd5(ByteBuffer byteBuffer) {
@@ -78,7 +79,9 @@ public class SnapshotFragment {
     req.setFilePath(filePath);
     req.setChunkLength(fragmentSize);
     req.setFileChunk(fileChunk);
-    req.setFileChunkMD5(md5);
+    if (!md5.isEmpty()) {
+      req.setFileChunkMD5(md5);
+    }
     return req;
   }
 

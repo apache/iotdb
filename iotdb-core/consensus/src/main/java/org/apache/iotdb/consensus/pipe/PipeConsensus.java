@@ -313,7 +313,8 @@ public class PipeConsensus implements IConsensus {
   }
 
   @Override
-  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer, boolean needDataVerification)
+      throws ConsensusException {
     PipeConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));

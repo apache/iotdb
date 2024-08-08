@@ -290,7 +290,8 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer, boolean needDataVerification)
+      throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
@@ -309,7 +310,7 @@ public class IoTConsensus implements IConsensus {
 
       // step 3: transit snapshot
       logger.info("[IoTConsensus] start to transmit snapshot...");
-      impl.transmitSnapshot(peer);
+      impl.transmitSnapshot(peer, needDataVerification);
 
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");

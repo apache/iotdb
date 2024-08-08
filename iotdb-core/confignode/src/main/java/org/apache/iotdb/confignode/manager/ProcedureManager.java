@@ -702,7 +702,8 @@ public class ProcedureManager {
             originalDataNode,
             destDataNode,
             coordinatorForAddPeer,
-            coordinatorForRemovePeer));
+            coordinatorForRemovePeer,
+            migrateRegionReq.isNeedDataVerification()));
     LOGGER.info(
         "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
         regionGroupId,

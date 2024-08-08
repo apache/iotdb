@@ -44,11 +44,14 @@ public class MigrateRegionStatement extends Statement implements IConfigStatemen
 
   private final int toId;
 
-  public MigrateRegionStatement(int regionId, int fromId, int toId) {
+  private final boolean needVerification;
+
+  public MigrateRegionStatement(int regionId, int fromId, int toId, boolean needVerification) {
     super();
     this.regionId = regionId;
     this.fromId = fromId;
     this.toId = toId;
+    this.needVerification = needVerification;
   }
 
   public int getRegionId() {
@@ -61,6 +64,10 @@ public class MigrateRegionStatement extends Statement implements IConfigStatemen
 
   public int getToId() {
     return toId;
+  }
+
+  public boolean needDataVerification() {
+    return needVerification;
   }
 
   @Override

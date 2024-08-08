@@ -291,7 +291,8 @@ public class ConsensusManager {
           new Peer(
               DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
-              configNodeLocation.getConsensusEndPoint()));
+              configNodeLocation.getConsensusEndPoint()),
+          false);
     } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }

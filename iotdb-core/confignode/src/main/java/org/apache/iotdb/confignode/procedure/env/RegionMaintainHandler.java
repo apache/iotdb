@@ -264,12 +264,14 @@ public class RegionMaintainHandler {
       long procedureId,
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId,
-      TDataNodeLocation coordinator) {
+      TDataNodeLocation coordinator,
+      boolean needDataVerification) {
     TSStatus status;
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode, procedureId);
+    maintainPeerReq.setNeedDataVerification(needDataVerification);
     status =
         (TSStatus)
             SyncDataNodeClientPool.getInstance()
@@ -278,11 +280,12 @@ public class RegionMaintainHandler {
                     maintainPeerReq,
                     CnToDnRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, needDataVerification: {}, status: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator),
         getIdWithRpcEndpoint(destDataNode),
+        needDataVerification,
         status);
     return status;
   }

@@ -141,7 +141,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
                     removedDataNode,
                     destDataNode,
                     coordinatorForAddPeer,
-                    coordinatorForRemovePeer);
+                    coordinatorForRemovePeer,
+                    false);
             addChildProcedure(regionMigrateProcedure);
             LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
           } else {

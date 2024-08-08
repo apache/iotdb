@@ -253,7 +253,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     }
     TSStatus responseStatus;
     // check file chunk md5
-    if (!req.getFileChunkMD5().isEmpty()) {
+    if (req.isSetFileChunkMD5()) {
       String receiverMd5 = SnapshotFragment.calculateMd5(req.fileChunk);
       if (!receiverMd5.isEmpty()) {
         if (!receiverMd5.equals(req.getFileChunkMD5())) {

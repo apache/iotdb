@@ -4049,10 +4049,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
+    boolean needVerify = ctx.WITH() != null && ctx.VERIFICATION() != null;
     return new MigrateRegionStatement(
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
-        Integer.parseInt(ctx.toId.getText()));
+        Integer.parseInt(ctx.toId.getText()),
+        needVerify);
   }
 
   @Override

@@ -237,7 +237,7 @@ public class SimpleConsensusTest {
   public void addPeer() {
     try {
       consensusImpl.addRemotePeer(
-          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)), false);
       Assert.fail("Can't add peer in SimpleConsensus.");
     } catch (ConsensusException e) {
       // not handle

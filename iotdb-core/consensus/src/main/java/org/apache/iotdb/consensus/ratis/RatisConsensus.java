@@ -504,7 +504,8 @@ class RatisConsensus implements IConsensus {
    * change
    */
   @Override
-  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer, boolean needDataVerification)
+      throws ConsensusException {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
 
     RaftGroup group = getGroupInfo(raftGroupId);

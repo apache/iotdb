@@ -128,11 +128,11 @@ public class RatisConsensusTest {
 
     // add 2 members
     servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1), false);
     Assert.assertEquals(2, servers.get(1).getReplicationNum(group.getGroupId()));
 
     servers.get(2).createLocalPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2), false);
     Assert.assertEquals(3, servers.get(1).getReplicationNum(group.getGroupId()));
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
@@ -177,16 +177,16 @@ public class RatisConsensusTest {
   public void oneMemberGroupChange() throws Exception {
     Assert.assertThrows(
         ConsensusGroupNotExistException.class,
-        () -> servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0)));
+        () -> servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0), false));
 
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(0, 10, 10);
 
     servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1), false);
     Assert.assertThrows(
         PeerAlreadyInConsensusGroupException.class,
-        () -> servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1)));
+        () -> servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1), false));
 
     servers.get(0).transferLeader(group.getGroupId(), peers.get(1));
 
@@ -276,7 +276,7 @@ public class RatisConsensusTest {
     servers.get(0).triggerSnapshot(gid, false);
 
     servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
-    servers.get(0).addRemotePeer(gid, peers.get(1));
+    servers.get(0).addRemotePeer(gid, peers.get(1), false);
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(1, 10, 20);

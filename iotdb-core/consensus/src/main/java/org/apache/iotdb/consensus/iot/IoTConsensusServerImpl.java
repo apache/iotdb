@@ -296,7 +296,8 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  public void transmitSnapshot(Peer targetPeer, boolean needDataVerification)
+      throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
@@ -326,7 +327,7 @@ public class IoTConsensusServerImpl {
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (File file : snapshotPaths) {
         SnapshotFragmentReader reader =
-            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath(), needDataVerification);
         try {
           reader.hasNext();
           while (true) {
