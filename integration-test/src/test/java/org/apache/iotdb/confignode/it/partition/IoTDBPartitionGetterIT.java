@@ -259,7 +259,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTable.get(sg0).size());
       // Check "root.sg1"
       Assert.assertTrue(schemaPartitionTable.containsKey(sg1));
-      Assert.assertEquals(2, schemaPartitionTable.get(sg1).size());
+      Assert.assertEquals(1, schemaPartitionTable.get(sg1).size());
     }
   }
 

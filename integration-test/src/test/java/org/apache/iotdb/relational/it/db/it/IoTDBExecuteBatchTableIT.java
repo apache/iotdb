@@ -43,7 +43,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 @Ignore // 'Drop Table' and 'Alter table' is not supported
-public class IoTDBExecuteBatchIT {
+public class IoTDBExecuteBatchTableIT {
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();

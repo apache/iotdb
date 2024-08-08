@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -149,12 +151,24 @@ public class SubscriptionCoordinator {
     return status;
   }
 
-  public TSStatus dropTopic(String topicName) {
+  public TSStatus dropTopic(TDropTopicReq req) {
+    final String topicName = req.getTopicName();
+    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(topicName);
     final TSStatus status = configManager.getProcedureManager().dropTopic(topicName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop topic {}. Result status: {}.", topicName, status);
     }
-    return status;
+
+    // If the `IF EXISTS` condition is not set and the topic does not exist before the drop
+    // operation, return an error status indicating that the topic does not exist.
+    final boolean isIfExistedConditionSet =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    return isTopicExistedBeforeDrop || isIfExistedConditionSet
+        ? status
+        : RpcUtils.getStatus(
+            TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+            String.format(
+                "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
   }
 
   public TShowTopicResp showTopic(TShowTopicReq req) {

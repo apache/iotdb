@@ -56,7 +56,6 @@ public class IoTDBQueryDemoTableIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "CREATE TABLE wf(device STRING ID, status BOOLEAN MEASUREMENT, temperature FLOAT MEASUREMENT, hardware TEXT MEASUREMENT)",
-        "create timeseries wf.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into wf(time,device,status) values(1509465600000,'wt01',true)",
         "insert into wf(time,device,status) values(1509465660000,'wt01',true)",
         "insert into wf(time,device,status) values(1509465720000,'wt01',false)",
@@ -73,10 +72,10 @@ public class IoTDBQueryDemoTableIT {
         "insert into wf(time,device,temperature) values(1509465780000,'wt01',20.182663)",
         "insert into wf(time,device,temperature) values(1509465840000,'wt01',21.125198)",
         "insert into wf(time,device,temperature) values(1509465900000,'wt01',22.720892)",
-        "insert into wf(time,device,temperature) values(1509465960000,'wt01',20.71);",
-        "insert into wf(time,device,temperature) values(1509466020000,'wt01',21.451046);",
-        "insert into wf(time,device,temperature) values(1509466080000,'wt01',22.57987);",
-        "insert into wf(time,device,temperature) values(1509466140000,'wt01',20.98177);",
+        "insert into wf(time,device,temperature) values(1509465960000,'wt01',20.71)",
+        "insert into wf(time,device,temperature) values(1509466020000,'wt01',21.451046)",
+        "insert into wf(time,device,temperature) values(1509466080000,'wt01',22.57987)",
+        "insert into wf(time,device,temperature) values(1509466140000,'wt01',20.98177)",
         "insert into wf(time,device,hardware) values(1509465600000,'wt02','v2')",
         "insert into wf(time,device,hardware) values(1509465660000,'wt02','v2')",
         "insert into wf(time,device,hardware) values(1509465720000,'wt02','v1')",
@@ -137,7 +136,7 @@ public class IoTDBQueryDemoTableIT {
         new String[] {
           defaultFormatDataTime(1509466140000L) + ",wt03,false,20.98177,null,",
           defaultFormatDataTime(1509466140000L) + ",wt02,false,null,v1,",
-          defaultFormatDataTime(1509466140000L) + ",wt01,false,null,null,"
+          defaultFormatDataTime(1509466140000L) + ",wt01,false,20.98177,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -180,7 +179,7 @@ public class IoTDBQueryDemoTableIT {
     String[] retArray =
         new String[] {
           defaultFormatDataTime(1509466140000L) + ",wt02,false,null,v1,",
-          defaultFormatDataTime(1509466140000L) + ",wt01,false,null,null,"
+          defaultFormatDataTime(1509466140000L) + ",wt01,false,20.98177,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

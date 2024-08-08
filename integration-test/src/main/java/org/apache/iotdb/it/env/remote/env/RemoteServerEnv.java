@@ -72,7 +72,7 @@ public class RemoteServerEnv implements BaseEnv {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.init;");
-      statement.execute("DELETE DATABASE root;");
+      statement.execute("DELETE DATABASE root.init;");
     } catch (Exception e) {
       e.printStackTrace();
       throw new AssertionError(e.getMessage());

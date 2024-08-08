@@ -86,7 +86,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
@@ -131,6 +131,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       createPipeProcedure.executeFromValidateTask(env);
       createPipeProcedure.executeFromCalculateInfoForTask(env);
     }
+    return true;
   }
 
   // TODO: check periodically if the subscription is still valid but no working pipe?

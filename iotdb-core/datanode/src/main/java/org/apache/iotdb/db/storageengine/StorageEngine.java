@@ -187,6 +187,7 @@ public class StorageEngine implements IService {
   }
 
   public void asyncRecover() throws StartupException {
+    long startRecoverTime = System.currentTimeMillis();
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -210,6 +211,9 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               recoverRepairData();
               setAllSgReady(true);
+              LOGGER.info(
+                  "Storage Engine recover cost: {}s.",
+                  (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
