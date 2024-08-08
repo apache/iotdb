@@ -387,7 +387,7 @@ public class PartialPathTest {
 
   @Test
   public void testConcatArray() throws IllegalPathException {
-    PartialPath a = new MeasurementPath("root", "sg1");
+    PartialPath a = new PartialPath("root", "sg1");
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
@@ -799,14 +799,8 @@ public class PartialPathTest {
 
   @Test
   public void testAlignedToDeviceId() throws IllegalPathException {
-    PartialPath partialPath = new AlignedPath("root", Collections.singletonList("s1"));
+    PartialPath partialPath = new AlignedPath("root.a", Collections.singletonList("s1"));
     IDeviceID deviceID = partialPath.getIDeviceID();
-    assertEquals(1, deviceID.segmentNum());
-    assertEquals("root", deviceID.segment(0));
-    assertEquals("root", deviceID.getTableName());
-
-    partialPath = new AlignedPath("root.a", Collections.singletonList("s1"));
-    deviceID = partialPath.getIDeviceID();
     assertEquals(2, deviceID.segmentNum());
     assertEquals("root", deviceID.segment(0));
     assertEquals("a", deviceID.segment(1));
@@ -837,14 +831,8 @@ public class PartialPathTest {
 
   @Test
   public void testMeasurementPathToDeviceId() throws IllegalPathException {
-    PartialPath partialPath = new MeasurementPath("root.s1");
+    PartialPath partialPath = new MeasurementPath("root.a.s1");
     IDeviceID deviceID = partialPath.getIDeviceID();
-    assertEquals(1, deviceID.segmentNum());
-    assertEquals("root", deviceID.segment(0));
-    assertEquals("root", deviceID.getTableName());
-
-    partialPath = new MeasurementPath("root.a.s1");
-    deviceID = partialPath.getIDeviceID();
     assertEquals(2, deviceID.segmentNum());
     assertEquals("root", deviceID.segment(0));
     assertEquals("a", deviceID.segment(1));

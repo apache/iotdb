@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -289,8 +288,7 @@ public class AnalyzeTest {
       expectedAnalysis.setGlobalTimePredicate(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
+              new TimeSeriesOperand(new PartialPath(DEVICE, false), TSDataType.TEXT),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("status")),
               new AdditionExpression(
@@ -353,8 +351,7 @@ public class AnalyzeTest {
           ImmutableMap.of(DEVICE1, Arrays.asList(1, 2, 3), DEVICE2, Arrays.asList(1, 2, 3)));
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
+              new TimeSeriesOperand(new PartialPath(DEVICE, false), TSDataType.TEXT),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("status")),
               new AdditionExpression(
@@ -390,8 +387,7 @@ public class AnalyzeTest {
           and(gt(time(), longValue(100)), groupByTime(0, 1000, 10, 10)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
+              new TimeSeriesOperand(new PartialPath(DEVICE, false), TSDataType.TEXT),
               new AdditionExpression(
                   new FunctionExpression(
                       "count",
@@ -526,8 +522,7 @@ public class AnalyzeTest {
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
+              new TimeSeriesOperand(new PartialPath(DEVICE, false), TSDataType.TEXT),
               new FunctionExpression(
                   "sum",
                   new LinkedHashMap<>(),

@@ -39,9 +39,9 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -685,30 +685,27 @@ public class ConfigManager implements IManager {
   }
 
   private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
-    //    // The path contains `**`
-    //    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-    //      return new ArrayList<>();
-    //    }
-    //    // with database = root.sg, path = root.*.d1
-    //    // convert path = root.sg.d1
-    //    List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    //    if (innerPathList.isEmpty()) {
-    //      return new ArrayList<>();
-    //    }
-    //    PartialPath innerPath = innerPathList.get(0);
-    //    // root.sg1.*.d1
-    //    // root.sg1.a1.*
-    //    // The innerPath contains `*` and the only `*` is not in last level
-    //    if (innerPath.toString().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-    //      return new ArrayList<>();
-    //    }
-    //    return Collections.singletonList(
-    //        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID()));
-
-    // the previous code has an issue, it cannot be known that whether "path" is a full path,
-    // so it is meaningless to call getIDeviceID()
-    // TODO: how to determine and filter
-    return Collections.emptyList();
+    // The path contains `**`
+    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return new ArrayList<>();
+    }
+    // with database = root.sg, path = root.*.d1
+    // convert path = root.sg.d1
+    List<PartialPath> innerPathList = path.alterPrefixPath(database);
+    if (innerPathList.isEmpty()) {
+      return new ArrayList<>();
+    }
+    String[] devicePath =
+        Arrays.copyOf(innerPathList.get(0).getNodes(), innerPathList.get(0).getNodeLength() - 1);
+    // root.sg1.*.d1
+    for (String node : devicePath) {
+      if (node.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        return Collections.emptyList();
+      }
+    }
+    return Collections.singletonList(
+        getPartitionManager()
+            .getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath)));
   }
 
   @Override
@@ -723,7 +720,7 @@ public class ConfigManager implements IManager {
 
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    List<MeasurementPath> relatedPaths = patternTree.getAllPathPatterns(true);
+    List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (String database : allDatabases) {
