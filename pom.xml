@@ -114,7 +114,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.11</milo.version>
+        <milo.version>0.6.10</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
@@ -1390,16 +1390,6 @@
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
     </issueManagement>
-    <!--
-    Needed for fetching lt_downsampling_java8 (which is used by library-udf)
-    (Adding this in the root or when building other parts, this transitive dependency can be fetched)
-  -->
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
         <site>
@@ -1509,6 +1499,25 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <!--
+                    Add argLine for Java 9 and above, due to
+                    [JEP 260: Encapsulate Most Internal APIs],
+                    [JEP 396: Strongly Encapsulate JDK Internals by Default],
+                    [JEP 403: Strongly Encapsulate JDK Internals]
+                -->
+                <argLine><![CDATA[
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.base/java.nio=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+                      ]]></argLine>
             </properties>
         </profile>
         <!-- Current version of spotless cannot support JDK11 below -->
@@ -1522,32 +1531,6 @@
                 <spotless.version>2.27.1</spotless.version>
                 <!-- To avoid format conflicts -->
                 <spotless.skip>true</spotless.skip>
-            </properties>
-        </profile>
-        <!--
-      Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
-      (https://openjdk.java.net/jeps/396)
-    -->
-        <profile>
-            <id>.java-16</id>
-            <activation>
-                <jdk>16</jdk>
-            </activation>
-            <properties>
-                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
-            </properties>
-        </profile>
-        <!--
-      Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
-      (https://openjdk.java.net/jeps/396)
-    -->
-        <profile>
-            <id>.java-17-and-above</id>
-            <activation>
-                <jdk>[17,)</jdk>
-            </activation>
-            <properties>
-                <argLine>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
             </properties>
         </profile>
         <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->

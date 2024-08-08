@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,6 +35,8 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 public class InsertTabletNodeSerdeTest {
@@ -88,6 +91,38 @@ public class InsertTabletNodeSerdeTest {
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
         });
     Assert.assertEquals(insertTabletNode, tmpNode);
+  }
+
+  @Test
+  public void testInitTabletValuesWithAllTypes()
+      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("1"));
+    Method initTabletValuesMethod =
+        InsertTabletNode.class.getDeclaredMethod(
+            "initTabletValues", int.class, int.class, TSDataType[].class);
+    initTabletValuesMethod.setAccessible(true);
+
+    TSDataType[] dataTypes = {
+      TSDataType.TEXT, TSDataType.FLOAT, TSDataType.INT32,
+      TSDataType.TIMESTAMP, TSDataType.DOUBLE, TSDataType.BOOLEAN
+    };
+
+    int columnSize = dataTypes.length;
+    int rowSize = 5;
+
+    Object[] values =
+        (Object[]) initTabletValuesMethod.invoke(insertTabletNode, columnSize, rowSize, dataTypes);
+
+    // Assert the result
+    Assert.assertEquals(columnSize, values.length);
+
+    // Validate each element in the values array
+    Assert.assertEquals(Binary[].class, values[0].getClass());
+    Assert.assertEquals(float[].class, values[1].getClass());
+    Assert.assertEquals(int[].class, values[2].getClass());
+    Assert.assertEquals(long[].class, values[3].getClass());
+    Assert.assertEquals(double[].class, values[4].getClass());
+    Assert.assertEquals(boolean[].class, values[5].getClass());
   }
 
   private InsertTabletNode getInsertTabletNode() throws IllegalPathException {

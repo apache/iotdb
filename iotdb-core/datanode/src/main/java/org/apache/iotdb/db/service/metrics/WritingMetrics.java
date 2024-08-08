@@ -174,10 +174,24 @@ public class WritingMetrics implements IMetricSet {
   // region wal overview metrics
   public static final String WAL_NODES_NUM = "wal_nodes_num";
   public static final String USED_RATIO = "used_ratio";
+  public static final String SERIALIZED_WAL_BUFFER_SIZE_BYTE = "serialized_wal_buffer_size";
+  public static final String WROTE_WAL_BUFFER_SIZE_BYTE = "wrote_wal_buffer_size";
+  public static final String WAL_COMPRESS_COST_NS = "wal_compress_cost";
+  public static final String WAL_UNCOMPRESS_COST_NS = "wal_uncompress_cost";
+  public static final String READ_WAL_BUFFER_SIZE_BYTE = "read_wal_buffer_size";
+  public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
+  public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram serializedWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram wroteWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walCompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walUncompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram readWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram readWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram writeWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -196,6 +210,49 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
+
+    serializedWALBufferSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            SERIALIZED_WAL_BUFFER_SIZE_BYTE);
+    wroteWALBufferSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WROTE_WAL_BUFFER_SIZE_BYTE);
+    walCompressCostHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_COMPRESS_COST_NS);
+    walUncompressCostHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_UNCOMPRESS_COST_NS);
+    readWALBufferSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            READ_WAL_BUFFER_SIZE_BYTE);
+    readWALBufferCostHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            READ_WAL_BUFFER_COST_NS);
+    writeWALBufferCostHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WRITE_WAL_BUFFER_COST_NS);
   }
 
   private void unbindWALMetrics(AbstractMetricService metricService) {
@@ -203,7 +260,16 @@ public class WritingMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.WAL_NODE_NUM.toString(), Tag.NAME.toString(), WAL_NODES_NUM);
     usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-    Arrays.asList(USED_RATIO, ENTRIES_COUNT)
+    Arrays.asList(
+            USED_RATIO,
+            ENTRIES_COUNT,
+            SERIALIZED_WAL_BUFFER_SIZE_BYTE,
+            WROTE_WAL_BUFFER_SIZE_BYTE,
+            WAL_COMPRESS_COST_NS,
+            WAL_UNCOMPRESS_COST_NS,
+            READ_WAL_BUFFER_SIZE_BYTE,
+            READ_WAL_BUFFER_COST_NS,
+            WRITE_WAL_BUFFER_COST_NS)
         .forEach(
             name ->
                 metricService.remove(
@@ -215,7 +281,6 @@ public class WritingMetrics implements IMetricSet {
   // region wal cost metrics
   public static final String MAKE_CHECKPOINT = "make_checkpoint";
   public static final String SERIALIZE_WAL_ENTRY = "serialize_wal_entry";
-  public static final String SERIALIZE_ONE_WAL_INFO_ENTRY = "serialize_one_wal_info_entry";
   public static final String SERIALIZE_WAL_ENTRY_TOTAL = "serialize_wal_entry_total";
   public static final String SYNC_WAL_BUFFER = "sync_wal_buffer";
   public static final String SYNC = "sync";
@@ -805,6 +870,25 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordSerializeWALEntryTotalCost(long costTimeInNanos) {
     serializeWalEntryTotalTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordCompressWALBufferCost(long costTimeInNanos) {
+    walCompressCostHistogram.update(costTimeInNanos);
+  }
+
+  public void recordWroteWALBuffer(int serializedSize, int wroteSize, long wroteTimeCostInNanos) {
+    serializedWALBufferSizeHistogram.update(serializedSize);
+    wroteWALBufferSizeHistogram.update(wroteSize);
+    writeWALBufferCostHistogram.update(wroteTimeCostInNanos);
+  }
+
+  public void recordWALUncompressCost(long costTimeInNanos) {
+    walUncompressCostHistogram.update(costTimeInNanos);
+  }
+
+  public void recordWALRead(long size, long costTimeInNanos) {
+    readWALBufferSizeHistogram.update(size);
+    readWALBufferCostHistogram.update(costTimeInNanos);
   }
 
   public void recordSyncWALBufferCost(long costTimeInNanos, boolean forceFlag) {
