@@ -85,7 +85,14 @@ public class RestApiServiceImpl extends RestApiService {
 
       Statement statement =
           StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
-
+      if (statement == null) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
+                    .message("This operation type is not supported"))
+            .build();
+      }
       if (!ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
             .entity(
@@ -128,6 +135,15 @@ public class RestApiServiceImpl extends RestApiService {
 
       Statement statement =
           StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+
+      if (statement == null) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
+                    .message("This operation type is not supported"))
+            .build();
+      }
 
       if (ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
