@@ -85,17 +85,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnT
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace3ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundFunctionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.*;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -119,6 +109,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.utils.RegexUtils.compileRegex;
@@ -600,8 +591,23 @@ public class ColumnTransformerBuilder
               this.process(children.get(2), context));
         }
       }
+    } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new LengthColumnTransformer(INT32, first);
+      }
+      else {
+        throw new UnsupportedOperationException("Unsupported length function with multiple arguments");
+      }
+    } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new AbsColumnTransformer(first.getType(), first);
+      }
+      else {
+        throw new UnsupportedOperationException("Unsupported abs function with multiple arguments");
+      }
     }
-
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
 

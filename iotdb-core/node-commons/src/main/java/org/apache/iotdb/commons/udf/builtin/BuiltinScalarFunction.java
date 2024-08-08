@@ -32,6 +32,8 @@ public enum BuiltinScalarFunction {
   ROUND("round"),
   REPLACE("replace"),
   SUBSTRING("substring"),
+  LENGTH("length"),
+  ABS("abs"),
   ;
 
   private final String functionName;

@@ -188,6 +188,24 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
       return argumentTypes.get(0);
+    } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+              && isCharType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+                "Scalar function"
+                        + functionName.toLowerCase(Locale.ENGLISH)
+                        + " only supports text or string data type.");
+      }
+      return INT32;
+    } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+              && isNumericType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+                "Scalar function"
+                        + functionName.toLowerCase(Locale.ENGLISH)
+                        + " only supports text or string data type.");
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
