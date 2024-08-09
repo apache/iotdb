@@ -82,7 +82,7 @@ public abstract class InsertBaseStatement extends Statement {
   // region params used by analyzing logical views.
 
   /** This param records the logical view schema appeared in this statement. */
-  List<LogicalViewSchema> logicalViewSchemaList;
+  protected List<LogicalViewSchema> logicalViewSchemaList;
 
   /**
    * This param records the index of the location where the source of this view should be placed.
@@ -90,13 +90,13 @@ public abstract class InsertBaseStatement extends Statement {
    * <p>For example, indexListOfLogicalViewPaths[alpha] = beta means source of
    * logicalViewSchemaList[alpha] should be filled into measurementSchemas[beta].
    */
-  List<Integer> indexOfSourcePathsOfLogicalViews;
+  protected List<Integer> indexOfSourcePathsOfLogicalViews;
 
   /** it is the end of last range, the beginning of current range. */
-  int recordedBeginOfLogicalViewSchemaList = 0;
+  protected int recordedBeginOfLogicalViewSchemaList = 0;
 
   /** it is the end of current range. */
-  int recordedEndOfLogicalViewSchemaList = 0;
+  protected int recordedEndOfLogicalViewSchemaList = 0;
 
   @TableModel private String databaseName;
 
