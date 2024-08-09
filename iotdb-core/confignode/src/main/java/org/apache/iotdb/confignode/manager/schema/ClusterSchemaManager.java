@@ -105,7 +105,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
