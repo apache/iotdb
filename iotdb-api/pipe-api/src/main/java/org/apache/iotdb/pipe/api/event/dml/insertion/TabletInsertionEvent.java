@@ -45,4 +45,14 @@ public interface TabletInsertionEvent extends Event {
    *     contains the results collected by the {@link RowCollector}
    */
   Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer);
+
+  /**
+   * The consumer processes the row of data with the largest timestamp and collects the results by
+   * {@link RowCollector}.
+   *
+   * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
+   *     contains the results collected by the {@link RowCollector}
+   */
+  Iterable<TabletInsertionEvent> processMaxTimestampRowByRow(
+      BiConsumer<Row, RowCollector> consumer);
 }

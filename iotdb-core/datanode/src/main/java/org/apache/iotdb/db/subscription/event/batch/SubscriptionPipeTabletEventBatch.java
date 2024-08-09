@@ -21,8 +21,11 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeLastPointTabletEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
+import org.apache.iotdb.db.pipe.processor.downsampling.lastpoint.LastPointFilter;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -33,11 +36,17 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -145,6 +154,19 @@ public class SubscriptionPipeTabletEventBatch {
       if (firstEventProcessingTime == Long.MIN_VALUE) {
         firstEventProcessingTime = System.currentTimeMillis();
       }
+    } else if (event instanceof PipeLastPointTabletEvent) {
+      final PipeLastPointTabletEvent lastPointTabletEvent = (PipeLastPointTabletEvent) event;
+
+      final Tablet tablet = lastPointTabletEvent.getTablet();
+      if (Objects.isNull(tablet)) {
+        return;
+      }
+      if (lastPointFilter(tablet, lastPointTabletEvent.getPartialPathToLatestTimeCache())) {
+        return;
+      }
+      tablets.add(tablet);
+      // tablet size in bytes
+      totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
     }
   }
 
@@ -166,6 +188,64 @@ public class SubscriptionPipeTabletEventBatch {
         this,
         tabletInsertionEvent);
     return Collections.emptyList();
+  }
+
+  /////////////////////////////// filter ///////////////////////////////
+
+  private boolean lastPointFilter(
+      Tablet tablet, PartialPathLastObjectCache<LastPointFilter<?>> cache) {
+    String deviceIdentifier = tablet.deviceId;
+    Object[] dataValues = tablet.values;
+    int fieldCount = dataValues.length;
+    BitMap columnFilterMap = new BitMap(fieldCount);
+
+    for (int i = 0; i < fieldCount; i++) {
+      BitMap fieldBitMap = tablet.bitMaps[fieldCount];
+
+      if (fieldBitMap.isMarked(0)) {
+        columnFilterMap.mark(i);
+        continue;
+      }
+
+      MeasurementSchema schema = tablet.getSchemas().get(i);
+      String measurementPath =
+          deviceIdentifier + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId();
+
+      LastPointFilter filter = cache.getPartialPathLastObject(measurementPath);
+      if (filter != null
+          && !filter.filterAndMarkAsConsumed(
+              tablet.timestamps[i], getObject(dataValues[i], schema.getType()))) {
+        columnFilterMap.mark(i);
+        fieldBitMap.mark(0);
+      }
+    }
+
+    return columnFilterMap.isAllMarked();
+  }
+
+  public Object getObject(final Object value, final TSDataType dataType) {
+    switch (dataType) {
+      case INT32:
+        return ((int[]) value)[0];
+      case DATE:
+        return ((LocalDate[]) value)[0];
+      case INT64:
+      case TIMESTAMP:
+        return ((long[]) value)[0];
+      case FLOAT:
+        return ((float[]) value)[0];
+      case DOUBLE:
+        return ((double[]) value)[0];
+      case BOOLEAN:
+        return ((boolean[]) value)[0];
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return ((Binary[]) value)[0];
+      default:
+        throw new UnsupportedOperationException(
+            String.format("unsupported data type %s", dataType));
+    }
   }
 
   /////////////////////////////// stringify ///////////////////////////////
