@@ -28,6 +28,7 @@ import java.util.Objects;
 
 public class FileInitPayload implements SubscriptionPollPayload {
 
+  /** The name of the file to be initialized. */
   private transient String fileName;
 
   public String getFileName() {

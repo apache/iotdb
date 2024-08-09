@@ -652,6 +652,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionReadTabletBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_read_tablet_buffer_size",
+                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
     config.setSubscriptionTsFileDeduplicationWindowSeconds(
         Long.parseLong(
             properties.getProperty(

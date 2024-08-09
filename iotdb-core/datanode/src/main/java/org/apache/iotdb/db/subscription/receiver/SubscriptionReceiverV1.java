@@ -42,6 +42,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
@@ -353,6 +354,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 handlePipeSubscribePollTsFileInternal(
                     consumerConfig, (PollFilePayload) request.getPayload());
             break;
+          case POLL_TABLETS:
+            events =
+                handlePipeSubscribePollTabletsInternal(
+                    consumerConfig, (PollTabletsPayload) request.getPayload());
+            break;
           default:
             events = null;
             break;
@@ -443,15 +449,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-    Set<String> topicNames = messagePayload.getTopicNames();
+    final Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
-      // poll all subscribed topics
-      topicNames = subscribedTopicNames;
-    } else {
-      // filter unsubscribed topics
-      topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
+      return Collections.emptyList();
     }
 
+    // filter unsubscribed topics
+    topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
     return SubscriptionAgent.broker().poll(consumerConfig, topicNames);
   }
 
@@ -459,10 +463,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
-            consumerConfig,
-            messagePayload.getTopicName(),
-            messagePayload.getFileName(),
-            messagePayload.getWritingOffset());
+            consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
+  }
+
+  private List<SubscriptionEvent> handlePipeSubscribePollTabletsInternal(
+      final ConsumerConfig consumerConfig, final PollTabletsPayload messagePayload) {
+    return SubscriptionAgent.broker()
+        .pollTablets(consumerConfig, messagePayload.getCommitContext(), messagePayload.getOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
@@ -45,8 +46,10 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
+import org.apache.iotdb.session.subscription.util.TopicIterator;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +105,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  private final TopicIterator topicIterator;
+
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -155,6 +160,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    // TODO: config
+    this.topicIterator = new TopicIterator(2);
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -403,18 +411,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   protected List<SubscriptionMessage> poll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
-    // check topic names
-    if (subscribedTopics.isEmpty()) {
-      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+    if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
-
-    topicNames.stream()
-        .filter(topicName -> !subscribedTopics.containsKey(topicName))
-        .forEach(
-            topicName ->
-                LOGGER.warn(
-                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
 
     final List<SubscriptionMessage> messages = new ArrayList<>();
     final SubscriptionPollTimer timer =
@@ -423,7 +422,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     do {
       try {
         // poll tablets or file
-        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
+        for (final SubscriptionPollResponse pollResponse :
+            pollInternal(topicIterator.nextBatch(topicNames))) {
           final short responseType = pollResponse.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
             LOGGER.warn("unexpected response type: {}", responseType);
@@ -431,10 +431,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           }
           switch (SubscriptionPollResponseType.valueOf(responseType)) {
             case TABLETS:
-              messages.add(
-                  new SubscriptionMessage(
-                      pollResponse.getCommitContext(),
-                      ((TabletsPayload) pollResponse.getPayload()).getTablets()));
+              pollTablets(pollResponse).ifPresent(messages::add);
               break;
             case FILE_INIT:
               pollFile(
@@ -501,8 +498,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       LockSupport.parkNanos(SLEEP_NS); // wait some time
     } while (timer.notExpired());
 
-    LOGGER.info(
-        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
     return messages;
   }
 
@@ -513,7 +508,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, file, fileWriter));
+      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter));
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -525,13 +520,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private SubscriptionMessage pollFileInternal(
       final SubscriptionCommitContext commitContext,
+      final String rawFileName,
       final File file,
       final RandomAccessFile fileWriter)
       throws IOException, SubscriptionException {
-    final int dataNodeId = commitContext.getDataNodeId();
-    final String topicName = commitContext.getTopicName();
-    final String fileName = file.getName();
-
     LOGGER.info(
         "{} start to poll file {} with commit context {}",
         this,
@@ -541,7 +533,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(dataNodeId, topicName, fileName, writingOffset);
+          pollFileInternal(commitContext, writingOffset);
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -552,7 +544,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
-      // Only one SubscriptionEvent polled currently...
+      // only one SubscriptionEvent polled currently
       final SubscriptionPollResponse response = responses.get(0);
       final SubscriptionPollPayload payload = response.getPayload();
       final short responseType = response.getResponseType();
@@ -578,11 +570,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FilePiecePayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FilePiecePayload) payload).getFileName(), this);
+                      rawFileName, ((FilePiecePayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -625,11 +617,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FileSealPayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FileSealPayload) payload).getFileName(), this);
+                      rawFileName, ((FileSealPayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -686,6 +678,95 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  private Optional<SubscriptionMessage> pollTablets(
+      final SubscriptionPollResponse initialResponse) {
+    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
+
+    int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
+    while (true) {
+      if (nextOffset < 0) {
+        if (!Objects.equals(tablets.size(), -nextOffset)) {
+          final String errorMessage =
+              String.format(
+                  "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
+                  tablets.size(), -nextOffset, this);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
+        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+      }
+
+      final List<SubscriptionPollResponse> responses =
+          pollTabletsInternal(commitContext, nextOffset);
+
+      // It's agreed that the server will always return at least one response, even in case of
+      // failure.
+      if (responses.isEmpty()) {
+        final String errorMessage =
+            String.format("SubscriptionConsumer %s poll empty response", this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      // only one SubscriptionEvent polled currently
+      final SubscriptionPollResponse response = responses.get(0);
+      final SubscriptionPollPayload payload = response.getPayload();
+      final short responseType = response.getResponseType();
+      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      switch (SubscriptionPollResponseType.valueOf(responseType)) {
+        case TABLETS:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext = response.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // update tablets
+            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+
+            // update offset
+            nextOffset = ((TabletsPayload) payload).getNextOffset();
+            break;
+          }
+        case ERROR:
+          {
+            // no need to check commit context
+
+            final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
+            final boolean critical = ((ErrorPayload) payload).isCritical();
+            LOGGER.warn(
+                "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
+                this,
+                commitContext,
+                errorMessage,
+                critical);
+            if (critical) {
+              throw new SubscriptionRuntimeCriticalException(errorMessage);
+            } else {
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+          }
+        default:
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+    }
+  }
+
   private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
       throws SubscriptionException {
     providers.acquireReadLock();
@@ -714,8 +795,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
-      final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
+      final SubscriptionCommitContext commitContext, final long writingOffset)
       throws SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
@@ -733,7 +815,38 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         return provider.poll(
             new SubscriptionPollRequest(
                 SubscriptionPollRequestType.POLL_FILE.getType(),
-                new PollFilePayload(topicName, fileName, writingOffset),
+                new PollFilePayload(commitContext, writingOffset),
+                0L));
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
+      }
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private List<SubscriptionPollResponse> pollTabletsInternal(
+      final SubscriptionCommitContext commitContext, final int offset)
+      throws SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
+    providers.acquireReadLock();
+    try {
+      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
+        throw new SubscriptionConnectionException(
+            String.format(
+                "something unexpected happened when %s poll tablets from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, dataNodeId));
+      }
+      // ignore SubscriptionConnectionException to improve poll auto retry
+      try {
+        return provider.poll(
+            new SubscriptionPollRequest(
+                SubscriptionPollRequestType.POLL_TABLETS.getType(),
+                new PollTabletsPayload(commitContext, offset),
                 0L));
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
@@ -1069,7 +1182,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    final Map<String, String> result = new HashMap<>(5);
+    final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
@@ -1079,7 +1192,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   protected Map<String, String> allReportMessage() {
-    final Map<String, String> result = new HashMap<>(10);
+    final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
     result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));

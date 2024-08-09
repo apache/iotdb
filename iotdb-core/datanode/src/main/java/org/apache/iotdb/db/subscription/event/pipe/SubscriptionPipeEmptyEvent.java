@@ -32,7 +32,7 @@ public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
   public void ack() {}
 
   @Override
-  public void cleanup() {}
+  public void cleanUp() {}
 
   @Override
   public String toString() {

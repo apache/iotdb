@@ -26,6 +26,7 @@ import java.util.Map;
 public enum SubscriptionPollRequestType {
   POLL((short) 0),
   POLL_FILE((short) 1),
+  POLL_TABLETS((short) 2),
   ;
 
   private final short type;

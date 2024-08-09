@@ -28,8 +28,10 @@ import java.util.Objects;
 
 public class ErrorPayload implements SubscriptionPollPayload {
 
+  /** The error message describing the issue. */
   private transient String errorMessage;
 
+  /** Indicates whether the error is critical. */
   private transient boolean critical;
 
   public String getErrorMessage() {

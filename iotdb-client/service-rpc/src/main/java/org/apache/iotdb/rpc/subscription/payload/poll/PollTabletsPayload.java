@@ -26,39 +26,39 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PollFilePayload implements SubscriptionPollPayload {
+public class PollTabletsPayload implements SubscriptionPollPayload {
 
   /** The commit context associated with the {@link SubscriptionPollResponse}. */
   private transient SubscriptionCommitContext commitContext;
 
-  /** The offset from which the file content should be read. */
-  private transient long writingOffset;
+  /** The index for the next batch of tablets. */
+  private transient int offset;
 
   public SubscriptionCommitContext getCommitContext() {
     return commitContext;
   }
 
-  public long getWritingOffset() {
-    return writingOffset;
+  public int getOffset() {
+    return offset;
   }
 
-  public PollFilePayload() {}
+  public PollTabletsPayload() {}
 
-  public PollFilePayload(final SubscriptionCommitContext commitContext, final long writingOffset) {
+  public PollTabletsPayload(final SubscriptionCommitContext commitContext, final int offset) {
     this.commitContext = commitContext;
-    this.writingOffset = writingOffset;
+    this.offset = offset;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     commitContext.serialize(stream);
-    ReadWriteIOUtils.write(writingOffset, stream);
+    ReadWriteIOUtils.write(offset, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     commitContext = SubscriptionCommitContext.deserialize(buffer);
-    writingOffset = ReadWriteIOUtils.readLong(buffer);
+    offset = ReadWriteIOUtils.readInt(buffer);
     return this;
   }
 
@@ -72,22 +72,18 @@ public class PollFilePayload implements SubscriptionPollPayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PollFilePayload that = (PollFilePayload) obj;
+    final PollTabletsPayload that = (PollTabletsPayload) obj;
     return Objects.equals(this.commitContext, that.commitContext)
-        && Objects.equals(this.writingOffset, that.writingOffset);
+        && Objects.equals(this.offset, that.offset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContext, writingOffset);
+    return Objects.hash(commitContext, offset);
   }
 
   @Override
   public String toString() {
-    return "PollFilePayload{commitContext="
-        + commitContext
-        + ", writingOffset="
-        + writingOffset
-        + "}";
+    return "PollTabletsPayload{commitContext=" + commitContext + ", offset=" + offset + "}";
   }
 }

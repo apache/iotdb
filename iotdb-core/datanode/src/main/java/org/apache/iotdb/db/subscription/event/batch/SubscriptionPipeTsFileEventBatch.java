@@ -30,61 +30,68 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SubscriptionPipeTsFileEventBatch {
-
-  private final SubscriptionPrefetchingTsFileQueue prefetchingQueue;
+public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
-
-  private boolean isSealed = false;
 
   public SubscriptionPipeTsFileEventBatch(
       final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
       final int maxDelayInMs,
-      final long requestMaxBatchSizeInBytes) {
-    this.prefetchingQueue = prefetchingQueue;
-    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
+      final long maxBatchSizeInBytes) {
+    super(prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 
-  public synchronized List<SubscriptionEvent> onEvent(@Nullable final TabletInsertionEvent event)
-      throws Exception {
-    if (isSealed) {
-      return Collections.emptyList();
-    }
-    if (Objects.nonNull(event)) {
-      batch.onEvent(event);
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(
-                SubscriptionPipeTsFileEventBatch.class.getName(),
-                false); // missing releaseLastEvent decreases reference count
-      }
-    }
+  @Override
+  public synchronized List<SubscriptionEvent> onEvent() throws Exception {
     if (batch.shouldEmit()) {
-      final List<SubscriptionEvent> events = generateSubscriptionEvents();
-      isSealed = true;
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
       return events;
     }
     return Collections.emptyList();
+  }
+
+  @Override
+  public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event)
+      throws Exception {
+    if (event instanceof TabletInsertionEvent) {
+      batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      event.decreaseReferenceCount(
+          SubscriptionPipeTsFileEventBatch.class.getName(),
+          false); // missing releaseLastEvent decreases reference count
+    }
+    if (batch.shouldEmit()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
+      return events;
+    }
+    return Collections.emptyList();
+  }
+
+  @Override
+  public synchronized void cleanUp() {
+    // close batch, it includes clearing the reference count of events
+    batch.close();
   }
 
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  public synchronized void cleanup() {
-    // close batch, it includes clearing the reference count of events
-    batch.close();
-  }
+  /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
     final List<SubscriptionEvent> events = new ArrayList<>();
@@ -106,7 +113,15 @@ public class SubscriptionPipeTsFileEventBatch {
 
   /////////////////////////////// stringify ///////////////////////////////
 
+  @Override
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + ", isSealed=" + isSealed + "}";
+    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("batch", batch.toString());
+    return coreReportMessage;
   }
 }

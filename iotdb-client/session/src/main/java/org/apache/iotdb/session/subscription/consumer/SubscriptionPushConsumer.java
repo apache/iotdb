@@ -173,6 +173,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       try {
         final List<SubscriptionMessage> messages =
             poll(subscribedTopics.keySet(), autoPollTimeoutMs);
+        if (messages.isEmpty()) {
+          LOGGER.info(
+              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
+              this,
+              subscribedTopics.keySet(),
+              autoPollTimeoutMs);
+          return;
+        }
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
@@ -184,7 +192,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           final ConsumeResult consumeResult;
           try {
             consumeResult = consumeListener.onReceive(message);
-            if (Objects.equals(consumeResult, ConsumeResult.SUCCESS)) {
+            if (Objects.equals(ConsumeResult.SUCCESS, consumeResult)) {
               messagesToAck.add(message);
             } else {
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);

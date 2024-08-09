@@ -42,8 +42,8 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
-  public void cleanup() {
-    batch.cleanup();
+  public void cleanUp() {
+    batch.cleanUp();
   }
 
   @Override
