@@ -12,7 +12,6 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - ty/TableModelGrammar
     paths-ignore:
       - 'docs/**'
       - 'site/**'
