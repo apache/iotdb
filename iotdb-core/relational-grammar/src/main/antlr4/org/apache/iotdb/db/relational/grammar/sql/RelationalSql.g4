@@ -130,7 +130,7 @@ dropDbStatement
 // ------------------------------------------- Table Statement ---------------------------------------------------------
 createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
-        '(' columnDefinition (',' columnDefinition)* ')'
+        '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
         (WITH properties)?
      ;

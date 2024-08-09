@@ -221,6 +221,9 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      // Test create table with only time column
+      statement.execute("create table table3()");
+
       // show tables from a non-exist database
       try {
         statement.executeQuery("SHOW tables from test3");
