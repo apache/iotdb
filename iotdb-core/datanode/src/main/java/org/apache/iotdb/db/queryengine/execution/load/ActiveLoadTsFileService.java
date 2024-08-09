@@ -68,9 +68,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class AutoLoadTsFileService {
+public class ActiveLoadTsFileService {
 
-  private final Logger LOGGER = LoggerFactory.getLogger(AutoLoadTsFileService.class);
+  private final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadTsFileService.class);
 
   private final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -85,7 +85,8 @@ public class AutoLoadTsFileService {
   private final String RESOURCE = ".resource";
   private final String MODS = ".mods";
 
-  private WrappedThreadPoolExecutor loadTsFileExecutor;
+  private final AtomicReference<WrappedThreadPoolExecutor> activeLoadTsFileExecutor =
+      new AtomicReference<>();
 
   private final Set<String> waitingLoadTsFileQueue =
       Collections.synchronizedSet(new LinkedHashSet<>());
@@ -96,7 +97,7 @@ public class AutoLoadTsFileService {
     LOGGER.info("register auto load tsfile successfully");
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
-            "AutoLoadTsFileService#loadTsFiles",
+            "ActiveLoadTsFileService#loadTsFiles",
             this::monitoringTsFile,
             IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds());
   }
@@ -109,10 +110,14 @@ public class AutoLoadTsFileService {
         return;
       }
 
-      if (loadTsFileExecutor == null) {
-        loadTsFileExecutor =
-            (WrappedThreadPoolExecutor)
-                newCachedThreadPool(ThreadName.ACTIVE_LOAD_TSFILE_SERVICE.name());
+      if (activeLoadTsFileExecutor.get() == null) {
+        synchronized (activeLoadTsFileExecutor) {
+          if (activeLoadTsFileExecutor.get() == null) {
+            activeLoadTsFileExecutor.set(
+                (WrappedThreadPoolExecutor)
+                    newCachedThreadPool(ThreadName.ACTIVE_LOAD_TSFILE_SERVICE.name()));
+          }
+        }
       }
 
       initializeConfiguration();
@@ -138,8 +143,13 @@ public class AutoLoadTsFileService {
 
   private boolean isEnableTheActiveListening() {
     if (!IOTDB_CONFIG.getLoadActiveListeningEnable()) {
-      if (loadTsFileExecutor != null) {
-        loadTsFileExecutor.shutdown();
+      if (activeLoadTsFileExecutor.get() != null) {
+        synchronized (activeLoadTsFileExecutor) {
+          if (activeLoadTsFileExecutor.get() != null) {
+            activeLoadTsFileExecutor.get().shutdown();
+            activeLoadTsFileExecutor.set(null);
+          }
+        }
       }
       return false;
     }
@@ -252,18 +262,18 @@ public class AutoLoadTsFileService {
         currentSize > LOAD_ACTIVE_LISTENING_MAX_THREAD_NUM
             ? LOAD_ACTIVE_LISTENING_MAX_THREAD_NUM
             : currentSize;
-    if (loadTsFileExecutor.getCorePoolSize() != targetPoolSize) {
-      loadTsFileExecutor.setCorePoolSize(targetPoolSize);
+    if (activeLoadTsFileExecutor.get().getCorePoolSize() != targetPoolSize) {
+      activeLoadTsFileExecutor.get().setCorePoolSize(targetPoolSize);
     }
 
     // calculate how many threads need to be loaded
     int addThreadNum =
         Math.max(
             Math.min(LOAD_ACTIVE_LISTENING_MAX_THREAD_NUM, currentSize)
-                - loadTsFileExecutor.getActiveCount(),
+                - activeLoadTsFileExecutor.get().getActiveCount(),
             0);
     for (int i = 0; i < addThreadNum; i++) {
-      loadTsFileExecutor.execute(this::processTsFile);
+      activeLoadTsFileExecutor.get().execute(this::processTsFile);
     }
   }
 
@@ -458,16 +468,5 @@ public class AutoLoadTsFileService {
         "already has file with the same name, renamed file {} to {}",
         sourceFile.getName(),
         newFileName);
-  }
-
-  private static class Holder {
-
-    private static final AutoLoadTsFileService INSTANCE = new AutoLoadTsFileService();
-
-    private Holder() {}
-  }
-
-  public static AutoLoadTsFileService getInstance() {
-    return Holder.INSTANCE;
   }
 }
