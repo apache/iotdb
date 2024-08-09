@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -89,7 +90,8 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
               false);
 
       if (dataBlockReader.hasNextBatch()) {
-        compactionWriter.startMeasurement(measurementSchemas, taskId);
+        compactionWriter.startMeasurement(
+            measurement, new ChunkWriterImpl(measurementSchemas.get(0), true), taskId);
         ReadPointCompactionPerformer.writeWithReader(
             compactionWriter, dataBlockReader, device, taskId, false);
         compactionWriter.endMeasurement(taskId);

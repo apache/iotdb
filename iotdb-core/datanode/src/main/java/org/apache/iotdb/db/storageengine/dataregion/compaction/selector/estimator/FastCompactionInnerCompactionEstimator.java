@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.IOException;
+import java.util.List;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
@@ -53,8 +55,13 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     if (taskInfo.getTotalChunkNum() == 0) {
       return taskInfo.getModificationFileSize();
     }
+    int batchSize = config.getCompactionMaxAlignedSeriesNumInOneBatch();
     long maxConcurrentSeriesNum =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+        Math.max(
+            config.getSubCompactionTaskNum(),
+            Math.min(
+                batchSize <= 0 ? Integer.MAX_VALUE : batchSize,
+                taskInfo.getMaxConcurrentSeriesNum()));
     long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
@@ -75,5 +82,19 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     return targetChunkWriterSize
         + maxConcurrentChunkSizeFromSourceFile
         + taskInfo.getModificationFileSize();
+  }
+
+  @Override
+  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
+      throws IOException {
+    int maxConcurrentSeriesNum =
+        Math.max(
+            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    long maxChunkSize = config.getTargetChunkSize();
+    long maxPageSize = tsFileConfig.getPageSizeInByte();
+    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
+    // source files (chunk + uncompressed page) * overlap file num
+    // target file (chunk + unsealed page writer)
+    return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize);
   }
 }

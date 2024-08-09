@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -36,28 +37,37 @@ import java.util.List;
 
 public abstract class PageLoader {
 
+  protected String file;
   protected PageHeader pageHeader;
   protected CompressionType compressionType;
   protected TSDataType dataType;
   protected TSEncoding encoding;
   protected List<TimeRange> deleteIntervalList;
   protected ModifiedStatus modifiedStatus;
+  protected ChunkMetadata chunkMetadata;
 
   protected PageLoader() {}
 
   protected PageLoader(
+      String file,
       PageHeader pageHeader,
       CompressionType compressionType,
       TSDataType dataType,
       TSEncoding encoding,
-      List<TimeRange> deleteIntervalList,
+      ChunkMetadata chunkMetadata,
       ModifiedStatus modifiedStatus) {
+    this.file = file;
     this.pageHeader = pageHeader;
     this.compressionType = compressionType;
     this.dataType = dataType;
     this.encoding = encoding;
-    this.deleteIntervalList = deleteIntervalList;
+    this.chunkMetadata = chunkMetadata;
+    this.deleteIntervalList = chunkMetadata.getDeleteIntervalList();
     this.modifiedStatus = modifiedStatus;
+  }
+
+  public String getFile() {
+    return file;
   }
 
   public PageHeader getHeader() {
@@ -79,6 +89,10 @@ public abstract class PageLoader {
   public abstract ByteBuffer getCompressedData() throws IOException;
 
   public abstract ByteBuffer getUnCompressedData() throws IOException;
+
+  public ChunkMetadata getChunkMetadata() {
+    return chunkMetadata;
+  }
 
   public ModifiedStatus getModifiedStatus() {
     return modifiedStatus;

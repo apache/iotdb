@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
@@ -54,8 +57,13 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
       return taskInfo.getModificationFileSize();
     }
 
+    int batchSize = config.getCompactionMaxAlignedSeriesNumInOneBatch();
     long maxConcurrentSeriesNum =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+        Math.max(
+            config.getSubCompactionTaskNum(),
+            Math.min(
+                batchSize <= 0 ? Integer.MAX_VALUE : batchSize,
+                taskInfo.getMaxConcurrentSeriesNum()));
     long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
@@ -76,5 +84,22 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     return targetChunkWriterSize
         + maxConcurrentChunkSizeFromSourceFile
         + taskInfo.getModificationFileSize();
+  }
+
+  @Override
+  public long roughEstimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
+    sourceFiles.addAll(seqResources);
+    sourceFiles.addAll(unseqResources);
+    int maxConcurrentSeriesNum =
+        Math.max(
+            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    long maxChunkSize = config.getTargetChunkSize();
+    long maxPageSize = tsFileConfig.getPageSizeInByte();
+    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);
+    // source files (chunk + uncompressed page) * overlap file num
+    // target files (chunk + unsealed page writer)
+    return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize);
   }
 }

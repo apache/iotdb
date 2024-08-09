@@ -62,4 +62,7 @@ public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEsti
     }
     return cost;
   }
+
+  public abstract long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
+      throws IOException;
 }

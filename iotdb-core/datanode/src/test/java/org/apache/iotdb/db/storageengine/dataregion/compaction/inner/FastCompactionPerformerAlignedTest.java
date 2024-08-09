@@ -139,8 +139,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -151,10 +150,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -215,8 +211,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -225,10 +220,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -283,8 +275,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -293,10 +284,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -354,8 +342,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -364,10 +351,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -423,8 +407,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -433,10 +416,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -494,8 +474,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -504,10 +483,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -566,8 +542,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -576,10 +551,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -649,8 +621,7 @@ public class FastCompactionPerformerAlignedTest {
       fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
     Map<PartialPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new FastCompactionTaskSummary());
@@ -659,10 +630,7 @@ public class FastCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 }

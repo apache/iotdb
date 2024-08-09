@@ -47,15 +47,15 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
+public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   private boolean hasStartMeasurement = false;
 
   private CompressionType seriesCompressionType = null;
@@ -69,7 +69,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   // it is used to initialize the fileList when compacting a new series
   private final List<TsFileResource> sortResources;
 
-  public NonAlignedSeriesCompactionExecutor(
+  public FastNonAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
@@ -165,13 +165,15 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
                 chunkMetadata,
                 resource.getVersion(),
                 i == iChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                isBatchedCompaction));
       }
     }
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  protected void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
     CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
@@ -212,17 +214,33 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType());
-      compactionWriter.startMeasurement(Collections.singletonList(schema), subTaskId);
+      compactionWriter.startMeasurement(
+          schema.getMeasurementId(), new ChunkWriterImpl(schema, true), subTaskId);
       hasStartMeasurement = true;
       seriesCompressionType = header.getCompressionType();
       seriesTSEncoding = header.getEncodingType();
-      chunkMetadataElement.needForceDecoding = false;
+      chunkMetadataElement.needForceDecodingPage = false;
     } else {
       ChunkHeader header = chunkMetadataElement.chunk.getHeader();
-      chunkMetadataElement.needForceDecoding =
+      chunkMetadataElement.needForceDecodingPage =
           header.getCompressionType() != seriesCompressionType
               || header.getEncodingType() != seriesTSEncoding;
     }
+  }
+
+  @Override
+  protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+      throws IOException {
+    return compactionWriter.flushNonAlignedChunk(
+        chunkMetadataElement.chunk, (ChunkMetadata) chunkMetadataElement.chunkMetadata, subTaskId);
+  }
+
+  @Override
+  protected boolean flushPageToCompactionWriter(PageElement pageElement)
+      throws PageException, IOException {
+    NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
+    return compactionWriter.flushNonAlignedPage(
+        nonAlignedPageElement.getPageData(), nonAlignedPageElement.getPageHeader(), subTaskId);
   }
 
   /**

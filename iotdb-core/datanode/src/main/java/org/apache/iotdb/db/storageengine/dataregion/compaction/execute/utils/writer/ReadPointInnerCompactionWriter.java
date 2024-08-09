@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
@@ -32,7 +35,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -57,12 +59,15 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId) {
+  public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValueChunk(
+      ChunkMetadataElement chunkMetadataElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 
@@ -73,12 +78,16 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId) {
+  public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController)
+      throws PageException, IOException {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 }
