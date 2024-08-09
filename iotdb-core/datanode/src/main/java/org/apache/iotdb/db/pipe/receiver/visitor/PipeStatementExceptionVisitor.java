@@ -77,7 +77,7 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
   }
 
   @Override
-  public TSStatus visitCreateMultiTimeseries(
+  public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement statement, final Exception context) {
     return visitGeneralCreateTimeSeries(statement, context);
   }

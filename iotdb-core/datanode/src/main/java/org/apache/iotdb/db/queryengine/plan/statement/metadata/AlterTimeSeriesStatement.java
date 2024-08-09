@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * ALTER TIMESERIES statement.
@@ -145,7 +146,30 @@ public class AlterTimeSeriesStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitAlterTimeseries(this, context);
+    return visitor.visitAlterTimeSeries(this, context);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final AlterTimeSeriesStatement that = (AlterTimeSeriesStatement) obj;
+    return Objects.equals(this.path, that.path)
+        && Objects.equals(this.alterType, that.alterType)
+        && Objects.equals(this.alterMap, that.alterMap)
+        && Objects.equals(this.alias, that.alias)
+        && Objects.equals(this.tagsMap, that.tagsMap)
+        && Objects.equals(this.attributesMap, that.attributesMap)
+        && Objects.equals(this.isAlterView, that.isAlterView);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path, alterType, alterMap, alias, tagsMap, attributesMap, isAlterView);
   }
 
   public enum AlterType {

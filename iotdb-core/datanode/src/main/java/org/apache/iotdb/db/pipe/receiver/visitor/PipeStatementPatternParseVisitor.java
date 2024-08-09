@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -101,6 +102,17 @@ public class PipeStatementPatternParseVisitor
                   statement.getAliasList().get(index));
             });
     return Optional.of(targetCreateAlignedTimeSeriesStatement);
+  }
+
+  // For logical view with tags/attributes
+  @Override
+  public Optional<Statement> visitAlterTimeSeries(
+      final AlterTimeSeriesStatement alterTimeSeriesStatement, final IoTDBPipePattern pattern) {
+    return pattern.matchesMeasurement(
+            alterTimeSeriesStatement.getPath().getIDeviceID(),
+            alterTimeSeriesStatement.getPath().getMeasurement())
+        ? Optional.of(alterTimeSeriesStatement)
+        : Optional.empty();
   }
 
   @Override

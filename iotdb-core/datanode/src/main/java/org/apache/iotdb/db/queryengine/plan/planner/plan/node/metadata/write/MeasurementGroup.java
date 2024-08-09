@@ -84,10 +84,10 @@ public class MeasurementGroup {
   }
 
   public boolean addMeasurement(
-      String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressionType) {
+      final String measurement,
+      final TSDataType dataType,
+      final TSEncoding encoding,
+      final CompressionType compressionType) {
     if (measurementSet.contains(measurement)) {
       return false;
     }

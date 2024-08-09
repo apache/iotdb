@@ -137,7 +137,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateMultiTimeseries(this, context);
+    return visitor.visitCreateMultiTimeSeries(this, context);
   }
 
   @Override

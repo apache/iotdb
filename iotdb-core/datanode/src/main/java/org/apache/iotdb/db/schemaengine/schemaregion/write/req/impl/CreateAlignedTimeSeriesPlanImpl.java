@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeriesPlan {
 
@@ -177,5 +178,20 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
 
   public void setWithMerge(final boolean withMerge) {
     this.withMerge = withMerge;
+    // Deep copy if with merge because when upsert option is set
+    // The original set may be altered to help distinguish between creation plan
+    // and update plan
+    // Here we deeply copy to avoid damaging the original plan node for pipe schema region listening
+    // queue
+    if (withMerge) {
+      measurements = new ArrayList<>(measurements);
+      dataTypes = new ArrayList<>(dataTypes);
+      encodings = new ArrayList<>(encodings);
+      compressors = new ArrayList<>(compressors);
+      aliasList = Objects.nonNull(aliasList) ? new ArrayList<>(aliasList) : null;
+      tagsList = Objects.nonNull(tagsList) ? new ArrayList<>(tagsList) : null;
+      attributesList = Objects.nonNull(attributesList) ? new ArrayList<>(attributesList) : null;
+      tagOffsets = Objects.nonNull(tagOffsets) ? new ArrayList<>(tagOffsets) : null;
+    }
   }
 }
