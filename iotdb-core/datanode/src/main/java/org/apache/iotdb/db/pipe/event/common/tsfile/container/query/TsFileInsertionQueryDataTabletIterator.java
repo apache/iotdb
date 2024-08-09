@@ -24,6 +24,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
@@ -32,6 +33,7 @@ import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -47,7 +49,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
-  private final String deviceId;
+  private final IDeviceID deviceId;
   private final List<String> measurements;
 
   private final IExpression timeFilterExpression;
@@ -57,7 +59,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   TsFileInsertionQueryDataTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
-      final String deviceId,
+      final IDeviceID deviceId,
       final List<String> measurements,
       final IExpression timeFilterExpression)
       throws IOException {
@@ -110,14 +112,18 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   }
 
   private Tablet buildNextTablet() throws IOException {
-    final List<MeasurementSchema> schemas = new ArrayList<>();
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
     for (final String measurement : measurements) {
       final TSDataType dataType =
           measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
     final Tablet tablet =
-        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+        new Tablet(
+            // Used for tree model
+            deviceId.toString(),
+            schemas,
+            PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
     tablet.initBitMaps();
 
     while (queryDataSet.hasNext()) {

@@ -37,7 +37,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -335,11 +334,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
                   false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream()
-          .anyMatch(
-              // TODO: use IDeviceID
-              deviceID ->
-                  pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
+      return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
     } catch (final IOException e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",

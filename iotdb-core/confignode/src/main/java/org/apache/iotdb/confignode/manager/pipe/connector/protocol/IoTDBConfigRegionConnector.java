@@ -62,9 +62,15 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String trustStorePath,
       final String trustStorePwd,
       final boolean useLeaderCache,
-      final String loadBalanceStrategy) {
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch) {
     return new IoTDBConfigNodeSyncClientManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, loadBalanceStrategy);
+        nodeUrls,
+        useSSL,
+        trustStorePath,
+        trustStorePwd,
+        loadBalanceStrategy,
+        shouldReceiverConvertOnTypeMismatch);
   }
 
   @Override

@@ -54,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ExpressionTypeAnalyzer {
@@ -66,8 +67,10 @@ public class ExpressionTypeAnalyzer {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
 
-      Map<String, IMeasurementSchema> context =
-          analysis.allDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+      Function<String, TSDataType> context =
+          analysis.allDevicesInOneTemplate()
+              ? new TemplateTypeProvider(analysis.getDeviceTemplate().getSchemaMap())
+              : null;
       analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);
@@ -75,11 +78,39 @@ public class ExpressionTypeAnalyzer {
     return analysis.getType(expression);
   }
 
+  public static class TemplateTypeProvider implements Function<String, TSDataType> {
+    private final Map<String, IMeasurementSchema> schemaMap;
+
+    public TemplateTypeProvider(Map<String, IMeasurementSchema> schemaMap) {
+      this.schemaMap = schemaMap;
+    }
+
+    @Override
+    public TSDataType apply(String s) {
+      IMeasurementSchema measurementSchema = schemaMap.get(s);
+      return measurementSchema == null ? null : measurementSchema.getType();
+    }
+  }
+
+  public static class TypeProviderWrapper implements Function<String, TSDataType> {
+    private final Map<String, TSDataType> typeMap;
+
+    public TypeProviderWrapper(Map<String, TSDataType> typeMap) {
+      this.typeMap = typeMap;
+    }
+
+    @Override
+    public TSDataType apply(String s) {
+      return typeMap.get(s);
+    }
+  }
+
   public static TSDataType analyzeExpressionForTemplatedQuery(
       Analysis analysis, Expression expression) {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression, analysis.getDeviceTemplate().getSchemaMap());
+      analyzer.analyze(
+          expression, new TemplateTypeProvider(analysis.getDeviceTemplate().getSchemaMap()));
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -94,13 +125,12 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
-  public static void analyzeExpressionUsingTemplatedInfo(
+  public static void analyzeExpression(
       Map<NodeRef<Expression>, TSDataType> types,
       Expression expression,
-      TemplatedInfo templatedInfo) {
+      Function<String, TSDataType> schemaMap) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
 
-    Map<String, IMeasurementSchema> schemaMap = templatedInfo.getSchemaMap();
     analyzer.analyze(expression, schemaMap);
 
     types.putAll(analyzer.getExpressionTypes());
@@ -110,7 +140,7 @@ public class ExpressionTypeAnalyzer {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
 
-  public TSDataType analyze(Expression expression, Map<String, IMeasurementSchema> context) {
+  public TSDataType analyze(Expression expression, Function<String, TSDataType> context) {
     Visitor visitor = new Visitor();
     return visitor.process(expression, context);
   }
@@ -119,10 +149,10 @@ public class ExpressionTypeAnalyzer {
     return expressionTypes;
   }
 
-  private class Visitor extends ExpressionVisitor<TSDataType, Map<String, IMeasurementSchema>> {
+  private class Visitor extends ExpressionVisitor<TSDataType, Function<String, TSDataType>> {
 
     @Override
-    public TSDataType process(Expression expression, Map<String, IMeasurementSchema> context) {
+    public TSDataType process(Expression expression, Function<String, TSDataType> context) {
       // don't double process a expression
       TSDataType dataType = expressionTypes.get(NodeRef.of(expression));
       if (dataType != null) {
@@ -132,29 +162,28 @@ public class ExpressionTypeAnalyzer {
     }
 
     @Override
-    public TSDataType visitExpression(
-        Expression expression, Map<String, IMeasurementSchema> context) {
+    public TSDataType visitExpression(Expression expression, Function<String, TSDataType> context) {
       throw new UnsupportedOperationException(
           "Unsupported expression type: " + expression.getClass().getName());
     }
 
     @Override
     public TSDataType visitInExpression(
-        InExpression inExpression, Map<String, IMeasurementSchema> context) {
+        InExpression inExpression, Function<String, TSDataType> context) {
       process(inExpression.getExpression(), context);
       return setExpressionType(inExpression, TSDataType.BOOLEAN);
     }
 
     @Override
     public TSDataType visitIsNullExpression(
-        IsNullExpression isNullExpression, Map<String, IMeasurementSchema> context) {
+        IsNullExpression isNullExpression, Function<String, TSDataType> context) {
       process(isNullExpression.getExpression(), context);
       return setExpressionType(isNullExpression, TSDataType.BOOLEAN);
     }
 
     @Override
     public TSDataType visitLikeExpression(
-        LikeExpression likeExpression, Map<String, IMeasurementSchema> context) {
+        LikeExpression likeExpression, Function<String, TSDataType> context) {
       checkInputExpressionDataType(
           likeExpression.getExpression().getExpressionString(),
           process(likeExpression.getExpression(), context),
@@ -165,7 +194,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitRegularExpression(
-        RegularExpression regularExpression, Map<String, IMeasurementSchema> context) {
+        RegularExpression regularExpression, Function<String, TSDataType> context) {
       checkInputExpressionDataType(
           regularExpression.getExpression().getExpressionString(),
           process(regularExpression.getExpression(), context),
@@ -176,7 +205,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitLogicNotExpression(
-        LogicNotExpression logicNotExpression, Map<String, IMeasurementSchema> context) {
+        LogicNotExpression logicNotExpression, Function<String, TSDataType> context) {
       checkInputExpressionDataType(
           logicNotExpression.getExpression().getExpressionString(),
           process(logicNotExpression.getExpression(), context),
@@ -186,7 +215,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitNegationExpression(
-        NegationExpression negationExpression, Map<String, IMeasurementSchema> context) {
+        NegationExpression negationExpression, Function<String, TSDataType> context) {
       TSDataType inputExpressionType = process(negationExpression.getExpression(), context);
       checkInputExpressionDataType(
           negationExpression.getExpression().getExpressionString(),
@@ -201,7 +230,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitArithmeticBinaryExpression(
         ArithmeticBinaryExpression arithmeticBinaryExpression,
-        Map<String, IMeasurementSchema> context) {
+        Function<String, TSDataType> context) {
       checkInputExpressionDataType(
           arithmeticBinaryExpression.getLeftExpression().getExpressionString(),
           process(arithmeticBinaryExpression.getLeftExpression(), context),
@@ -221,7 +250,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitLogicBinaryExpression(
-        LogicBinaryExpression logicBinaryExpression, Map<String, IMeasurementSchema> context) {
+        LogicBinaryExpression logicBinaryExpression, Function<String, TSDataType> context) {
       checkInputExpressionDataType(
           logicBinaryExpression.getLeftExpression().getExpressionString(),
           process(logicBinaryExpression.getLeftExpression(), context),
@@ -235,7 +264,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitCompareBinaryExpression(
-        CompareBinaryExpression compareBinaryExpression, Map<String, IMeasurementSchema> context) {
+        CompareBinaryExpression compareBinaryExpression, Function<String, TSDataType> context) {
       final TSDataType leftExpressionDataType =
           process(compareBinaryExpression.getLeftExpression(), context);
       final TSDataType rightExpressionDataType =
@@ -305,7 +334,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitBetweenExpression(
-        BetweenExpression betweenExpression, Map<String, IMeasurementSchema> context) {
+        BetweenExpression betweenExpression, Function<String, TSDataType> context) {
       process(betweenExpression.getFirstExpression(), context);
       process(betweenExpression.getSecondExpression(), context);
       process(betweenExpression.getThirdExpression(), context);
@@ -314,7 +343,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitFunctionExpression(
-        FunctionExpression functionExpression, Map<String, IMeasurementSchema> context) {
+        FunctionExpression functionExpression, Function<String, TSDataType> context) {
       List<Expression> inputExpressions = functionExpression.getExpressions();
       for (Expression expression : inputExpressions) {
         process(expression, context);
@@ -363,36 +392,38 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitTimeStampOperand(
-        TimestampOperand timestampOperand, Map<String, IMeasurementSchema> context) {
+        TimestampOperand timestampOperand, Function<String, TSDataType> context) {
       return setExpressionType(timestampOperand, TSDataType.INT64);
     }
 
     @Override
     public TSDataType visitTimeSeriesOperand(
-        TimeSeriesOperand timeSeriesOperand, Map<String, IMeasurementSchema> context) {
-      if (context != null && (context.containsKey(timeSeriesOperand.getOutputSymbol()))) {
-        return setExpressionType(
-            timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
+        TimeSeriesOperand timeSeriesOperand, Function<String, TSDataType> context) {
+      if (context != null) {
+        TSDataType type = context.apply(timeSeriesOperand.getOutputSymbol());
+        if (type != null) {
+          return setExpressionType(timeSeriesOperand, type);
+        }
       }
 
-      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
+      return setExpressionType(timeSeriesOperand, timeSeriesOperand.getOperandType());
     }
 
     @Override
     public TSDataType visitConstantOperand(
-        ConstantOperand constantOperand, Map<String, IMeasurementSchema> context) {
+        ConstantOperand constantOperand, Function<String, TSDataType> context) {
       return setExpressionType(constantOperand, constantOperand.getDataType());
     }
 
     @Override
     public TSDataType visitNullOperand(
-        NullOperand nullOperand, Map<String, IMeasurementSchema> context) {
+        NullOperand nullOperand, Function<String, TSDataType> context) {
       return null;
     }
 
     @Override
     public TSDataType visitCaseWhenThenExpression(
-        CaseWhenThenExpression caseWhenThenExpression, Map<String, IMeasurementSchema> context) {
+        CaseWhenThenExpression caseWhenThenExpression, Function<String, TSDataType> context) {
       Set<TSDataType> typeSet = new HashSet<>();
       for (WhenThenExpression whenThenExpression :
           caseWhenThenExpression.getWhenThenExpressions()) {
@@ -424,7 +455,7 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitWhenThenExpression(
-        WhenThenExpression whenThenExpression, Map<String, IMeasurementSchema> context) {
+        WhenThenExpression whenThenExpression, Function<String, TSDataType> context) {
       TSDataType whenType = process(whenThenExpression.getWhen(), context);
       if (!whenType.equals(TSDataType.BOOLEAN)) {
         throw new SemanticException(

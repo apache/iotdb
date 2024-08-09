@@ -256,7 +256,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getDevicePath();
         return Objects.isNull(devicePartialPath)
-            || pipePattern.mayOverlapWithDevice(devicePartialPath.getFullPath());
+            || pipePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -266,7 +266,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
                     insertRowNode ->
                         Objects.isNull(insertRowNode.getDevicePath())
                             || pipePattern.mayOverlapWithDevice(
-                                insertRowNode.getDevicePath().getFullPath()));
+                                insertRowNode.getDevicePath().getIDeviceIDAsFullDevice()));
       }
 
       return true;
@@ -326,6 +326,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
+        case RELATIONAL_INSERT_TABLET:
           dataContainers.add(
               new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
           break;

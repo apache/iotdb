@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.exception.query;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class QueryProcessException extends IoTDBException {
@@ -35,6 +36,10 @@ public class QueryProcessException extends IoTDBException {
   }
 
   public QueryProcessException(IoTDBException e) {
+    super(e, e.getErrorCode(), e.isUserException());
+  }
+
+  public QueryProcessException(IoTDBRuntimeException e) {
     super(e, e.getErrorCode(), e.isUserException());
   }
 }

@@ -175,7 +175,7 @@ public class UnsetTemplateProcedure
   private boolean checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
-    patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+    patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
     try {
       return SchemaUtils.checkDataNodeTemplateActivation(
           env.getConfigManager(), patternTree, template);

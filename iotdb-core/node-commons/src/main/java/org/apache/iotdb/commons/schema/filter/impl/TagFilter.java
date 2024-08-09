@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter.impl;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -27,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class TagFilter extends SchemaFilter {
 
@@ -34,13 +36,13 @@ public class TagFilter extends SchemaFilter {
   private final String value;
   private final boolean isContains;
 
-  public TagFilter(String key, String value, boolean isContains) {
+  public TagFilter(final String key, final String value, final boolean isContains) {
     this.key = key;
     this.value = value;
     this.isContains = isContains;
   }
 
-  public TagFilter(ByteBuffer byteBuffer) {
+  public TagFilter(final ByteBuffer byteBuffer) {
     this.key = ReadWriteIOUtils.readString(byteBuffer);
     this.value = ReadWriteIOUtils.readString(byteBuffer);
     this.isContains = ReadWriteIOUtils.readBool(byteBuffer);
@@ -59,7 +61,7 @@ public class TagFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitTagFilter(this, node);
   }
 
@@ -69,16 +71,35 @@ public class TagFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
     ReadWriteIOUtils.write(isContains, byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(key, stream);
     ReadWriteIOUtils.write(value, stream);
     ReadWriteIOUtils.write(isContains, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final TagFilter that = (TagFilter) o;
+    return Objects.equals(key, that.key)
+        && Objects.equals(value, that.value)
+        && Objects.equals(isContains, that.isContains);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(key, value, isContains);
   }
 }

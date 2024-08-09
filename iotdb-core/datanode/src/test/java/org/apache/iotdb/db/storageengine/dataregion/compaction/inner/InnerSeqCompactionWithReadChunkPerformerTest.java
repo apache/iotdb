@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1104,7 +1104,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             COMPACTION_TEST_SG);
     vsgp.getTsFileResourceManager().addAll(sourceResources, true);
     // delete data before compaction
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1000, 0);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), 0, 1000, 0);
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -1117,8 +1117,8 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     task.setSourceFilesToCompactionCandidate();
     sourceResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data during compaction
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0);
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), 0, 1200, 0);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), 0, 1800, 0);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();

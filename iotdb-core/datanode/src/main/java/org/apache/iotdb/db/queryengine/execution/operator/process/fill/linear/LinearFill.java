@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFi
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -51,7 +50,7 @@ public abstract class LinearFill implements ILinearFill {
   protected long nextTimeInCurrentColumn = -1;
 
   @Override
-  public Column fill(TimeColumn timeColumn, Column valueColumn, long startRowIndex) {
+  public Column fill(Column timeColumn, Column valueColumn, long startRowIndex) {
     int size = valueColumn.getPositionCount();
     if (size == 0) {
       return valueColumn;
@@ -61,7 +60,7 @@ public abstract class LinearFill implements ILinearFill {
     if (!valueColumn.mayHaveNull()) {
       previousIsNull = false;
       // update the value using last non-null value
-      previousTime = timeColumn.getEndTime();
+      previousTime = timeColumn.getLong(timeColumn.getPositionCount() - 1);
       updatePreviousValue(valueColumn, valueColumn.getPositionCount() - 1);
       return valueColumn;
     }
@@ -94,7 +93,7 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private Column doWithAllNulls(
-      long startRowIndex, int size, TimeColumn timeColumn, Column valueColumn) {
+      long startRowIndex, int size, Column timeColumn, Column valueColumn) {
     // previous value is null or next value is null, we just return NULL_VALUE_BLOCK
     if (previousIsNull || nextRowIndex < startRowIndex) {
       return new RunLengthEncodedColumn(createNullValueColumn(), size);
@@ -116,7 +115,7 @@ public abstract class LinearFill implements ILinearFill {
       long startRowIndex,
       int i,
       boolean[] isNull,
-      TimeColumn timeColumn,
+      Column timeColumn,
       Column valueColumn,
       Object array) {
     long currentRowIndex = startRowIndex + i;
@@ -156,7 +155,7 @@ public abstract class LinearFill implements ILinearFill {
 
   @Override
   public boolean prepareForNext(
-      long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn) {
+      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
     checkArgument(
         nextTimeColumn.getPositionCount() > 0 && endRowIndex < startRowIndex,
         "nextColumn's time should be greater than current time");
@@ -180,7 +179,7 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private void prepareForNextValueInCurrentColumn(
-      long currentRowIndex, int startIndex, TimeColumn timeColumn, Column valueColumn) {
+      long currentRowIndex, int startIndex, Column timeColumn, Column valueColumn) {
     if (currentRowIndex <= nextRowIndexInCurrentColumn) {
       return;
     }
