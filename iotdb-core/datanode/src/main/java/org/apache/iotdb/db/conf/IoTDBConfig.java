@@ -3940,7 +3940,7 @@ public class IoTDBConfig {
   }
 
   public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
-    this.loadActiveListeningFailDir = loadActiveListeningFailDir;
+    this.loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
   }
 
   public String[] getLoadActiveListeningDirs() {
@@ -3957,6 +3957,9 @@ public class IoTDBConfig {
   }
 
   public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
+    for (int i = 0; i < loadActiveListeningDirs.length; i++) {
+      loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+    }
     this.loadActiveListeningDirs = loadActiveListeningDirs;
   }
 
