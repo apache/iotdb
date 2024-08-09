@@ -2902,6 +2902,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showTimeSeriesStatement);
 
+    if (showTimeSeriesStatement.getPathPattern().getNodeLength() <= 1) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
+      return analysis;
+    }
+
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
 
