@@ -2191,7 +2191,10 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(conf.getLoadActiveListeningMaxThreadNum()))));
+                Integer.toString(
+                    Math.min(
+                        conf.getLoadActiveListeningMaxThreadNum(),
+                        Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
   }
 
   private void loadTsFileActiveListeningProps(Properties properties) throws IOException {

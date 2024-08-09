@@ -1892,10 +1892,10 @@ load_active_listening_dirs=ext/load/pending
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
 # Otherwise, it is relative.
-# load_active_listening_fail_dir=ext\\load\\fail
+# load_active_listening_fail_dir=ext\\load\\failed
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
-load_active_listening_fail_dir=ext/load/fail
+load_active_listening_fail_dir=ext/load/failed
 
 # The maximum number of threads that can be used to load tsfile actively.
 # The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.

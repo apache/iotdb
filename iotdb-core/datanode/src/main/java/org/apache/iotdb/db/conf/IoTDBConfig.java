@@ -1124,9 +1124,21 @@ public class IoTDBConfig {
 
   private boolean loadActiveListeningEnable = true;
 
-  private String[] loadActiveListeningDirs = new String[0];
+  private String[] loadActiveListeningDirs =
+      new String[] {
+        IoTDBConstant.EXT_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
+      };
 
-  private String loadActiveListeningFailDir = "";
+  private String loadActiveListeningFailDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
 
   private long loadActiveListeningCheckIntervalSeconds = 20L;
 
@@ -3928,16 +3940,7 @@ public class IoTDBConfig {
   }
 
   public String[] getLoadActiveListeningDirs() {
-    return (Objects.isNull(this.loadActiveListeningDirs)
-            || this.loadActiveListeningDirs.length == 0)
-        ? new String[] {
-          extDir
-              + File.separator
-              + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
-              + File.separator
-              + "pending"
-        }
-        : this.loadActiveListeningDirs;
+    return this.loadActiveListeningDirs;
   }
 
   public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
@@ -3957,9 +3960,7 @@ public class IoTDBConfig {
   }
 
   public String[] getPipeReceiverFileDirs() {
-    return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
-        ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
-        : this.pipeReceiverFileDirs;
+    return this.pipeReceiverFileDirs;
   }
 
   public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
