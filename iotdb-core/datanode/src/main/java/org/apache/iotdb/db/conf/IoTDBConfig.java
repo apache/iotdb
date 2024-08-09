@@ -3930,9 +3930,7 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningFailDir() {
-    return Objects.equals(loadActiveListeningFailDir, "")
-        ? extDir + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME + File.separator + "fail"
-        : this.loadActiveListeningFailDir;
+    return this.loadActiveListeningFailDir;
   }
 
   public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
