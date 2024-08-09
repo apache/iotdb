@@ -301,6 +301,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         .collect(Collectors.toList());
   }
 
+  @Override
+  public Iterable<TabletInsertionEvent> processMaxTimestampRowByRow(
+      BiConsumer<Row, RowCollector> consumer) {
+    return initDataContainers().stream()
+        .map(
+            tabletInsertionDataContainer ->
+                tabletInsertionDataContainer.processMaxTimestampRowByRow(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
+  }
+
   /////////////////////////// convertToTablet ///////////////////////////
 
   public boolean isAligned(final int i) {

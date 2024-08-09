@@ -624,6 +624,34 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
+  public List<TabletInsertionEvent> processMaxTimestampRowByRow(
+      final BiConsumer<Row, RowCollector> consumer) {
+    if (valueColumns.length == 0 || timestampColumn.length == 0) {
+      return Collections.emptyList();
+    }
+
+    final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
+    int maxTimestampRowCount = 0;
+    for (int i = 1; i < rowCount; i++) {
+      if (timestampColumn[maxTimestampRowCount] < timestampColumn[i]) {
+        maxTimestampRowCount = i;
+      }
+      consumer.accept(
+          new PipeRow(
+              maxTimestampRowCount,
+              deviceId,
+              isAligned,
+              measurementSchemaList,
+              timestampColumn,
+              valueColumnTypes,
+              valueColumns,
+              nullValueColumnBitmaps,
+              columnNameStringList),
+          rowCollector);
+    }
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
+  }
+
   public List<TabletInsertionEvent> processTablet(final BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);

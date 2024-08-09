@@ -35,15 +35,12 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
 
   private Tablet tablet;
 
-  private final long captureTime;
-
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache;
 
   public PipeLastPointTabletEvent(
       final Tablet tablet,
-      final long captureTime,
       final PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache,
       final String pipeName,
       final long creationTime,
@@ -53,7 +50,6 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
     this.tablet = tablet;
-    this.captureTime = captureTime;
     this.partialPathToLatestTimeCache = partialPathToLatestTimeCache;
   }
 
@@ -85,7 +81,6 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
       long endTime) {
     return new PipeLastPointTabletEvent(
         tablet,
-        captureTime,
         partialPathToLatestTimeCache,
         pipeName,
         creationTime,
@@ -115,8 +110,8 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
   @Override
   public String toString() {
     return String.format(
-            "PipeLastPointTabletEvent{tablet=%s, captureTime=%s, allocatedMemoryBlock=%s}",
-            tablet, captureTime, allocatedMemoryBlock)
+            "PipeLastPointTabletEvent{tablet=%s, allocatedMemoryBlock=%s}",
+            tablet, allocatedMemoryBlock)
         + " - "
         + super.toString();
   }
@@ -127,7 +122,7 @@ public class PipeLastPointTabletEvent extends EnrichedEvent {
     return tablet;
   }
 
-  public long getCaptureTime() {
-    return captureTime;
+  public PartialPathLastObjectCache<LastPointFilter<?>> getPartialPathToLatestTimeCache() {
+    return partialPathToLatestTimeCache;
   }
 }

@@ -39,10 +39,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_LAST_POINT_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
@@ -79,12 +84,11 @@ public class LastPointSamplingProcessor implements PipeProcessor {
     final AtomicReference<Exception> exception = new AtomicReference<>();
 
     final Iterable<TabletInsertionEvent> iterable =
-        tabletInsertionEvent.processRowByRow(
+        tabletInsertionEvent.processMaxTimestampRowByRow(
             (row, rowCollector) -> {
               processRow(row, rowCollector, exception);
             });
 
-    final long captureTime = System.currentTimeMillis();
     iterable.forEach(
         event -> {
           try {
@@ -92,7 +96,6 @@ public class LastPointSamplingProcessor implements PipeProcessor {
             eventCollector.collect(
                 new PipeLastPointTabletEvent(
                     insertionEvent.convertToTablet(),
-                    captureTime,
                     partialPathToLatestTimeCache,
                     insertionEvent.getPipeName(),
                     insertionEvent.getCreationTime(),
@@ -181,9 +184,12 @@ public class LastPointSamplingProcessor implements PipeProcessor {
     PipeLastPointTsBlockEvent tsBlockEvent = (PipeLastPointTsBlockEvent) event;
 
     final PipeLastPointTabletEvent pipeLastPointTabletEvent =
-        tsBlockEvent.convertToPipeLastPointTabletEvent(partialPathToLatestTimeCache);
+        tsBlockEvent.convertToPipeLastPointTabletEvent(
+            partialPathToLatestTimeCache, this::markEligibleColumnsBasedOnFilter);
 
-    eventCollector.collect(pipeLastPointTabletEvent);
+    if (pipeLastPointTabletEvent != null) {
+      eventCollector.collect(pipeLastPointTabletEvent);
+    }
   }
 
   @Override
@@ -213,5 +219,42 @@ public class LastPointSamplingProcessor implements PipeProcessor {
   @Override
   public void close() throws Exception {
     partialPathToLatestTimeCache.close();
+  }
+
+  /**
+   * Marks a column in the TsBlock as eligible based on the presence of the latest data point.
+   *
+   * <p>This method evaluates a single row within the TsBlock to determine if the column contains
+   * the latest data point. If a LastPointFilter for the column is found in the cache, the method
+   * checks whether the current data point is the latest. If no filter is present in the cache, the
+   * column is automatically considered eligible.
+   *
+   * @param columnSelectionMap The BitMap that marks the eligibility of the column.
+   * @param tsBlock The TsBlock that contains the columns to be evaluated.
+   * @param deviceId The device identifier used to build the filter path.
+   * @param measurementSchemas The list of measurement schemas used to complete the filter path.
+   */
+  private void markEligibleColumnsBasedOnFilter(
+      BitMap columnSelectionMap,
+      TsBlock tsBlock,
+      String deviceId,
+      List<MeasurementSchema> measurementSchemas) {
+    int columnCount = tsBlock.getValueColumnCount();
+
+    for (int i = 0; i < columnCount; i++) {
+      Column column = tsBlock.getColumn(i);
+      if (column.isNull(0)) {
+        columnSelectionMap.mark(i);
+        continue;
+      }
+      String fullPath =
+          deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchemas.get(i).getMeasurementId();
+
+      final LastPointFilter filter =
+          partialPathToLatestTimeCache.getPartialPathLastObject(fullPath);
+      if (filter != null && !filter.filter(tsBlock.getTimeByIndex(0), column.getObject(0))) {
+        columnSelectionMap.mark(i);
+      }
+    }
   }
 }

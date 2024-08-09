@@ -162,7 +162,8 @@ public class PipeLastPointTsBlockEventTest {
         generatePipeLastPointEvent(tsBlock, partialPath, measurementSchemas);
 
     PipeLastPointTabletEvent lastPointTabletEvent =
-        tsBlockEvent.convertToPipeLastPointTabletEvent(null);
+        tsBlockEvent.convertToPipeLastPointTabletEvent(
+            null, (bitMap, block, deviceId, schemas) -> {});
 
     Tablet tablet = lastPointTabletEvent.getTablet();
 

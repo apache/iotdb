@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.function.QuadConsumer;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeLastPointTabletEvent;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.db.pipe.processor.downsampling.lastpoint.LastPointFilter;
@@ -131,10 +132,15 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
   /////////////////////////// PipeLastPointTabletEvent ///////////////////////////
 
   public PipeLastPointTabletEvent convertToPipeLastPointTabletEvent(
-      PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache) {
+      PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache,
+      QuadConsumer<BitMap, TsBlock, String, List<MeasurementSchema>> filterConsumer) {
+    BitMap columnSelectionMap = new BitMap(tsBlock.getValueColumnCount());
+    filterConsumer.accept(columnSelectionMap, tsBlock, partialPath.getDevice(), measurementSchemas);
+    if (columnSelectionMap.isAllMarked()) {
+      return null;
+    }
     return new PipeLastPointTabletEvent(
         convertToTablet(),
-        captureTime,
         partialPathToLatestTimeCache,
         pipeName,
         creationTime,
@@ -226,5 +232,17 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   public long getCaptureTime() {
     return captureTime;
+  }
+
+  public PartialPath getPartialPath() {
+    return partialPath;
+  }
+
+  public List<MeasurementSchema> getMeasurementSchemas() {
+    return measurementSchemas;
+  }
+
+  public TsBlock getTsBlock() {
+    return tsBlock;
   }
 }

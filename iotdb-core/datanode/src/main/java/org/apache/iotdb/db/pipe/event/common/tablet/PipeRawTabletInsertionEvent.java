@@ -232,6 +232,16 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.processTablet(consumer);
   }
 
+  @Override
+  public Iterable<TabletInsertionEvent> processMaxTimestampRowByRow(
+      BiConsumer<Row, RowCollector> consumer) {
+    if (dataContainer == null) {
+      dataContainer =
+          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
+    }
+    return dataContainer.processMaxTimestampRowByRow(consumer);
+  }
+
   /////////////////////////// convertToTablet ///////////////////////////
 
   public boolean isAligned() {
