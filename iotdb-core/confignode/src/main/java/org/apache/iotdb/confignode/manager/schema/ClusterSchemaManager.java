@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -105,8 +104,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
-
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
 public class ClusterSchemaManager {
 
@@ -141,16 +138,9 @@ public class ClusterSchemaManager {
   // ======================================================
 
   /** Set Database */
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
+  public TSStatus setDatabase(
+      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
-    if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
-      IllegalPathException illegalPathException =
-          new IllegalPathException(
-              databaseSchemaPlan.getSchema().getName(),
-              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
-      return RpcUtils.getStatus(
-          illegalPathException.getErrorCode(), illegalPathException.getMessage());
-    }
 
     if (getPartitionManager().isDatabasePreDeleted(databaseSchemaPlan.getSchema().getName())) {
       return RpcUtils.getStatus(
@@ -185,7 +175,7 @@ public class ClusterSchemaManager {
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
