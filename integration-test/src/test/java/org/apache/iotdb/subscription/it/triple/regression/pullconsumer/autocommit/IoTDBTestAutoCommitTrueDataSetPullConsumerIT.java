@@ -92,9 +92,10 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscr
     try {
       consumer.close();
     } catch (Exception e) {
+    } finally {
+      subs.dropTopic(topicName);
+      dropDB(database);
     }
-    subs.dropTopic(topicName);
-    dropDB(database);
     super.tearDown();
   }
 
