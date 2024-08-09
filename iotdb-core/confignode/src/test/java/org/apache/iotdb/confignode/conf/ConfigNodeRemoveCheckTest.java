@@ -19,23 +19,13 @@
 
 package org.apache.iotdb.confignode.conf;
 
-public class ConfigNodeConstant {
+import junit.framework.TestCase;
 
-  public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
-  public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
-  public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
+public class ConfigNodeRemoveCheckTest extends TestCase {
 
-  public static final String SYSTEM_FILE_NAME = "confignode-system.properties";
+  public void testRemoveCheckNodeId() {}
 
-  public static final String CONFIGNODE_PACKAGE = "org.apache.iotdb.confignode.service";
-  public static final String CONFIGNODE_JMX_PORT = "confignode.jmx.port";
+  public void testRemoveCheckRpcAndPort() {}
 
-  public static final String REMOVE_CONFIGNODE_USAGE = "Executed failed, check usage: <Node-id>";
-
-  public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
-  public static final String REGION_MIGRATE_PROCESS = "[REGION_MIGRATE_PROCESS]";
-
-  private ConfigNodeConstant() {
-    // empty constructor
-  }
+  public void testRemoveConfigNode() {}
 }

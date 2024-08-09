@@ -42,11 +42,30 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
   // Remove ConfigNode
   private static final String MODE_REMOVE = "-r";
 
+  private final ConfigNode configNode;
+  private final ConfigNodeRemoveCheck configNodeRemoveCheck;
+
   private static final String USAGE =
       "Usage: <-s|-r> "
           + "[-D{} <configure folder>] \n"
           + "-s: Start the ConfigNode and join to the cluster\n"
           + "-r: Remove the ConfigNode out of the cluster\n";
+
+  /** Default constructor using the singletons for initializing the relationship. */
+  public ConfigNodeCommandLine() {
+    this(ConfigNode.getInstance(), ConfigNodeRemoveCheck.getInstance());
+  }
+
+  /**
+   * Additional constructor allowing injection of custom instances (mainly for testing)
+   *
+   * @param configNode reference to a config node
+   * @param configNodeRemoveCheck reference to the config node remove check
+   */
+  public ConfigNodeCommandLine(ConfigNode configNode, ConfigNodeRemoveCheck configNodeRemoveCheck) {
+    this.configNode = configNode;
+    this.configNodeRemoveCheck = configNodeRemoveCheck;
+  }
 
   @Override
   protected String getUsage() {
@@ -55,34 +74,34 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
   @Override
   protected int run(String[] args) {
-    String mode;
-    if (args.length < 1) {
-      mode = MODE_START;
-      LOGGER.warn(
-          "ConfigNode does not specify a startup mode. The default startup mode {} will be used",
-          MODE_START);
-    } else {
-      mode = args[0];
+    if ((args == null) || (args.length < 1)) {
+      usage(null);
+      return -1;
     }
 
+    String mode = args[0];
     LOGGER.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
         // Do ConfigNode startup checks
-        LOGGER.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
+        LOGGER.info("Starting ConfigNode {}", IoTDBConstant.VERSION_WITH_BUILD);
         ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
         checks.startUpCheck();
       } catch (StartupException | ConfigurationException | IOException e) {
-        LOGGER.error("Meet error when doing start checking", e);
+        LOGGER.error("Received an error during startup of ConfigNode", e);
         return -1;
       }
       activeConfigNodeInstance();
     } else if (MODE_REMOVE.equals(mode)) {
+      if (args.length != 2) {
+        LOGGER.error("Expected 2 arguments, but got {}", args.length);
+        return -1;
+      }
       // remove ConfigNode
       try {
         doRemoveConfigNode(args);
-      } catch (IOException e) {
-        LOGGER.error("Meet error when doing remove ConfigNode", e);
+      } catch (IOException | BadNodeUrlException e) {
+        LOGGER.error("Received an error during removal of ConfigNode", e);
         return -1;
       }
     } else {
@@ -94,11 +113,10 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
   }
 
   protected void activeConfigNodeInstance() {
-    ConfigNode.getInstance().active();
+    configNode.active();
   }
 
-  protected void doRemoveConfigNode(String[] args) throws IOException {
-
+  protected void doRemoveConfigNode(String[] args) throws BadNodeUrlException, IOException {
     if (args.length != 2) {
       LOGGER.info(REMOVE_CONFIGNODE_USAGE);
       return;
@@ -106,16 +124,14 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
     LOGGER.info("Starting to remove ConfigNode, parameter: {}, {}", args[0], args[1]);
 
-    try {
-      TConfigNodeLocation removeConfigNodeLocation =
-          ConfigNodeRemoveCheck.getInstance().removeCheck(args[1]);
-      if (removeConfigNodeLocation == null) {
-        LOGGER.error(
-            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-        return;
-      }
+    TConfigNodeLocation removeConfigNodeLocation = configNodeRemoveCheck.removeCheck(args[1]);
+    // If for any reason no config node could be found, abort here.
+    if (removeConfigNodeLocation == null) {
+      throw new BadNodeUrlException("No ConfigNode to remove");
+    }
 
-      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
+    try {
+      configNodeRemoveCheck.removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
       return;
