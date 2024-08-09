@@ -155,13 +155,25 @@ public class TsTable {
     }
   }
 
-  public void addProp(String key, String value) {
+  public void addProp(final String key, final String value) {
     readWriteLock.writeLock().lock();
     try {
       if (props == null) {
         props = new HashMap<>();
       }
       props.put(key, value);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void removeProp(final String key) {
+    readWriteLock.writeLock().lock();
+    try {
+      if (props == null) {
+        return;
+      }
+      props.remove(key);
     } finally {
       readWriteLock.writeLock().unlock();
     }

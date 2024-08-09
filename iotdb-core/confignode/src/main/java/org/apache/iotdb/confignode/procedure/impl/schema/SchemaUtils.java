@@ -26,7 +26,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -34,7 +39,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -208,5 +216,67 @@ public class SchemaUtils {
             false);
       }
     }
+  }
+
+  public static Map<Integer, TSStatus> preReleaseTable(
+      final String database, final TsTable table, final ConfigManager configManager) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
+    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(database, table));
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  public static Map<Integer, TSStatus> commitReleaseTable(
+      final String database, final String tableName, final ConfigManager configManager) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.COMMIT_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(database, outputStream);
+      ReadWriteIOUtils.write(tableName, outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream will not throw IOException
+    }
+    req.setTableInfo(outputStream.toByteArray());
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  public static Map<Integer, TSStatus> rollbackPreRelease(
+      final String database, final String tableName, final ConfigManager configManager) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(database, outputStream);
+      ReadWriteIOUtils.write(tableName, outputStream);
+    } catch (final IOException ignore) {
+      // ByteArrayOutputStream will not throw IOException
+    }
+    req.setTableInfo(outputStream.toByteArray());
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 }

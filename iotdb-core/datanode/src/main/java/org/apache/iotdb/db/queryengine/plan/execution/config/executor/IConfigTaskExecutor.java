@@ -92,6 +92,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IConfigTaskExecutor {
 
@@ -271,21 +272,31 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes);
 
-  SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession);
+  SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
-  SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB);
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
 
-  SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB);
+  SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB);
 
-  SettableFuture<ConfigTaskResult> createTable(TsTable table, String database, boolean ifNotExists);
+  SettableFuture<ConfigTaskResult> createTable(
+      final TsTable table, final String database, final boolean ifNotExists);
 
-  SettableFuture<ConfigTaskResult> describeTable(String database, String tableName);
+  SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
 
-  SettableFuture<ConfigTaskResult> showTables(String database);
+  SettableFuture<ConfigTaskResult> showTables(final String database);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
-      String database,
-      String tableName,
-      List<TsTableColumnSchema> columnSchemaList,
-      String queryId);
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
+  SettableFuture<ConfigTaskResult> alterTableSetProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean ifExists);
 }

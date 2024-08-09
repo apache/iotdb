@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -103,6 +104,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
 public class ClusterSchemaManager {
@@ -1097,30 +1100,34 @@ public class ClusterSchemaManager {
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public Optional<TsTable> getTable(final String database, final String tableName) {
-    return clusterSchemaInfo.getTsTable(database, tableName);
+  public Optional<TsTable> getTableIfExists(final String database, final String tableName) {
+    return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList) {
-    final TsTable originalTable =
-        clusterSchemaInfo.getAllUsingTables().get(database).stream()
-            .filter(tsTable -> tsTable.getTableName().equals(tableName))
-            .findAny()
-            .orElse(null);
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table %s.%s not exist", database, tableName)),
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
           null);
     }
 
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
 
+    final String errorMsg =
+        String.format(
+            "Column '%s' already exist",
+            columnSchemaList.stream()
+                .map(TsTableColumnSchema::getColumnName)
+                .collect(Collectors.joining(", ")));
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
@@ -1130,31 +1137,87 @@ public class ClusterSchemaManager {
           return true;
         });
 
+    if (columnSchemaList.isEmpty()) {
+      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+    }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
   public synchronized TSStatus addTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    AddTableColumnPlan addTableColumnPlan =
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, false);
     try {
       return getConsensusManager().write(addTableColumnPlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
   }
 
   public synchronized TSStatus rollbackAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
-    AddTableColumnPlan addTableColumnPlan =
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, true);
     try {
       return getConsensusManager().write(addTableColumnPlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
+  }
+
+  public synchronized TSStatus setTableProperties(
+      final String database, final String tableName, final Map<String, String> properties) {
+    final SetTablePropertiesPlan setTablePropertiesPlan =
+        new SetTablePropertiesPlan(database, tableName, properties);
+    try {
+      return getConsensusManager().write(setTablePropertiesPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized Pair<TSStatus, TsTable> updateTableProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> originalProperties,
+      final Map<String, String> updatedProperties) {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    updatedProperties
+        .keySet()
+        .removeIf(
+            key ->
+                Objects.equals(
+                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+    if (updatedProperties.isEmpty()) {
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
+    }
+
+    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    updatedProperties.forEach(
+        (k, v) -> {
+          originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
+          updatedTable.addProp(k, v);
+        });
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
   public void clearSchemaQuotaCache() {

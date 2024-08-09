@@ -28,11 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
-import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -42,12 +38,12 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -135,7 +131,7 @@ public class CreateTableProcedure
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
     if (env.getConfigManager()
         .getClusterSchemaManager()
-        .getTable(database, table.getTableName())
+        .getTableIfExists(database, table.getTableName())
         .isPresent()) {
       setFailure(
           new ProcedureException(
@@ -167,29 +163,20 @@ public class CreateTableProcedure
   }
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
-    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(database, table));
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // All dataNodes must clear the related schema cache
-        LOGGER.warn(
-            "Failed to sync table {}.{} pre-create info to DataNode {}",
-            database,
-            table.getTableName(),
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Pre create table failed")));
-        return;
-      }
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to sync table {}.{} pre-create info to DataNode, failure results: {}",
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(new ProcedureException(new MetadataException("Pre create table failed")));
+      return;
     }
+
     setNextState(CreateTableState.VALIDATE_TIMESERIES_EXISTENCE);
   }
 
@@ -301,33 +288,16 @@ public class CreateTableProcedure
   }
 
   private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.COMMIT_CREATE_OR_ADD_COLUMN.getOperationType());
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, outputStream);
-      ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (final IOException ignored) {
-      // ByteArrayOutputStream will not throw IOException
-    }
-    req.setTableInfo(outputStream.toByteArray());
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to sync table {}.{} commit-create info to DataNode {}",
-            database,
-            table.getTableName(),
-            dataNodeLocationMap.get(entry.getKey()));
-        // TODO: Handle commit failure
-        return;
-      }
+    if (!failedResults.isEmpty()) {
+      LOGGER.warn(
+          "Failed to sync table {}.{} commit-create info to DataNode {}, failure results: ",
+          database,
+          table.getTableName(),
+          failedResults);
+      // TODO: Handle commit failure
     }
   }
 
@@ -370,33 +340,17 @@ public class CreateTableProcedure
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, outputStream);
-      ReadWriteIOUtils.write(table.getTableName(), outputStream);
-    } catch (final IOException ignore) {
-      // ByteArrayOutputStream will not throw IOException
-    }
-    req.setTableInfo(outputStream.toByteArray());
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to sync table {}.{} rollback-create info to DataNode {}",
-            database,
-            table.getTableName(),
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Rollback create table failed")));
-        return;
-      }
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to sync table {}.{} rollback-create info to DataNode {}, failure results: ",
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(new ProcedureException(new MetadataException("Rollback create table failed")));
     }
   }
 
@@ -406,8 +360,8 @@ public class CreateTableProcedure
   }
 
   @Override
-  protected int getStateId(final CreateTableState createTableState) {
-    return createTableState.ordinal();
+  protected int getStateId(final CreateTableState state) {
+    return state.ordinal();
   }
 
   @Override
@@ -440,8 +394,12 @@ public class CreateTableProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (!(o instanceof CreateTableProcedure)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CreateTableProcedure)) {
+      return false;
+    }
     final CreateTableProcedure that = (CreateTableProcedure) o;
     return Objects.equals(database, that.database) && Objects.equals(table, that.table);
   }

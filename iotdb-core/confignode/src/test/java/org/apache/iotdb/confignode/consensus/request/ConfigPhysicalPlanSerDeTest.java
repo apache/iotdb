@@ -150,6 +150,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1521,6 +1522,21 @@ public class ConfigPhysicalPlanSerDeTest {
         rollbackCreateTablePlan0.getDatabase(), rollbackCreateTablePlan1.getDatabase());
     Assert.assertEquals(
         rollbackCreateTablePlan0.getTableName(), rollbackCreateTablePlan1.getTableName());
+  }
+
+  @Test
+  public void SetTablePropertiesPlanTest() throws IOException {
+    final SetTablePropertiesPlan setTablePropertiesPlan0 =
+        new SetTablePropertiesPlan("root.database1", "table1", Collections.singletonMap("a", null));
+    final SetTablePropertiesPlan setTablePropertiesPlan1 =
+        (SetTablePropertiesPlan)
+            ConfigPhysicalPlan.Factory.create(setTablePropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        setTablePropertiesPlan0.getDatabase(), setTablePropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
   }
 
   @Test

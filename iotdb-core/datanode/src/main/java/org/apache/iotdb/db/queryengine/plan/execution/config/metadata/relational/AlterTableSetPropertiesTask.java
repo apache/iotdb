@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -27,24 +26,38 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateTableTask implements IConfigTask {
+import java.util.Map;
 
-  private final TsTable table;
+public class AlterTableSetPropertiesTask implements IConfigTask {
 
   private final String database;
 
-  private final boolean ifNotExists;
+  private final String tableName;
 
-  public CreateTableTask(final TsTable table, String database, final boolean ifNotExists) {
+  private final Map<String, String> properties;
+
+  private final String queryId;
+
+  private final boolean ifExists;
+
+  public AlterTableSetPropertiesTask(
+      String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean ifExists) {
     database = PathUtils.qualifyDatabaseName(database);
-    this.table = table;
     this.database = database;
-    this.ifNotExists = ifNotExists;
+    this.tableName = tableName;
+    this.properties = properties;
+    this.queryId = queryId;
+    this.ifExists = ifExists;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTable(table, database, ifNotExists);
+    return configTaskExecutor.alterTableSetProperties(
+        database, tableName, properties, queryId, ifExists);
   }
 }

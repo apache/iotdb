@@ -23,15 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -43,14 +41,19 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class AddTableColumnProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, AddTableColumnState> {
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.COMMIT_RELEASE;
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.PRE_RELEASE;
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.SET_PROPERTIES;
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
+public class SetTablePropertiesProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTablePropertiesState> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SetTablePropertiesProcedure.class);
 
   private String database;
 
@@ -58,45 +61,56 @@ public class AddTableColumnProcedure
 
   private String queryId;
 
-  private List<TsTableColumnSchema> addedColumnList;
+  private Map<String, String> originalProperties = new HashMap<>();
+  private Map<String, String> updatedProperties;
   private TsTable table;
 
-  public AddTableColumnProcedure() {}
+  public SetTablePropertiesProcedure() {
+    super();
+  }
 
-  public AddTableColumnProcedure(
+  public SetTablePropertiesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final List<TsTableColumnSchema> addedColumnList) {
+      final Map<String, String> properties) {
     this.database = database;
     this.tableName = tableName;
     this.queryId = queryId;
-    this.addedColumnList = addedColumnList;
+    this.updatedProperties = properties;
   }
 
   @Override
-  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
-          columnCheck(env);
+        case VALIDATE_TABLE:
+          validateTable(env);
+          LOGGER.info(
+              "Validate table for table {}.{} when setting properties", database, tableName);
+          if (!isFailed() && Objects.isNull(table)) {
+            LOGGER.info(
+                "The updated table has the same properties with the original one. Skip the procedure.");
+            return Flow.NO_MORE_STATE;
+          }
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
+          LOGGER.info(
+              "Pre release info for table {}.{} when setting properties", database, tableName);
           break;
-        case ADD_COLUMN:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
-          addColumn(env);
+        case SET_PROPERTIES:
+          setProperties(env);
+          LOGGER.info("Set properties to table {}.{}", database, tableName);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
           commitRelease(env);
+          LOGGER.info(
+              "Commit release info of table {}.{} when setting properties", database, tableName);
           return Flow.NO_MORE_STATE;
-
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
           return Flow.NO_MORE_STATE;
@@ -104,7 +118,7 @@ public class AddTableColumnProcedure
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AddTableColumn-{}.{}-{} costs {}ms",
+          "SetTableProperties-{}.{}-{} costs {}ms",
           database,
           tableName,
           state,
@@ -112,18 +126,18 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  private void validateTable(final ConfigNodeProcedureEnv env) {
     final Pair<TSStatus, TsTable> result =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+            .updateTableProperties(database, tableName, originalProperties, updatedProperties);
     final TSStatus status = result.getLeft();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
       return;
     }
     table = result.getRight();
-    setNextState(AddTableColumnState.PRE_RELEASE);
+    setNextState(PRE_RELEASE);
   }
 
   private void preRelease(final ConfigNodeProcedureEnv env) {
@@ -133,28 +147,28 @@ public class AddTableColumnProcedure
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to pre-release column extension info of table {}.{} to DataNode, failure results: {}",
+          "Failed to pre-release properties info of table {}.{} to DataNode, failure results: {}",
           database,
           table.getTableName(),
           failedResults);
       setFailure(
           new ProcedureException(
-              new MetadataException("Pre-release table column extension info failed")));
+              new MetadataException("Pre-release table properties info failed")));
       return;
     }
 
-    setNextState(AddTableColumnState.ADD_COLUMN);
+    setNextState(SET_PROPERTIES);
   }
 
-  private void addColumn(final ConfigNodeProcedureEnv env) {
+  private void setProperties(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList);
+            .setTableProperties(database, tableName, updatedProperties);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
-      setNextState(AddTableColumnState.COMMIT_RELEASE);
+      setNextState(COMMIT_RELEASE);
     }
   }
 
@@ -163,7 +177,7 @@ public class AddTableColumnProcedure
         SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to commit column extension info of table {}.{} to DataNode, failure results: {}",
+          "Failed to commit properties info of table {}.{} to DataNode, failure results: {}",
           database,
           table.getTableName(),
           failedResults);
@@ -172,39 +186,30 @@ public class AddTableColumnProcedure
   }
 
   @Override
-  protected void rollbackState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
+  protected void rollbackState(
+      final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
       throws IOException, InterruptedException, ProcedureException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case ADD_COLUMN:
+        case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release info of table {}.{} when adding column",
+              "Start rollback pre release info for table {}.{} when setting properties",
               database,
               table.getTableName());
-          rollbackAddColumn(env);
-          break;
-        case PRE_RELEASE:
-          LOGGER.info("Start rollback Add column to table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);
+          break;
+        case SET_PROPERTIES:
+          LOGGER.info(
+              "Start rollback set properties to table {}.{}", database, table.getTableName());
+          rollbackSetProperties(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback DropTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
-    }
-  }
-
-  private void rollbackAddColumn(final ConfigNodeProcedureEnv env) {
-    if (table == null) {
-      return;
-    }
-    final TSStatus status =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .rollbackAddTableColumn(database, tableName, addedColumnList);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+          "Rollback SetTableProperties-{} costs {}ms.",
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -215,7 +220,7 @@ public class AddTableColumnProcedure
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to rollback pre-release column extension info of table {}.{} info to DataNode, failure results: {}",
+          "Failed to rollback properties info of table {}.{} info to DataNode, failure results: {}",
           database,
           table.getTableName(),
           failedResults);
@@ -225,19 +230,32 @@ public class AddTableColumnProcedure
     }
   }
 
-  @Override
-  protected AddTableColumnState getState(final int stateId) {
-    return AddTableColumnState.values()[stateId];
+  private void rollbackSetProperties(final ConfigNodeProcedureEnv env) {
+    if (table == null) {
+      return;
+    }
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .setTableProperties(database, tableName, originalProperties);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
   }
 
   @Override
-  protected int getStateId(final AddTableColumnState state) {
+  protected SetTablePropertiesState getState(final int stateId) {
+    return SetTablePropertiesState.values()[stateId];
+  }
+
+  @Override
+  protected int getStateId(final SetTablePropertiesState state) {
     return state.ordinal();
   }
 
   @Override
-  protected AddTableColumnState getInitialState() {
-    return AddTableColumnState.COLUMN_CHECK;
+  protected SetTablePropertiesState getInitialState() {
+    return VALIDATE_TABLE;
   }
 
   public String getDatabase() {
@@ -254,14 +272,15 @@ public class AddTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(queryId, stream);
 
-    TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
+    ReadWriteIOUtils.write(originalProperties, stream);
+    ReadWriteIOUtils.write(updatedProperties, stream);
     if (Objects.nonNull(table)) {
       ReadWriteIOUtils.write(true, stream);
       table.serialize(stream);
@@ -277,7 +296,8 @@ public class AddTableColumnProcedure
     this.tableName = ReadWriteIOUtils.readString(byteBuffer);
     this.queryId = ReadWriteIOUtils.readString(byteBuffer);
 
-    this.addedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
+    this.originalProperties = ReadWriteIOUtils.readMap(byteBuffer);
+    this.updatedProperties = ReadWriteIOUtils.readMap(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       this.table = TsTable.deserialize(byteBuffer);
     }
@@ -288,17 +308,18 @@ public class AddTableColumnProcedure
     if (this == o) {
       return true;
     }
-    if (!(o instanceof AddTableColumnProcedure)) {
+    if (!(o instanceof SetTablePropertiesProcedure)) {
       return false;
     }
-    final AddTableColumnProcedure that = (AddTableColumnProcedure) o;
+    final SetTablePropertiesProcedure that = (SetTablePropertiesProcedure) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
+        && Objects.equals(updatedProperties, that.updatedProperties)
         && Objects.equals(queryId, that.queryId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, queryId);
+    return Objects.hash(database, tableName, updatedProperties, queryId);
   }
 }

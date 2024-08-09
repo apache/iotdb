@@ -140,7 +140,8 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
+    : identifier columnCategory=(ID | ATTRIBUTE) charsetName?
+    | identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
     ;
 
 charsetName
@@ -163,12 +164,12 @@ descTableStatement
     ;
 
 alterTableStatement
-    : ALTER TABLE from=qualifiedName RENAME TO to=identifier                                #renameTable
-    | ALTER TABLE tableName=qualifiedName ADD COLUMN column=columnDefinition                #addColumn
-    | ALTER TABLE tableName=qualifiedName RENAME COLUMN from=identifier TO to=identifier    #renameColumn
-    | ALTER TABLE tableName=qualifiedName DROP COLUMN column=identifier                     #dropColumn
+    : ALTER TABLE (IF EXISTS)? from=qualifiedName RENAME TO to=identifier                                #renameTable
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ADD COLUMN (IF NOT EXISTS)? column=columnDefinition                #addColumn
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier    #renameColumn
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
-    | ALTER TABLE tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
 

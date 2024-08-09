@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1111,7 +1112,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree.getAllPreCreateTables();
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
     } finally {
@@ -1119,11 +1120,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public Optional<TsTable> getTsTable(String database, String tableName) {
+  public Optional<TsTable> getTsTableIfExists(final String database, final String tableName) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getTable(new PartialPath(database), tableName);
-    } catch (MetadataException e) {
+      return mTree.getTableIfExists(new PartialPath(database), tableName);
+    } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
     } finally {
@@ -1131,8 +1132,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus addTableColumn(AddTableColumnPlan plan) {
-    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
+  public TSStatus addTableColumn(final AddTableColumnPlan plan) {
+    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       if (plan.isRollback()) {
@@ -1143,7 +1144,22 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
       }
       return RpcUtils.SUCCESS_STATUS;
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
+    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.setTableProperties(
+          new PartialPath(databaseName), plan.getTableName(), plan.getProperties());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {

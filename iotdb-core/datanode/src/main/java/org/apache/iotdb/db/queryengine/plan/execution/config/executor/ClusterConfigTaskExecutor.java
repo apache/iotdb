@@ -3124,7 +3124,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
-      final String queryId) {
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3151,12 +3153,73 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // keep waiting until task ends
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
         LOGGER.warn(
             "Failed to add column to table {}.{}, status is {}.", database, tableName, tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
-      } else {
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableSetProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean ifExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      final TAlterTableReq req = new TAlterTableReq();
+      req.setDatabase(database);
+      req.setTableName(tableName);
+      req.setQueryId(queryId);
+      req.setOperationType(AlterTableOperationType.SET_PROPERTIES.getTypeValue());
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(properties, stream);
+      } catch (IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+      req.setUpdateInfo(stream.toByteArray());
+
+      do {
+        try {
+          tsStatus = client.alterTable(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to set properties {} to table {}.{}, status is {}.",
+            properties,
+            database,
+            tableName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);

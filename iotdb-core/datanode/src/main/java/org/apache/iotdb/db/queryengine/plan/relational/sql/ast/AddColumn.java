@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
-
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,18 +31,34 @@ public class AddColumn extends Statement {
   private final QualifiedName tableName;
   private final ColumnDefinition column;
 
-  public AddColumn(QualifiedName tableName, ColumnDefinition column) {
+  private final boolean tableIfExists;
+  private final boolean columnIfNotExists;
+
+  public AddColumn(
+      final QualifiedName tableName,
+      final ColumnDefinition column,
+      final boolean tableIfExists,
+      final boolean columnIfNotExists) {
     super(null);
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
+    this.tableIfExists = tableIfExists;
+    this.columnIfNotExists = columnIfNotExists;
   }
 
-  public AddColumn(NodeLocation location, QualifiedName tableName, ColumnDefinition column) {
+  public AddColumn(
+      final NodeLocation location,
+      final QualifiedName tableName,
+      final ColumnDefinition column,
+      final boolean tableIfExists,
+      final boolean columnIfNotExists) {
     super(requireNonNull(location, "location is null"));
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
+    this.tableIfExists = tableIfExists;
+    this.columnIfNotExists = columnIfNotExists;
   }
 
   public QualifiedName getTableName() {
@@ -54,35 +69,51 @@ public class AddColumn extends Statement {
     return column;
   }
 
+  public boolean tableIfExists() {
+    return tableIfExists;
+  }
+
+  public boolean columnIfNotExists() {
+    return columnIfNotExists;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitAddColumn(this, context);
   }
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of(column);
+  public List<? extends Node> getChildren() {
+    return Collections.singletonList(column);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, column);
+    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(final Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    AddColumn o = (AddColumn) obj;
-    return Objects.equals(tableName, o.tableName) && Objects.equals(column, o.column);
+    final AddColumn that = (AddColumn) o;
+    return tableIfExists == that.tableIfExists
+        && columnIfNotExists == that.columnIfNotExists
+        && Objects.equals(tableName, that.tableName)
+        && Objects.equals(column, that.column);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("name", tableName).add("column", column).toString();
+    return toStringHelper(this)
+        .add("tableName", tableName)
+        .add("column", column)
+        .add("tableIfExists", tableIfExists)
+        .add("columnIfExists", columnIfNotExists)
+        .toString();
   }
 }
