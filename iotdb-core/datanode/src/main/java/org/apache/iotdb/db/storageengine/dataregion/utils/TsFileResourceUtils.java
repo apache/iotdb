@@ -67,6 +67,9 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
+    if (resource.isDeleted()) {
+      return true;
+    }
     DeviceTimeIndex timeIndex;
     try {
       if (resource.getTimeIndexType() != 1) {

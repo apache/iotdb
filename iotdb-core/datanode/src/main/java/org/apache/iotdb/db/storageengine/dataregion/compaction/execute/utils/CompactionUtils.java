@@ -171,6 +171,25 @@ public class CompactionUtils {
     }
   }
 
+  public static void combineModsInInnerCompaction(
+      Collection<TsFileResource> sourceFiles, List<TsFileResource> targetTsFiles)
+      throws IOException {
+    Set<Modification> modifications = new HashSet<>();
+    for (TsFileResource mergeTsFile : sourceFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+      }
+    }
+    for (TsFileResource targetTsFile : targetTsFiles) {
+      updateOneTargetMods(targetTsFile, modifications);
+      if (!modifications.isEmpty()) {
+        FileMetrics.getInstance().increaseModFileNum(1);
+        FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
+      }
+    }
+  }
+
   private static void updateOneTargetMods(
       TsFileResource targetFile, Set<Modification> modifications) throws IOException {
     if (!modifications.isEmpty()) {

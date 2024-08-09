@@ -118,7 +118,7 @@ public class FastCompactionPerformer
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
-                : new FastInnerCompactionWriter(targetFiles.get(0))) {
+                : new FastInnerCompactionWriter(targetFiles)) {
       readModification(seqFiles);
       readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {

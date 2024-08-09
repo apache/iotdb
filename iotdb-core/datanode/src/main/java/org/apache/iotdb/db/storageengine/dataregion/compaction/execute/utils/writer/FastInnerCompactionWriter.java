@@ -40,6 +40,10 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     super(targetFileResource);
   }
 
+  public FastInnerCompactionWriter(List<TsFileResource> targetFileResources) throws IOException {
+    super(targetFileResources);
+  }
+
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
     throw new RuntimeException("Does not support this method in FastInnerCompactionWriter");

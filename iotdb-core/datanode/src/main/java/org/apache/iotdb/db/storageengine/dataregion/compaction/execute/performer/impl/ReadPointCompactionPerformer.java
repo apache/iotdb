@@ -293,7 +293,7 @@ public class ReadPointCompactionPerformer
       return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
+      return new ReadPointInnerCompactionWriter(targetFileResources);
     }
   }
 
