@@ -173,7 +173,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -280,6 +280,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -313,15 +314,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setDatabase(
-      DatabaseSchemaStatement databaseSchemaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final DatabaseSchemaStatement databaseSchemaStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Check database length here
+    // We need to calculate the database name without "root."
+    final String databaseName = databaseSchemaStatement.getDatabasePath().getFullPath();
+    if (databaseName.length() > MAX_DATABASE_NAME_LENGTH) {
+      final IllegalPathException illegalPathException =
+          new IllegalPathException(
+              databaseName,
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      future.setException(
+          new IoTDBException(
+              illegalPathException.getMessage(), illegalPathException.getErrorCode()));
+      return future;
+    }
+
     // Construct request using statement
-    TDatabaseSchema databaseSchema =
+    final TDatabaseSchema databaseSchema =
         DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
+      final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         // If database already exists when loading, we do not throw exceptions to avoid printing too
@@ -340,7 +355,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2975,6 +2990,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Check database length here
+    // We need to calculate the database name without "root."
+    if (createDB.getDbName().length() > MAX_DATABASE_NAME_LENGTH) {
+      final IllegalPathException illegalPathException =
+          new IllegalPathException(
+              createDB.getDbName(),
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      future.setException(
+          new IoTDBException(
+              illegalPathException.getMessage(), illegalPathException.getErrorCode()));
+      return future;
+    }
     // Construct request using statement
     final TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());

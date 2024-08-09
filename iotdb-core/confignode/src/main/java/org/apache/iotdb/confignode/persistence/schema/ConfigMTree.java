@@ -164,7 +164,7 @@ public class ConfigMTree {
     store.deleteChild(cur, databaseMNode.getName());
 
     // delete node a while retain root.a.sg2
-    while (cur.getParent() != null && cur.getChildren().size() == 0) {
+    while (cur.getParent() != null && cur.getChildren().isEmpty()) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }

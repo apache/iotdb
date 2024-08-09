@@ -164,6 +164,21 @@ public class IoTDBDatabaseIT {
       //      statement.execute("use \"a.b\"");
       //      statement.execute("drop database \"a.b\"");
 
+      // Test length limitation
+      statement.execute(
+          "create database thisDatabaseLengthIsPreciselySixtyFourThusItCanBeNormallyCreated");
+
+      try {
+        statement.execute(
+            "create database thisDatabaseLengthHasExceededSixtyFourThusItCantBeNormallyCreated");
+        fail(
+            "create database thisDatabaseLengthHasExceededSixtyFourThusItCantBeNormallyCreated shouldn't succeed because it's length has exceeded 64");
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("the length of database name shall not exceed 64"));
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());

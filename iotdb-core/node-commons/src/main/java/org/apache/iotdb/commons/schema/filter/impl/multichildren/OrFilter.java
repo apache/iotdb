@@ -36,7 +36,7 @@ public class OrFilter extends AbstractMultiChildrenFilter {
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitOrFilter(this, node);
   }
 

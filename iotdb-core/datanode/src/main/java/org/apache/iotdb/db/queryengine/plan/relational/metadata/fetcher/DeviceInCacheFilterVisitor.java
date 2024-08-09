@@ -41,23 +41,22 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
   }
 
   @Override
-  protected boolean visitNode(final SchemaFilter filter, final DeviceEntry deviceEntry) {
+  protected Boolean visitNode(final SchemaFilter filter, final DeviceEntry deviceEntry) {
     throw new UnsupportedOperationException(
         "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
   }
 
   @Override
-  public boolean visitIdFilter(final IdFilter filter, final DeviceEntry deviceEntry) {
+  public Boolean visitIdFilter(final IdFilter filter, final DeviceEntry deviceEntry) {
     // The first segment is "tableName", skip it
     final int index = filter.getIndex() + 1;
-    // If index out of array bound, means that value will be null
     return filter
         .getChild()
         .accept(StringValueFilterVisitor.getInstance(), (String) deviceEntry.getNthSegment(index));
   }
 
   @Override
-  public boolean visitAttributeFilter(final AttributeFilter filter, final DeviceEntry deviceEntry) {
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final DeviceEntry deviceEntry) {
     return filter
         .getChild()
         .accept(

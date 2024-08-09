@@ -415,14 +415,14 @@ public class SchemaRegionTestUtil {
   }
 
   public static void createTableDevice(
-      ISchemaRegion schemaRegion, String table, Object[] deviceIds, Map<String, String> attributes)
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final Object[] deviceIds,
+      final Map<String, String> attributes)
       throws MetadataException {
-    String[] fullId = new String[deviceIds.length + 1];
-    fullId[0] = table;
-    System.arraycopy(deviceIds, 0, fullId, 1, deviceIds.length);
     schemaRegion.createTableDevice(
         table,
-        Collections.singletonList(fullId),
+        Collections.singletonList(deviceIds),
         new ArrayList<>(attributes.keySet()),
         Collections.singletonList(
             attributes.values().stream()

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -62,6 +61,7 @@ public class SimpleNFA implements IPatternFA {
 
   // raw nodes of pathPattern
   private final PartialPath pathPattern;
+  private int smallestNullableIndex;
 
   // initial state of this NFA and the only transition from this state is "root"
   private final SinglePathPatternNode initialState = new InitialNode();
@@ -71,7 +71,27 @@ public class SimpleNFA implements IPatternFA {
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
     this.isPrefixMatch = isPrefixMatch;
     this.pathPattern = pathPattern;
+    computeSmallestNullableIndex();
     patternNodes = new SinglePathPatternNode[pathPattern.getNodeLength() + 1];
+  }
+
+  // This is only used for table device query
+  // For other schema query, the smallest nullable index will be the last index of the pattern
+  private void computeSmallestNullableIndex() {
+    smallestNullableIndex = pathPattern.getNodeLength() - 1;
+    if (!(pathPattern instanceof ExtendedPartialPath)) {
+      return;
+    }
+
+    while (smallestNullableIndex >= 0) {
+      final String node = pathPattern.getNodes()[smallestNullableIndex];
+      if (!Objects.isNull(node)
+          && !(Objects.equals(node, ONE_LEVEL_PATH_WILDCARD)
+              && ((ExtendedPartialPath) pathPattern).match(smallestNullableIndex, null))) {
+        break;
+      }
+      smallestNullableIndex--;
+    }
   }
 
   @Override
@@ -119,7 +139,7 @@ public class SimpleNFA implements IPatternFA {
     return true;
   }
 
-  private SinglePathPatternNode getNextNode(SinglePathPatternNode currentNode) {
+  private SinglePathPatternNode getNextNode(final SinglePathPatternNode currentNode) {
     if (currentNode.patternIndex == pathPattern.getNodeLength()) {
       return currentNode;
     }
@@ -138,8 +158,8 @@ public class SimpleNFA implements IPatternFA {
                 nextIndex,
                 currentNode.getTracebackNode(),
                 pathPattern instanceof ExtendedPartialPath
-                    ? ((ExtendedPartialPath) pathPattern).getMatchFunctions(nextIndex)
-                    : Collections.emptyList());
+                    ? event -> ((ExtendedPartialPath) pathPattern).match(nextIndex, event)
+                    : event -> true);
       } else if (PathPatternUtil.hasWildcard(rawNodes[nextIndex])) {
         patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
       } else {
@@ -170,7 +190,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public boolean isFinal() {
-      return patternIndex >= pathPattern.getNodeLength() - 1;
+      return patternIndex >= smallestNullableIndex;
     }
 
     @Override
@@ -356,20 +376,20 @@ public class SimpleNFA implements IPatternFA {
   /** The patternNode of the rawNode *. */
   private class OneLevelWildcardMatchNode extends SinglePathPatternNode {
 
-    private final List<Function<String, Boolean>> matchFunctions;
+    private final Function<String, Boolean> matchFunction;
 
-    // Currently one level wildcard match supports an extra matchFunction
+    // Currently one level wildcard match supports extra matchFunctions
     private OneLevelWildcardMatchNode(
         final int patternIndex,
         final SinglePathPatternNode tracebackNode,
-        final List<Function<String, Boolean>> matchFunctions) {
+        final Function<String, Boolean> matchFunction) {
       super(patternIndex, tracebackNode);
-      this.matchFunctions = matchFunctions;
+      this.matchFunction = matchFunction;
     }
 
     @Override
     public boolean isMatch(final String event) {
-      return matchFunctions.stream().allMatch(function -> function.apply(event));
+      return matchFunction.apply(event);
     }
 
     @Override

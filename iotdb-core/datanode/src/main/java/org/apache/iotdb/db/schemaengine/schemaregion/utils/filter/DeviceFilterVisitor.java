@@ -32,12 +32,12 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
 
   @Override
-  public boolean visitNode(final SchemaFilter filter, final IDeviceSchemaInfo info) {
+  public Boolean visitNode(final SchemaFilter filter, final IDeviceSchemaInfo info) {
     return true;
   }
 
   @Override
-  public boolean visitPathContainsFilter(
+  public Boolean visitPathContainsFilter(
       final PathContainsFilter pathContainsFilter, final IDeviceSchemaInfo info) {
     if (pathContainsFilter.getContainString() == null) {
       return true;
@@ -46,7 +46,7 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitTemplateFilter(
+  public Boolean visitTemplateFilter(
       final TemplateFilter templateFilter, final IDeviceSchemaInfo info) {
     final boolean equalAns;
     final int templateId = info.getTemplateId();
@@ -66,19 +66,17 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean visitIdFilter(final IdFilter filter, final IDeviceSchemaInfo info) {
+  public Boolean visitIdFilter(final IdFilter filter, final IDeviceSchemaInfo info) {
     final String[] nodes = info.getPartialPath().getNodes();
-    if (nodes.length < filter.getIndex() + 3) {
-      return false;
-    } else {
-      return filter
-          .getChild()
-          .accept(StringValueFilterVisitor.getInstance(), nodes[filter.getIndex() + 3]);
-    }
+    return filter
+        .getChild()
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            nodes.length > filter.getIndex() + 3 ? nodes[filter.getIndex() + 3] : null);
   }
 
   @Override
-  public boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceSchemaInfo info) {
+  public Boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceSchemaInfo info) {
     return filter
         .getChild()
         .accept(StringValueFilterVisitor.getInstance(), info.getAttributeValue(filter.getKey()));

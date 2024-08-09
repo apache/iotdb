@@ -53,7 +53,7 @@ public class IdFilter extends AbstractSingleChildFilter {
   }
 
   @Override
-  public <C> boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitIdFilter(this, node);
   }
 

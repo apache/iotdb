@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
@@ -134,7 +135,32 @@ public class ConvertSchemaPredicateToFilterVisitor
       checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
     }
-    return wrapIdOrAttributeFilter(new PreciseFilter(value), columnName, context);
+
+    return wrapIdOrAttributeFilter(
+        node.getOperator() == ComparisonExpression.Operator.EQUAL
+            ? new PreciseFilter(value)
+            : new ComparisonFilter(
+                convertExpressionOperator2SchemaOperator(node.getOperator()), value),
+        columnName,
+        context);
+  }
+
+  private ComparisonFilter.Operator convertExpressionOperator2SchemaOperator(
+      final ComparisonExpression.Operator operator) {
+    switch (operator) {
+      case NOT_EQUAL:
+        return ComparisonFilter.Operator.NOT_EQUAL;
+      case LESS_THAN:
+        return ComparisonFilter.Operator.LESS_THAN;
+      case LESS_THAN_OR_EQUAL:
+        return ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
+      case GREATER_THAN:
+        return ComparisonFilter.Operator.GREATER_THAN;
+      case GREATER_THAN_OR_EQUAL:
+        return ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL;
+      default:
+        throw new UnsupportedOperationException("Unsupported operator " + operator);
+    }
   }
 
   @Override

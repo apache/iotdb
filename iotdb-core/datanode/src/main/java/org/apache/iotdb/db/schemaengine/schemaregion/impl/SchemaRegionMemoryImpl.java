@@ -1343,10 +1343,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public void createTableDevice(
-      String tableName,
-      List<Object[]> devicePathList,
-      List<String> attributeNameList,
-      List<Object[]> attributeValueList)
+      final String tableName,
+      final List<Object[]> devicePathList,
+      final List<String> attributeNameList,
+      final List<Object[]> attributeValueList)
       throws MetadataException {
     for (int i = 0; i < devicePathList.size(); i++) {
       int finalI = i;
@@ -1403,7 +1403,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+      final ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
     return mtree.getTableDeviceReader(
         showTableDevicesPlan.getDevicePattern(),
         showTableDevicesPlan.getDeviceFilter(),
@@ -1412,7 +1412,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
+      final String table, final List<Object[]> devicePathList) {
     return mtree.getTableDeviceReader(
         table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }

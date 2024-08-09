@@ -65,7 +65,7 @@ public interface Metadata {
   IPartitionFetcher getPartitionFetcher();
 
   /**
-   * get all device ids and corresponding attributes from schema region
+   * Get all device ids and corresponding attributes from schema region
    *
    * @param tableName qualified table name
    * @param expressionList device filter in conj style, need to remove all the deviceId filter after
@@ -73,10 +73,10 @@ public interface Metadata {
    * @param attributeColumns attribute column names
    */
   List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context);
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context);
 
   /**
    * This method is used for table column validation and should be invoked before device validation.
