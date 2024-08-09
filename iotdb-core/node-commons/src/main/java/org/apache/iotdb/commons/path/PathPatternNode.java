@@ -40,10 +40,10 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V>> {
+public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
 
   private final String name;
-  private final Map<String, PathPatternNode<V, VSerializer>> children;
+  private final Map<String, PathPatternNode<V, S>> children;
   private Set<V> valueSet;
 
   /**
@@ -52,31 +52,38 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
    */
   private boolean mark = false;
 
-  private final VSerializer serializer;
+  private final S serializer;
 
-  public PathPatternNode(String name, VSerializer serializer) {
+  // Children names with wildcard, for accelerating wildcard searching
+  // Here we do not include "*" or "**"
+  // to ensure that the set is empty in most of the time, in order to save memory.
+  private final Set<String> childrenNamesWithNonTrivialWildcard = new HashSet<>();
+
+  public PathPatternNode(final String name, final S serializer) {
     this.name = name;
     this.children = new HashMap<>();
     this.serializer = serializer;
   }
 
-  public PathPatternNode(String name, Supplier<? extends Set<V>> supplier, VSerializer serialize) {
+  public PathPatternNode(
+      final String name, final Supplier<? extends Set<V>> supplier, final S serializer) {
     this.name = name;
     this.children = new HashMap<>();
     this.valueSet = supplier.get();
-    this.serializer = serialize;
+    this.serializer = serializer;
   }
 
   public String getName() {
     return name;
   }
 
-  public PathPatternNode<V, VSerializer> getChildren(String nodeName) {
+  public PathPatternNode<V, S> getChildren(final String nodeName) {
     return children.getOrDefault(nodeName, null);
   }
 
-  public List<PathPatternNode<V, VSerializer>> getMatchChildren(String nodeName) {
-    List<PathPatternNode<V, VSerializer>> res = new ArrayList<>();
+  // The nodeName must not contain any wildcards
+  public List<PathPatternNode<V, S>> getMatchChildren(final String nodeName) {
+    final List<PathPatternNode<V, S>> res = new ArrayList<>();
     if (children.containsKey(nodeName)) {
       res.add(children.get(nodeName));
     }
@@ -86,26 +93,36 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     if (children.containsKey(MULTI_LEVEL_PATH_WILDCARD)) {
       res.add(children.get(MULTI_LEVEL_PATH_WILDCARD));
     }
+    childrenNamesWithNonTrivialWildcard.stream()
+        .filter(path -> PathPatternUtil.isNodeMatch(path, nodeName))
+        .map(children::get)
+        .forEach(res::add);
     return res;
   }
 
-  public Map<String, PathPatternNode<V, VSerializer>> getChildren() {
+  public Map<String, PathPatternNode<V, S>> getChildren() {
     return children;
   }
 
-  public void addChild(PathPatternNode<V, VSerializer> tmpNode) {
-    children.put(tmpNode.getName(), tmpNode);
+  public void addChild(final PathPatternNode<V, S> tmpNode) {
+    final String nodeName = tmpNode.getName();
+    if (PathPatternUtil.hasWildcard(nodeName)
+        && !PathPatternUtil.isMultiLevelMatchWildcard(nodeName)
+        && !ONE_LEVEL_PATH_WILDCARD.equals(nodeName)) {
+      childrenNamesWithNonTrivialWildcard.add(nodeName);
+    }
+    children.put(nodeName, tmpNode);
   }
 
-  public void deleteChild(PathPatternNode<V, VSerializer> tmpNode) {
+  public void deleteChild(final PathPatternNode<V, S> tmpNode) {
     children.remove(tmpNode.getName());
   }
 
-  public void appendValue(V value, BiConsumer<V, Set<V>> remappingFunction) {
+  public void appendValue(final V value, final BiConsumer<V, Set<V>> remappingFunction) {
     remappingFunction.accept(value, valueSet);
   }
 
-  public void deleteValue(V value, BiConsumer<V, Set<V>> remappingFunction) {
+  public void deleteValue(final V value, final BiConsumer<V, Set<V>> remappingFunction) {
     remappingFunction.accept(value, valueSet);
   }
 
@@ -114,7 +131,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   }
 
   /**
-   * @return true if from root to the current node is a registered path pattern.
+   * @return {@code true} if from root to the current node is a registered path pattern.
    */
   public boolean isPathPattern() {
     return mark || isLeaf();
@@ -133,15 +150,15 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   }
 
   /** set true if from root to the current node is a registered path pattern. */
-  public void markPathPattern(boolean mark) {
+  public void markPathPattern(final boolean mark) {
     this.mark = mark;
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    PathPatternNode<?, ?> that = (PathPatternNode<?, ?>) o;
+    final PathPatternNode<?, ?> that = (PathPatternNode<?, ?>) o;
     return mark == that.mark
         && Objects.equals(name, that.name)
         && Objects.equals(children, that.children)
@@ -170,13 +187,13 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
    *   <li>[optional] children
    * </ul>
    */
-  public void serialize(ByteBuffer buffer) {
+  public void serialize(final ByteBuffer buffer) {
     ReadWriteIOUtils.write(name, buffer);
     if (valueSet == null) {
       ReadWriteIOUtils.write(mark ? -1 : -2, buffer);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), buffer);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, buffer);
       }
     }
@@ -184,19 +201,19 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     serializeChildren(buffer);
   }
 
-  void serializeChildren(ByteBuffer buffer) {
-    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
+  void serializeChildren(final ByteBuffer buffer) {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(buffer);
     }
   }
 
-  public void serialize(PublicBAOS outputStream) throws IOException {
+  public void serialize(final PublicBAOS outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
     if (valueSet == null) {
       ReadWriteIOUtils.write(mark ? -1 : -2, outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, outputStream);
       }
     }
@@ -204,13 +221,13 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     serializeChildren(outputStream);
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(final DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
     if (valueSet == null) {
       ReadWriteIOUtils.write(mark ? -1 : -2, outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
-      for (V value : valueSet) {
+      for (final V value : valueSet) {
         serializer.write(value, outputStream);
       }
     }
@@ -218,27 +235,27 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     serializeChildren(outputStream);
   }
 
-  void serializeChildren(PublicBAOS outputStream) throws IOException {
-    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
+  void serializeChildren(final PublicBAOS outputStream) throws IOException {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
 
-  void serializeChildren(DataOutputStream outputStream) throws IOException {
-    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
+  void serializeChildren(final DataOutputStream outputStream) throws IOException {
+    for (final PathPatternNode<V, S> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
 
   public static <V, T extends PathPatternNode.Serializer<V>> PathPatternNode<V, T> deserializeNode(
-      ByteBuffer buffer, T serializer, Consumer<String> nodeNameProcessor) {
-    PathPatternNode<V, T> node =
+      final ByteBuffer buffer, final T serializer, final Consumer<String> nodeNameProcessor) {
+    final PathPatternNode<V, T> node =
         new PathPatternNode<>(ReadWriteIOUtils.readString(buffer), serializer);
     nodeNameProcessor.accept(node.name);
-    int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
+    final int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
     if (typeOrValueSize >= 0) {
       // measurement node in PatternTreeMap
-      Set<V> valueSet = new HashSet<>();
+      final Set<V> valueSet = new HashSet<>();
       for (int i = 0; i < typeOrValueSize; i++) {
         valueSet.add(serializer.read(buffer));
       }
@@ -249,7 +266,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     }
     int childrenSize = ReadWriteIOUtils.readInt(buffer);
     while (childrenSize > 0) {
-      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer, nodeNameProcessor);
+      final PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer, nodeNameProcessor);
       node.addChild(tmpNode);
       childrenSize--;
     }
@@ -263,13 +280,13 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
    */
   public interface Serializer<T> {
 
-    void write(T t, ByteBuffer buffer);
+    void write(final T t, final ByteBuffer buffer);
 
-    void write(T t, PublicBAOS stream) throws IOException;
+    void write(final T t, final PublicBAOS stream) throws IOException;
 
-    void write(T t, DataOutputStream stream) throws IOException;
+    void write(final T t, final DataOutputStream stream) throws IOException;
 
-    T read(ByteBuffer buffer);
+    T read(final ByteBuffer buffer);
   }
 
   public static class VoidSerializer implements PathPatternNode.Serializer<Void> {
@@ -287,16 +304,16 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     private VoidSerializer() {}
 
     @Override
-    public void write(Void unused, ByteBuffer buffer) {}
+    public void write(final Void unused, final ByteBuffer buffer) {}
 
     @Override
-    public void write(Void unused, PublicBAOS stream) {}
+    public void write(final Void unused, final PublicBAOS stream) {}
 
     @Override
-    public void write(Void unused, DataOutputStream stream) {}
+    public void write(final Void unused, final DataOutputStream stream) {}
 
     @Override
-    public Void read(ByteBuffer buffer) {
+    public Void read(final ByteBuffer buffer) {
       return null;
     }
   }
