@@ -34,6 +34,8 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -47,7 +49,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
-
+  private static final Logger logger = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
@@ -59,7 +61,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<TSDataType> dataTypeList = new ArrayList<>(schemaList.size());
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
@@ -271,8 +273,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
-    List<Integer> columnIndexList = new ArrayList<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<Integer> columnIndexList = new ArrayList<>(schemaList.size());
+    List<TSDataType> dataTypeList = new ArrayList<>(schemaList.size());
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
@@ -319,7 +321,30 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    return new AlignedChunkWriterImpl(schemaList);
+    return new AlignedChunkWriterImpl(schemaList, list.rowCount());
+  }
+
+  public Object newArrayByType(TSDataType type, int length) {
+    switch (type) {
+      case BOOLEAN:
+        return new boolean[length];
+      case INT32:
+      case DATE:
+        return new int[length];
+      case INT64:
+      case TIMESTAMP:
+        return new long[length];
+      case FLOAT:
+        return new float[length];
+      case DOUBLE:
+        return new double[length];
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return new Binary[length];
+      default:
+        return null;
+    }
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
@@ -339,6 +364,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       range++;
       if (range == MAX_NUMBER_OF_POINTS_IN_PAGE) {
         pageRange.add(sortedRowIndex);
+
         range = 0;
       }
 
@@ -361,9 +387,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       pageRange.add(list.rowCount() - 1);
     }
 
+    for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {}
+
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
-
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
@@ -372,8 +399,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
         TSDataType tsDataType = dataTypes.get(columnIndex);
+        int size = pageRange.get(pageNum * 2 + 1) - pageRange.get(pageNum * 2) + 1;
+        long[] times = new long[size];
+        Object values = newArrayByType(tsDataType, size);
+        int idx = 0;
+        BitMap bitMap = new BitMap(size);
+        int end = pageRange.get(pageNum * 2 + 1);
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
-            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
+            sortedRowIndex <= end;
             sortedRowIndex++) {
           // skip empty row
           if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
@@ -410,38 +443,63 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           }
 
           boolean isNull = list.isNullValue(originRowIndex, columnIndex);
+          if (!isNull) {
+            bitMap.mark(idx);
+          }
+          times[idx] = time;
           switch (tsDataType) {
             case BOOLEAN:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
+              ((boolean[]) values)[idx++] =
+                  list.getBooleanByValueIndex(originRowIndex, columnIndex);
               break;
             case INT32:
             case DATE:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
+              ((int[]) values)[idx++] = list.getIntByValueIndex(originRowIndex, columnIndex);
               break;
             case INT64:
             case TIMESTAMP:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
+              ((long[]) values)[idx++] = list.getLongByValueIndex(originRowIndex, columnIndex);
               break;
             case FLOAT:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
+              ((float[]) values)[idx++] = list.getFloatByValueIndex(originRowIndex, columnIndex);
               break;
             case DOUBLE:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
+              ((double[]) values)[idx++] = list.getDoubleByValueIndex(originRowIndex, columnIndex);
               break;
             case TEXT:
             case BLOB:
             case STRING:
-              alignedChunkWriter.writeByColumn(
-                  time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
+              ((Binary[]) values)[idx++] = list.getBinaryByValueIndex(originRowIndex, columnIndex);
               break;
             default:
               break;
           }
+        }
+        switch (tsDataType) {
+          case BOOLEAN:
+            alignedChunkWriter.writeBatchByColumn(times, (boolean[]) values, bitMap, idx, 0);
+            break;
+          case INT32:
+          case DATE:
+            alignedChunkWriter.writeBatchByColumn(times, (int[]) values, bitMap, idx, 0);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            alignedChunkWriter.writeBatchByColumn(times, (long[]) values, bitMap, idx, 0);
+            break;
+          case FLOAT:
+            alignedChunkWriter.writeBatchByColumn(times, (float[]) values, bitMap, idx, 0);
+            break;
+          case DOUBLE:
+            alignedChunkWriter.writeBatchByColumn(times, (double[]) values, bitMap, idx, 0);
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            alignedChunkWriter.writeBatchByColumn(times, (Binary[]) values, bitMap, idx, 0);
+            break;
+          default:
+            break;
         }
         alignedChunkWriter.nextColumn();
       }

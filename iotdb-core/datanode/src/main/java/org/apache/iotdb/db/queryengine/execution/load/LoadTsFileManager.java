@@ -385,7 +385,6 @@ public class LoadTsFileManager {
           LOGGER.error("Can not create TsFile {} for writing.", newTsFile.getPath());
           return;
         }
-
         dataPartition2Writer.put(partitionInfo, new TsFileIOWriter(newTsFile));
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
