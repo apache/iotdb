@@ -3930,7 +3930,13 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningFailDir() {
-    return this.loadActiveListeningFailDir;
+    return loadActiveListeningFailDir == null || Objects.equals(loadActiveListeningFailDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME
+        : loadActiveListeningFailDir;
   }
 
   public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
@@ -3938,7 +3944,16 @@ public class IoTDBConfig {
   }
 
   public String[] getLoadActiveListeningDirs() {
-    return this.loadActiveListeningDirs;
+    return (Objects.isNull(this.loadActiveListeningDirs)
+            || this.loadActiveListeningDirs.length == 0)
+        ? new String[] {
+          extDir
+              + File.separator
+              + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+              + File.separator
+              + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
+        }
+        : this.loadActiveListeningDirs;
   }
 
   public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
