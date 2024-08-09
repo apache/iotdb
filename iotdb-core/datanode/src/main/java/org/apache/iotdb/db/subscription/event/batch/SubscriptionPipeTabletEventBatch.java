@@ -194,13 +194,13 @@ public class SubscriptionPipeTabletEventBatch {
 
   private boolean lastPointFilter(
       Tablet tablet, PartialPathLastObjectCache<LastPointFilter<?>> cache) {
-    String deviceIdentifier = tablet.deviceId;
+    String deviceId = tablet.deviceId;
     Object[] dataValues = tablet.values;
-    int fieldCount = dataValues.length;
-    BitMap columnFilterMap = new BitMap(fieldCount);
+    int columnCount = dataValues.length;
+    BitMap columnFilterMap = new BitMap(columnCount);
 
-    for (int i = 0; i < fieldCount; i++) {
-      BitMap fieldBitMap = tablet.bitMaps[fieldCount];
+    for (int i = 0; i < columnCount; i++) {
+      BitMap fieldBitMap = tablet.bitMaps[columnCount];
 
       if (fieldBitMap.isMarked(0)) {
         columnFilterMap.mark(i);
@@ -208,8 +208,7 @@ public class SubscriptionPipeTabletEventBatch {
       }
 
       MeasurementSchema schema = tablet.getSchemas().get(i);
-      String measurementPath =
-          deviceIdentifier + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId();
+      String measurementPath = deviceId + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId();
 
       LastPointFilter filter = cache.getPartialPathLastObject(measurementPath);
       if (filter != null
