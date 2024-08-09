@@ -26,14 +26,14 @@ import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
+public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     MultiEnvFactory.createEnv(2);
@@ -58,10 +58,10 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
+
+    super.tearDown();
   }
 }
