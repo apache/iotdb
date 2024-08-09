@@ -111,7 +111,8 @@ public class AutoLoadTsFileService {
 
       if (loadTsFileExecutor == null) {
         loadTsFileExecutor =
-            (WrappedThreadPoolExecutor) newCachedThreadPool(ThreadName.LOAD_TSFILE.name());
+            (WrappedThreadPoolExecutor)
+                newCachedThreadPool(ThreadName.ACTIVE_LOAD_TSFILE_SERVICE.name());
       }
 
       initializeConfiguration();
