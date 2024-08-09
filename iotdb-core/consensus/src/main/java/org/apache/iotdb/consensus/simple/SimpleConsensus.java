@@ -202,7 +202,8 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer, boolean needDataVerification)
+      throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support membership changes");
   }
 

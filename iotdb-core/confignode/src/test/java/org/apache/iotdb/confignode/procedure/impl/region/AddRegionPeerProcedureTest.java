@@ -51,7 +51,8 @@ public class AddRegionPeerProcedureTest {
                 new TEndPoint("127.0.0.1", 6),
                 new TEndPoint("127.0.0.1", 7),
                 new TEndPoint("127.0.0.1", 8),
-                new TEndPoint("127.0.0.1", 9)));
+                new TEndPoint("127.0.0.1", 9)),
+            false);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       procedure.serialize(outputStream);

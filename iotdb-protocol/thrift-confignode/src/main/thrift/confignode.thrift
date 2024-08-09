@@ -307,6 +307,7 @@ struct TMigrateRegionReq {
     1: required i32 regionId
     2: required i32 fromId
     3: required i32 toId
+    4: required bool needDataVerification
 }
 
 // Authorize

@@ -85,9 +85,9 @@ public interface IConsensus {
    * Require the <em>local node</em> to create a Peer and become a member of the given consensus
    * group. This node will prepare and initialize local statemachine {@link IStateMachine} and other
    * data structures. After this method returns, we can call {@link #addRemotePeer(ConsensusGroupId,
-   * Peer)} to notify original group that this new Peer is prepared to be added into the latest
-   * configuration. createLocalPeer should be called on a node that does not contain any peer of the
-   * consensus group, to avoid one node having more than one replica.
+   * Peer, boolean)} to notify original group that this new Peer is prepared to be added into the
+   * latest configuration. createLocalPeer should be called on a node that does not contain any peer
+   * of the consensus group, to avoid one node having more than one replica.
    *
    * @param groupId the consensus group this peer belongs
    * @param peers other known peers in this group
@@ -125,11 +125,13 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the newly added peer
+   * @param needDataVerification calculate checksum during snapshot transmission
    * @throws PeerAlreadyInConsensusGroupException when the peer has been added into this consensus
    *     group
    * @throws ConsensusException when addRemotePeer doesn't success with other reasons
    */
-  void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
+  void addRemotePeer(ConsensusGroupId groupId, Peer peer, boolean needDataVerification)
+      throws ConsensusException;
 
   /**
    * Tell the group to remove an active Peer. The removed peer can no longer answer group requests
@@ -147,8 +149,8 @@ public interface IConsensus {
 
   /**
    * Reset the peer list of the corresponding consensus group. Currently only used in the automatic
-   * cleanup of region migration as a rollback for {@link #addRemotePeer(ConsensusGroupId, Peer)},
-   * so it will only be less but not more.
+   * cleanup of region migration as a rollback for {@link #addRemotePeer(ConsensusGroupId, Peer,
+   * boolean)}, so it will only be less but not more.
    *
    * @param groupId the consensus group
    * @param peers the new peer list

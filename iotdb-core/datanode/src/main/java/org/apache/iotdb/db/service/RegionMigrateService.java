@@ -97,7 +97,8 @@ public class RegionMigrateService implements IService {
         return true;
       }
       regionMigratePool.submit(
-          new AddRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
+          new AddRegionPeerTask(
+              req.getTaskId(), req.getRegionId(), req.getDestNode(), req.isNeedDataVerification()));
     } catch (Exception e) {
       LOGGER.error(
           "{}, Submit AddRegionPeerTask error for Region: {}",
@@ -255,11 +256,17 @@ public class RegionMigrateService implements IService {
     // The new DataNode to be added in the RegionGroup
     private final TDataNodeLocation destDataNode;
 
+    private final boolean needDataVerification;
+
     public AddRegionPeerTask(
-        long taskId, TConsensusGroupId tRegionId, TDataNodeLocation destDataNode) {
+        long taskId,
+        TConsensusGroupId tRegionId,
+        TDataNodeLocation destDataNode,
+        boolean needDataVerification) {
       this.taskId = taskId;
       this.tRegionId = tRegionId;
       this.destDataNode = destDataNode;
+      this.needDataVerification = needDataVerification;
     }
 
     @Override
@@ -337,9 +344,11 @@ public class RegionMigrateService implements IService {
 
     private void addRegionPeer(ConsensusGroupId regionId, Peer newPeer) throws ConsensusException {
       if (regionId instanceof DataRegionId) {
-        DataRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
+        DataRegionConsensusImpl.getInstance()
+            .addRemotePeer(regionId, newPeer, needDataVerification);
       } else {
-        SchemaRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
+        // TODO: use needDataVerification
+        SchemaRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer, false);
       }
     }
   }

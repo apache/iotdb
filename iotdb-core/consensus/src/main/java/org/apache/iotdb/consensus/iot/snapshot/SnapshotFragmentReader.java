@@ -35,13 +35,16 @@ public class SnapshotFragmentReader {
   private final ByteBuffer buf;
   private long totalReadSize;
   private SnapshotFragment cachedSnapshotFragment;
+  private final boolean needDataVerification;
 
-  public SnapshotFragmentReader(String snapshotId, Path path) throws IOException {
+  public SnapshotFragmentReader(String snapshotId, Path path, boolean needDataVerification)
+      throws IOException {
     this.snapshotId = snapshotId;
     this.filePath = path.toAbsolutePath().toString();
     this.fileSize = Files.size(path);
     this.fileChannel = Files.newByteChannel(path);
     this.buf = ByteBuffer.allocate(DEFAULT_FILE_FRAGMENT_SIZE);
+    this.needDataVerification = needDataVerification;
   }
 
   public boolean hasNext() throws IOException {
@@ -50,7 +53,14 @@ public class SnapshotFragmentReader {
     buf.flip();
     if (actualReadSize > 0) {
       cachedSnapshotFragment =
-          new SnapshotFragment(snapshotId, filePath, fileSize, totalReadSize, actualReadSize, buf);
+          new SnapshotFragment(
+              snapshotId,
+              filePath,
+              fileSize,
+              totalReadSize,
+              actualReadSize,
+              buf,
+              needDataVerification);
       totalReadSize += actualReadSize;
       return true;
     }

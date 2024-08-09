@@ -902,6 +902,10 @@ VERIFY
     : V E R I F Y
     ;
 
+VERIFICATION
+    : V E R I F I C A T I O N
+    ;
+
 VERSION
     : V E R S I O N
     ;
