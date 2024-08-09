@@ -3958,7 +3958,9 @@ public class IoTDBConfig {
   }
 
   public String[] getPipeReceiverFileDirs() {
-    return this.pipeReceiverFileDirs;
+    return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
+        ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
+        : this.pipeReceiverFileDirs;
   }
 
   public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
