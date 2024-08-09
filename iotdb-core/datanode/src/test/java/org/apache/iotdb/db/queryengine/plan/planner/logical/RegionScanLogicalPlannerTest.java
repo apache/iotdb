@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -78,8 +77,7 @@ public class RegionScanLogicalPlannerTest {
         Collections.singletonList(
             new TimeseriesContext(
                 "BOOLEAN", null, "PLAIN", "LZ4", "{\"key1\":\"value2\"}", null, null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")), timeseriesSchemaInfoMap);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d1"), timeseriesSchemaInfoMap);
 
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap2 = new HashMap<>();
     timeseriesSchemaInfoMap2.put(
@@ -97,8 +95,7 @@ public class RegionScanLogicalPlannerTest {
         Collections.singletonList(
             new TimeseriesContext(
                 "TEXT", null, "PLAIN", "LZ4", "{\"key2\":\"value1\"}", null, null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")), timeseriesSchemaInfoMap2);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2"), timeseriesSchemaInfoMap2);
 
     List<String> schemas = new ArrayList<>();
     schemas.add("s1");
@@ -113,8 +110,7 @@ public class RegionScanLogicalPlannerTest {
             "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null));
     timeseriesSchemaInfoMap3.put(
         new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()), timeseriesContextList);
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")), timeseriesSchemaInfoMap3);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2.a"), timeseriesSchemaInfoMap3);
 
     return deviceToTimeseriesSchemaInfoMap;
   }
@@ -129,14 +125,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
@@ -155,14 +148,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
@@ -186,14 +176,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, true, null);

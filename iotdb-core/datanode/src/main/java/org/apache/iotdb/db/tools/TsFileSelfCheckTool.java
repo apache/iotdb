@@ -25,7 +25,6 @@ import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -132,10 +131,7 @@ public class TsFileSelfCheckTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(
-                        ((PlainDeviceID) deviceId).toStringID(),
-                        timeseriesMetadata.getMeasurementId(),
-                        true),
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
                     timeseriesMetadata));
           }
         } else {
@@ -145,7 +141,8 @@ public class TsFileSelfCheckTool {
           }
           boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
           MetadataIndexNode metadataIndexNode =
-              MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
+              getDeserializeContext()
+                  .deserializeMetadataIndexNode(buffer, currentChildLevelIsDevice);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -174,25 +171,28 @@ public class TsFileSelfCheckTool {
       if (tsFileMetaData == null) {
         readFileMetadata();
       }
-      MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
       Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
-      List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
-      for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-        IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
-        long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
-        if (i != metadataIndexEntryList.size() - 1) {
-          endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      for (MetadataIndexNode metadataIndexNode :
+          tsFileMetaData.getTableMetadataIndexNodeMap().values()) {
+        List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+        for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+          IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexEntryList.size() - 1) {
+            endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+          }
+          ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+          generateMetadataIndexWithOffset(
+              metadataIndexEntry.getOffset(),
+              metadataIndexEntry,
+              buffer,
+              null,
+              metadataIndexNode.getNodeType(),
+              timeseriesMetadataMap,
+              false);
         }
-        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
-        generateMetadataIndexWithOffset(
-            metadataIndexEntry.getOffset(),
-            metadataIndexEntry,
-            buffer,
-            null,
-            metadataIndexNode.getNodeType(),
-            timeseriesMetadataMap,
-            false);
       }
+
       return timeseriesMetadataMap;
     }
   }

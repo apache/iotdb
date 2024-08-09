@@ -55,6 +55,6 @@ public class LogicalPlannerTestUtil {
     Analyzer analyzer =
         new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
     Analysis analysis = analyzer.analyze(statement);
-    return new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+    return new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
   }
 }

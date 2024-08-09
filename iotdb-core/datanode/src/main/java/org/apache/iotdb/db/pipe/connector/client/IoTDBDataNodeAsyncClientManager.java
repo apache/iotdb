@@ -67,8 +67,13 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final LoadBalancer loadBalancer;
 
+  private final boolean shouldReceiverConvertOnTypeMismatch;
+
   public IoTDBDataNodeAsyncClientManager(
-      List<TEndPoint> endPoints, boolean useLeaderCache, String loadBalanceStrategy) {
+      List<TEndPoint> endPoints,
+      boolean useLeaderCache,
+      String loadBalanceStrategy,
+      boolean shouldReceiverConvertOnTypeMismatch) {
     super(endPoints, useLeaderCache);
 
     endPointSet = new HashSet<>(endPoints);
@@ -101,6 +106,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
+
+    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
@@ -209,6 +216,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
+          Boolean.toString(shouldReceiverConvertOnTypeMismatch));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);

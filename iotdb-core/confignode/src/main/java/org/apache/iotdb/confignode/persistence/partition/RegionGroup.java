@@ -63,15 +63,15 @@ public class RegionGroup {
     this.totalTimeSlotCount = new AtomicLong(0);
   }
 
-  public long getCreateTime() {
+  public synchronized long getCreateTime() {
     return createTime;
   }
 
-  public TConsensusGroupId getId() {
+  public synchronized TConsensusGroupId getId() {
     return replicaSet.getRegionId();
   }
 
-  public TRegionReplicaSet getReplicaSet() {
+  public synchronized TRegionReplicaSet getReplicaSet() {
     return replicaSet.deepCopy();
   }
 
@@ -80,7 +80,7 @@ public class RegionGroup {
    *
    * @param newDataNodeLocation The new DataNodeLocation.
    */
-  public void updateDataNode(TDataNodeLocation newDataNodeLocation) {
+  public synchronized void updateDataNode(TDataNodeLocation newDataNodeLocation) {
     for (int i = 0; i < replicaSet.getDataNodeLocationsSize(); i++) {
       if (replicaSet.getDataNodeLocations().get(i).getDataNodeId()
           == newDataNodeLocation.getDataNodeId()) {
@@ -90,12 +90,12 @@ public class RegionGroup {
     }
   }
 
-  public void addRegionLocation(TDataNodeLocation node) {
+  public synchronized void addRegionLocation(TDataNodeLocation node) {
     replicaSet.addToDataNodeLocations(node);
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 
-  public void removeRegionLocation(TDataNodeLocation node) {
+  public synchronized void removeRegionLocation(TDataNodeLocation node) {
     replicaSet.getDataNodeLocations().remove(node);
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
@@ -103,7 +103,7 @@ public class RegionGroup {
   /**
    * @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>
    */
-  public void updateSlotCountMap(Map<TSeriesPartitionSlot, AtomicLong> deltaMap) {
+  public synchronized void updateSlotCountMap(Map<TSeriesPartitionSlot, AtomicLong> deltaMap) {
     deltaMap.forEach(
         ((seriesPartitionSlot, delta) -> {
           slotCountMap
@@ -113,11 +113,11 @@ public class RegionGroup {
         }));
   }
 
-  public int getSeriesSlotCount() {
+  public synchronized int getSeriesSlotCount() {
     return slotCountMap.size();
   }
 
-  public long getTimeSlotCount() {
+  public synchronized long getTimeSlotCount() {
     return totalTimeSlotCount.get();
   }
 
@@ -127,12 +127,12 @@ public class RegionGroup {
    * @param dataNodeId The specified DataNodeId.
    * @return True if the RegionGroup belongs to the specified DataNode.
    */
-  public boolean belongsToDataNode(int dataNodeId) {
+  public synchronized boolean belongsToDataNode(int dataNodeId) {
     return replicaSet.getDataNodeLocations().stream()
         .anyMatch(dataNodeLocation -> dataNodeLocation.getDataNodeId() == dataNodeId);
   }
 
-  public void serialize(OutputStream outputStream, TProtocol protocol)
+  public synchronized void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(createTime, outputStream);
     replicaSet.write(protocol);
@@ -146,7 +146,7 @@ public class RegionGroup {
     ReadWriteIOUtils.write(totalTimeSlotCount.get(), outputStream);
   }
 
-  public void deserialize(InputStream inputStream, TProtocol protocol)
+  public synchronized void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     this.createTime = ReadWriteIOUtils.readLong(inputStream);
     replicaSet.read(protocol);
@@ -163,7 +163,7 @@ public class RegionGroup {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public synchronized boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroup that = (RegionGroup) o;
@@ -181,7 +181,7 @@ public class RegionGroup {
   }
 
   @Override
-  public int hashCode() {
+  public synchronized int hashCode() {
     return Objects.hash(createTime, replicaSet, slotCountMap, totalTimeSlotCount);
   }
 }

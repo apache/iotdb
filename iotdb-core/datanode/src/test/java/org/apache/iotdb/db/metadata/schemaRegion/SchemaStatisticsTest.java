@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
@@ -470,7 +471,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
     schemaRegion1.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
+            new MeasurementPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,

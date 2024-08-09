@@ -215,4 +215,13 @@ public class QueryDataSource implements IQueryDataSource {
   public void setSingleDevice(boolean singleDevice) {
     isSingleDevice = singleDevice;
   }
+
+  public void reset() {
+    curSeqIndex = -1;
+    curSeqOrderTime = 0;
+    curSeqSatisfied = null;
+    curUnSeqIndex = -1;
+    curUnSeqOrderTime = 0;
+    curUnSeqSatisfied = null;
+  }
 }

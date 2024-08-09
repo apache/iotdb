@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -148,7 +148,7 @@ public class SettleRequestHandlerTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
         dataRegion.deleteByDevice(
-            new PartialPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1);
+            new MeasurementPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1);
       }
     }
   }

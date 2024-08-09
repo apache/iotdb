@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
@@ -71,8 +71,9 @@ public class FragmentInstanceContext extends QueryContext {
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
-  private List<PartialPath> sourcePaths;
-  // Used for region scan.
+  private List<IFullPath> sourcePaths;
+
+  // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
@@ -129,6 +130,7 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  // This method is only used in groupby
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -368,11 +370,20 @@ public class FragmentInstanceContext extends QueryContext {
     return globalTimeFilter;
   }
 
+  public void setTimeFilterForTableModel(Filter timeFilter) {
+    if (globalTimeFilter == null) {
+      globalTimeFilter = timeFilter;
+    } else {
+      throw new IllegalStateException(
+          "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
+    }
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }
 
-  public void setSourcePaths(List<PartialPath> sourcePaths) {
+  public void setSourcePaths(List<IFullPath> sourcePaths) {
     this.sourcePaths = sourcePaths;
   }
 
@@ -388,18 +399,18 @@ public class FragmentInstanceContext extends QueryContext {
     memoryReservationManager.releaseAllReservedMemory();
   }
 
-  public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
+  public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null) {
       return;
     }
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList = new ArrayList<>();
-      Set<String> selectedDeviceIdSet = new HashSet<>();
-      for (PartialPath path : sourcePaths) {
+      List<IFullPath> pathList = new ArrayList<>();
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+      for (IFullPath path : sourcePaths) {
         pathList.add(path);
-        selectedDeviceIdSet.add(path.getDevice());
+        selectedDeviceIdSet.add(path.getDeviceId());
       }
 
       this.sharedQueryDataSource =
@@ -453,8 +464,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void initRegionScanQueryDataSource(List<PartialPath> pathList)
-      throws QueryProcessException {
+  public void initRegionScanQueryDataSource(List<IFullPath> pathList) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (pathList == null) {
       return;

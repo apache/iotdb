@@ -62,6 +62,10 @@ public enum ProcedureType {
   UNSET_TEMPLATE_PROCEDURE((short) 701),
   SET_TEMPLATE_PROCEDURE((short) 702),
 
+  CREATE_TABLE_PROCEDURE((short) 750),
+  DROP_TABLE_PROCEDURE((short) 751),
+  ADD_TABLE_COLUMN_PROCEDURE((short) 752),
+
   // ProcedureId 800-899 is used by IoTDB-Ml
 
   /** Pipe Plugin */

@@ -37,7 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -488,7 +488,7 @@ class AutoCreateSchemaExecutor {
       }
 
       schemaTree.appendSingleMeasurement(
-          devicePath.concatNode(measurements.get(i)),
+          devicePath.concatAsMeasurementPath(measurements.get(i)),
           new MeasurementSchema(
               measurements.get(i), tsDataTypes.get(i), encodings.get(i), compressors.get(i)),
           null,
@@ -613,7 +613,7 @@ class AutoCreateSchemaExecutor {
           continue;
         }
         schemaTree.appendSingleMeasurement(
-            entry.getKey().concatNode(measurementGroup.getMeasurements().get(i)),
+            entry.getKey().concatAsMeasurementPath(measurementGroup.getMeasurements().get(i)),
             new MeasurementSchema(
                 measurementGroup.getMeasurements().get(i),
                 measurementGroup.getDataTypes().get(i),

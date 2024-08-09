@@ -22,9 +22,16 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
@@ -296,6 +303,80 @@ public class ConfigMTreeTest {
     assertEquals(
         1,
         newTree.getMatchedDatabases(new PartialPath("root.a.b.sg"), ALL_MATCH_SCOPE, true).size());
+  }
+
+  @Test
+  public void testTableSerialization() throws Exception {
+    final PartialPath[] pathList =
+        new PartialPath[] {
+          new PartialPath("root.sg"),
+          new PartialPath("root.a.sg"),
+          new PartialPath("root.a.b.sg"),
+          new PartialPath("root.a.a.b.sg")
+        };
+
+    for (int i = 0; i < pathList.length; i++) {
+      root.setStorageGroup(pathList[i]);
+      final IDatabaseMNode<IConfigMNode> storageGroupMNode =
+          root.getDatabaseNodeByDatabasePath(pathList[i]);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
+
+      final String tableName = "table" + i;
+      final TsTable table = new TsTable(tableName);
+      table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+      table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+      table.addColumnSchema(
+          new MeasurementColumnSchema(
+              "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+
+      root.preCreateTable(pathList[i], table);
+      root.commitCreateTable(pathList[i], tableName);
+    }
+
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    root.serialize(outputStream);
+
+    final ConfigMTree newTree = new ConfigMTree();
+    final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    newTree.deserialize(inputStream);
+
+    for (int i = 0; i < pathList.length; i++) {
+      final TDatabaseSchema storageGroupSchema =
+          newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
+      Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
+      Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+    }
+
+    assertEquals(
+        3,
+        newTree.getMatchedDatabases(new PartialPath("root.**.sg"), ALL_MATCH_SCOPE, false).size());
+    assertEquals(
+        2,
+        newTree
+            .getMatchedDatabases(new PartialPath("root.**.b.sg"), ALL_MATCH_SCOPE, false)
+            .size());
+    assertEquals(
+        1,
+        newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), ALL_MATCH_SCOPE, false).size());
+    assertEquals(
+        3, newTree.getMatchedDatabases(new PartialPath("root.a"), ALL_MATCH_SCOPE, true).size());
+    assertEquals(
+        1, newTree.getMatchedDatabases(new PartialPath("root.a.b"), ALL_MATCH_SCOPE, true).size());
+    assertEquals(
+        1,
+        newTree.getMatchedDatabases(new PartialPath("root.a.b.sg"), ALL_MATCH_SCOPE, true).size());
+
+    for (int i = 0; i < pathList.length; i++) {
+      final List<TsTable> tables = newTree.getAllUsingTablesUnderSpecificDatabase(pathList[i]);
+      assertEquals(1, tables.size());
+      final TsTable table = tables.get(0);
+      assertEquals("table" + i, table.getTableName());
+      assertEquals(1, table.getIdNums());
+      assertEquals(4, table.getColumnNum());
+    }
   }
 
   @Test

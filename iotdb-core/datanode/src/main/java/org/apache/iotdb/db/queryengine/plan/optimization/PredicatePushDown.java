@@ -62,7 +62,7 @@ public class PredicatePushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getStatement().getType() != StatementType.QUERY) {
+    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -369,7 +369,7 @@ public class PredicatePushDown implements PlanOptimizer {
      * <li>Because of the removal of the FilterNode (FilterAndProjectOperator), we need a
      *     ProjectNode to do the projection.
      * <li>For ALIGN_BY_DEVICE query, the ProjectNode is used to ensure the order of the output
-     *     columns is consistent with before optimization (required by MergeSortOperator).
+     *     columns is consistent with before optimization (required by TreeMergeSortOperator).
      */
     private PlanNode planProject(PlanNode resultNode, RewriterContext context) {
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();

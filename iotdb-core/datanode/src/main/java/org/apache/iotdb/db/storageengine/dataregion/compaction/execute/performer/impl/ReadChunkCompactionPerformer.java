@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTargetFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
@@ -81,6 +82,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
                 targetResource.getTsFile(),
                 sizeForFileWriter,
                 CompactionType.INNER_SEQ_COMPACTION)) {
+      writer.setSchema(
+          CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap()));
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
@@ -98,6 +101,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       for (TsFileResource tsFileResource : seqFiles) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
+      writer.removeUnusedTableSchema();
       writer.endFile();
       if (writer.isEmptyTargetFile()) {
         targetResource.forceMarkDeleted();

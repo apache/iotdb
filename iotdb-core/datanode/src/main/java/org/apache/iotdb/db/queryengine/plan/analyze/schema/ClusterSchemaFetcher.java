@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
@@ -40,7 +41,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,7 +133,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
-          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(fullPath);
+          // no path length <= 2
+          if (fullPath.getNodeLength() <= 2) {
+            continue;
+          }
+          cachedSchema =
+              schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -375,7 +381,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0; i < measurements.length; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(i);
@@ -401,7 +407,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0, size = schemaList.size(); i < size; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));

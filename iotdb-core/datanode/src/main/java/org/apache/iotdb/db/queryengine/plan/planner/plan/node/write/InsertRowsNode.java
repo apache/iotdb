@@ -121,11 +121,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public void addChild(PlanNode child) {
     // Do nothing
   }
@@ -143,6 +138,16 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     InsertRowsNode that = (InsertRowsNode) o;
     return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
         && Objects.equals(insertRowNodeList, that.insertRowNodeList);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowsNode{"
+        + "insertRowNodeIndexList="
+        + insertRowNodeIndexList
+        + ", insertRowNodeList="
+        + insertRowNodeList
+        + '}';
   }
 
   @Override
@@ -193,7 +198,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
@@ -207,7 +212,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INSERT_ROWS.serialize(stream);
+    getType().serialize(stream);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
 
@@ -238,12 +243,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // Data region for insert row node
+      // each row may belong to different database, pass null for auto-detection
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
+                  insertRowNode.devicePath.getIDeviceIDAsFullDevice(),
+                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
+                  null);
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -312,7 +319,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     subSerialize(buffer);
   }
