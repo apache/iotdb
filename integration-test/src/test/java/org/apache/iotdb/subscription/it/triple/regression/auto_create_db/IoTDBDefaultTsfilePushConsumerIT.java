@@ -36,6 +36,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -64,7 +65,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
   private int deviceCount = 3;
   private static final String databasePrefix = "root.DefaultTsfilePushConsumer";
   private static String topicName = "topicDefaultTsfilePushConsumer";
-  private static List<MeasurementSchema> schemaList = new ArrayList<>();
+  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
   @Before

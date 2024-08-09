@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -68,7 +69,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
   private static final String device = database + ".d_0";
   private static final String device2 = database + ".d_1";
   private static final String topicName = "topic_SnapshotTSPatternTsfilePushConsumer";
-  private static List<MeasurementSchema> schemaList = new ArrayList<>();
+  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private static final String pattern = device + ".s_0";
   private static SubscriptionPushConsumer consumer;
 

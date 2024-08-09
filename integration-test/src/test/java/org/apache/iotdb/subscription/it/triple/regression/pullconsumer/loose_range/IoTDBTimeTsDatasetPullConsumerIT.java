@@ -32,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -60,7 +61,7 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
   private String device2 = database + ".d_1";
   private String device3 = database2 + ".d_2";
   private String pattern = device + ".s_0";
-  private List<MeasurementSchema> schemaList = new ArrayList<>();
+  private List<IMeasurementSchema> schemaList = new ArrayList<>();
   private SubscriptionPullConsumer consumer;
 
   @Override

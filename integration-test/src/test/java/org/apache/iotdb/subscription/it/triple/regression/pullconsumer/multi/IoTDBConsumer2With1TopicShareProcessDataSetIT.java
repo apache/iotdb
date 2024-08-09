@@ -31,6 +31,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +53,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
   private String pattern = device + ".**";
   private SubscriptionPullConsumer consumer2;
   private static SubscriptionPullConsumer consumer;
-  private static List<MeasurementSchema> schemaList = new ArrayList<>();
+  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
   @Before

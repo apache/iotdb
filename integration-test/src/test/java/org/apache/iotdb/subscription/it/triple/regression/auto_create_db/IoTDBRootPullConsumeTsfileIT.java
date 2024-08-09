@@ -29,6 +29,7 @@ import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRe
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -53,7 +54,7 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegression
   private static final String device2 = "root.RootPullConsumeTsfile.d_1";
   public static SubscriptionPullConsumer consumer;
   private static String topicName = "topicAutoCreateDB_RootPullConsumeTsfile";
-  private static List<MeasurementSchema> schemaList = new ArrayList<>();
+  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
   @Before

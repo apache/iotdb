@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -57,7 +58,7 @@ public class IoTDBTimeRangeDBDataSetPushConsumerIT extends AbstractSubscriptionR
   private String device = database + ".d_0";
   private String pattern = database + ".**";
   private String topicName = "topic_TimeRangeDBDataSetPushConsumer";
-  private List<MeasurementSchema> schemaList = new ArrayList<>();
+  private List<IMeasurementSchema> schemaList = new ArrayList<>();
   private SubscriptionPushConsumer consumer;
 
   @Override
