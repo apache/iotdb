@@ -24,37 +24,16 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DatabaseAlreadySetException extends MetadataException {
 
-  private static final long serialVersionUID = 9110669164701929779L;
-
-  private final boolean hasChild;
-
   private final String storageGroupPath;
 
-  public DatabaseAlreadySetException(String path) {
-    super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+  public DatabaseAlreadySetException(final String path) {
+    super(
+        String.format("%s has already been created as database", path),
+        TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     storageGroupPath = path;
-    hasChild = false;
-  }
-
-  public DatabaseAlreadySetException(String path, boolean hasChild) {
-    super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
-    this.hasChild = hasChild;
-    storageGroupPath = path;
-  }
-
-  public boolean isHasChild() {
-    return hasChild;
   }
 
   public String getStorageGroupPath() {
     return storageGroupPath;
-  }
-
-  private static String getMessage(String path, boolean hasChild) {
-    if (hasChild) {
-      return String.format("some children of %s have already been created as database", path);
-    } else {
-      return String.format("%s has already been created as database", path);
-    }
   }
 }

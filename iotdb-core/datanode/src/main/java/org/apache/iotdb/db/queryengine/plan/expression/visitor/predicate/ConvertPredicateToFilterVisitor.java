@@ -414,7 +414,7 @@ public class ConvertPredicateToFilterVisitor
       if (isBuildPlanUseTemplate) {
         return schemaMap.get(path.getFullPath()).getType();
       } else {
-        return typeProvider.getType(path.getFullPath());
+        return typeProvider.getTreeModelType(path.getFullPath());
       }
     }
 

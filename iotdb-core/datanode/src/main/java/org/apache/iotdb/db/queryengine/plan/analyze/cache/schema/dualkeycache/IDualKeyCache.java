@@ -82,7 +82,7 @@ public interface IDualKeyCache<FK, SK, V> {
    * statistics won't be clear and they can still be accessed via cache.stats().
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(List<PartialPath> partialPathList);
+  void invalidate(List<? extends PartialPath> partialPathList);
 
   /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
@@ -95,4 +95,17 @@ public interface IDualKeyCache<FK, SK, V> {
 
   @TestOnly
   void evictOneEntry();
+
+  /** remove all entries for firstKey */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(FK firstKey);
+
+  /**
+   * remove all entries of specified database, and for the reason that table model's first key is
+   * different from tree model, we add this new method which only be used for table model.
+   *
+   * <p>FK must be TableId in such case
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidateForTable(String database);
 }

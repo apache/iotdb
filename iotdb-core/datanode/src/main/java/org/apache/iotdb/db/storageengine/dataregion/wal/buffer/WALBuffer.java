@@ -384,8 +384,18 @@ public class WALBuffer extends AbstractWALBuffer {
    * This view uses workingBuffer lock-freely because workingBuffer is only updated by
    * serializeThread and this class is only used by serializeThread.
    */
-  private class ByteBufferView implements IWALByteBufferView {
+  private class ByteBufferView extends IWALByteBufferView {
     private int flushedBytesNum = 0;
+
+    @Override
+    public void write(int b) {
+      put((byte) b);
+    }
+
+    @Override
+    public void write(byte[] b) {
+      put(b);
+    }
 
     private void ensureEnoughSpace(int bytesNum) {
       if (workingBuffer.remaining() < bytesNum) {

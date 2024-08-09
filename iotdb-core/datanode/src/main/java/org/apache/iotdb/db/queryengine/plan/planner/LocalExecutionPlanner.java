@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -54,6 +57,8 @@ public class LocalExecutionPlanner {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
   private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
   private static final long MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+
+  public final Metadata metadata = new TableMetadataImpl();
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -87,9 +92,7 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
-    // Generate pipelines, return the last pipeline data structure
-    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
-    Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    Operator root = generateOperator(instanceContext, context, plan);
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -115,12 +118,15 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
-      PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
     LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(instanceContext, schemaRegion);
+        new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
-    Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    Operator root = generateOperator(instanceContext, context, plan);
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -136,6 +142,25 @@ public class LocalExecutionPlanner {
     context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
+  }
+
+  private Operator generateOperator(
+      FragmentInstanceContext instanceContext, LocalExecutionPlanContext context, PlanNode node) {
+    // Generate pipelines, return the last pipeline data structure
+    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
+    Operator root;
+    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
+    switch (sqlDialect) {
+      case TREE:
+        root = node.accept(new OperatorTreeGenerator(), context);
+        break;
+      case TABLE:
+        root = node.accept(new TableOperatorGenerator(metadata), context);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+    }
+    return root;
   }
 
   private long checkMemory(
@@ -203,8 +228,8 @@ public class LocalExecutionPlanner {
     return deviceContextMap;
   }
 
-  private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
-    List<PartialPath> sourcePaths = new ArrayList<>();
+  private List<IFullPath> collectSourcePaths(LocalExecutionPlanContext context) {
+    List<IFullPath> sourcePaths = new ArrayList<>();
     context
         .getPipelineDriverFactories()
         .forEach(

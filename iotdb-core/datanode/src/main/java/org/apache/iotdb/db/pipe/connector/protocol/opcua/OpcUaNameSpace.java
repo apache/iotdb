@@ -31,7 +31,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.Lifecycle;
@@ -96,7 +96,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private void transferTabletForClientServerModel(final Tablet tablet) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    final String[] segments = tablet.deviceId.split("\\.");
+    final String[] segments = tablet.getDeviceId().split("\\.");
     if (segments.length == 0) {
       throw new PipeRuntimeCriticalException("The segments of tablets must exist");
     }
@@ -138,13 +138,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                         () ->
                             new PipeRuntimeCriticalException(
                                 String.format(
-                                    "The folder node for %s does not exist.", tablet.deviceId)));
+                                    "The folder node for %s does not exist.",
+                                    tablet.getDeviceId())));
       }
     }
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
-      final MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
+      final IMeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       final String name = measurementSchema.getMeasurementId();
       final TSDataType type = measurementSchema.getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
@@ -248,7 +249,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(
-          tablet.deviceId
+          tablet.getDeviceId()
               + TsFileConstant.PATH_SEPARATOR
               + tablet.getSchemas().get(columnIndex).getMeasurementId());
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -173,13 +174,15 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
       TimeSeriesOperand timeSeriesOperand, List<PartialPath> context) {
     PartialPath path = timeSeriesOperand.getPath();
     try {
-      IMeasurementSchema measurementSchema = path.getMeasurementSchema();
-      if (measurementSchema.isLogicalView()) {
-        ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
-        Expression result = this.transform(viewExpression);
-        // record paths in this viewExpression
-        context.addAll(this.collectSourcePaths(viewExpression));
-        return result;
+      if (path instanceof MeasurementPath) {
+        IMeasurementSchema measurementSchema = path.getMeasurementSchema();
+        if (measurementSchema.isLogicalView()) {
+          ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
+          Expression result = this.transform(viewExpression);
+          // record paths in this viewExpression
+          context.addAll(this.collectSourcePaths(viewExpression));
+          return result;
+        }
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

@@ -30,6 +30,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -161,5 +162,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
     InsertRowsStatement splitResult = new InsertRowsStatement();
     splitResult.setInsertRowStatementList(mergedList);
     return splitResult;
+  }
+
+  public List<Object[]> getDeviceIdListNoTableName() {
+    return insertRowStatementList.stream()
+        .map(
+            s -> {
+              Object[] segments = s.getTableDeviceID().getSegments();
+              return Arrays.copyOfRange(segments, 1, segments.length);
+            })
+        .collect(Collectors.toList());
   }
 }

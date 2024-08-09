@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Map;
 
 /**
@@ -37,12 +39,12 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   private final EnrichedEvent event;
   private final TsFileEpoch tsFileEpoch;
 
-  private Map<String, String[]> device2Measurements;
+  private Map<IDeviceID, String[]> device2Measurements;
 
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
-      final Map<String, String[]> device2Measurements,
+      final Map<IDeviceID, String[]> device2Measurements,
       final PipePattern pattern) {
     this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
@@ -50,7 +52,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
-      final Map<String, String[]> device2Measurements,
+      final Map<IDeviceID, String[]> device2Measurements,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
@@ -79,7 +81,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return tsFileEpoch;
   }
 
-  public Map<String, String[]> getSchemaInfo() {
+  public Map<IDeviceID, String[]> getSchemaInfo() {
     return device2Measurements;
   }
 

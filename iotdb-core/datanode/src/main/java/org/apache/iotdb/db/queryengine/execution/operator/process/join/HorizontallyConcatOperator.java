@@ -29,7 +29,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -78,7 +77,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
           Math.min(maxRowCanBuild, inputTsBlocks[i].getPositionCount() - inputIndex[i]);
     }
 
-    TimeColumn firstTimeColumn = inputTsBlocks[0].getTimeColumn();
+    Column firstTimeColumn = inputTsBlocks[0].getTimeColumn();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
 

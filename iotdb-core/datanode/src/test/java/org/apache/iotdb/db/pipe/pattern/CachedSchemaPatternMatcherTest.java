@@ -32,6 +32,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -55,7 +57,7 @@ public class CachedSchemaPatternMatcherTest {
     public MockedPipeRealtimeEvent(
         EnrichedEvent event,
         TsFileEpoch tsFileEpoch,
-        Map<String, String[]> device2Measurements,
+        Map<IDeviceID, String[]> device2Measurements,
         PipePattern pattern) {
       super(event, tsFileEpoch, device2Measurements, pattern);
     }
@@ -109,7 +111,7 @@ public class CachedSchemaPatternMatcherTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root." + finalI1);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root.db" + finalI1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
@@ -125,7 +127,7 @@ public class CachedSchemaPatternMatcherTest {
                   {
                     put(
                         PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
-                        "root." + finalI + "." + finalJ);
+                        "root.db" + finalI + ".s" + finalJ);
                   }
                 }),
             new PipeTaskRuntimeConfiguration(
@@ -140,18 +142,22 @@ public class CachedSchemaPatternMatcherTest {
     int epochNum = 10000;
     int deviceNum = 1000;
     int seriesNum = 100;
-    Map<String, String[]> deviceMap =
+    Map<IDeviceID, String[]> deviceMap =
         IntStream.range(0, deviceNum)
             .mapToObj(String::valueOf)
-            .collect(Collectors.toMap(s -> "root." + s, s -> new String[0]));
+            .collect(
+                Collectors.toMap(s -> new StringArrayDeviceID("root.db" + s), s -> new String[0]));
     String[] measurements =
-        IntStream.range(0, seriesNum).mapToObj(String::valueOf).toArray(String[]::new);
+        IntStream.range(0, seriesNum).mapToObj(num -> "s" + num).toArray(String[]::new);
     long totalTime = 0;
     for (int i = 0; i < epochNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
         MockedPipeRealtimeEvent event =
             new MockedPipeRealtimeEvent(
-                null, null, Collections.singletonMap("root." + i, measurements), null);
+                null,
+                null,
+                Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements),
+                null);
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
@@ -198,7 +204,8 @@ public class CachedSchemaPatternMatcherTest {
                 } else {
                   match[0] =
                       match[0]
-                          || (getPatternString().startsWith(k) || k.startsWith(getPatternString()));
+                          || (getPatternString().startsWith(k.toString())
+                              || k.toString().startsWith(getPatternString()));
                 }
               });
       Assert.assertTrue(match[0]);

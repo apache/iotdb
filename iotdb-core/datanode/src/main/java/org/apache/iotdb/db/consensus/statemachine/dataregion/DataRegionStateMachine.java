@@ -194,6 +194,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     List<Integer> index = new ArrayList<>();
     int i = 0;
     switch (insertNodes.get(0).getType()) {
+      case RELATIONAL_INSERT_TABLET:
       case INSERT_TABLET:
         // merge to InsertMultiTabletsNode
         List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);

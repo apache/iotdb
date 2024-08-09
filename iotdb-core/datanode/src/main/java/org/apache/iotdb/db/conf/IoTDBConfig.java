@@ -795,7 +795,7 @@ public class IoTDBConfig {
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
    */
-  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX;
 
   // just for test
   // wait for 60 second by default.

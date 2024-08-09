@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
@@ -60,14 +61,14 @@ public interface ISchemaTree {
   DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements);
 
   /**
-   * Get database name by path
+   * Get database name by device path
    *
-   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and device path = root.sg1.d1, return root.sg1
    *
-   * @param pathName only full path, cannot be path pattern
+   * @param pathName only full device path, cannot be path pattern
    * @return database in the given path
    */
-  String getBelongedDatabase(String pathName);
+  String getBelongedDatabase(IDeviceID pathName);
 
   String getBelongedDatabase(PartialPath path);
 

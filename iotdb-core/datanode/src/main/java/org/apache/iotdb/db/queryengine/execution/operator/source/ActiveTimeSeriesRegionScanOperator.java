@@ -29,7 +29,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -110,7 +109,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
     for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      String deviceStr = ((PlainDeviceID) deviceID).toStringID();
+      String deviceStr = deviceID.toString();
       List<String> timeSeriesList = entry.getValue();
       Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {

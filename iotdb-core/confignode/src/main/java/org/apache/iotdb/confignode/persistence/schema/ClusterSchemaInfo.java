@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -43,6 +45,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -60,6 +66,8 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -82,16 +90,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
@@ -326,8 +339,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
+    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(plan.getDatabase());
+      PartialPath path = new PartialPath(databaseName);
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -350,8 +364,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
+    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(plan.getDatabase());
+      PartialPath path = new PartialPath(databaseName);
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -374,8 +389,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan plan) {
     TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
+    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(plan.getDatabase());
+      PartialPath path = new PartialPath(databaseName);
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -1017,6 +1033,125 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     return schemaMap;
   }
+
+  // region table management
+
+  public TSStatus preCreateTable(PreCreateTablePlan preCreateTablePlan) {
+    String databaseName = PathUtils.qualifyDatabaseName(preCreateTablePlan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.preCreateTable(new PartialPath(databaseName), preCreateTablePlan.getTable());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus rollbackCreateTable(RollbackCreateTablePlan rollbackCreateTablePlan) {
+    String databaseName = PathUtils.qualifyDatabaseName(rollbackCreateTablePlan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.rollbackCreateTable(
+          new PartialPath(databaseName), rollbackCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus commitCreateTable(CommitCreateTablePlan commitCreateTablePlan) {
+    String databaseName = PathUtils.qualifyDatabaseName(commitCreateTablePlan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.commitCreateTable(new PartialPath(databaseName), commitCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TShowTableResp showTables(String database) {
+    database = PathUtils.qualifyDatabaseName(database);
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new TShowTableResp(StatusUtils.OK)
+          .setTableInfoList(
+              mTree.getAllUsingTablesUnderSpecificDatabase(new PartialPath(database)).stream()
+                  .map(
+                      tsTable ->
+                          new TTableInfo(
+                              tsTable.getTableName(),
+                              tsTable
+                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                  .orElse(TTL_INFINITE)))
+                  .collect(Collectors.toList()));
+    } catch (final MetadataException e) {
+      return new TShowTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllUsingTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllUsingTables();
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreCreateTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllPreCreateTables();
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Optional<TsTable> getTsTable(String database, String tableName) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getTable(new PartialPath(database), tableName);
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TSStatus addTableColumn(AddTableColumnPlan plan) {
+    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      if (plan.isRollback()) {
+        mTree.rollbackAddTableColumn(
+            new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
+      } else {
+        mTree.addTableColumn(
+            new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
+      }
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  // endregion
 
   @TestOnly
   public void clear() {

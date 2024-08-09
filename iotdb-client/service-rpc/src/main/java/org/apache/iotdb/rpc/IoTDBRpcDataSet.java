@@ -38,31 +38,30 @@ import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
+import static org.apache.iotdb.rpc.RpcUtils.getTimePrecision;
+
 public class IoTDBRpcDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
-  public static final int START_INDEX = 2;
   public String sql;
   public boolean isClosed = false;
   public IClientRPCService.Iface client;
   public List<String> columnNameList; // no deduplication
   public List<String> columnTypeList; // no deduplication
-  public Map<String, Integer>
+  private final Map<String, Integer>
       columnOrdinalMap; // used because the server returns deduplicated columns
-  public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
+  private final Map<String, Integer> columnName2TsBlockColumnIndexMap;
+  private final List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
   public final long timeout;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
-
-  // column size
-  public int columnSize;
 
   public long sessionId;
   public long queryId;
@@ -82,6 +81,13 @@ public class IoTDBRpcDataSet {
   private final ZoneId zoneId;
   private final String timeFormat;
 
+  private final int timeFactor;
+
+  private final String timePrecision;
+
+  // 2 for tree model and 1 for table model
+  private final int startIndex;
+
   @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
       String sql,
@@ -98,7 +104,10 @@ public class IoTDBRpcDataSet {
       int fetchSize,
       long timeout,
       ZoneId zoneId,
-      String timeFormat) {
+      String timeFormat,
+      int timeFactor,
+      boolean tableModel) {
+    this.startIndex = tableModel ? 1 : 2;
     this.sessionId = sessionId;
     this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
@@ -108,7 +117,6 @@ public class IoTDBRpcDataSet {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.moreData = moreData;
-    columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
     this.columnTypeList = new ArrayList<>();
@@ -118,13 +126,16 @@ public class IoTDBRpcDataSet {
     }
     // deduplicate and map
     this.columnOrdinalMap = new HashMap<>();
+    this.columnName2TsBlockColumnIndexMap = new HashMap<>();
     if (!ignoreTimeStamp) {
+      this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, -1);
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     }
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
+      int deduplicatedColumnSize =
+          columnNameIndex.values().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
       this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
       for (int i = 0; i < deduplicatedColumnSize; i++) {
         columnTypeDeduplicatedList.add(null);
@@ -133,24 +144,27 @@ public class IoTDBRpcDataSet {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
-        if (!columnOrdinalMap.containsKey(name)) {
+        if (!columnName2TsBlockColumnIndexMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
+          if (columnTypeDeduplicatedList.get(index) == null) {
             columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
           }
-          columnOrdinalMap.put(name, index + START_INDEX);
+          columnOrdinalMap.put(name, i + startIndex);
+          columnName2TsBlockColumnIndexMap.put(name, index);
         }
       }
     } else {
       this.columnTypeDeduplicatedList = new ArrayList<>();
-      AtomicInteger index = new AtomicInteger(START_INDEX);
+      AtomicInteger index = new AtomicInteger(startIndex);
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         String columnType = columnTypeList.get(i);
         this.columnTypeList.add(columnType);
-        columnOrdinalMap.computeIfAbsent(
-            name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
+        Integer ordinal =
+            columnOrdinalMap.computeIfAbsent(
+                name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
+        columnName2TsBlockColumnIndexMap.put(name, ordinal - startIndex);
       }
     }
 
@@ -164,110 +178,13 @@ public class IoTDBRpcDataSet {
     this.tsBlockIndex = -1;
     this.zoneId = zoneId;
     this.timeFormat = timeFormat;
+    this.timeFactor = timeFactor;
+    this.timePrecision = getTimePrecision(timeFactor);
   }
 
   public Integer addColumnTypeListReturnIndex(AtomicInteger index, TSDataType dataType) {
     columnTypeDeduplicatedList.add(dataType);
     return index.getAndIncrement();
-  }
-
-  @SuppressWarnings({
-    "squid:S3776",
-    "squid:S107"
-  }) // ignore Cognitive Complexity of methods should not be too high
-  public IoTDBRpcDataSet(
-      String sql,
-      List<String> columnNameList,
-      List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex,
-      boolean ignoreTimeStamp,
-      boolean moreData,
-      long queryId,
-      long statementId,
-      IClientRPCService.Iface client,
-      long sessionId,
-      List<ByteBuffer> queryResult,
-      int fetchSize,
-      long timeout,
-      List<String> sgList,
-      BitSet aliasColumnMap,
-      ZoneId zoneId,
-      String timeFormat) {
-    this.sessionId = sessionId;
-    this.statementId = statementId;
-    this.ignoreTimeStamp = ignoreTimeStamp;
-    this.sql = sql;
-    this.queryId = queryId;
-    this.client = client;
-    this.fetchSize = fetchSize;
-    this.timeout = timeout;
-    this.moreData = moreData;
-    columnSize = columnNameList.size();
-
-    this.columnNameList = new ArrayList<>();
-    this.columnTypeList = new ArrayList<>();
-    if (!ignoreTimeStamp) {
-      this.columnNameList.add(TIMESTAMP_STR);
-      this.columnTypeList.add(String.valueOf(TSDataType.INT64));
-    }
-    // deduplicate and map
-    this.columnOrdinalMap = new HashMap<>();
-    if (!ignoreTimeStamp) {
-      this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
-    }
-
-    // deduplicate and map
-    if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
-      for (int i = 0; i < deduplicatedColumnSize; i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
-      for (int i = 0; i < columnNameList.size(); i++) {
-        String name;
-        if (sgList != null
-            && !sgList.isEmpty()
-            && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
-          name = sgList.get(i) + "." + columnNameList.get(i);
-        } else {
-          name = columnNameList.get(i);
-        }
-
-        this.columnNameList.add(name);
-        this.columnTypeList.add(columnTypeList.get(i));
-        // "Time".equals(name) -> to allow the Time column appear in value columns
-        if (!columnOrdinalMap.containsKey(name) || "Time".equals(name)) {
-          int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
-            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-          }
-          columnOrdinalMap.put(name, index + START_INDEX);
-        }
-      }
-    } else {
-      this.columnTypeDeduplicatedList = new ArrayList<>();
-      int index = START_INDEX;
-      for (int i = 0; i < columnNameList.size(); i++) {
-        String name = columnNameList.get(i);
-        this.columnNameList.add(name);
-        this.columnTypeList.add(columnTypeList.get(i));
-        if (!columnOrdinalMap.containsKey(name)) {
-          columnOrdinalMap.put(name, index++);
-          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
-        }
-      }
-    }
-
-    this.queryResult = queryResult;
-    this.queryResultSize = 0;
-    if (queryResult != null) {
-      this.queryResultSize = queryResult.size();
-    }
-    this.queryResultIndex = 0;
-    this.tsBlockSize = 0;
-    this.tsBlockIndex = -1;
-    this.zoneId = zoneId;
-    this.timeFormat = timeFormat;
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -369,25 +286,16 @@ public class IoTDBRpcDataSet {
   }
 
   public boolean isNull(int columnIndex) throws StatementExecutionException {
-    int index = columnOrdinalMap.get(findColumnNameByIndex(columnIndex)) - START_INDEX;
-    // time column will never be null
-    if (index < 0) {
-      return true;
-    }
-    return isNull(index, tsBlockIndex);
+    return isNull(findColumnNameByIndex(columnIndex));
   }
 
   public boolean isNull(String columnName) {
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    // time column will never be null
-    if (index < 0) {
-      return true;
-    }
-    return isNull(index, tsBlockIndex);
+    return isNull(getTsBlockColumnIndex(columnName), tsBlockIndex);
   }
 
   private boolean isNull(int index, int rowNum) {
-    return curTsBlock.getColumn(index).isNull(rowNum);
+    // -1 for time column which will never be null
+    return index >= 0 && curTsBlock.getColumn(index).isNull(rowNum);
   }
 
   public boolean getBoolean(int columnIndex) throws StatementExecutionException {
@@ -396,7 +304,7 @@ public class IoTDBRpcDataSet {
 
   public boolean getBoolean(String columnName) throws StatementExecutionException {
     checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = getTsBlockColumnIndex(columnName);
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(index).getBoolean(tsBlockIndex);
@@ -412,7 +320,7 @@ public class IoTDBRpcDataSet {
 
   public double getDouble(String columnName) throws StatementExecutionException {
     checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = getTsBlockColumnIndex(columnName);
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(index).getDouble(tsBlockIndex);
@@ -428,7 +336,7 @@ public class IoTDBRpcDataSet {
 
   public float getFloat(String columnName) throws StatementExecutionException {
     checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = getTsBlockColumnIndex(columnName);
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(index).getFloat(tsBlockIndex);
@@ -444,7 +352,7 @@ public class IoTDBRpcDataSet {
 
   public int getInt(String columnName) throws StatementExecutionException {
     checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = getTsBlockColumnIndex(columnName);
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       TSDataType type = curTsBlock.getColumn(index).getDataType();
@@ -465,21 +373,25 @@ public class IoTDBRpcDataSet {
 
   public long getLong(String columnName) throws StatementExecutionException {
     checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return curTsBlock.getTimeByIndex(tsBlockIndex);
-    }
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, tsBlockIndex)) {
+    int index = getTsBlockColumnIndex(columnName);
+
+    // take care of time column
+    if (index < 0) {
       lastReadWasNull = false;
-      TSDataType type = curTsBlock.getColumn(index).getDataType();
-      if (type == TSDataType.INT32) {
-        return curTsBlock.getColumn(index).getInt(tsBlockIndex);
-      } else {
-        return curTsBlock.getColumn(index).getLong(tsBlockIndex);
-      }
+      return curTsBlock.getTimeByIndex(tsBlockIndex);
     } else {
-      lastReadWasNull = true;
-      return 0;
+      if (!isNull(index, tsBlockIndex)) {
+        lastReadWasNull = false;
+        TSDataType type = curTsBlock.getColumn(index).getDataType();
+        if (type == TSDataType.INT32) {
+          return curTsBlock.getColumn(index).getInt(tsBlockIndex);
+        } else {
+          return curTsBlock.getColumn(index).getLong(tsBlockIndex);
+        }
+      } else {
+        lastReadWasNull = true;
+        return 0;
+      }
     }
   }
 
@@ -489,7 +401,7 @@ public class IoTDBRpcDataSet {
 
   public Binary getBinary(String columnName) throws StatementExecutionException {
     checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = getTsBlockColumnIndex(columnName);
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(index).getBinary(tsBlockIndex);
@@ -516,25 +428,26 @@ public class IoTDBRpcDataSet {
   }
 
   public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
-    return new Timestamp(getLong(columnIndex));
+    return getTimestamp(findColumnNameByIndex(columnIndex));
   }
 
   public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
-    return getTimestamp(findColumn(columnName));
+    return convertToTimestamp(getLong(columnName), timeFactor);
   }
 
   public TSDataType getDataType(int columnIndex) throws StatementExecutionException {
     return getDataType(findColumnNameByIndex(columnIndex));
   }
 
-  public TSDataType getDataType(String columnName) throws StatementExecutionException {
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return TSDataType.INT64;
+  public TSDataType getDataType(String columnName) {
+    final int index = getTsBlockColumnIndex(columnName);
+    if (index == -1) {
+      return TSDataType.TIMESTAMP;
+    } else if (index >= 0 && index < columnTypeDeduplicatedList.size()) {
+      return columnTypeDeduplicatedList.get(index);
+    } else {
+      return null;
     }
-    final int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    return index < 0 || index >= columnTypeDeduplicatedList.size()
-        ? null
-        : columnTypeDeduplicatedList.get(index);
   }
 
   public int findColumn(String columnName) {
@@ -543,16 +456,17 @@ public class IoTDBRpcDataSet {
 
   public String getValueByName(String columnName) throws StatementExecutionException {
     checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
+    // to keep compatibility, tree model should return a long value for time column
+    if (startIndex == 2 && columnName.equals(TIMESTAMP_STR)) {
       return String.valueOf(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {
+    int index = getTsBlockColumnIndex(columnName);
+    if (isNull(index, tsBlockIndex)) {
       lastReadWasNull = true;
       return null;
     }
     lastReadWasNull = false;
-    return getString(index, columnTypeDeduplicatedList.get(index));
+    return getString(index, getDataTypeByTsBlockColumnIndex(index));
   }
 
   public String getString(int index, TSDataType tsDataType) {
@@ -562,8 +476,16 @@ public class IoTDBRpcDataSet {
       case INT32:
         return String.valueOf(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       case INT64:
+        return String.valueOf(
+            (index == -1
+                ? curTsBlock.getTimeByIndex(tsBlockIndex)
+                : curTsBlock.getColumn(index).getLong(tsBlockIndex)));
       case TIMESTAMP:
-        return String.valueOf(curTsBlock.getColumn(index).getLong(tsBlockIndex));
+        long timestamp =
+            (index == -1
+                ? curTsBlock.getTimeByIndex(tsBlockIndex)
+                : curTsBlock.getColumn(index).getLong(tsBlockIndex));
+        return RpcUtils.formatDatetime(timeFormat, timePrecision, timestamp, zoneId);
       case FLOAT:
         return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
       case DOUBLE:
@@ -586,16 +508,46 @@ public class IoTDBRpcDataSet {
 
   public Object getObjectByName(String columnName) throws StatementExecutionException {
     checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
-    }
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {
+    int index = getTsBlockColumnIndex(columnName);
+    if (isNull(index, tsBlockIndex)) {
       lastReadWasNull = true;
       return null;
     }
     lastReadWasNull = false;
-    return curTsBlock.getColumn(index).getObject(tsBlockIndex);
+    TSDataType tsDataType = getDataTypeByTsBlockColumnIndex(index);
+    switch (tsDataType) {
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return curTsBlock.getColumn(index).getObject(tsBlockIndex);
+      case TIMESTAMP:
+        long timestamp =
+            (index == -1
+                ? curTsBlock.getTimeByIndex(tsBlockIndex)
+                : curTsBlock.getColumn(index).getLong(tsBlockIndex));
+        return convertToTimestamp(timestamp, timeFactor);
+      case TEXT:
+      case STRING:
+        return curTsBlock
+            .getColumn(index)
+            .getBinary(tsBlockIndex)
+            .getStringValue(TSFileConfig.STRING_CHARSET);
+      case BLOB:
+        return BytesUtils.parseBlobByteArrayToString(
+            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
+      case DATE:
+        return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
+      default:
+        return null;
+    }
+  }
+
+  private TSDataType getDataTypeByTsBlockColumnIndex(int tsBlockColumnIndex) {
+    return tsBlockColumnIndex < 0
+        ? TSDataType.TIMESTAMP
+        : columnTypeDeduplicatedList.get(tsBlockColumnIndex);
   }
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
@@ -609,6 +561,15 @@ public class IoTDBRpcDataSet {
     return columnNameList.get(columnIndex - 1);
   }
 
+  // return -1 for time column of tree model
+  private int getTsBlockColumnIndex(String columnName) {
+    Integer index = columnName2TsBlockColumnIndexMap.get(columnName);
+    if (index == null) {
+      throw new IllegalArgumentException("Unknown column name :" + columnName);
+    }
+    return index;
+  }
+
   public void checkRecord() throws StatementExecutionException {
     if (queryResultIndex > queryResultSize
         || tsBlockIndex >= tsBlockSize
@@ -616,5 +577,13 @@ public class IoTDBRpcDataSet {
         || curTsBlock == null) {
       throw new StatementExecutionException("No record remains");
     }
+  }
+
+  public int getValueColumnStartIndex() {
+    return ignoreTimeStamp ? 0 : 1;
+  }
+
+  public int getColumnSize() {
+    return columnNameList.size();
   }
 }

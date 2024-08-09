@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,7 +33,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -46,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,6 +74,11 @@ public abstract class InsertBaseStatement extends Statement {
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
+  protected TsTableColumnCategory[] columnCategories;
+  protected List<Integer> idColumnIndices;
+  protected List<Integer> attrColumnIndices;
+  protected boolean writeToTable = false;
+
   // region params used by analyzing logical views.
 
   /** This param records the logical view schema appeared in this statement. */
@@ -86,6 +97,8 @@ public abstract class InsertBaseStatement extends Statement {
 
   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
+
+  @TableModel private String databaseName;
 
   // endregion
 
@@ -113,6 +126,13 @@ public abstract class InsertBaseStatement extends Statement {
     this.measurementSchemas = measurementSchemas;
   }
 
+  public void setMeasurementSchema(MeasurementSchema measurementSchema, int i) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    measurementSchemas[i] = measurementSchema;
+  }
+
   public boolean isAligned() {
     return isAligned;
   }
@@ -125,8 +145,22 @@ public abstract class InsertBaseStatement extends Statement {
     return dataTypes;
   }
 
+  public TSDataType getDataType(int i) {
+    if (dataTypes == null) {
+      return null;
+    }
+    return dataTypes[i];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
+  }
+
+  public void setDataType(TSDataType dataType, int i) {
+    if (dataTypes == null) {
+      dataTypes = new TSDataType[measurements.length];
+    }
+    this.dataTypes[i] = dataType;
   }
 
   /** Returns true when this statement is empty and no need to write into the server */
@@ -236,6 +270,53 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     return false;
+  }
+
+  public TsTableColumnCategory[] getColumnCategories() {
+    return columnCategories;
+  }
+
+  public TsTableColumnCategory getColumnCategory(int i) {
+    if (columnCategories == null) {
+      return null;
+    }
+    return columnCategories[i];
+  }
+
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    this.columnCategories = columnCategories;
+  }
+
+  public void setColumnCategory(TsTableColumnCategory columnCategory, int i) {
+    if (columnCategories == null) {
+      columnCategories = new TsTableColumnCategory[measurements.length];
+    }
+    this.columnCategories[i] = columnCategory;
+    this.idColumnIndices = null;
+  }
+
+  public List<Integer> getIdColumnIndices() {
+    if (idColumnIndices == null && columnCategories != null) {
+      idColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+          idColumnIndices.add(i);
+        }
+      }
+    }
+    return idColumnIndices;
+  }
+
+  public List<Integer> getAttrColumnIndices() {
+    if (attrColumnIndices == null && columnCategories != null) {
+      attrColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+          attrColumnIndices.add(i);
+        }
+      }
+    }
+    return attrColumnIndices;
   }
 
   public boolean hasFailedMeasurements() {
@@ -382,6 +463,93 @@ public abstract class InsertBaseStatement extends Statement {
         }
       }
     }
+  }
+
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    if (pos < 0 || pos > measurements.length) {
+      throw new ArrayIndexOutOfBoundsException(pos);
+    }
+
+    if (measurementSchemas != null) {
+      MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
+      System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
+      tmp[pos] =
+          new MeasurementSchema(
+              columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
+      System.arraycopy(measurementSchemas, pos, tmp, pos + 1, measurementSchemas.length - pos);
+      measurementSchemas = tmp;
+    }
+
+    String[] tmpMeasurements = new String[measurements.length + 1];
+    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
+    tmpMeasurements[pos] = columnSchema.getName();
+    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
+    measurements = tmpMeasurements;
+
+    if (dataTypes == null) {
+      // sql insertion
+      dataTypes = new TSDataType[measurements.length + 1];
+      dataTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
+    } else {
+      TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
+      System.arraycopy(dataTypes, 0, tmpTypes, 0, pos);
+      tmpTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
+      System.arraycopy(dataTypes, pos, tmpTypes, pos + 1, dataTypes.length - pos);
+      dataTypes = tmpTypes;
+    }
+
+    if (columnCategories == null) {
+      columnCategories = new TsTableColumnCategory[measurements.length + 1];
+      columnCategories[pos] = columnSchema.getColumnCategory();
+    } else {
+      TsTableColumnCategory[] tmpCategories =
+          new TsTableColumnCategory[columnCategories.length + 1];
+      System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
+      tmpCategories[pos] = columnSchema.getColumnCategory();
+      System.arraycopy(
+          columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
+      columnCategories = tmpCategories;
+      idColumnIndices = null;
+    }
+  }
+
+  public void swapColumn(int src, int target) {
+    if (src < 0 || src >= measurements.length || target < 0 || target >= measurements.length) {
+      throw new ArrayIndexOutOfBoundsException(src + "/" + target);
+    }
+    if (measurementSchemas != null) {
+      CommonUtils.swapArray(measurementSchemas, src, target);
+    }
+    CommonUtils.swapArray(measurements, src, target);
+    // dataTypes is null for sql insertion
+    if (dataTypes != null) {
+      CommonUtils.swapArray(dataTypes, src, target);
+    }
+    if (columnCategories != null) {
+      CommonUtils.swapArray(columnCategories, src, target);
+    }
+    idColumnIndices = null;
+  }
+
+  public boolean isWriteToTable() {
+    return writeToTable;
+  }
+
+  public void setWriteToTable(boolean writeToTable) {
+    this.writeToTable = writeToTable;
+    if (writeToTable) {
+      isAligned = true;
+    }
+  }
+
+  @TableModel
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  @TableModel
+  public Optional<String> getDatabaseName() {
+    return Optional.ofNullable(databaseName);
   }
   // endregion
 }

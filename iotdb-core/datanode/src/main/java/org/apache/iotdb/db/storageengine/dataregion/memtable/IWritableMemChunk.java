@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -58,7 +59,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   boolean putBooleansWithFlushCheck(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
   boolean writeWithFlushCheck(long insertTime, Object objectValue);
 
@@ -78,7 +79,8 @@ public interface IWritableMemChunk extends WALEntryValue {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end);
+      int end,
+      TSStatus[] results);
 
   long count();
 

@@ -26,17 +26,22 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -51,6 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
+    setGenerateTableSchema(true);
   }
 
   public void markStartingWritingAligned() {
@@ -125,5 +131,18 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   public boolean isEmptyTargetFile() {
     return isEmptyTargetFile;
+  }
+
+  public void removeUnusedTableSchema() {
+    Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
+    Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, TableSchema> entry = iterator.next();
+      List<ColumnType> columnTypes = entry.getValue().getColumnTypes();
+      if (columnTypes.contains(ColumnType.MEASUREMENT)) {
+        continue;
+      }
+      iterator.remove();
+    }
   }
 }
