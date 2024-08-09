@@ -1760,7 +1760,6 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
-      loadTsFileActiveListeningProps(properties);
       StorageEngine.getInstance().rebootTimedService();
       // update params of creating schema automatically
       loadAutoCreateSchemaProps(properties);
@@ -1819,19 +1818,7 @@ public class IoTDBDescriptor {
       loadCompactionHotModifiedProps(properties);
 
       // update load config
-      conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
-          Long.parseLong(
-              properties.getProperty(
-                  "load_clean_up_task_execution_delay_time_seconds",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_clean_up_task_execution_delay_time_seconds"))));
-
-      conf.setLoadWriteThroughputBytesPerSecond(
-          Double.parseDouble(
-              properties.getProperty(
-                  "load_write_throughput_bytes_per_second",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_write_throughput_bytes_per_second"))));
+      loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
       commonDescriptor
@@ -2181,7 +2168,6 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
-
     conf.setLoadActiveListeningCheckIntervalSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -2197,7 +2183,21 @@ public class IoTDBDescriptor {
                         Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
   }
 
-  private void loadTsFileActiveListeningProps(Properties properties) throws IOException {
+  private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_execution_delay_time_seconds"))));
+
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_write_throughput_bytes_per_second"))));
+
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
             properties.getProperty(
