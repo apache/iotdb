@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -140,6 +141,7 @@ public class ExpressionAnalyzer {
   // Track referenced fields from source relation node
   private final Multimap<NodeRef<Node>, Field> referencedFields = HashMultimap.create();
 
+  private final MPPQueryContext context;
   private final SessionInfo session;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
@@ -155,6 +157,7 @@ public class ExpressionAnalyzer {
 
   private ExpressionAnalyzer(
       Metadata metadata,
+      MPPQueryContext context,
       AccessControl accessControl,
       StatementAnalyzerFactory statementAnalyzerFactory,
       Analysis analysis,
@@ -163,10 +166,11 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector) {
     this(
         metadata,
+        context,
         accessControl,
         (node, correlationSupport) ->
             statementAnalyzerFactory.createStatementAnalyzer(
-                analysis, session, warningCollector, correlationSupport),
+                analysis, context, session, warningCollector, correlationSupport),
         session,
         types,
         analysis.getParameters(),
@@ -176,6 +180,7 @@ public class ExpressionAnalyzer {
 
   ExpressionAnalyzer(
       Metadata metadata,
+      MPPQueryContext context,
       AccessControl accessControl,
       BiFunction<Node, CorrelationSupport, StatementAnalyzer> statementAnalyzerFactory,
       SessionInfo session,
@@ -184,6 +189,7 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector,
       Function<Expression, Type> getPreanalyzedType) {
     this.metadata = requireNonNull(metadata, "metadata is null");
+    this.context = requireNonNull(context, "context is null");
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
     this.statementAnalyzerFactory =
         requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
@@ -1324,6 +1330,7 @@ public class ExpressionAnalyzer {
 
   public static ExpressionAnalysis analyzeExpressions(
       Metadata metadata,
+      MPPQueryContext context,
       SessionInfo session,
       StatementAnalyzerFactory statementAnalyzerFactory,
       AccessControl accessControl,
@@ -1336,6 +1343,7 @@ public class ExpressionAnalyzer {
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
             metadata,
+            context,
             accessControl,
             statementAnalyzerFactory,
             analysis,
@@ -1359,6 +1367,7 @@ public class ExpressionAnalyzer {
 
   public static ExpressionAnalysis analyzeExpression(
       Metadata metadata,
+      MPPQueryContext context,
       SessionInfo session,
       StatementAnalyzerFactory statementAnalyzerFactory,
       AccessControl accessControl,
@@ -1370,6 +1379,7 @@ public class ExpressionAnalyzer {
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
             metadata,
+            context,
             accessControl,
             statementAnalyzerFactory,
             analysis,
@@ -1392,6 +1402,7 @@ public class ExpressionAnalyzer {
 
   public static void analyzeExpressionWithoutSubqueries(
       Metadata metadata,
+      MPPQueryContext context,
       SessionInfo session,
       AccessControl accessControl,
       Scope scope,
@@ -1403,6 +1414,7 @@ public class ExpressionAnalyzer {
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
             metadata,
+            context,
             accessControl,
             (node, ignored) -> {
               throw new SemanticException(message);
@@ -1431,12 +1443,14 @@ public class ExpressionAnalyzer {
 
   public static ExpressionAnalyzer createConstantAnalyzer(
       Metadata metadata,
+      MPPQueryContext context,
       AccessControl accessControl,
       SessionInfo session,
       Map<NodeRef<Parameter>, Expression> parameters,
       WarningCollector warningCollector) {
     return createWithoutSubqueries(
         metadata,
+        context,
         accessControl,
         session,
         parameters,
@@ -1446,6 +1460,7 @@ public class ExpressionAnalyzer {
 
   public static ExpressionAnalyzer createWithoutSubqueries(
       Metadata metadata,
+      MPPQueryContext context,
       AccessControl accessControl,
       SessionInfo session,
       Map<NodeRef<Parameter>, Expression> parameters,
@@ -1453,6 +1468,7 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector) {
     return createWithoutSubqueries(
         metadata,
+        context,
         accessControl,
         session,
         TypeProvider.empty(),
@@ -1463,6 +1479,7 @@ public class ExpressionAnalyzer {
 
   public static ExpressionAnalyzer createWithoutSubqueries(
       Metadata metadata,
+      MPPQueryContext context,
       AccessControl accessControl,
       SessionInfo session,
       TypeProvider symbolTypes,
@@ -1471,6 +1488,7 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector) {
     return new ExpressionAnalyzer(
         metadata,
+        context,
         accessControl,
         (node, correlationSupport) -> {
           throw statementAnalyzerRejection.apply(node);

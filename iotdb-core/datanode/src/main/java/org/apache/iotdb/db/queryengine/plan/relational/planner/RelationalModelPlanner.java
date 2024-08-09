@@ -96,6 +96,7 @@ public class RelationalModelPlanner implements IPlanner {
 
     Analyzer analyzer =
         new Analyzer(
+            context,
             context.getSession(),
             statementAnalyzerFactory,
             Collections.emptyList(),

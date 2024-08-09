@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -36,6 +37,7 @@ public class Analyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
+  private final MPPQueryContext context;
   private final SessionInfo session;
   private final List<Expression> parameters;
 
@@ -44,11 +46,13 @@ public class Analyzer {
   private final WarningCollector warningCollector;
 
   public Analyzer(
-      SessionInfo session,
-      StatementAnalyzerFactory statementAnalyzerFactory,
-      List<Expression> parameters,
-      Map<NodeRef<Parameter>, Expression> parameterLookup,
-      WarningCollector warningCollector) {
+      final MPPQueryContext context,
+      final SessionInfo session,
+      final StatementAnalyzerFactory statementAnalyzerFactory,
+      final List<Expression> parameters,
+      final Map<NodeRef<Parameter>, Expression> parameterLookup,
+      final WarningCollector warningCollector) {
+    this.context = context;
     this.session = requireNonNull(session, "session is null");
     this.statementAnalyzerFactory =
         requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
@@ -74,7 +78,7 @@ public class Analyzer {
 
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
-            analysis, session, warningCollector, CorrelationSupport.ALLOWED);
+            analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
 

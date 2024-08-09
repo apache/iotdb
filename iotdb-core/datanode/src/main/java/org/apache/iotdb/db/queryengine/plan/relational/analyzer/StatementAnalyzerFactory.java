@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -46,11 +47,19 @@ public class StatementAnalyzerFactory {
 
   public StatementAnalyzer createStatementAnalyzer(
       Analysis analysis,
+      MPPQueryContext context,
       SessionInfo session,
       WarningCollector warningCollector,
       CorrelationSupport correlationSupport) {
     return new StatementAnalyzer(
-        this, analysis, accessControl, warningCollector, session, metadata, correlationSupport);
+        this,
+        analysis,
+        context,
+        accessControl,
+        warningCollector,
+        session,
+        metadata,
+        correlationSupport);
   }
 
   public static StatementAnalyzerFactory createTestingStatementAnalyzerFactory(
