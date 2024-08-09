@@ -27,6 +27,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -120,8 +121,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
       // -1 is for the endmarker
-      endOffset =
-          channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize - 1;
+      endOffset = channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize;
     } finally {
       if (version == WALFileVersion.V2) {
         // Set the position back to the end of head magic string
@@ -187,7 +187,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextSegment() throws IOException {
     if (channel.position() >= endOffset) {
-      throw new IOException("Reach the end offset of wal file");
+      throw new EOFException("Reach the end offset of wal file");
     }
     long startTime = System.nanoTime();
     long startPosition = channel.position();
