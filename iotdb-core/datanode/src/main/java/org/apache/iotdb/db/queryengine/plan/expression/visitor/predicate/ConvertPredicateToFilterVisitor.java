@@ -145,7 +145,7 @@ public class ConvertPredicateToFilterVisitor
     PartialPath path = ((TimeSeriesOperand) operand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
     TSDataType dataType = context.getType(path);
-    return ValueFilterApi.isNotNull(measurementIndex, dataType);
+    return ValueFilterApi.isNotNull(measurementIndex);
   }
 
   @Override
