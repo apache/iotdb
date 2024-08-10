@@ -21,7 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -38,6 +38,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,6 +59,15 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     return null;
   }
 
+  public TSStatus visitRelationalInsertRow(RelationalInsertRowNode node, DataRegion context) {
+    return visitInsertRow(node, context);
+  }
+
+  @Override
+  public TSStatus visitRelationalInsertRows(RelationalInsertRowsNode node, DataRegion context) {
+    return visitInsertRows(node, context);
+  }
+
   @Override
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
@@ -72,6 +84,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, DataRegion dataRegion) {
+    return visitInsertTablet(node, dataRegion);
   }
 
   @Override
@@ -222,8 +240,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
     try {
-      for (PartialPath path : node.getPathList()) {
-        PartialPath databaseToDelete = new PartialPath(dataRegion.getDatabaseName() + ".**");
+      for (MeasurementPath path : node.getPathList()) {
+        MeasurementPath databaseToDelete =
+            new MeasurementPath(dataRegion.getDatabaseName() + ".**");
         if (path.matchFullPath(databaseToDelete)
             || path.getFullPath().equals(databaseToDelete.getFullPath())) {
           LOGGER.info(

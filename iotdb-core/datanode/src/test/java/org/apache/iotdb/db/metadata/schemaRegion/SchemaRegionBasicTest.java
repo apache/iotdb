@@ -92,7 +92,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
       for (int j = 0; j < measurementNum; j++) {
         schemaRegion.createTimeSeries(
             SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                new PartialPath("root.sg.d" + i + ".s" + j),
+                new MeasurementPath("root.sg.d" + i + ".s" + j),
                 TSDataType.BOOLEAN,
                 TSEncoding.PLAIN,
                 CompressionType.SNAPPY,
@@ -106,7 +106,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
-        patternTree.appendFullPath(new PartialPath("root.sg.d" + i + ".s" + j));
+        patternTree.appendFullPath(new MeasurementPath("root.sg.d" + i + ".s" + j));
       }
     }
     patternTree.constructTree();
@@ -125,7 +125,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
+            new MeasurementPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -136,7 +136,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.temperature"),
+            new MeasurementPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.GZIP,
@@ -343,7 +343,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
+            new MeasurementPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -354,7 +354,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -365,7 +365,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.temperature"),
+            new MeasurementPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.GZIP,
@@ -417,7 +417,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final Map<String, String> oldAttrMap = Collections.singletonMap("attrK1", "attrV1");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -431,7 +431,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final Map<String, String> newAttrMap = Collections.singletonMap("attrK2", "attrV2");
     ICreateTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.ZSTD,
@@ -463,7 +463,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     try {
       mergePlan =
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath("root.sg.wf01.wt01.v1.s1"),
+              new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
               TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.ZSTD,
@@ -489,7 +489,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
+            new MeasurementPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -500,7 +500,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt02.status"),
+            new MeasurementPath("root.sg.wf01.wt02.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -511,7 +511,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.temperature"),
+            new MeasurementPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -522,7 +522,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         -1);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf02.wt01.temperature"),
+            new MeasurementPath("root.sg.wf02.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -540,7 +540,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt01.temperature"),
                 new PartialPath("root.sg.wf01.wt02.status"),
                 new PartialPath("root.sg.wf01.wt01.status"),
                 new PartialPath("root.sg.wf02.wt01.temperature"))),
@@ -552,7 +552,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt01.temperature"),
                 new PartialPath("root.sg.wf01.wt02.status"),
                 new PartialPath("root.sg.wf01.wt01.status"))),
         schemaRegion.fetchSchemaBlackList(patternTree));

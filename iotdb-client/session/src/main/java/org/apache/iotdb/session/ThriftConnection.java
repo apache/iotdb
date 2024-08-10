@@ -60,6 +60,8 @@ public class ThriftConnection {
   protected long statementId;
   private ZoneId zoneId;
 
+  private int timeFactor;
+
   public ThriftConnection(
       TEndPoint endPoint,
       int thriftDefaultBufferSize,
@@ -124,6 +126,8 @@ public class ThriftConnection {
 
       RpcUtils.verifySuccess(openResp.getStatus());
 
+      this.timeFactor = RpcUtils.getTimeFactor(openResp);
+
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         LOGGER.warn(
             "Protocol differ, Client version is {}}, but Server version is {}",
@@ -175,7 +179,9 @@ public class ThriftConnection {
         timeout,
         execResp.moreData,
         fetchSize,
-        zoneId);
+        zoneId,
+        timeFactor,
+        execResp.isSetTableModel() && execResp.isTableModel());
   }
 
   public void close() {

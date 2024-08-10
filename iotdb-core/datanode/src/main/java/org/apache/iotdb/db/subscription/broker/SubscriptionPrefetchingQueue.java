@@ -27,14 +27,9 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,19 +42,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
-
 public abstract class SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
 
   protected final String brokerId; // consumer group id
   protected final String topicName;
+
   protected final SubscriptionBlockingPendingQueue inputPendingQueue;
   protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
-
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
-  private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
+
+  private final AtomicLong commitIdGenerator;
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -67,13 +61,15 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.uncommittedEvents = new ConcurrentHashMap<>();
+    this.commitIdGenerator = commitIdGenerator;
   }
 
   public void cleanup() {
@@ -170,13 +166,20 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            event);
+        final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
+        // add mark completed hook
+        terminateEvent.addOnCommittedHook(
+            () -> {
+              markCompleted();
+              return null;
+            });
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+            this,
+            terminateEvent);
         continue;
       }
 
@@ -318,16 +321,7 @@ public abstract class SubscriptionPrefetchingQueue {
         PipeDataNodeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
-        subscriptionCommitIdGenerator.getAndIncrement());
-  }
-
-  private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
-    return new SubscriptionCommitContext(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-        PipeDataNodeAgent.runtime().getRebootTimes(),
-        topicName,
-        brokerId,
-        INVALID_COMMIT_ID);
+        commitIdGenerator.getAndIncrement());
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -346,10 +340,10 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public long getCurrentCommitId() {
-    return subscriptionCommitIdGenerator.get();
+    return commitIdGenerator.get();
   }
 
-  /////////////////////////////// termination ///////////////////////////////
+  /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
     return isClosed;
@@ -367,25 +361,6 @@ public abstract class SubscriptionPrefetchingQueue {
     isCompleted = true;
   }
 
-  public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.TERMINATION.getType(),
-            new TerminationPayload(),
-            generateInvalidSubscriptionCommitContext()));
-  }
-
-  public SubscriptionEvent generateSubscriptionPollErrorResponse(
-      final String errorMessage, final boolean critical) {
-    return new SubscriptionEvent(
-        new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.ERROR.getType(),
-            new ErrorPayload(errorMessage, critical),
-            generateInvalidSubscriptionCommitContext()));
-  }
-
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
@@ -393,7 +368,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
     result.put("size of uncommittedEvents", String.valueOf(uncommittedEvents.size()));
-    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
@@ -406,7 +381,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("uncommittedEvents", uncommittedEvents.toString());
-    result.put("subscriptionCommitIdGenerator", subscriptionCommitIdGenerator.toString());
+    result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;

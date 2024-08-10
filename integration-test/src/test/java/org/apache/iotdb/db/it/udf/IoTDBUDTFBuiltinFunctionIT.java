@@ -205,7 +205,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           } else if (j == 5) {
             assertEquals("2024-01-0" + (i + 1), resultSet.getString(7));
           } else if (j == 6) {
-            assertEquals(String.valueOf(i), resultSet.getString(8));
+            assertEquals(String.format("1970-01-01T00:00:00.00%dZ", i), resultSet.getString(8));
           }
         }
       }
@@ -251,7 +251,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           } else if (j == 5) {
             assertEquals("2024-01-0" + (i + 1), resultSet.getString(7));
           } else if (j == 6) {
-            assertEquals(String.valueOf(i), resultSet.getString(8));
+            assertEquals(String.format("1970-01-01T00:00:00.00%dZ", i), resultSet.getString(8));
           }
         }
       }

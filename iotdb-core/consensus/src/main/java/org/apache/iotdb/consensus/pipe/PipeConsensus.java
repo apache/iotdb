@@ -116,7 +116,7 @@ public class PipeConsensus implements IConsensus {
   public synchronized void start() throws IOException {
     initAndRecover();
 
-    rpcService.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
+    rpcService.initSyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
     try {
       registerManager.register(rpcService);
     } catch (StartupException e) {

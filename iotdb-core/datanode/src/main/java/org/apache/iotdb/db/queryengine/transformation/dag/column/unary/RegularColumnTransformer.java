@@ -25,9 +25,10 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 
 public class RegularColumnTransformer extends UnaryColumnTransformer {
   private final Pattern pattern;
@@ -59,7 +60,7 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
-    if (!childColumnTransformer.typeEquals(TypeEnum.BINARY)) {
+    if (!isCharType(childColumnTransformer.getType())) {
       throw new UnsupportedOperationException(
           "Unsupported Type: " + childColumnTransformer.getType().getTypeEnum());
     }

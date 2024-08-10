@@ -20,7 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -40,7 +40,9 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -62,7 +64,7 @@ public class DeviceViewOperatorTest {
 
   private static final String DEVICE_MERGE_OPERATOR_TEST_SG = "root.DeviceViewOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -104,8 +106,10 @@ public class DeviceViewOperatorTest {
       driverContext.addOperatorContext(
           3, new PlanNodeId("3"), DeviceViewOperatorTest.class.getSimpleName());
 
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      NonAlignedFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -118,8 +122,10 @@ public class DeviceViewOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
+      NonAlignedFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
@@ -132,9 +138,11 @@ public class DeviceViewOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      List<String> devices = new ArrayList<>();
-      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
-      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1");
+      List<IDeviceID> devices = new ArrayList<>();
+      devices.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"));
+      devices.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1"));
       List<Operator> deviceOperators = new ArrayList<>();
       deviceOperators.add(seriesScanOperator1);
       deviceOperators.add(seriesScanOperator2);
