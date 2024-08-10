@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TREE;
+
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
  * that a fragment instance could be run in parallel, and thus we can take full advantages of
@@ -149,7 +151,10 @@ public class LocalExecutionPlanner {
     // Generate pipelines, return the last pipeline data structure
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root;
-    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
+    IClientSession.SqlDialect sqlDialect =
+        instanceContext.getSessionInfo() == null
+            ? TREE
+            : instanceContext.getSessionInfo().getSqlDialect();
     switch (sqlDialect) {
       case TREE:
         root = node.accept(new OperatorTreeGenerator(), context);
