@@ -49,8 +49,8 @@ import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -348,13 +348,13 @@ public class PredicateUtils {
     if (predicate == null) {
       return null;
     }
-    Set<Expression> conjuncts = new LinkedHashSet<>();
+    Set<Expression> conjuncts = new HashSet<>();
     extractConjuncts(predicate, conjuncts);
     return combineConjuncts(new ArrayList<>(conjuncts));
   }
 
   public static List<Expression> extractConjuncts(Expression predicate) {
-    Set<Expression> conjuncts = new LinkedHashSet<>();
+    Set<Expression> conjuncts = new HashSet<>();
     extractConjuncts(predicate, conjuncts);
     return new ArrayList<>(conjuncts);
   }
