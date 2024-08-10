@@ -40,7 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
@@ -88,7 +88,7 @@ public class LogicalPlanner {
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers =
-        new OptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+        new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
             .getPlanOptimizers();
   }
 

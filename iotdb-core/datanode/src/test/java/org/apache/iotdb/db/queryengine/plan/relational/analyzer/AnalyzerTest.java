@@ -37,8 +37,10 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -48,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -135,8 +136,6 @@ public class AnalyzerTest {
         "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10 offset 2 limit 3";
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
-
-    TableHandle tableHandle = Mockito.mock(TableHandle.class);
 
     Map<String, ColumnHandle> map = new HashMap<>();
     TableSchema tableSchema = Mockito.mock(TableSchema.class);
@@ -848,6 +847,82 @@ public class AnalyzerTest {
         Objects.requireNonNull(
                 ((TableScanNode) getChildrenNode(rootNode, 1)).getPushDownPredicate())
             .toString());
+  }
+
+  @Test
+  public void limitEliminationTest() {
+    sql = "SELECT s1+s3 FROM table1 limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
+    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+    // distributed plan: `IdentitySink - OutputNode - ProjectNode - LimitNode - CollectNode -
+    // TableScanNode`, `IdentitySink - TableScan`
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertTrue(
+        getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4)
+            instanceof CollectNode);
+    CollectNode collectNode =
+        (CollectNode)
+            getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
+    assertTrue(collectNode.getChildren().get(1) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) collectNode.getChildren().get(1);
+    assertEquals(10, tableScanNode.getPushDownLimit());
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+    assertTrue(
+        distributedQueryPlan.getFragments().get(0).getPlanNodeTree() instanceof IdentitySinkNode);
+    IdentitySinkNode identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 1);
+    assertEquals(10, tableScanNode.getPushDownLimit());
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+
+    sql = "SELECT s1,s1+s3 FROM table1 where tag1='beijing' and tag2='A1' limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
+    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+    // distributed plan: `IdentitySink - OutputNode - ProjectNode - TableScanNode`
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertTrue(
+        distributedQueryPlan.getFragments().get(0).getPlanNodeTree() instanceof IdentitySinkNode);
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
+    assertEquals(10, tableScanNode.getPushDownLimit());
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+
+    sql = "SELECT diff(s1) FROM table1 where tag1='beijing' and tag2='A1' limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
+    rootNode = logicalQueryPlan.getRootNode();
+    // distributed plan: `IdentitySink - OutputNode - ProjectNode - LimitNode - TableScanNode`
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    List<PlanFragment> fragments = distributedQueryPlan.getFragments();
+    identitySinkNode = (IdentitySinkNode) fragments.get(0).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof LimitNode);
+    assertTrue(getChildrenNode(identitySinkNode, 4) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 4);
+    assertEquals(0, tableScanNode.getPushDownLimit());
   }
 
   @Test
