@@ -54,167 +54,167 @@ import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollecto
 
 public class TableDistributedPlanner {
 
-    private final Analysis analysis;
-    private final LogicalQueryPlan logicalQueryPlan;
-    private final MPPQueryContext mppQueryContext;
-    private final List<PlanOptimizer> optimizers;
+  private final Analysis analysis;
+  private final LogicalQueryPlan logicalQueryPlan;
+  private final MPPQueryContext mppQueryContext;
+  private final List<PlanOptimizer> optimizers;
 
-    public TableDistributedPlanner(
-            Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
-        this.analysis = analysis;
-        this.logicalQueryPlan = logicalQueryPlan;
-        this.mppQueryContext = mppQueryContext;
-        this.optimizers =
-                Arrays.asList(
-                        new IterativeOptimizer(
-                                new PlannerContext(null, new InternalTypeManager()),
-                                new RuleStatsRecorder(),
-                                ImmutableSet.of(
-                                        new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort())),
-                        new SortElimination(),
-                        new IterativeOptimizer(
-                                new PlannerContext(null, new InternalTypeManager()),
-                                new RuleStatsRecorder(),
-                                ImmutableSet.of(new EliminateLimitWithTableScan())
-                        )
-                );
+  public TableDistributedPlanner(
+      Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
+    this.analysis = analysis;
+    this.logicalQueryPlan = logicalQueryPlan;
+    this.mppQueryContext = mppQueryContext;
+    this.optimizers =
+        Arrays.asList(
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
+                ImmutableSet.of(
+                    new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort())),
+            new SortElimination(),
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
+                ImmutableSet.of(new EliminateLimitWithTableScan())
+            )
+        );
+  }
+
+  public DistributedQueryPlan plan() {
+    TableDistributedPlanGenerator.PlanContext planContext =
+        new TableDistributedPlanGenerator.PlanContext();
+    PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+
+    if (analysis.getStatement() instanceof Query) {
+      analysis
+          .getRespDatasetHeader()
+          .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
+    }
+    adjustUpStream(outputNodeWithExchange, planContext);
+
+    return generateDistributedPlan(outputNodeWithExchange);
+  }
+
+  public PlanNode generateDistributedPlanWithOptimize(
+      TableDistributedPlanGenerator.PlanContext planContext) {
+    // generate table model distributed plan
+
+    List<PlanNode> distributedPlanResult =
+        new TableDistributedPlanGenerator(mppQueryContext, analysis)
+            .genResult(logicalQueryPlan.getRootNode(), planContext);
+    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+
+    // distribute plan optimize rule
+    PlanNode distributedPlan = distributedPlanResult.get(0);
+
+    if (analysis.getStatement() instanceof Query) {
+      for (PlanOptimizer optimizer : optimizers) {
+        distributedPlan =
+            optimizer.optimize(
+                distributedPlan,
+                new PlanOptimizer.Context(
+                    null,
+                    analysis,
+                    null,
+                    mppQueryContext,
+                    mppQueryContext.getTypeProvider(),
+                    new SymbolAllocator(),
+                    mppQueryContext.getQueryId(),
+                    NOOP,
+                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+      }
     }
 
-    public DistributedQueryPlan plan() {
-        TableDistributedPlanGenerator.PlanContext planContext =
-                new TableDistributedPlanGenerator.PlanContext();
-        PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+    // add exchange node for distributed plan
+    return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+  }
 
-        if (analysis.getStatement() instanceof Query) {
-            analysis
-                    .getRespDatasetHeader()
-                    .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
-        }
-        adjustUpStream(outputNodeWithExchange, planContext);
+  private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange) {
+    // generate subPlan
+    SubPlan subPlan =
+        new SubPlanGenerator()
+            .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
+    subPlan.getPlanFragment().setRoot(true);
 
-        return generateDistributedPlan(outputNodeWithExchange);
+    // generate fragment instances
+    List<FragmentInstance> fragmentInstances =
+        mppQueryContext.getQueryType() == QueryType.READ
+            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
+            : new WriteFragmentParallelPlanner(
+            subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
+            .parallelPlan();
+
+    // only execute this step for READ operation
+    if (mppQueryContext.getQueryType() == QueryType.READ) {
+      setSinkForRootInstance(subPlan, fragmentInstances);
     }
 
-    public PlanNode generateDistributedPlanWithOptimize(
-            TableDistributedPlanGenerator.PlanContext planContext) {
-        // generate table model distributed plan
+    return new DistributedQueryPlan(subPlan, fragmentInstances);
+  }
 
-        List<PlanNode> distributedPlanResult =
-                new TableDistributedPlanGenerator(mppQueryContext, analysis)
-                        .genResult(logicalQueryPlan.getRootNode(), planContext);
-        checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
-
-        // distribute plan optimize rule
-        PlanNode distributedPlan = distributedPlanResult.get(0);
-
-        if (analysis.getStatement() instanceof Query) {
-            for (PlanOptimizer optimizer : optimizers) {
-                distributedPlan =
-                        optimizer.optimize(
-                                distributedPlan,
-                                new PlanOptimizer.Context(
-                                        null,
-                                        analysis,
-                                        null,
-                                        mppQueryContext,
-                                        mppQueryContext.getTypeProvider(),
-                                        new SymbolAllocator(),
-                                        mppQueryContext.getQueryId(),
-                                        NOOP,
-                                        PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
-            }
-        }
-
-        // add exchange node for distributed plan
-        return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+  public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
+    FragmentInstance rootInstance = null;
+    for (FragmentInstance instance : instances) {
+      if (instance.getFragment().getId().equals(subPlan.getPlanFragment().getId())) {
+        rootInstance = instance;
+        break;
+      }
+    }
+    // root should not be null during normal process
+    if (rootInstance == null) {
+      return;
     }
 
-    private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange) {
-        // generate subPlan
-        SubPlan subPlan =
-                new SubPlanGenerator()
-                        .splitToSubPlan(logicalQueryPlan.getContext().getQueryId(), outputNodeWithExchange);
-        subPlan.getPlanFragment().setRoot(true);
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            mppQueryContext.getQueryId().genPlanNodeId(),
+            Collections.singletonList(rootInstance.getFragment().getPlanNodeTree()),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    mppQueryContext.getLocalDataBlockEndpoint(),
+                    mppQueryContext
+                        .getResultNodeContext()
+                        .getVirtualFragmentInstanceId()
+                        .toThrift(),
+                    mppQueryContext.getResultNodeContext().getVirtualResultNodeId().getId())));
+    mppQueryContext
+        .getResultNodeContext()
+        .setUpStream(
+            rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
+            rootInstance.getId(),
+            sinkNode.getPlanNodeId());
+    rootInstance.getFragment().setPlanNodeTree(sinkNode);
+  }
 
-        // generate fragment instances
-        List<FragmentInstance> fragmentInstances =
-                mppQueryContext.getQueryType() == QueryType.READ
-                        ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
-                        : new WriteFragmentParallelPlanner(
-                        subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
-                        .parallelPlan();
-
-        // only execute this step for READ operation
-        if (mppQueryContext.getQueryType() == QueryType.READ) {
-            setSinkForRootInstance(subPlan, fragmentInstances);
-        }
-
-        return new DistributedQueryPlan(subPlan, fragmentInstances);
+  private void adjustUpStream(PlanNode root, TableDistributedPlanGenerator.PlanContext context) {
+    if (!context.hasExchangeNode) {
+      return;
     }
 
-    public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
-        FragmentInstance rootInstance = null;
-        for (FragmentInstance instance : instances) {
-            if (instance.getFragment().getId().equals(subPlan.getPlanFragment().getId())) {
-                rootInstance = instance;
-                break;
-            }
-        }
-        // root should not be null during normal process
-        if (rootInstance == null) {
-            return;
-        }
+    adjustUpStreamHelper(root, context, new HashMap<>());
+  }
 
-        IdentitySinkNode sinkNode =
-                new IdentitySinkNode(
-                        mppQueryContext.getQueryId().genPlanNodeId(),
-                        Collections.singletonList(rootInstance.getFragment().getPlanNodeTree()),
-                        Collections.singletonList(
-                                new DownStreamChannelLocation(
-                                        mppQueryContext.getLocalDataBlockEndpoint(),
-                                        mppQueryContext
-                                                .getResultNodeContext()
-                                                .getVirtualFragmentInstanceId()
-                                                .toThrift(),
-                                        mppQueryContext.getResultNodeContext().getVirtualResultNodeId().getId())));
-        mppQueryContext
-                .getResultNodeContext()
-                .setUpStream(
-                        rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
-                        rootInstance.getId(),
-                        sinkNode.getPlanNodeId());
-        rootInstance.getFragment().setPlanNodeTree(sinkNode);
+  private void adjustUpStreamHelper(
+      PlanNode root,
+      TableDistributedPlanGenerator.PlanContext context,
+      Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
+    for (PlanNode child : root.getChildren()) {
+      adjustUpStreamHelper(child, context, regionNodeMap);
+
+      if (child instanceof ExchangeNode) {
+        ExchangeNode exchangeNode = (ExchangeNode) child;
+
+        IdentitySinkNode identitySinkNode =
+            regionNodeMap.computeIfAbsent(
+                context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
+                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
+        identitySinkNode.addChild(exchangeNode.getChild());
+        identitySinkNode.addDownStreamChannelLocation(
+            new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
+
+        exchangeNode.setChild(identitySinkNode);
+        exchangeNode.setIndexOfUpstreamSinkHandle(identitySinkNode.getCurrentLastIndex());
+      }
     }
-
-    private void adjustUpStream(PlanNode root, TableDistributedPlanGenerator.PlanContext context) {
-        if (!context.hasExchangeNode) {
-            return;
-        }
-
-        adjustUpStreamHelper(root, context, new HashMap<>());
-    }
-
-    private void adjustUpStreamHelper(
-            PlanNode root,
-            TableDistributedPlanGenerator.PlanContext context,
-            Map<TRegionReplicaSet, IdentitySinkNode> regionNodeMap) {
-        for (PlanNode child : root.getChildren()) {
-            adjustUpStreamHelper(child, context, regionNodeMap);
-
-            if (child instanceof ExchangeNode) {
-                ExchangeNode exchangeNode = (ExchangeNode) child;
-
-                IdentitySinkNode identitySinkNode =
-                        regionNodeMap.computeIfAbsent(
-                                context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
-                                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
-                identitySinkNode.addChild(exchangeNode.getChild());
-                identitySinkNode.addDownStreamChannelLocation(
-                        new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
-
-                exchangeNode.setChild(identitySinkNode);
-                exchangeNode.setIndexOfUpstreamSinkHandle(identitySinkNode.getCurrentLastIndex());
-            }
-        }
-    }
+  }
 }
