@@ -206,13 +206,13 @@ public class AnalyzerTest {
     assertEquals(3, distributedQueryPlan.getFragments().size());
     assertTrue(
         distributedQueryPlan
-            .getFragments()
-            .get(0)
-            .getPlanNodeTree()
-            .getChildren()
-            .get(0)
-            .getChildren()
-            .get(0)
+                .getFragments()
+                .get(0)
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof CollectNode);
   }
 
@@ -962,10 +962,10 @@ public class AnalyzerTest {
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
-        actualAnalysis
-            .getDataPartition()
-            .getDataPartitionMap()
-            .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(3, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -981,7 +981,7 @@ public class AnalyzerTest {
     for (int i = 0; i < insertTabletNode.getRowCount(); i++) {
       assertEquals(
           Factory.DEFAULT_FACTORY.create(
-              new String[]{StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
+              new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
           insertTabletNode.getDeviceID(i));
     }
     assertArrayEquals(columns, insertTabletNode.getColumns());
@@ -1007,10 +1007,10 @@ public class AnalyzerTest {
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
-        actualAnalysis
-            .getDataPartition()
-            .getDataPartitionMap()
-            .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+            actualAnalysis
+                .getDataPartition()
+                .getDataPartitionMap()
+                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(1, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -1023,7 +1023,7 @@ public class AnalyzerTest {
     Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
-            new String[]{StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
+            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
         insertNode.getDeviceID());
 
     assertArrayEquals(columns, insertNode.getValues());
@@ -1080,7 +1080,6 @@ public class AnalyzerTest {
     TableScanNode tableScanNode = (TableScanNode) getChildrenNode(rootNode2, 1);
     assertEquals(10, tableScanNode.getPushDownLimit());
     assertFalse(tableScanNode.isPushLimitToEachDevice());
-
 
     // #case2: order by partial IDs, isPushLimitToEachDevice = true
     sql = "SELECT * FROM testdb.table1 order by tag1 limit 10";
@@ -1162,6 +1161,5 @@ public class AnalyzerTest {
     return null;
   }
 
-  private static class NopAccessControl implements AccessControl {
-  }
+  private static class NopAccessControl implements AccessControl {}
 }

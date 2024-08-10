@@ -75,9 +75,7 @@ public class TableDistributedPlanner {
             new IterativeOptimizer(
                 new PlannerContext(null, new InternalTypeManager()),
                 new RuleStatsRecorder(),
-                ImmutableSet.of(new EliminateLimitWithTableScan())
-            )
-        );
+                ImmutableSet.of(new EliminateLimitWithTableScan())));
   }
 
   public DistributedQueryPlan plan() {
@@ -141,8 +139,8 @@ public class TableDistributedPlanner {
         mppQueryContext.getQueryType() == QueryType.READ
             ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
             : new WriteFragmentParallelPlanner(
-            subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
-            .parallelPlan();
+                    subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
+                .parallelPlan();
 
     // only execute this step for READ operation
     if (mppQueryContext.getQueryType() == QueryType.READ) {
