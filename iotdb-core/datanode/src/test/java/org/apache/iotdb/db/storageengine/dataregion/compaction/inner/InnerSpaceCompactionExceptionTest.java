@@ -332,8 +332,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     Collection<Modification> modifications = targetResource.getModFile().getModifications();
     Assert.assertEquals(seqResources.size(), modifications.size());
     for (Modification modification : modifications) {
-      Assert.assertEquals(deviceIds[0], modification.getDevice());
-      Assert.assertEquals(measurementSchemas[0].getMeasurementId(), modification.getMeasurement());
+      Assert.assertEquals(
+          deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementId(),
+          modification.getPathString());
       Assert.assertEquals(Long.MAX_VALUE, modification.getFileOffset());
     }
 
@@ -480,9 +481,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Collection<Modification> modifications = resource.getModFile().getModifications();
       Assert.assertEquals(2, modifications.size());
       for (Modification modification : modifications) {
-        Assert.assertEquals(deviceIds[0], modification.getDevice());
         Assert.assertEquals(
-            measurementSchemas[0].getMeasurementId(), modification.getMeasurement());
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementId(),
+            modification.getPathString());
         Assert.assertEquals(Long.MAX_VALUE, modification.getFileOffset());
       }
     }

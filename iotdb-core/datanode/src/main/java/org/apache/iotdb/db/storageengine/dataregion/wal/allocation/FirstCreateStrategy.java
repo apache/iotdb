@@ -51,8 +51,9 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
   public IWALNode applyForWALNode(String applicantUniqueId) {
     nodesLock.lock();
     try {
-      if (!identifier2Nodes.containsKey(applicantUniqueId)) {
-        IWALNode walNode = createWALNode(applicantUniqueId);
+      IWALNode walNode = identifier2Nodes.get(applicantUniqueId);
+      if (walNode == null) {
+        walNode = createWALNode(applicantUniqueId);
         if (walNode instanceof WALNode) {
           // avoid deletion
           walNode.setSafelyDeletedSearchIndex(
@@ -61,7 +62,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
         }
       }
 
-      return identifier2Nodes.get(applicantUniqueId);
+      return walNode;
     } finally {
       nodesLock.unlock();
     }

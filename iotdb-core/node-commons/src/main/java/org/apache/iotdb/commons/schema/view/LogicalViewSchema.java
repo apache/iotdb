@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.view;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -242,7 +243,7 @@ public class LogicalViewSchema
   public PartialPath getSourcePathIfWritable() {
     if (this.isWritable()) {
       try {
-        return new PartialPath(((TimeSeriesViewOperand) this.expression).getPathString());
+        return new MeasurementPath(((TimeSeriesViewOperand) this.expression).getPathString());
       } catch (IllegalPathException e) {
         throw new RuntimeException(
             new MetadataException(

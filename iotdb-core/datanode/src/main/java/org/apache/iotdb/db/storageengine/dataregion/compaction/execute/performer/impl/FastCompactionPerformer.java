@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -46,11 +47,11 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,6 +120,9 @@ public class FastCompactionPerformer
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
+      List<Schema> schemas =
+          CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
+      compactionWriter.setSchemaForAllTargetFile(schemas);
       readModification(seqFiles);
       readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {
@@ -132,18 +136,13 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
         sortedSourceFiles.removeIf(
-            x -> {
-              try {
-                return x.definitelyNotContains(device)
+            x ->
+                x.definitelyNotContains(device)
                     || !x.isDeviceAlive(
                         device,
                         DataNodeTTLCache.getInstance()
                             // TODO: remove deviceId conversion
-                            .getTTL(((PlainDeviceID) device).toStringID()));
-              } catch (IllegalPathException e) {
-                throw new RuntimeException(e);
-              }
-            });
+                            .getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {
@@ -167,6 +166,7 @@ public class FastCompactionPerformer
         subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
+      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {

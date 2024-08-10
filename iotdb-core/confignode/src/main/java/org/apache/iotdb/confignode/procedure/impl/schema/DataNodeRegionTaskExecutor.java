@@ -77,7 +77,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     this.dataNodeRequestGenerator = dataNodeRequestGenerator;
   }
 
-  void execute() {
+  public void execute() {
     // organize region by dataNode
     Map<TConsensusGroupId, Set<TDataNodeLocation>> failedHistory = new HashMap<>();
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =

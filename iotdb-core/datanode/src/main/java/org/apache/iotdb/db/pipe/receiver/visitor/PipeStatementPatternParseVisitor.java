@@ -59,7 +59,7 @@ public class PipeStatementPatternParseVisitor
   public Optional<Statement> visitCreateTimeseries(
       final CreateTimeSeriesStatement statement, final IoTDBPipePattern pattern) {
     return pattern.matchesMeasurement(
-            statement.getPath().getDevice(), statement.getPath().getMeasurement())
+            statement.getPath().getIDeviceID(), statement.getPath().getMeasurement())
         ? Optional.of(statement)
         : Optional.empty();
   }
@@ -72,7 +72,7 @@ public class PipeStatementPatternParseVisitor
             .filter(
                 index ->
                     pattern.matchesMeasurement(
-                        statement.getDevicePath().getFullPath(),
+                        statement.getDevicePath().getIDeviceIDAsFullDevice(),
                         statement.getMeasurements().get(index)))
             .toArray();
     if (filteredIndexes.length == 0) {
@@ -119,7 +119,10 @@ public class PipeStatementPatternParseVisitor
             .filter(
                 index ->
                     pattern.matchesMeasurement(
-                        createLogicalViewStatement.getTargetPathList().get(index).getDevice(),
+                        createLogicalViewStatement
+                            .getTargetPathList()
+                            .get(index)
+                            .getIDeviceIDAsFullDevice(),
                         createLogicalViewStatement.getTargetPathList().get(index).getMeasurement()))
             .toArray();
     if (filteredIndexes.length == 0) {

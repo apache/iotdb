@@ -36,7 +36,8 @@ public interface IAuthorityFetcher {
 
   boolean checkRole(String username, String rolename);
 
-  List<Integer> checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
+  List<Integer> checkUserPathPrivileges(
+      String username, List<? extends PartialPath> allPath, int permission);
 
   TSStatus checkUserSysPrivileges(String username, int permisssion);
 

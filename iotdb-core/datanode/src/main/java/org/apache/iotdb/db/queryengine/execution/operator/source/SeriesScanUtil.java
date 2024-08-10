@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -73,7 +73,7 @@ public class SeriesScanUtil implements Accountable {
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
-  protected final PartialPath seriesPath;
+  protected final IFullPath seriesPath;
 
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
@@ -123,12 +123,12 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
   public SeriesScanUtil(
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
-    this.deviceID = seriesPath.getIDeviceID();
+    this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -176,8 +176,7 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(
-        DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes()));
+    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDeviceId()));
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -1164,7 +1163,7 @@ public class SeriesScanUtil implements Accountable {
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
-        seriesPath,
+        (NonAlignedFullPath) seriesPath,
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
@@ -1546,8 +1545,6 @@ public class SeriesScanUtil implements Accountable {
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + deviceID.ramBytesUsed()
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath);
+    return INSTANCE_SIZE + deviceID.ramBytesUsed() + seriesPath.ramBytesUsed();
   }
 }

@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -118,21 +122,23 @@ public class TsFileGeneratorUtils {
     return timeseriesPath;
   }
 
-  public static List<PartialPath> createTimeseries(
+  public static List<IFullPath> createTimeseries(
       int deviceNum, int measurementNum, boolean isAligned) throws IllegalPathException {
-    List<PartialPath> timeseriesPath = new ArrayList<>();
+    List<IFullPath> timeseriesPath = new ArrayList<>();
     for (int d = 0; d < deviceNum; d++) {
       for (int i = 0; i < measurementNum; i++) {
         TSDataType dataType = getDataType(i);
         if (!isAligned) {
           timeseriesPath.add(
-              new MeasurementPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + i,
-                  dataType));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
+                  new MeasurementSchema("s" + i, dataType)));
         } else {
           timeseriesPath.add(
-              new AlignedPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + d,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
                   Collections.singletonList("s" + i),
                   Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
         }

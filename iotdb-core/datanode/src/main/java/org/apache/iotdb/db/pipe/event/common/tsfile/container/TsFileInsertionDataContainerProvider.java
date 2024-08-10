@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInserti
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 import java.io.File;
 import java.io.IOException;
@@ -115,7 +114,7 @@ public class TsFileInsertionDataContainerProvider {
     return deviceIsAlignedMap.entrySet().stream()
         .filter(
             entry -> {
-              final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+              final IDeviceID deviceId = entry.getKey();
               return pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId);
             })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

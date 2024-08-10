@@ -52,20 +52,10 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   @Override
   public TSStatus visitCreateDatabase(final DatabaseSchemaPlan plan, final TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-      if (context
-          .getMessage()
-          .contains(
-              String.format(
-                  "%s has already been created as database", plan.getSchema().getName()))) {
-        // The same database has been created
-        return new TSStatus(
-                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-            .setMessage(context.getMessage());
-      }
-      // Lower or higher level database has been created
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()) {
+    } else if (context.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()
+        || context.getCode() == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {

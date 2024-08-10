@@ -239,7 +239,11 @@ public class FragmentInstanceManager {
 
               try {
                 List<PipelineDriverFactory> driverFactories =
-                    planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
+                    planner.plan(
+                        instance.getFragment().getPlanNodeTree(),
+                        instance.getFragment().getTypeProvider(),
+                        context,
+                        schemaRegion);
 
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));

@@ -35,12 +35,11 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,10 +209,10 @@ public class SettleSelectorImpl implements ISettleSelector {
     long currentTime = CommonDateTimeUtils.currentTime();
 
     Collection<Modification> modifications = modFile.getModifications();
-    for (IDeviceID device : ((DeviceTimeIndex) timeIndex).getDevices()) {
+    for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) device).toStringID());
+      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
       boolean isDeleted =
           !timeIndex.isDeviceAlive(device, deviceTTL)
@@ -241,7 +240,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
 
     double deletedDeviceRatio =
-        ((double) deletedDevices.size()) / ((DeviceTimeIndex) timeIndex).getDevices().size();
+        ((double) deletedDevices.size()) / ((ArrayDeviceTimeIndex) timeIndex).getDevices().size();
     if (deletedDeviceRatio == 1d) {
       // the whole file is completely dirty
       return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY);

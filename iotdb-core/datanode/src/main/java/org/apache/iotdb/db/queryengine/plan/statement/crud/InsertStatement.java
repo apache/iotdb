@@ -51,7 +51,7 @@ public class InsertStatement extends Statement {
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurementList) {
-      PartialPath fullPath = device.concatNode(m);
+      PartialPath fullPath = device.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;

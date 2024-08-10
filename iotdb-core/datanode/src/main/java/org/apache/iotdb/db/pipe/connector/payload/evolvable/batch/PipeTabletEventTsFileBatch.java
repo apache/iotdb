@@ -37,7 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -204,7 +204,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // Sort the tablets by device id
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
-      final String deviceId = tablet.deviceId;
+      final String deviceId = tablet.getDeviceId();
       device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
       device2Aligned.put(deviceId, isTabletAlignedList.get(i));
     }
@@ -347,16 +347,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       for (final Tablet tablet : tabletsToWrite) {
         if (isAligned) {
           try {
-            fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+            fileWriter.registerAlignedTimeseries(
+                new Path(tablet.getDeviceId()), tablet.getSchemas());
           } catch (final WriteProcessException ignore) {
             // Do nothing if the timeSeries has been registered
           }
 
           fileWriter.writeAligned(tablet);
         } else {
-          for (final MeasurementSchema schema : tablet.getSchemas()) {
+          for (final IMeasurementSchema schema : tablet.getSchemas()) {
             try {
-              fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+              fileWriter.registerTimeseries(new Path(tablet.getDeviceId()), schema);
             } catch (final WriteProcessException ignore) {
               // Do nothing if the timeSeries has been registered
             }

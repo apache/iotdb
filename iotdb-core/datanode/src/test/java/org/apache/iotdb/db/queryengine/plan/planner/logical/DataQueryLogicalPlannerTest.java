@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -292,9 +293,11 @@ public class DataQueryLogicalPlannerTest {
             Ordering.DESC,
             true);
 
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(2, 3, 4));
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(2, 3, 4));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -304,8 +307,10 @@ public class DataQueryLogicalPlannerTest {
                     new SortItem(OrderByKey.TIME, Ordering.DESC))),
             Arrays.asList(ColumnHeaderConstant.DEVICE, "s3", "s1", "s2", "s4"),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), filterNode1);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), filterNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -666,9 +671,11 @@ public class DataQueryLogicalPlannerTest {
             null,
             Ordering.DESC);
 
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -679,8 +686,10 @@ public class DataQueryLogicalPlannerTest {
             Arrays.asList(
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode("root.sg.d1", rawDataAggregationNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", rawDataAggregationNode2);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), rawDataAggregationNode1);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), rawDataAggregationNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -953,9 +962,11 @@ public class DataQueryLogicalPlannerTest {
             null,
             Ordering.DESC);
 
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -966,8 +977,10 @@ public class DataQueryLogicalPlannerTest {
             Arrays.asList(
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode("root.sg.d1", aggregationNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", aggregationNode2);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), aggregationNode1);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), aggregationNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);

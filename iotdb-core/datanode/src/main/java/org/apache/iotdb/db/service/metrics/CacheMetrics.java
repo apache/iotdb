@@ -31,26 +31,26 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 
 public class CacheMetrics implements IMetricSet {
-  public static final String STORAGE_GROUP_CACHE_NAME = "Database";
+  public static final String DATABASE_CACHE_NAME = "Database";
   public static final String SCHEMA_PARTITION_CACHE_NAME = "SchemaPartition";
   public static final String DATA_PARTITION_CACHE_NAME = "DataPartition";
   private static final String HIT = "hit";
   private static final String ALL = "all";
-  private Counter storageGroupCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter databaseCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter schemaPartitionCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter dataPartitionCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  private Counter storageGroupCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter databaseCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter schemaPartitionCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter dataPartitionCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    storageGroupCacheHitCounter =
+    databaseCacheHitCounter =
         metricService.getOrCreateCounter(
             Metric.CACHE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            STORAGE_GROUP_CACHE_NAME,
+            DATABASE_CACHE_NAME,
             Tag.TYPE.toString(),
             HIT);
     schemaPartitionCacheHitCounter =
@@ -69,12 +69,12 @@ public class CacheMetrics implements IMetricSet {
             DATA_PARTITION_CACHE_NAME,
             Tag.TYPE.toString(),
             HIT);
-    storageGroupCacheTotalCounter =
+    databaseCacheTotalCounter =
         metricService.getOrCreateCounter(
             Metric.CACHE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            STORAGE_GROUP_CACHE_NAME,
+            DATABASE_CACHE_NAME,
             Tag.TYPE.toString(),
             ALL);
     schemaPartitionCacheTotalCounter =
@@ -97,7 +97,7 @@ public class CacheMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Arrays.asList(STORAGE_GROUP_CACHE_NAME, SCHEMA_PARTITION_CACHE_NAME, DATA_PARTITION_CACHE_NAME)
+    Arrays.asList(DATABASE_CACHE_NAME, SCHEMA_PARTITION_CACHE_NAME, DATA_PARTITION_CACHE_NAME)
         .forEach(
             name -> {
               metricService.remove(
@@ -115,14 +115,20 @@ public class CacheMetrics implements IMetricSet {
                   Tag.TYPE.toString(),
                   ALL);
             });
+    databaseCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    schemaPartitionCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    dataPartitionCacheHitCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    databaseCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    schemaPartitionCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    dataPartitionCacheTotalCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   }
 
   public void record(boolean result, String name) {
     switch (name) {
-      case STORAGE_GROUP_CACHE_NAME:
-        storageGroupCacheTotalCounter.inc();
+      case DATABASE_CACHE_NAME:
+        databaseCacheTotalCounter.inc();
         if (result) {
-          storageGroupCacheHitCounter.inc();
+          databaseCacheHitCounter.inc();
         }
         break;
       case SCHEMA_PARTITION_CACHE_NAME:

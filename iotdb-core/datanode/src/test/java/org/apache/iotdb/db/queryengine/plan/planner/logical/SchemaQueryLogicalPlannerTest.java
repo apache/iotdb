@@ -31,18 +31,18 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
@@ -480,7 +480,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertEquals(
           SchemaFilterType.TAGS_FILTER, showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
@@ -500,7 +499,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
       Assert.assertEquals(
@@ -536,7 +534,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS,
@@ -556,7 +553,6 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
       Assert.assertEquals(

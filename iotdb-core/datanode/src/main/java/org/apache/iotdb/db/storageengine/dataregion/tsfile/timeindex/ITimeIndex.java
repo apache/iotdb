@@ -35,8 +35,9 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
-  byte DEVICE_TIME_INDEX_TYPE = 1;
+  byte PLAIN_DEVICE_TIME_INDEX_TYPE = 1;
   byte FILE_TIME_INDEX_TYPE = 2;
+  byte ARRAY_DEVICE_TIME_INDEX_TYPE = 3;
 
   /**
    * serialize to outputStream
@@ -211,7 +212,8 @@ public interface ITimeIndex {
   /**
    * Get TimeIndex Type
    *
-   * @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2
+   * @return V012FileTimeIndex = 0, plainDeviceTimeIndex = 1, fileTimeIndex = 2,
+   *     arrayDeviceTimeIndex = 3
    */
   byte getTimeIndexType();
 

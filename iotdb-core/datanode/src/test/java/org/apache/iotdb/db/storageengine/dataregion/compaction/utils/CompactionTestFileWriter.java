@@ -23,7 +23,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -43,11 +42,11 @@ import java.util.Random;
 public class CompactionTestFileWriter implements Closeable {
 
   private TsFileResource resource;
-  private TsFileIOWriter fileWriter;
+  protected TsFileIOWriter fileWriter;
   private static final String SG_NAME = "root.testsg";
-  private IDeviceID currentDeviceId;
-  private long currentDeviceStartTime;
-  private long currentDeviceEndTime;
+  protected IDeviceID currentDeviceId;
+  protected long currentDeviceStartTime;
+  protected long currentDeviceEndTime;
 
   public CompactionTestFileWriter(TsFileResource emptyFile) throws IOException {
     this.resource = emptyFile;
@@ -55,7 +54,8 @@ public class CompactionTestFileWriter implements Closeable {
   }
 
   public IDeviceID startChunkGroup(String deviceNameWithoutParentPath) throws IOException {
-    currentDeviceId = new PlainDeviceID(SG_NAME + "." + deviceNameWithoutParentPath);
+    currentDeviceId =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME + "." + deviceNameWithoutParentPath);
     fileWriter.startChunkGroup(currentDeviceId);
     currentDeviceStartTime = Long.MAX_VALUE;
     currentDeviceEndTime = Long.MIN_VALUE;

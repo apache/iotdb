@@ -26,7 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import com.google.common.base.Functions;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,10 +70,7 @@ public class TsFileEpochManager {
         event,
         epoch,
         resource.getDevices().stream()
-            .collect(
-                Collectors.toMap(
-                    device -> ((PlainDeviceID) device).toStringID(),
-                    device -> EMPTY_MEASUREMENT_ARRAY)),
+            .collect(Collectors.toMap(Functions.identity(), device -> EMPTY_MEASUREMENT_ARRAY)),
         event.getPipePattern());
   }
 
@@ -86,16 +84,16 @@ public class TsFileEpochManager {
         epoch,
         node instanceof InsertRowsNode
             ? getDevice2MeasurementsMapFromInsertRowsNode((InsertRowsNode) node)
-            : Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
+            : Collections.singletonMap(node.getDeviceID(), node.getMeasurements()),
         event.getPipePattern());
   }
 
-  private Map<String, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
+  private Map<IDeviceID, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
       InsertRowsNode insertRowsNode) {
     return insertRowsNode.getInsertRowNodeList().stream()
         .collect(
             Collectors.toMap(
-                insertRowNode -> insertRowNode.getDevicePath().getFullPath(),
+                InsertNode::getDeviceID,
                 InsertNode::getMeasurements,
                 (oldMeasurements, newMeasurements) ->
                     Stream.of(Arrays.asList(oldMeasurements), Arrays.asList(newMeasurements))

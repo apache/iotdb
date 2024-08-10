@@ -20,15 +20,22 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PartialPathTest {
@@ -205,77 +212,77 @@ public class PartialPathTest {
   public void testLegalDeviceAndMeasurement() throws IllegalPathException {
     String[] nodes;
     // normal node
-    PartialPath a = new PartialPath("root.sg", "s1");
+    PartialPath a = new MeasurementPath("root.sg", "s1");
     Assert.assertEquals("root.sg.s1", a.getFullPath());
     nodes = new String[] {"root", "sg", "s1"};
     checkNodes(nodes, a.getNodes());
 
-    PartialPath b = new PartialPath("root.sg", "s2");
+    PartialPath b = new MeasurementPath("root.sg", "s2");
     Assert.assertEquals("root.sg.s2", b.getFullPath());
     nodes = new String[] {"root", "sg", "s2"};
     checkNodes(nodes, b.getNodes());
 
-    PartialPath c = new PartialPath("root.sg", "a");
+    PartialPath c = new MeasurementPath("root.sg", "a");
     Assert.assertEquals("root.sg.a", c.getFullPath());
     nodes = new String[] {"root", "sg", "a"};
     checkNodes(nodes, c.getNodes());
 
     // quoted node
-    PartialPath d = new PartialPath("root.sg", "`a.b`");
+    PartialPath d = new MeasurementPath("root.sg", "`a.b`");
     Assert.assertEquals("root.sg.`a.b`", d.getFullPath());
     nodes = new String[] {"root", "sg", "`a.b`"};
     checkNodes(nodes, d.getNodes());
 
-    PartialPath e = new PartialPath("root.sg", "`a.``b`");
+    PartialPath e = new MeasurementPath("root.sg", "`a.``b`");
     Assert.assertEquals("root.sg.`a.``b`", e.getFullPath());
     nodes = new String[] {"root", "sg", "`a.``b`"};
     checkNodes(nodes, e.getNodes());
 
-    PartialPath f = new PartialPath("root.`sg\"`", "`a.``b`");
+    PartialPath f = new MeasurementPath("root.`sg\"`", "`a.``b`");
     Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
     nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
     checkNodes(nodes, f.getNodes());
 
-    PartialPath g = new PartialPath("root.sg", "`a.b\\\\`");
+    PartialPath g = new MeasurementPath("root.sg", "`a.b\\\\`");
     Assert.assertEquals("root.sg.`a.b\\\\`", g.getFullPath());
     nodes = new String[] {"root", "sg", "`a.b\\\\`"};
     checkNodes(nodes, g.getNodes());
 
     // quoted node of digits
-    PartialPath h = new PartialPath("root.sg", "`111`");
+    PartialPath h = new MeasurementPath("root.sg", "`111`");
     Assert.assertEquals("root.sg.`111`", h.getFullPath());
     nodes = new String[] {"root", "sg", "`111`"};
     checkNodes(nodes, h.getNodes());
 
     // quoted node of key word
-    PartialPath i = new PartialPath("root.sg", "`select`");
+    PartialPath i = new MeasurementPath("root.sg", "`select`");
     Assert.assertEquals("root.sg.select", i.getFullPath());
     nodes = new String[] {"root", "sg", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
-    PartialPath j = new PartialPath("root.sg", "`a*b`");
+    PartialPath j = new MeasurementPath("root.sg", "`a*b`");
     Assert.assertEquals("root.sg.`a*b`", j.getFullPath());
     nodes = new String[] {"root", "sg", "`a*b`"};
     checkNodes(nodes, j.getNodes());
 
-    PartialPath k = new PartialPath("root.sg", "*");
+    PartialPath k = new MeasurementPath("root.sg", "*");
     Assert.assertEquals("root.sg.*", k.getFullPath());
     nodes = new String[] {"root", "sg", "*"};
     checkNodes(nodes, k.getNodes());
 
-    PartialPath l = new PartialPath("root.sg", "**");
+    PartialPath l = new MeasurementPath("root.sg", "**");
     Assert.assertEquals("root.sg.**", l.getFullPath());
     nodes = new String[] {"root", "sg", "**"};
     checkNodes(nodes, l.getNodes());
 
     // other
-    PartialPath m = new PartialPath("root.sg", "`to`.be.prefix.s");
+    PartialPath m = new MeasurementPath("root.sg", "`to`.be.prefix.s");
     Assert.assertEquals("root.sg.to.be.prefix.s", m.getFullPath());
     nodes = new String[] {"root", "sg", "to", "be", "prefix", "s"};
     checkNodes(nodes, m.getNodes());
 
-    PartialPath n = new PartialPath("root.sg", "`abc`");
+    PartialPath n = new MeasurementPath("root.sg", "`abc`");
     Assert.assertEquals("root.sg.abc", n.getFullPath());
     nodes = new String[] {"root", "sg", "abc"};
     checkNodes(nodes, n.getNodes());
@@ -284,79 +291,79 @@ public class PartialPathTest {
   @Test
   public void testIllegalDeviceAndMeasurement() {
     try {
-      new PartialPath("root.sg.d1", "```");
+      new MeasurementPath("root.sg.d1", "```");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1.```", "s1");
+      new MeasurementPath("root.sg.d1.```", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.`d1`..a", "`aa``b`");
+      new MeasurementPath("root.sg.`d1`..a", "`aa``b`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.`d1`.a", "s..`aa``b`");
+      new MeasurementPath("root.sg.`d1`.a", "s..`aa``b`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "`s+`-1\"`");
+      new MeasurementPath("root.sg.d1", "`s+`-1\"`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1.`s+`-1\"`", "s1");
+      new MeasurementPath("root.sg.d1.`s+`-1\"`", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg", "111");
+      new MeasurementPath("root.sg", "111");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.111", "s1");
+      new MeasurementPath("root.sg.111", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.select`", "a");
+      new MeasurementPath("root.sg.select`", "a");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "device`");
+      new MeasurementPath("root.sg.d1", "device`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "root");
+      new MeasurementPath("root.sg.d1", "root");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "time");
+      new MeasurementPath("root.sg.d1", "time");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "timestamp");
+      new MeasurementPath("root.sg.d1", "timestamp");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -374,7 +381,7 @@ public class PartialPathTest {
     PartialPath b = new PartialPath(arr2);
     Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
     Assert.assertEquals("s1", b.getTailNode());
-    Assert.assertEquals("root.sg1.d1", a.concatPath(b).getDevicePath().getFullPath());
+    Assert.assertEquals("root.sg1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
     Assert.assertEquals("root.sg1", a.toString());
   }
 
@@ -750,6 +757,156 @@ public class PartialPathTest {
             add(new PartialPath("root.db.d.s1"));
           }
         });
+  }
+
+  @Test
+  public void testToDeviceId() {
+    PartialPath partialPath = new PartialPath(new String[] {"root"});
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(1, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b", "c"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new PartialPath(new String[] {"root", "a", "b", "c", "d"});
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testAlignedToDeviceId() throws IllegalPathException {
+    PartialPath partialPath = new AlignedPath("root.a", Collections.singletonList("s1"));
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b.c", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new AlignedPath("root.a.b.c.d", Collections.singletonList("s1"));
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testMeasurementPathToDeviceId() throws IllegalPathException {
+    PartialPath partialPath = new MeasurementPath("root.a.s1");
+    IDeviceID deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root", deviceID.segment(0));
+    assertEquals("a", deviceID.segment(1));
+    assertEquals("root", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a", deviceID.segment(0));
+    assertEquals("b", deviceID.segment(1));
+    assertEquals("root.a", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.c.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(2, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("root.a.b", deviceID.getTableName());
+
+    partialPath = new MeasurementPath("root.a.b.c.d.s1");
+    deviceID = partialPath.getIDeviceID();
+    assertEquals(3, deviceID.segmentNum());
+    assertEquals("root.a.b", deviceID.segment(0));
+    assertEquals("c", deviceID.segment(1));
+    assertEquals("d", deviceID.segment(2));
+    assertEquals("root.a.b", deviceID.getTableName());
+  }
+
+  @Test
+  public void testSerialization() throws IllegalPathException, IOException {
+    PartialPath partialPath = new PartialPath("root.a.b.c.d.s1");
+    ByteBuffer buffer = partialPath.serialize();
+    PartialPath deserialized = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(partialPath, deserialized);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      partialPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserialized = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(partialPath, deserialized);
+    }
+
+    MeasurementPath measurementPath = new MeasurementPath("root.a.b.c.d.s1");
+    measurementPath.setMeasurementAlias("ss1");
+    measurementPath.setMeasurementSchema(new MeasurementSchema("s1", TSDataType.DOUBLE));
+    measurementPath.setTagMap(Collections.singletonMap("tag1", "tagValue1"));
+    buffer = measurementPath.serialize();
+    MeasurementPath deserializedMeasurementPath =
+        (MeasurementPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(measurementPath, deserializedMeasurementPath);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      measurementPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserializedMeasurementPath = (MeasurementPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(measurementPath, deserializedMeasurementPath);
+    }
+
+    AlignedPath alignedPath = new AlignedPath("root.a.b.c.d");
+    alignedPath.setMeasurementList(Arrays.asList("s1", "s2"));
+    alignedPath.setSchemaList(
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.DOUBLE),
+            new MeasurementSchema("s2", TSDataType.TEXT)));
+    buffer = alignedPath.serialize();
+    AlignedPath deserializedAlignedPath = (AlignedPath) PathDeserializeUtil.deserialize(buffer);
+    assertEquals(alignedPath, deserializedAlignedPath);
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      alignedPath.serialize(baos);
+      buffer = ByteBuffer.wrap(baos.toByteArray());
+      deserializedAlignedPath = (AlignedPath) PathDeserializeUtil.deserialize(buffer);
+      assertEquals(alignedPath, deserializedAlignedPath);
+    }
   }
 
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {

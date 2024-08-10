@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -49,7 +48,7 @@ public class TypeInferenceUtils {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
-  static boolean isNumber(String s) {
+  public static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {
       return false;
     }
@@ -58,7 +57,7 @@ public class TypeInferenceUtils {
     } catch (NumberFormatException e) {
       return false;
     }
-    return true;
+    return !s.endsWith("F") && !s.endsWith("f") && !s.endsWith("D") && !s.endsWith("d");
   }
 
   private static boolean isBoolean(String s) {
@@ -85,7 +84,9 @@ public class TypeInferenceUtils {
 
   /** Get predicted DataType of the given value */
   public static TSDataType getPredictedDataType(Object value, boolean inferType) {
-
+    if (value == null) {
+      return null;
+    }
     if (value instanceof Boolean) {
       return TSDataType.BOOLEAN;
     } else if (value instanceof Integer) {
@@ -265,8 +266,7 @@ public class TypeInferenceUtils {
                     ExpressionUtils.reconstructBinaryExpression(
                         keepExpression,
                         new TimeSeriesOperand(
-                            new MeasurementPath(
-                                ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
+                            ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64),
                         rightExpression)));
             return;
           } else {
