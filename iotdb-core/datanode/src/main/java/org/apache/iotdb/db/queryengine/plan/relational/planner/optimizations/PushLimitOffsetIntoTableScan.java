@@ -119,12 +119,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitSort(SortNode node, Context context) {
       Context newContext =
-          new Context(
-              context.analysis,
-              context.getLimit(),
-              context.getOffset(),
-              context.isEnablePushDown(),
-              context.canPushLimitToEachDevice());
+              new Context(
+                      context.analysis,
+                      context.getLimit(),
+                      context.getOffset(),
+                      context.isEnablePushDown(),
+                      context.canPushLimitToEachDevice());
       PlanNode child = node.getChild().accept(this, newContext);
       if (!newContext.isEnablePushDown()) {
         return node;
@@ -133,7 +133,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       OrderingScheme orderingScheme = node.getOrderingScheme();
       TableScanNode tableScanNode = newContext.getTableScanNode();
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          context.getAnalysis().getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+              context.getAnalysis().getTableColumnSchema(tableScanNode.getQualifiedObjectName());
       Set<Symbol> sortSymbols = new HashSet<>();
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (TIMESTAMP_STR.equalsIgnoreCase(orderBy.getName())) {
@@ -142,7 +142,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
         // order by measurement or expression, can not push down limit
         if (!tableColumnSchema.containsKey(orderBy)
-            || tableColumnSchema.get(orderBy).getColumnCategory()
+                || tableColumnSchema.get(orderBy).getColumnCategory()
                 == TsTableColumnCategory.MEASUREMENT) {
           tableScanNode.setPushDownLimit(0);
           tableScanNode.setPushDownOffset(0);
@@ -155,7 +155,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       boolean pushLimitToEachDevice = false;
       for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
         if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
-            && !sortSymbols.contains(entry.getKey())) {
+                && !sortSymbols.contains(entry.getKey())) {
           pushLimitToEachDevice = true;
           break;
         }
@@ -168,7 +168,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitTopK(TopKNode node, Context context) {
       throw new IllegalStateException(
-          "TopKNode must be appeared after PushLimitOffsetIntoTableScan");
+              "TopKNode must be appeared after PushLimitOffsetIntoTableScan");
     }
 
     @Override
@@ -217,11 +217,11 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     }
 
     public Context(
-        Analysis analysis,
-        long limit,
-        long offset,
-        boolean enablePushDown,
-        boolean pushLimitToEachDevice) {
+            Analysis analysis,
+            long limit,
+            long offset,
+            boolean enablePushDown,
+            boolean pushLimitToEachDevice) {
       this.analysis = analysis;
       this.limit = limit;
       this.offset = offset;
@@ -261,7 +261,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       return pushLimitToEachDevice;
     }
 
-    public void setPushLimitToE5achDevice(boolean pushLimitToEachDevice) {
+    public void setPushLimitToEachDevice(boolean pushLimitToEachDevice) {
       this.pushLimitToEachDevice = pushLimitToEachDevice;
     }
 

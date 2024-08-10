@@ -114,21 +114,11 @@ public class TestMatadata implements Metadata {
             ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
             ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
             ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(ATTR1_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(ATTR2_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(S1_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S2_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S3_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build());
+            ColumnSchema.builder(ATTR1_CM).setColumnCategory(TsTableColumnCategory.ATTRIBUTE).build(),
+            ColumnSchema.builder(ATTR2_CM).setColumnCategory(TsTableColumnCategory.ATTRIBUTE).build(),
+            ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.MEASUREMENT).build(),
+            ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.MEASUREMENT).build(),
+            ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.MEASUREMENT).build());
 
     return Optional.of(new TableSchema(TABLE1, columnSchemas));
   }
@@ -313,7 +303,8 @@ public class TestMatadata implements Metadata {
       }
 
       @Override
-      public void invalidAllCache() {}
+      public void invalidAllCache() {
+      }
 
       @Override
       public SchemaPartition getOrCreateSchemaPartition(

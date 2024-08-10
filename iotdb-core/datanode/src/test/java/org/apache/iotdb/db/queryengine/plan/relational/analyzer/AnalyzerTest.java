@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -59,7 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
@@ -203,13 +206,13 @@ public class AnalyzerTest {
     assertEquals(3, distributedQueryPlan.getFragments().size());
     assertTrue(
         distributedQueryPlan
-                .getFragments()
-                .get(0)
-                .getPlanNodeTree()
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
+            .getFragments()
+            .get(0)
+            .getPlanNodeTree()
+            .getChildren()
+            .get(0)
+            .getChildren()
+            .get(0)
             instanceof CollectNode);
   }
 
@@ -959,10 +962,10 @@ public class AnalyzerTest {
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
-            actualAnalysis
-                .getDataPartition()
-                .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+        actualAnalysis
+            .getDataPartition()
+            .getDataPartitionMap()
+            .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(3, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -978,7 +981,7 @@ public class AnalyzerTest {
     for (int i = 0; i < insertTabletNode.getRowCount(); i++) {
       assertEquals(
           Factory.DEFAULT_FACTORY.create(
-              new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
+              new String[]{StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
           insertTabletNode.getDeviceID(i));
     }
     assertArrayEquals(columns, insertTabletNode.getColumns());
@@ -1004,10 +1007,10 @@ public class AnalyzerTest {
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
-            actualAnalysis
-                .getDataPartition()
-                .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+        actualAnalysis
+            .getDataPartition()
+            .getDataPartitionMap()
+            .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
     assertEquals(1, partitionSlotMapMap.size());
 
     logicalQueryPlan =
@@ -1020,7 +1023,7 @@ public class AnalyzerTest {
     Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
-            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
+            new String[]{StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
         insertNode.getDeviceID());
 
     assertArrayEquals(columns, insertNode.getValues());
@@ -1029,6 +1032,103 @@ public class AnalyzerTest {
     distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(1, distributedQueryPlan.getInstances().size());
+  }
+
+  @Test
+  public void limitPushIntoTableScanTest() {
+    // #case1: order by all IDs, isPushLimitToEachDevice = false
+    // wild card: no ProjectNode
+    sql = "SELECT * FROM testdb.table1 order by tag1,tag2,tag3 limit 10";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    // Logical Plan: OutputNode -> LimitNode -> StreamSortNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode, 1) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode, 2) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    // DistributedPlan: eliminate SortNode and LimitNode
+    // System.out.println(distributedQueryPlan.getFragments().size());// 3
+
+    PlanNode rootNode1 = distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    PlanNode rootNode2 = distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
+    PlanNode rootNode3 = distributedQueryPlan.getFragments().get(2).getPlanNodeTree();
+
+    assertTrue(rootNode1 instanceof IdentitySinkNode);
+    assertTrue(rootNode2 instanceof IdentitySinkNode);
+    assertTrue(rootNode3 instanceof IdentitySinkNode);
+
+    // rootNode1: IdentitySinkNode -> OutputNode -> TopKNode -> ExchangeNode
+    assertTrue(getChildrenNode(rootNode1, 1) instanceof OutputNode);
+    assertTrue(getChildrenNode(rootNode1, 2) instanceof TopKNode);
+    assertTrue(getChildrenNode(rootNode1, 3) instanceof ExchangeNode);
+
+    // rootNode2: IdentitySinkNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode2, 1) instanceof TableScanNode);
+
+    // rootNode3: IdentitySinkNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode3, 1) instanceof TableScanNode);
+
+    TableScanNode tableScanNode = (TableScanNode) getChildrenNode(rootNode2, 1);
+    assertEquals(10, tableScanNode.getPushDownLimit());
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+
+
+    // #case2: order by partial IDs, isPushLimitToEachDevice = true
+    sql = "SELECT * FROM testdb.table1 order by tag1 limit 10";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    // Logical Plan: OutputNode -> LimitNode -> StreamSortNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode, 1) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode, 2) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    // DistributedPlan: eliminate SortNode
+    // System.out.println(distributedQueryPlan.getFragments().size());// 3
+
+    rootNode1 = distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    rootNode2 = distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
+    rootNode3 = distributedQueryPlan.getFragments().get(2).getPlanNodeTree();
+
+    assertTrue(rootNode1 instanceof IdentitySinkNode);
+    assertTrue(rootNode2 instanceof IdentitySinkNode);
+    assertTrue(rootNode3 instanceof IdentitySinkNode);
+
+    // rootNode1: IdentitySinkNode -> OutputNode -> TopKNode -> ExchangeNode
+    assertTrue(getChildrenNode(rootNode1, 1) instanceof OutputNode);
+    assertTrue(getChildrenNode(rootNode1, 2) instanceof TopKNode);
+    assertTrue(getChildrenNode(rootNode1, 3) instanceof ExchangeNode);
+
+    // rootNode2: IdentitySinkNode -> LimitNode -> StreamSortNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode2, 1) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode2, 2) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(rootNode2, 3) instanceof TableScanNode);
+
+    // rootNode3: IdentitySinkNode -> LimitNode -> StreamSortNode -> TableScanNode
+    assertTrue(getChildrenNode(rootNode3, 1) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode3, 2) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(rootNode3, 3) instanceof TableScanNode);
+
+    tableScanNode = (TableScanNode) getChildrenNode(rootNode2, 3);
+    assertEquals(10, tableScanNode.getPushDownLimit());
+    assertTrue(tableScanNode.isPushLimitToEachDevice());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
@@ -1062,5 +1162,6 @@ public class AnalyzerTest {
     return null;
   }
 
-  private static class NopAccessControl implements AccessControl {}
+  private static class NopAccessControl implements AccessControl {
+  }
 }
