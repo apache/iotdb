@@ -100,8 +100,6 @@ public abstract class InsertBaseStatement extends Statement {
 
   @TableModel private String databaseName;
 
-  @TableModel private String databaseName;
-
   // endregion
 
   public PartialPath getDevicePath() {

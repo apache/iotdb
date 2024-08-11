@@ -81,8 +81,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   private IDeviceID deviceID;
 
-  private IDeviceID deviceID;
-
   public InsertRowStatement() {
     super();
     statementType = StatementType.INSERT;
