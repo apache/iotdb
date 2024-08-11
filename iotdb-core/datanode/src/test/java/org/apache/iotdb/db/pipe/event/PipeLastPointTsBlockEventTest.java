@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeLastPointTabletEvent;
 import org.apache.iotdb.db.pipe.event.common.tsblock.PipeLastPointTsBlockEvent;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -34,6 +33,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -118,8 +118,8 @@ public class PipeLastPointTsBlockEventTest {
         TSDataType.TEXT);
   }
 
-  private List<MeasurementSchema> createMeasurementSchemas() {
-    List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<IMeasurementSchema> createMeasurementSchemas() {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     final String[] measurementIds = getMeasurementIdentifiers();
     final List<TSDataType> dataTypes = getMeasurementDataTypes();
 
@@ -131,11 +131,11 @@ public class PipeLastPointTsBlockEventTest {
   }
 
   private PartialPath createPartialPath() throws IllegalPathException {
-    return new PartialPath(DeviceIDFactory.getInstance().getDeviceID("root.ts"));
+    return new PartialPath("root.ts");
   }
 
   private PipeLastPointTsBlockEvent generatePipeLastPointEvent(
-      TsBlock tsBlock, PartialPath partialPath, List<MeasurementSchema> measurementSchemas)
+      TsBlock tsBlock, PartialPath partialPath, List<IMeasurementSchema> measurementSchemas)
       throws IllegalPathException {
     PipeLastPointTsBlockEvent pipeLastPointTsBlockEvent =
         new PipeLastPointTsBlockEvent(
@@ -157,7 +157,7 @@ public class PipeLastPointTsBlockEventTest {
   public void convertToPipeLastPointTabletEventTest() throws IllegalPathException {
     TsBlock tsBlock = createTsBlock();
     PartialPath partialPath = createPartialPath();
-    List<MeasurementSchema> measurementSchemas = createMeasurementSchemas();
+    List<IMeasurementSchema> measurementSchemas = createMeasurementSchemas();
     PipeLastPointTsBlockEvent tsBlockEvent =
         generatePipeLastPointEvent(tsBlock, partialPath, measurementSchemas);
 

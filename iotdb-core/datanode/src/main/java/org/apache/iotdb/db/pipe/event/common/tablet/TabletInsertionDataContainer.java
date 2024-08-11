@@ -651,7 +651,7 @@ public class TabletInsertionDataContainer {
       consumer.accept(
           new PipeRow(
               maxTimestampRowCount,
-              deviceId,
+              getDeviceStr(),
               isAligned,
               measurementSchemaList,
               timestampColumn,

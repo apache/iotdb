@@ -39,7 +39,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -48,7 +48,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   private final PartialPath partialPath;
 
-  private final List<MeasurementSchema> measurementSchemas;
+  private final List<IMeasurementSchema> measurementSchemas;
 
   private final long captureTime;
 
@@ -60,7 +60,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
       final TsBlock tsBlock,
       final long captureTime,
       final PartialPath partialPath,
-      final List<MeasurementSchema> measurementSchemas,
+      final List<IMeasurementSchema> measurementSchemas,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -133,9 +133,10 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
   public PipeLastPointTabletEvent convertToPipeLastPointTabletEvent(
       PartialPathLastObjectCache<LastPointFilter<?>> partialPathToLatestTimeCache,
-      QuadConsumer<BitMap, TsBlock, String, List<MeasurementSchema>> filterConsumer) {
+      QuadConsumer<BitMap, TsBlock, String, List<IMeasurementSchema>> filterConsumer) {
     BitMap columnSelectionMap = new BitMap(tsBlock.getValueColumnCount());
-    filterConsumer.accept(columnSelectionMap, tsBlock, partialPath.getDevice(), measurementSchemas);
+    filterConsumer.accept(
+        columnSelectionMap, tsBlock, partialPath.getDevicePath().toString(), measurementSchemas);
     if (columnSelectionMap.isAllMarked()) {
       return null;
     }
@@ -207,7 +208,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
 
     final Tablet tablet =
         new Tablet(
-            partialPath.getDevice(),
+            partialPath.getDevicePath().getFullPath(),
             measurementSchemas,
             tsBlock.getTimeColumn().getLongs(),
             values,
@@ -238,7 +239,7 @@ public class PipeLastPointTsBlockEvent extends EnrichedEvent {
     return partialPath;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemas() {
+  public List<IMeasurementSchema> getMeasurementSchemas() {
     return measurementSchemas;
   }
 

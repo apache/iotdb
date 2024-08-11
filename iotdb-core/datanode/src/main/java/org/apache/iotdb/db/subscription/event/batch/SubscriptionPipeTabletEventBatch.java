@@ -41,7 +41,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,7 +194,7 @@ public class SubscriptionPipeTabletEventBatch {
 
   private boolean lastPointFilter(
       Tablet tablet, PartialPathLastObjectCache<LastPointFilter<?>> cache) {
-    String deviceId = tablet.deviceId;
+    String deviceId = tablet.getDeviceId();
     Object[] dataValues = tablet.values;
     int columnCount = dataValues.length;
     BitMap columnFilterMap = new BitMap(columnCount);
@@ -207,7 +207,7 @@ public class SubscriptionPipeTabletEventBatch {
         continue;
       }
 
-      MeasurementSchema schema = tablet.getSchemas().get(i);
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
       String measurementPath = deviceId + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId();
 
       LastPointFilter filter = cache.getPartialPathLastObject(measurementPath);

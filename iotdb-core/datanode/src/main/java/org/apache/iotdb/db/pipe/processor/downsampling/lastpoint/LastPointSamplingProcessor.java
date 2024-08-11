@@ -44,7 +44,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.List;
@@ -238,7 +238,7 @@ public class LastPointSamplingProcessor implements PipeProcessor {
       BitMap columnSelectionMap,
       TsBlock tsBlock,
       String deviceId,
-      List<MeasurementSchema> measurementSchemas) {
+      List<IMeasurementSchema> measurementSchemas) {
     int columnCount = tsBlock.getValueColumnCount();
 
     for (int i = 0; i < columnCount; i++) {
