@@ -85,7 +85,54 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnT
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.*;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SignColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SinColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CosColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AsinColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AcosColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AtanColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AbsColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CeilColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SqrtColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LnColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Log10ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LengthColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LowerColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ConcatColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StringContainsColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StringContains2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StringMatchesColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StringMatches2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWithColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWith2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StartsWithColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Locate2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LocateColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StartsWith2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StrcmpColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Strcmp2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Concat2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SinhColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CoshColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DegreesColumnTransformer;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -511,13 +558,13 @@ public class ColumnTransformerBuilder
           ignoreNull = ((BooleanLiteral) children.get(1)).getValue();
         } else {
           return new DiffColumnTransformer(
-              DOUBLE,
-              this.process(children.get(0), context),
-              this.process(children.get(1), context));
+                  DOUBLE,
+                  this.process(children.get(0), context),
+                  this.process(children.get(1), context));
         }
       }
       return new DiffFunctionColumnTransformer(
-          DOUBLE, this.process(children.get(0), context), ignoreNull);
+              DOUBLE, this.process(children.get(0), context), ignoreNull);
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       int places = 0;
       if (children.size() > 1) {
@@ -525,37 +572,37 @@ public class ColumnTransformerBuilder
           places = (int) ((LongLiteral) children.get(1)).getParsedValue();
         } else {
           return new RoundColumnTransformer(
-              DOUBLE,
-              this.process(children.get(0), context),
-              this.process(children.get(1), context));
+                  DOUBLE,
+                  this.process(children.get(0), context),
+                  this.process(children.get(1), context));
         }
       }
       return new RoundFunctionColumnTransformer(
-          DOUBLE, this.process(children.get(0), context), places);
+              DOUBLE, this.process(children.get(0), context), places);
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue(), "");
+                  first.getType(), first, ((StringLiteral) children.get(1)).getValue(), "");
         } else {
           return new Replace2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+                  first.getType(), first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isStringLiteral(children.get(1)) && isStringLiteral(children.get(2))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(),
-              first,
-              ((StringLiteral) children.get(1)).getValue(),
-              ((StringLiteral) children.get(2)).getValue());
+                  first.getType(),
+                  first,
+                  ((StringLiteral) children.get(1)).getValue(),
+                  ((StringLiteral) children.get(2)).getValue());
         } else {
           return new Replace3ColumnTransformer(
-              first.getType(),
-              first,
-              this.process(children.get(1), context),
-              this.process(children.get(2), context));
+                  first.getType(),
+                  first,
+                  this.process(children.get(1), context),
+                  this.process(children.get(2), context));
         }
       }
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -565,13 +612,13 @@ public class ColumnTransformerBuilder
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
           if (startIndex <= 0) {
             throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+                    "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
           }
           return new SubStringFunctionColumnTransformer(
-              first.getType(), first, startIndex, Integer.MAX_VALUE);
+                  first.getType(), first, startIndex, Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+                  first.getType(), first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
@@ -580,32 +627,201 @@ public class ColumnTransformerBuilder
           int length = (int) ((LongLiteral) children.get(2)).getParsedValue();
           if (startIndex <= 0 || length <= 0) {
             throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+                    "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
           }
           return new SubStringFunctionColumnTransformer(first.getType(), first, startIndex, length);
         } else {
           return new SubString3ColumnTransformer(
-              first.getType(),
-              first,
-              this.process(children.get(1), context),
-              this.process(children.get(2), context));
+                  first.getType(),
+                  first,
+                  this.process(children.get(1), context),
+                  this.process(children.get(2), context));
         }
       }
     } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
-      if(children.size() == 1) {
+      if (children.size() == 1) {
         return new LengthColumnTransformer(INT32, first);
       }
-      else {
-        throw new UnsupportedOperationException("Unsupported length function with multiple arguments");
+    } else if (BuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new UpperColumnTransformer(first.getType(), first);
+      }
+    } else if (BuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new LowerColumnTransformer(first.getType(), first);
+      }
+    } else if (BuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new TrimColumnTransformer(first.getType(), first);
+      }
+    } else if (BuiltinScalarFunction.STRING_CONTAINS.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+          return new StringContainsColumnTransformer(BOOLEAN, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else{
+          return new StringContains2ColumnTransformer(BOOLEAN, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.STRING_MATCHES.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+          return new StringMatchesColumnTransformer(BOOLEAN, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else{
+          return new StringMatches2ColumnTransformer(BOOLEAN, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+          return new LocateColumnTransformer(INT32, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else{
+          return new Locate2ColumnTransformer(INT32, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.STARTS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+            return new StartsWithColumnTransformer(BOOLEAN, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else {
+            return new StartsWith2ColumnTransformer(BOOLEAN, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.ENDS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+          if(isStringLiteral(children.get(1))) {
+              return new EndsWithColumnTransformer(BOOLEAN, first, ((StringLiteral)children.get(1)).getValue());
+          }
+          else{
+              return new EndsWith2ColumnTransformer(BOOLEAN, first, this.process(children.get(1), context));
+          }
+      }
+    } else if (BuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+          return new ConcatColumnTransformer(STRING, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else{
+          return new Concat2ColumnTransformer(STRING, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 2) {
+        if(isStringLiteral(children.get(1))) {
+            return new StrcmpColumnTransformer(BOOLEAN, first, ((StringLiteral)children.get(1)).getValue());
+        }
+        else{
+            return new Strcmp2ColumnTransformer(BOOLEAN, first, this.process(children.get(1), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new SinColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new CosColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new TanColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new AsinColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new AcosColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new AtanColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new SinhColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new CoshColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new TanhColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.DEGREES.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+          return new DegreesColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.RADIANS.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+          return new RadiansColumnTransformer(DOUBLE, first);
       }
     } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if(children.size() == 1) {
         return new AbsColumnTransformer(first.getType(), first);
       }
-      else {
-        throw new UnsupportedOperationException("Unsupported abs function with multiple arguments");
+    } else if (BuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new SignColumnTransformer(INT32, first);
+      }
+    } else if (BuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new CeilColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new FloorColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new ExpColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new LnColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new Log10ColumnTransformer(DOUBLE, first);
+      }
+    } else if (BuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if(children.size() == 1) {
+        return new SqrtColumnTransformer(DOUBLE, first);
       }
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
