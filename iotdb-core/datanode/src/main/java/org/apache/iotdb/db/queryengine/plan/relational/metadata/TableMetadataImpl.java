@@ -443,14 +443,14 @@ public class TableMetadataImpl implements Metadata {
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
-        if (!(argumentTypes.size() == 1
-                && isNumericType(argumentTypes.get(0)))) {
-            throw new SemanticException(
-                    "Scalar function "
-                            + functionName.toLowerCase(Locale.ENGLISH)
-                            + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
-        }
-        return DOUBLE;
+      if (!(argumentTypes.size() == 1
+              && isNumericType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+                "Scalar function "
+                        + functionName.toLowerCase(Locale.ENGLISH)
+                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+      }
+      return DOUBLE;
     }
 
 
