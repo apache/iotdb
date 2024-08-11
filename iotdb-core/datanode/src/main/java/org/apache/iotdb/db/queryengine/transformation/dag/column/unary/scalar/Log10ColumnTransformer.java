@@ -26,35 +26,30 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class AbsColumnTransformer extends UnaryColumnTransformer {
-
-    public AbsColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+public class Log10ColumnTransformer extends UnaryColumnTransformer{
+    public Log10ColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
         super(returnType, childColumnTransformer);
     }
 
     @Override
-    protected void doTransform(Column column, ColumnBuilder columnBuilder){
-        for(int i = 0, n = column.getPositionCount(); i < n; i++){
-            if(!column.isNull(i)){
+    protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+        for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+            if (!column.isNull(i)) {
                 if(TSDataType.DOUBLE.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.abs(column.getDouble(i)));
+                    columnBuilder.writeDouble(Math.log10(column.getDouble(i)));
                 }
                 else if(TSDataType.FLOAT.equals(column.getDataType())){
-                    columnBuilder.writeFloat(Math.abs(column.getFloat(i)));
+                    columnBuilder.writeDouble(Math.log10(column.getFloat(i)));
                 }
                 else if(TSDataType.INT32.equals(column.getDataType())){
-                    columnBuilder.writeInt(Math.abs(column.getInt(i)));
+                    columnBuilder.writeDouble(Math.log10(column.getInt(i)));
                 }
-                else if(TSDataType.INT64.equals(column.getDataType())){
-                    columnBuilder.writeLong(Math.abs(column.getLong(i)));
-                }
-                else if(TSDataType.TIMESTAMP.equals(column.getDataType())){
-                    columnBuilder.writeLong(Math.abs(column.getLong(i)));
+                else if(TSDataType.INT64.equals(column.getDataType()) || TSDataType.TIMESTAMP.equals(column.getDataType())){
+                    columnBuilder.writeDouble(Math.log10((double) column.getLong(i)));
                 }
             } else {
                 columnBuilder.appendNull();
             }
         }
     }
-
 }

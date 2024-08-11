@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.BytesUtils;
 
-public class AbsColumnTransformer extends UnaryColumnTransformer {
-
-    public AbsColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+public class LowerColumnTransformer extends UnaryColumnTransformer{
+    public LowerColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
         super(returnType, childColumnTransformer);
     }
 
@@ -36,25 +36,11 @@ public class AbsColumnTransformer extends UnaryColumnTransformer {
     protected void doTransform(Column column, ColumnBuilder columnBuilder){
         for(int i = 0, n = column.getPositionCount(); i < n; i++){
             if(!column.isNull(i)){
-                if(TSDataType.DOUBLE.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.abs(column.getDouble(i)));
-                }
-                else if(TSDataType.FLOAT.equals(column.getDataType())){
-                    columnBuilder.writeFloat(Math.abs(column.getFloat(i)));
-                }
-                else if(TSDataType.INT32.equals(column.getDataType())){
-                    columnBuilder.writeInt(Math.abs(column.getInt(i)));
-                }
-                else if(TSDataType.INT64.equals(column.getDataType())){
-                    columnBuilder.writeLong(Math.abs(column.getLong(i)));
-                }
-                else if(TSDataType.TIMESTAMP.equals(column.getDataType())){
-                    columnBuilder.writeLong(Math.abs(column.getLong(i)));
-                }
+                String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+                columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.toLowerCase()));
             } else {
                 columnBuilder.appendNull();
             }
         }
     }
-
 }

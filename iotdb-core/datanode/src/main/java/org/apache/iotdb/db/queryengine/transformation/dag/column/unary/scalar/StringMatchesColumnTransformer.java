@@ -26,19 +26,22 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
-public class LengthColumnTransformer extends UnaryColumnTransformer {
+public class StringMatchesColumnTransformer extends UnaryColumnTransformer {
+    private final String regex;
 
-    public LengthColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+    public StringMatchesColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer, String regex) {
         super(returnType, childColumnTransformer);
+        this.regex = regex;
     }
 
     @Override
-    protected void doTransform(Column column, ColumnBuilder columnBuilder){
-        for(int i = 0, n = column.getPositionCount(); i < n; i++){
-            if(!column.isNull(i)){
+    protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+        for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+            if (!column.isNull(i)) {
                 String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeInt(currentValue.length());
-            } else {
+                columnBuilder.writeBoolean(currentValue.matches(regex));
+            }
+            else {
                 columnBuilder.appendNull();
             }
         }

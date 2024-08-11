@@ -26,19 +26,22 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
-public class LengthColumnTransformer extends UnaryColumnTransformer {
+public class StrcmpColumnTransformer extends UnaryColumnTransformer{
+    private final String str;
 
-    public LengthColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+    public StrcmpColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer, String str) {
         super(returnType, childColumnTransformer);
+        this.str = str;
     }
 
     @Override
-    protected void doTransform(Column column, ColumnBuilder columnBuilder){
-        for(int i = 0, n = column.getPositionCount(); i < n; i++){
-            if(!column.isNull(i)){
+    protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+        for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+            if (!column.isNull(i)) {
                 String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeInt(currentValue.length());
-            } else {
+                columnBuilder.writeBoolean(currentValue.compareTo(str) == 0);
+            }
+            else {
                 columnBuilder.appendNull();
             }
         }
