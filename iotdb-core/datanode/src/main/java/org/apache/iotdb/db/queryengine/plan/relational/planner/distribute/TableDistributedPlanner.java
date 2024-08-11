@@ -32,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateLimitBeforeTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateTruePredicateBeforeTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -68,9 +70,17 @@ public class TableDistributedPlanner {
             new IterativeOptimizer(
                 new PlannerContext(null, new InternalTypeManager()),
                 new RuleStatsRecorder(),
+                ImmutableSet.of(new EliminateTruePredicateBeforeTableScan())),
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
                 ImmutableSet.of(
                     new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort())),
-            new SortElimination());
+            new SortElimination(),
+            new IterativeOptimizer(
+                new PlannerContext(null, new InternalTypeManager()),
+                new RuleStatsRecorder(),
+                ImmutableSet.of(new EliminateLimitBeforeTableScan())));
   }
 
   public DistributedQueryPlan plan() {

@@ -261,7 +261,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       return pushLimitToEachDevice;
     }
 
-    public void setPushLimitToE5achDevice(boolean pushLimitToEachDevice) {
+    public void setPushLimitToEachDevice(boolean pushLimitToEachDevice) {
       this.pushLimitToEachDevice = pushLimitToEachDevice;
     }
 
