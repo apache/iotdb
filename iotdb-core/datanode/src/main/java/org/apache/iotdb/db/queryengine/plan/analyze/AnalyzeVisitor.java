@@ -2239,7 +2239,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (sourceExpression instanceof TimeSeriesOperand) {
         if (viewPath != null) {
           try {
-            sourcePath = new PartialPath(viewPath);
+            sourcePath = new MeasurementPath(viewPath);
           } catch (IllegalPathException e) {
             throw new SemanticException(
                 String.format(
@@ -2901,6 +2901,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showTimeSeriesStatement);
+
+    if (showTimeSeriesStatement.getPathPattern().getNodeLength() <= 1) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
+      return analysis;
+    }
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
