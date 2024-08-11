@@ -31,25 +31,25 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
-public class EliminateLimitWithTableScan implements Rule<LimitNode> {
-    private static final Capture<TableScanNode> TABLE_SCAN = newCapture();
+public class EliminateLimitBeforeTableScan implements Rule<LimitNode> {
+  private static final Capture<TableScanNode> TABLE_SCAN = newCapture();
 
-    private static final Pattern<LimitNode> PATTERN =
-            limit().with(source().matching(tableScan().capturedAs(TABLE_SCAN)));
+  private static final Pattern<LimitNode> PATTERN =
+      limit().with(source().matching(tableScan().capturedAs(TABLE_SCAN)));
 
-    @Override
-    public Pattern<LimitNode> getPattern() {
-        return PATTERN;
+  @Override
+  public Pattern<LimitNode> getPattern() {
+    return PATTERN;
+  }
+
+  @Override
+  public Result apply(LimitNode parent, Captures captures, Context context) {
+    TableScanNode tableScan = captures.get(TABLE_SCAN);
+
+    if (parent.getCount() == tableScan.getPushDownLimit() && !tableScan.isPushLimitToEachDevice()) {
+      return Result.ofPlanNode(tableScan);
+    } else {
+      return Result.empty();
     }
-
-    @Override
-    public Result apply(LimitNode parent, Captures captures, Context context) {
-        TableScanNode tableScan = captures.get(TABLE_SCAN);
-
-        if (parent.getCount() == tableScan.getPushDownLimit() && !tableScan.isPushLimitToEachDevice()) {
-            return Result.ofPlanNode(tableScan);
-        } else {
-            return Result.empty();
-        }
-    }
+  }
 }
