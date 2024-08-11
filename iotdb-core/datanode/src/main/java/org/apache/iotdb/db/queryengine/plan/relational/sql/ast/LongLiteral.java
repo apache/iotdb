@@ -44,6 +44,12 @@ public class LongLiteral extends Literal {
     }
   }
 
+  public LongLiteral(long parsedValue) {
+    super(null);
+    this.parsedValue = parsedValue;
+    this.value = String.valueOf(parsedValue);
+  }
+
   public LongLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
     try {
