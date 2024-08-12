@@ -189,266 +189,247 @@ public class TableMetadataImpl implements Metadata {
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be text or string data type.");
       }
       return INT32;
     } else if (BuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.STRING_CONTAINS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (BuiltinScalarFunction.STRING_CONTAINS
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.STRING_MATCHES.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (BuiltinScalarFunction.STRING_MATCHES
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
     } else if (BuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return INT32;
     } else if (BuiltinScalarFunction.STARTS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
     } else if (BuiltinScalarFunction.ENDS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
     } else if (BuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isTwoCharType(argumentTypes)){
+      if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return TEXT;
     } else if (BuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isTwoCharType(argumentTypes)){
+      if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two arguments and they must be text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
     } else if (BuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.DEGREES.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.RADIANS.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return INT32;
     } else if (BuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1
-              && isNumericType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
     }

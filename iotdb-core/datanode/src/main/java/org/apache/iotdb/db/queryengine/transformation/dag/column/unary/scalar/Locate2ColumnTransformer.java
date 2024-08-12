@@ -27,26 +27,28 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
-public class Locate2ColumnTransformer extends BinaryColumnTransformer{
-    public Locate2ColumnTransformer(Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
-        super(returnType, leftTransformer, rightTransformer);
-    }
+public class Locate2ColumnTransformer extends BinaryColumnTransformer {
+  public Locate2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
+  }
 
-    @Override
-    protected void checkType() {
-        // do nothing
-    }
+  @Override
+  protected void checkType() {
+    // do nothing
+  }
 
-    @Override
-    protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
-        for (int i = 0; i < positionCount; i++) {
-            if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-                String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeInt(leftValue.indexOf(rightValue));
-            } else {
-                columnBuilder.appendNull();
-            }
-        }
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeInt(leftValue.indexOf(rightValue));
+      } else {
+        columnBuilder.appendNull();
+      }
     }
+  }
 }
