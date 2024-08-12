@@ -93,7 +93,10 @@ public class FileTimeIndexCacheRecorder {
       TsFileResourceList sequenceFiles,
       TsFileResourceList unsequenceFiles) {
     FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
-    int currentResourceCount = sequenceFiles.size() + unsequenceFiles.size();
+
+    int currentResourceCount =
+        (sequenceFiles == null ? 0 : sequenceFiles.size())
+            + (unsequenceFiles == null ? 0 : unsequenceFiles.size());
     if (writer.getLogFile().length() > currentResourceCount * (4 * Long.BYTES) * 100) {
       taskQueue.offer(
           () -> {
