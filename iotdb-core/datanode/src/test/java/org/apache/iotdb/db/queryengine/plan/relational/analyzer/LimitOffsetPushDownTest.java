@@ -69,7 +69,7 @@ public class LimitOffsetPushDownTest {
   public void noOrderByTest() {
     sql = "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -109,7 +109,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -149,7 +149,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -190,7 +190,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by time desc, tag2 asc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -230,7 +230,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by s1 desc, tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
