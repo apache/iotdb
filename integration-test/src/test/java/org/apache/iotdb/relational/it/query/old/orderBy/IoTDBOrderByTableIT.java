@@ -198,7 +198,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByTest1() {
     String sql =
-        "select Time,num,bigNum,floatNum,str,bool from table0 where device='d1' order by num";
+        "select Time,num,bigNum,floatNum,str,bool from table0 as t where t.device='d1' order by t.num";
     int[] ans = {2, 1, 0, 7, 8, 5, 9, 4, 3, 6, 10, 11, 13, 12, 14};
     testNormalOrderBy(sql, ans);
   }
@@ -206,7 +206,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByTest2() {
     String sql =
-        "select Time,num,bigNum,floatNum,str,bool from table0 where device='d1' order by bigNum,time";
+        "select Time,num,bigNum,floatNum,str,bool from table0 t where t.device='d1' order by bigNum,t.time";
     int[] ans = {13, 11, 10, 3, 1, 5, 4, 7, 9, 8, 2, 12, 0, 6, 14};
     testNormalOrderBy(sql, ans);
   }
