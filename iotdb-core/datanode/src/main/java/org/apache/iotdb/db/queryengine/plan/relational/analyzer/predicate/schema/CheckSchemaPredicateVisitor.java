@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -41,6 +42,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionTy
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 // Return whether input expression has an attribute column predicate
 public class CheckSchemaPredicateVisitor
@@ -81,7 +84,6 @@ public class CheckSchemaPredicateVisitor
       }
       return false;
     }
-    // TODO: separate or concat expressions, e.g. (id1 or id2 or attr) => (id1 or id2) and (attr)
     return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
   }
 
@@ -103,7 +105,8 @@ public class CheckSchemaPredicateVisitor
   protected Boolean visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
     return (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference)
-        || processColumn(node, context);
+        ? Boolean.TRUE
+        : processColumn(node, context);
   }
 
   @Override
@@ -133,12 +136,13 @@ public class CheckSchemaPredicateVisitor
     return visitExpression(node, context);
   }
 
-  private boolean processColumn(final Expression node, final Context context) {
-    return context
-        .table
-        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+  private Boolean processColumn(final Expression node, final Context context) {
+    final TsTableColumnSchema column =
+        context.table.getColumnSchema(
+            node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
+    return Objects.nonNull(column)
+        ? column.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)
+        : null;
   }
 
   public static class Context {

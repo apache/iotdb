@@ -271,6 +271,10 @@ public class TableDeviceSchemaFetcher {
     return new ArrayList<>(set);
   }
 
+  public Pair<List<List<SchemaFilter>>, Expression> parseExpression2SchemaFilter() {
+    return null;
+  }
+
   // return whether all of required info of current device is in cache
   private boolean tryGetDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
