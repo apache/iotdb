@@ -22,7 +22,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecificatio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -45,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
@@ -250,6 +254,53 @@ public class QueryPlanner {
     }
   }
 
+  /**
+   * Creates a projection with any additional coercions by identity of the provided expressions.
+   *
+   * @return the new subplan and a mapping of each expression to the symbol representing the
+   *     coercion or an existing symbol if a coercion wasn't needed
+   */
+  public static PlanAndMappings coerce(
+      PlanBuilder subPlan,
+      List<Expression> expressions,
+      Analysis analysis,
+      QueryId idAllocator,
+      SymbolAllocator symbolAllocator) {
+    Assignments.Builder assignments = Assignments.builder();
+    assignments.putIdentities(subPlan.getRoot().getOutputSymbols());
+
+    Map<NodeRef<Expression>, Symbol> mappings = new HashMap<>();
+    for (Expression expression : expressions) {
+      Type coercion = analysis.getCoercion(expression);
+
+      // expressions may be repeated, for example, when resolving ordinal references in a GROUP BY
+      // clause
+      if (!mappings.containsKey(NodeRef.of(expression))) {
+        if (coercion != null) {
+          Symbol symbol = symbolAllocator.newSymbol(expression, coercion);
+
+          assignments.put(
+              symbol,
+              new Cast(
+                  subPlan.rewrite(expression),
+                  // TODO(beyyes) transfer toSqlType(coercion) method,
+                  null,
+                  false));
+
+          mappings.put(NodeRef.of(expression), symbol);
+        } else {
+          mappings.put(NodeRef.of(expression), subPlan.translate(expression));
+        }
+      }
+    }
+
+    subPlan =
+        subPlan.withNewRoot(
+            new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
+
+    return new PlanAndMappings(subPlan, mappings);
+  }
+
   private Optional<OrderingScheme> orderingScheme(
       PlanBuilder subPlan, Optional<OrderBy> orderBy, List<Expression> orderByExpressions) {
     if (!orderBy.isPresent() || (analysis.isOrderByRedundant(orderBy.get()))) {
@@ -309,5 +360,39 @@ public class QueryPlanner {
               tiesResolvingScheme));
     }
     return subPlan;
+  }
+
+  public static class PlanAndMappings {
+    private final PlanBuilder subPlan;
+    private final Map<NodeRef<Expression>, Symbol> mappings;
+
+    public PlanAndMappings(PlanBuilder subPlan, Map<NodeRef<Expression>, Symbol> mappings) {
+      this.subPlan = subPlan;
+      this.mappings = ImmutableMap.copyOf(mappings);
+    }
+
+    public PlanBuilder getSubPlan() {
+      return subPlan;
+    }
+
+    public Symbol get(Expression expression) {
+      return tryGet(expression)
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      format(
+                          "No mapping for expression: %s (%s)",
+                          expression, System.identityHashCode(expression))));
+    }
+
+    public Optional<Symbol> tryGet(Expression expression) {
+      Symbol result = mappings.get(NodeRef.of(expression));
+
+      if (result != null) {
+        return Optional.of(result);
+      }
+
+      return Optional.empty();
+    }
   }
 }

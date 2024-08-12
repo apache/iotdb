@@ -17,6 +17,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -24,18 +25,27 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -45,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -58,8 +69,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -179,6 +200,253 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
   }
 
+  @Override
+  protected RelationPlan visitJoin(Join node, Void context) {
+    RelationPlan leftPlan = process(node.getLeft(), context);
+    RelationPlan rightPlan = process(node.getRight(), context);
+
+    if (node.getCriteria().isPresent() && node.getCriteria().get() instanceof JoinUsing) {
+      throw new IllegalStateException("JoinUsing is not supported in current version.");
+      // TODO return planJoinUsing(node, leftPlan, rightPlan);
+    }
+
+    return planJoin(
+        analysis.getJoinCriteria(node),
+        node.getType(),
+        analysis.getScope(node),
+        leftPlan,
+        rightPlan,
+        analysis.getSubqueries(node));
+  }
+
+  public RelationPlan planJoin(
+      Expression criteria,
+      Join.Type type,
+      Scope scope,
+      RelationPlan leftPlan,
+      RelationPlan rightPlan,
+      Analysis.SubqueryAnalysis subqueries) {
+    // NOTE: symbols must be in the same order as the outputDescriptor
+    List<Symbol> outputSymbols =
+        ImmutableList.<Symbol>builder()
+            .addAll(leftPlan.getFieldMappings())
+            .addAll(rightPlan.getFieldMappings())
+            .build();
+
+    PlanBuilder leftPlanBuilder =
+        newPlanBuilder(leftPlan, analysis).withScope(scope, outputSymbols);
+    PlanBuilder rightPlanBuilder =
+        newPlanBuilder(rightPlan, analysis).withScope(scope, outputSymbols);
+
+    ImmutableList.Builder<JoinNode.EquiJoinClause> equiClauses = ImmutableList.builder();
+    List<Expression> complexJoinExpressions = new ArrayList<>();
+    List<Expression> postInnerJoinConditions = new ArrayList<>();
+
+    RelationType left = leftPlan.getDescriptor();
+    RelationType right = rightPlan.getDescriptor();
+
+    if (type != CROSS && type != IMPLICIT) {
+      List<Expression> leftComparisonExpressions = new ArrayList<>();
+      List<Expression> rightComparisonExpressions = new ArrayList<>();
+      List<ComparisonExpression.Operator> joinConditionComparisonOperators = new ArrayList<>();
+
+      for (Expression conjunct : extractPredicates(LogicalExpression.Operator.AND, criteria)) {
+        if (!isEqualComparisonExpression(conjunct) && type != INNER) {
+          complexJoinExpressions.add(conjunct);
+          continue;
+        }
+
+        Set<QualifiedName> dependencies =
+            SymbolsExtractor.extractNames(conjunct, analysis.getColumnReferences());
+
+        if (dependencies.stream().allMatch(left::canResolve)
+            || dependencies.stream().allMatch(right::canResolve)) {
+          // If the conjunct can be evaluated entirely with the inputs on either side of the join,
+          // add
+          // it to the list complex expressions and let the optimizers figure out how to push it
+          // down later.
+          complexJoinExpressions.add(conjunct);
+        } else if (conjunct instanceof ComparisonExpression) {
+          Expression firstExpression = ((ComparisonExpression) conjunct).getLeft();
+          Expression secondExpression = ((ComparisonExpression) conjunct).getRight();
+          ComparisonExpression.Operator comparisonOperator =
+              ((ComparisonExpression) conjunct).getOperator();
+          Set<QualifiedName> firstDependencies =
+              SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
+          Set<QualifiedName> secondDependencies =
+              SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+
+          if (firstDependencies.stream().allMatch(left::canResolve)
+              && secondDependencies.stream().allMatch(right::canResolve)) {
+            leftComparisonExpressions.add(firstExpression);
+            rightComparisonExpressions.add(secondExpression);
+            joinConditionComparisonOperators.add(comparisonOperator);
+          } else if (firstDependencies.stream().allMatch(right::canResolve)
+              && secondDependencies.stream().allMatch(left::canResolve)) {
+            leftComparisonExpressions.add(secondExpression);
+            rightComparisonExpressions.add(firstExpression);
+            joinConditionComparisonOperators.add(comparisonOperator.flip());
+          } else {
+            // the case when we mix symbols from both left and right join side on either side of
+            // condition.
+            complexJoinExpressions.add(conjunct);
+          }
+        } else {
+          complexJoinExpressions.add(conjunct);
+        }
+      }
+
+      // leftPlanBuilder = subqueryPlanner.handleSubqueries(leftPlanBuilder,
+      // leftComparisonExpressions, subqueries);
+      // rightPlanBuilder = subqueryPlanner.handleSubqueries(rightPlanBuilder,
+      // rightComparisonExpressions, subqueries);
+
+      // Add projections for join criteria
+      leftPlanBuilder =
+          leftPlanBuilder.appendProjections(
+              leftComparisonExpressions, symbolAllocator, queryContext);
+      rightPlanBuilder =
+          rightPlanBuilder.appendProjections(
+              rightComparisonExpressions, symbolAllocator, queryContext);
+
+      QueryPlanner.PlanAndMappings leftCoercions =
+          coerce(
+              leftPlanBuilder, leftComparisonExpressions, analysis, idAllocator, symbolAllocator);
+      leftPlanBuilder = leftCoercions.getSubPlan();
+      QueryPlanner.PlanAndMappings rightCoercions =
+          coerce(
+              rightPlanBuilder, rightComparisonExpressions, analysis, idAllocator, symbolAllocator);
+      rightPlanBuilder = rightCoercions.getSubPlan();
+
+      for (int i = 0; i < leftComparisonExpressions.size(); i++) {
+        if (joinConditionComparisonOperators.get(i) == ComparisonExpression.Operator.EQUAL) {
+          Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
+          Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
+
+          equiClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+        } else {
+          postInnerJoinConditions.add(
+              new ComparisonExpression(
+                  joinConditionComparisonOperators.get(i),
+                  leftCoercions.get(leftComparisonExpressions.get(i)).toSymbolReference(),
+                  rightCoercions.get(rightComparisonExpressions.get(i)).toSymbolReference()));
+        }
+      }
+    }
+
+    PlanNode root =
+        new JoinNode(
+            idAllocator.genPlanNodeId(),
+            mapJoinType(type),
+            leftPlanBuilder.getRoot(),
+            rightPlanBuilder.getRoot(),
+            equiClauses.build(),
+            leftPlanBuilder.getRoot().getOutputSymbols(),
+            rightPlanBuilder.getRoot().getOutputSymbols(),
+            false,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty());
+
+    if (type != INNER) {
+      for (Expression complexExpression : complexJoinExpressions) {
+        Set<QualifiedName> dependencies =
+            SymbolsExtractor.extractNamesNoSubqueries(
+                complexExpression, analysis.getColumnReferences());
+
+        // This is for handling uncorreled subqueries. Correlated subqueries are not currently
+        // supported and are dealt with
+        // during analysis.
+        // Make best effort to plan the subquery in the branch of the join involving the other
+        // inputs to the expression.
+        // E.g.,
+        //  t JOIN u ON t.x = (...) get's planned on the t side
+        //  t JOIN u ON t.x = (...) get's planned on the u side
+        //  t JOIN u ON t.x + u.x = (...) get's planned on an arbitrary side
+        if (dependencies.stream().allMatch(left::canResolve)) {
+          // leftPlanBuilder = subqueryPlanner.handleSubqueries(leftPlanBuilder, complexExpression,
+          // subqueries);
+        } else {
+          // rightPlanBuilder = subqueryPlanner.handleSubqueries(rightPlanBuilder,
+          // complexExpression, subqueries);
+        }
+      }
+    }
+    TranslationMap translationMap =
+        new TranslationMap(
+                Optional.empty(),
+                scope,
+                analysis,
+                outputSymbols,
+                new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()))
+            .withAdditionalMappings(leftPlanBuilder.getTranslations().getMappings())
+            .withAdditionalMappings(rightPlanBuilder.getTranslations().getMappings());
+
+    if (type != INNER && !complexJoinExpressions.isEmpty()) {
+      root =
+          new JoinNode(
+              idAllocator.genPlanNodeId(),
+              mapJoinType(type),
+              leftPlanBuilder.getRoot(),
+              rightPlanBuilder.getRoot(),
+              equiClauses.build(),
+              leftPlanBuilder.getRoot().getOutputSymbols(),
+              rightPlanBuilder.getRoot().getOutputSymbols(),
+              false,
+              Optional.of(
+                  IrUtils.and(
+                      complexJoinExpressions.stream()
+                          .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
+                          .collect(Collectors.toList()))),
+              Optional.empty(),
+              Optional.empty(),
+              Optional.empty());
+    }
+
+    if (type == INNER) {
+      // rewrite all the other conditions using output symbols from left + right plan node.
+      PlanBuilder rootPlanBuilder = new PlanBuilder(translationMap, root);
+      // rootPlanBuilder = subqueryPlanner.handleSubqueries(rootPlanBuilder, complexJoinExpressions,
+      // subqueries);
+
+      for (Expression expression : complexJoinExpressions) {
+        postInnerJoinConditions.add(
+            coerceIfNecessary(analysis, expression, rootPlanBuilder.rewrite(expression)));
+      }
+      root = rootPlanBuilder.getRoot();
+
+      Expression postInnerJoinCriteria;
+      if (!postInnerJoinConditions.isEmpty()) {
+        postInnerJoinCriteria = IrUtils.and(postInnerJoinConditions);
+        root = new FilterNode(idAllocator.genPlanNodeId(), root, postInnerJoinCriteria);
+      }
+    }
+
+    return new RelationPlan(root, scope, outputSymbols);
+  }
+
+  public static JoinNode.JoinType mapJoinType(Join.Type joinType) {
+    switch (joinType) {
+      case CROSS:
+      case IMPLICIT:
+      case INNER:
+        return JoinNode.JoinType.INNER;
+      case LEFT:
+        return JoinNode.JoinType.LEFT;
+      case RIGHT:
+        return JoinNode.JoinType.RIGHT;
+      case FULL:
+        return JoinNode.JoinType.FULL;
+    }
+    throw new UnsupportedOperationException(joinType + " Join type is not supported");
+  }
+
+  private static boolean isEqualComparisonExpression(Expression conjunct) {
+    return conjunct instanceof ComparisonExpression
+        && ((ComparisonExpression) conjunct).getOperator() == ComparisonExpression.Operator.EQUAL;
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -189,11 +457,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
     throw new IllegalStateException("SubqueryExpression is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitJoin(Join node, Void context) {
-    throw new IllegalStateException("Join is not supported in current version.");
   }
 
   @Override
