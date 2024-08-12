@@ -81,8 +81,7 @@ public class CheckSchemaPredicateVisitor
       }
       return true;
     }
-    // TODO: separate or concat expressions, e.g. (id1 or id2 or attr) => (id1 or id2) and (attr)
-    return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
+    return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
   @Override
