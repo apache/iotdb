@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -75,6 +76,15 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
+    for (final Expression child : node.getTerms()) {
+      final Boolean childResult = child.accept(this, context);
+      if (Boolean.FALSE.equals(childResult)) {
+        return Boolean.FALSE;
+      }
+      if (Objects.isNull(childResult)) {
+        return null;
+      }
+    }
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -82,13 +92,17 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return Boolean.FALSE;
     }
-    return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
+    return Boolean.TRUE;
   }
 
   @Override
   protected Boolean visitNotExpression(final NotExpression node, final Context context) {
+    final Boolean result = node.getValue().accept(this, context);
+    if (Objects.isNull(result)) {
+      return null;
+    }
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -96,9 +110,9 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return Boolean.FALSE;
     }
-    return node.getValue().accept(this, context);
+    return result;
   }
 
   @Override
