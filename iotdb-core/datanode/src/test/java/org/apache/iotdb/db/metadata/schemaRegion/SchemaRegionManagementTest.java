@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -73,7 +74,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       tags.put("tag-key", "tag-value");
       schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath("root.sg.d1.s1"),
+              new MeasurementPath("root.sg.d1.s1"),
               TSDataType.INT32,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
@@ -206,7 +207,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
         for (int j = 0; j < 1000; j++) {
           schemaRegion.createTimeSeries(
               SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                  new PartialPath("root.sg.d" + i + ".s" + j),
+                  new MeasurementPath("root.sg.d" + i + ".s" + j),
                   TSDataType.INT32,
                   TSEncoding.PLAIN,
                   CompressionType.UNCOMPRESSED,

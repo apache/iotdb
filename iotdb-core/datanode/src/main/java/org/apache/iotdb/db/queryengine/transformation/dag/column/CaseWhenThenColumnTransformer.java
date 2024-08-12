@@ -22,12 +22,13 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.AbstractIntType;
+import org.apache.tsfile.read.common.type.AbstractLongType;
+import org.apache.tsfile.read.common.type.AbstractVarcharType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
-import org.apache.tsfile.read.common.type.IntType;
-import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
@@ -66,15 +67,15 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
       ColumnTransformer childTransformer, Column column, int index, ColumnBuilder builder) {
     if (returnType instanceof BooleanType) {
       builder.writeBoolean(childTransformer.getType().getBoolean(column, index));
-    } else if (returnType instanceof IntType) {
+    } else if (returnType instanceof AbstractIntType) {
       builder.writeInt(childTransformer.getType().getInt(column, index));
-    } else if (returnType instanceof LongType) {
+    } else if (returnType instanceof AbstractLongType) {
       builder.writeLong(childTransformer.getType().getLong(column, index));
     } else if (returnType instanceof FloatType) {
       builder.writeFloat(childTransformer.getType().getFloat(column, index));
     } else if (returnType instanceof DoubleType) {
       builder.writeDouble(childTransformer.getType().getDouble(column, index));
-    } else if (returnType instanceof BinaryType) {
+    } else if (returnType instanceof AbstractVarcharType || returnType instanceof BlobType) {
       builder.writeBinary(childTransformer.getType().getBinary(column, index));
     } else {
       throw new UnsupportedOperationException("Unsupported Type");

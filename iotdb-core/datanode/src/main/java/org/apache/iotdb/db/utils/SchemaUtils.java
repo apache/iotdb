@@ -20,7 +20,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
@@ -105,12 +104,12 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
+  public static TSDataType getSeriesTypeByPath(TSDataType seriesType, String aggregation) {
     TSDataType dataType = getBuiltinAggregationTypeByFuncName(aggregation);
     if (dataType != null) {
       return dataType;
     } else {
-      return path.getSeriesType();
+      return seriesType;
     }
   }
 

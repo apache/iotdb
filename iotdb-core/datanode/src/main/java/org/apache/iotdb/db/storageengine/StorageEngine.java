@@ -189,6 +189,7 @@ public class StorageEngine implements IService {
   }
 
   private void asyncRecoverDataRegion() throws StartupException {
+    long startRecoverTime = System.currentTimeMillis();
     isReady.set(false);
     isReadyForReadAndWrite.set(false);
     cachedThreadPool =
@@ -212,6 +213,9 @@ public class StorageEngine implements IService {
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               isReadyForReadAndWrite.set(true);
+              LOGGER.info(
+                  "Storage Engine recover cost: {}s.",
+                  (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -604,7 +608,7 @@ public class StorageEngine implements IService {
   }
 
   public void operateFlush(TFlushReq req) {
-    if (req.storageGroups == null) {
+    if (req.storageGroups == null || req.storageGroups.isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
     } else {

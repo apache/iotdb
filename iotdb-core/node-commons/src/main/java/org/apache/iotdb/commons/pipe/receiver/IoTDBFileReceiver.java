@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
+
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
  * handling all the logic of parallel file receiving.
@@ -65,6 +67,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
+
+  protected boolean shouldConvertDataTypeOnTypeMismatch =
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -214,6 +219,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       LOGGER.warn(
           "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
       return new TPipeTransferResp(status);
+    }
+
+    final String shouldConvertDataTypeOnTypeMismatchString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH);
+    if (shouldConvertDataTypeOnTypeMismatchString != null) {
+      shouldConvertDataTypeOnTypeMismatch =
+          Boolean.parseBoolean(shouldConvertDataTypeOnTypeMismatchString);
     }
 
     // Handle the handshake request as a v1 request.

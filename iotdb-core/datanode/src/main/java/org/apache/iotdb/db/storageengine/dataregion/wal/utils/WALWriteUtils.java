@@ -144,10 +144,11 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    byte[] bytes = deviceID.getBytes();
-    len += write(bytes.length, buffer);
-    buffer.put(bytes);
-    len += bytes.length;
+    len += write(deviceID.segmentNum(), buffer);
+    for (int i = 0; i < deviceID.segmentNum(); i++) {
+      String segment = (String) deviceID.segment(i);
+      len += write(segment, buffer);
+    }
     return len;
   }
 

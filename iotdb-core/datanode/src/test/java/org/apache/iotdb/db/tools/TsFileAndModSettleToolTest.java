@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -116,6 +116,7 @@ public class TsFileAndModSettleToolTest {
         tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource, settledResources);
       }
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail(e.getMessage());
     }
   }
@@ -170,7 +171,7 @@ public class TsFileAndModSettleToolTest {
     ModificationFile modificationFile = new ModificationFile(modFilePath);
     List<Modification> mods = new ArrayList<>();
     try {
-      PartialPath partialPath = new PartialPath(timeseriesPath);
+      MeasurementPath partialPath = new MeasurementPath(timeseriesPath);
       mods.add(new Deletion(partialPath, 10000000, 1500, 10000));
       mods.add(new Deletion(partialPath, 10000000, 20000, 30000));
       mods.add(new Deletion(partialPath, 10000000, 45000, 50000));

@@ -48,6 +48,7 @@ public class DeviceSchemaFetchStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
+    patternTree.constructTree();
     return patternTree.getAllPathPatterns();
   }
 
