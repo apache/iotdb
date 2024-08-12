@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -229,7 +230,8 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
       TRegionReplicaSet regionReplicaSet =
           analysis
               .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID());
+              .getSchemaRegionReplicaSet(
+                  new MeasurementPath(entry.getKey().getNodes()).getIDeviceID());
 
       // create a map if the key(regionReplicaSet) is not exists,
       // then put this entry into this map(from regionReplicaSet to this entry)
