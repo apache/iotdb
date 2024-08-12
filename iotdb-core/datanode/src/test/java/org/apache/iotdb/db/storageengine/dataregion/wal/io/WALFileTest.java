@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -342,7 +343,7 @@ public class WALFileTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(devicePath)),
+            Collections.singletonList(new MeasurementPath(devicePath, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     deleteDataNode.setSearchIndex(100L);

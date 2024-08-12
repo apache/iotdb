@@ -84,6 +84,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
@@ -352,6 +353,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnRequestType.UPDATE_TABLE,
+        (req, client, handler) ->
+            client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

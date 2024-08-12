@@ -75,7 +75,14 @@ public class SubscriptionSession extends Session {
           "Subscription session must be configured with an endpoint.");
     }
     return new SubscriptionSessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+        session,
+        endpoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   /////////////////////////////// topic ///////////////////////////////

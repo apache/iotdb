@@ -70,6 +70,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -90,6 +91,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -186,6 +188,11 @@ public class Session implements ISession {
   protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
+
+  protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
+  // may be null
+  protected volatile String database;
 
   private static final String REDIRECT_TWICE = "redirect twice";
 
@@ -449,7 +456,9 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
+    this.database = builder.database;
   }
 
   @Override
@@ -610,10 +619,17 @@ public class Session implements ISession {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect, database);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+        session,
+        endpoint,
+        zoneId,
+        availableNodes,
+        maxRetryCount,
+        retryIntervalInMs,
+        sqlDialect,
+        database);
   }
 
   @Override
@@ -946,7 +962,24 @@ public class Session implements ISession {
   @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    String previousDB = database;
     defaultSessionConnection.executeNonQueryStatement(sql);
+    if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
+      Iterator<Map.Entry<TEndPoint, SessionConnection>> iterator =
+          endPointToSessionConnection.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<TEndPoint, SessionConnection> entry = iterator.next();
+        SessionConnection sessionConnection = entry.getValue();
+        if (sessionConnection != defaultSessionConnection) {
+          try {
+            sessionConnection.executeNonQueryStatement(sql);
+          } catch (Throwable t) {
+            logger.warn("failed to change database for {}", entry.getKey());
+            iterator.remove();
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1194,6 +1227,38 @@ public class Session implements ISession {
     }
 
     insertRecord(deviceId, request);
+  }
+
+  /**
+   * insert data in one row to the table model, if you want to improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  @Override
+  public void insertRelationalRecord(
+      String tableName,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<ColumnType> columnCategories,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordReq(
+              tableName, time, measurements, types, Arrays.asList(values), false);
+      request.setColumnCategoryies(
+          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
+      request.setIsWriteToTable(true);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
+      return;
+    }
+
+    insertRecord(tableName, request);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
@@ -1549,14 +1614,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * When the value is null,filter this,don't use this measurement.
-   *
-   * @param times
-   * @param measurementsList
-   * @param valuesList
-   * @param typesList
-   */
+  /** When the value is null,filter this,don't use this measurement. */
   private void filterNullValueAndMeasurement(
       List<String> deviceIds,
       List<Long> times,
@@ -1582,15 +1640,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * Filter the null value of list。
-   *
-   * @param deviceId
-   * @param times
-   * @param measurementsList
-   * @param typesList
-   * @param valuesList
-   */
+  /** Filter the null value of list。 */
   private void filterNullValueAndMeasurementOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1615,14 +1665,7 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * Filter the null value of list。
-   *
-   * @param times
-   * @param deviceId
-   * @param measurementsList
-   * @param valuesList
-   */
+  /** Filter the null value of list。 */
   private void filterNullValueAndMeasurementWithStringTypeOfOneDevice(
       List<Long> times,
       String deviceId,
@@ -1647,10 +1690,6 @@ public class Session implements ISession {
   /**
    * Filter the null object of list。
    *
-   * @param deviceId
-   * @param measurementsList
-   * @param types
-   * @param valuesList
    * @return true:all value is null;false:not all null value is null.
    */
   private boolean filterNullValueAndMeasurement(
@@ -1680,9 +1719,6 @@ public class Session implements ISession {
    * Filter the null object of list。
    *
    * @param prefixPaths devices path。
-   * @param times
-   * @param measurementsList
-   * @param valuesList
    * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
    */
   private void filterNullValueAndMeasurementWithStringType(
@@ -1710,8 +1746,6 @@ public class Session implements ISession {
   /**
    * When the value is null,filter this,don't use this measurement.
    *
-   * @param valuesList
-   * @param measurementsList
    * @return true:all value is null;false:not all null value is null.
    */
   private boolean filterNullValueAndMeasurementWithStringType(
@@ -2609,16 +2643,21 @@ public class Session implements ISession {
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    insertTabletInternal(tablet, request);
+  }
+
+  private void insertTabletInternal(Tablet tablet, TSInsertTabletReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      getSessionConnection(tablet.deviceId).insertTablet(request);
+      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
-        deviceIdToEndpoint.remove(tablet.deviceId);
+          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
+        deviceIdToEndpoint.remove(tablet.getDeviceId());
 
         // reconnect with default connection
         try {
@@ -2629,6 +2668,33 @@ public class Session implements ISession {
         throw e;
       }
     }
+  }
+
+  /**
+   * insert a relational Tablet
+   *
+   * @param tablet data batch
+   * @param sorted deprecated, whether times in Tablet are in ascending order
+   */
+  @Override
+  public void insertRelationalTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    request.setWriteToTable(true);
+    request.setColumnCategories(
+        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
+    insertTabletInternal(tablet, request);
+  }
+
+  /**
+   * insert a relational Tablet
+   *
+   * @param tablet data batch
+   */
+  @Override
+  public void insertRelationalTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertRelationalTablet(tablet, false);
   }
 
   /**
@@ -2658,15 +2724,15 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
     try {
-      getSessionConnection(tablet.deviceId).insertTablet(request);
+      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
-        deviceIdToEndpoint.remove(tablet.deviceId);
+          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
+        deviceIdToEndpoint.remove(tablet.getDeviceId());
 
         // reconnect with default connection
         try {
@@ -2691,7 +2757,7 @@ public class Session implements ISession {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.deviceId);
+    request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
@@ -2802,7 +2868,7 @@ public class Session implements ISession {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.deviceId);
+    request.addToPrefixPaths(tablet.getDeviceId());
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
@@ -2865,7 +2931,7 @@ public class Session implements ISession {
         }
       }
     }
-    List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
+    List<IMeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
     // use measurementType to build schemaList
     for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
       schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
@@ -2950,11 +3016,11 @@ public class Session implements ISession {
       rowMap.merge(device, 1, Integer::sum);
     }
     // device -> schema
-    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
+    Map<String, List<IMeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
     // use measurementTypeMap to build schemaMap
     for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
         deviceMeasuremenMap.entrySet()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
+      List<IMeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
       for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
         schemaList.add(
             new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
@@ -3446,8 +3512,6 @@ public class Session implements ISession {
    * @param encodings the encoding of each measurement, only the first one in each nested list
    *     matters as above
    * @param compressors the compressor of each measurement
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
    * @deprecated
    */
   @Override
@@ -3753,9 +3817,6 @@ public class Session implements ISession {
    *       <li>{@link TSInsertStringRecordsReq}
    *       <li>{@link TSInsertTabletsReq}
    *     </ul>
-   *
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
    */
   @SuppressWarnings({
     "squid:S3776"
@@ -3842,7 +3903,16 @@ public class Session implements ISession {
     return defaultSessionConnection.fetchAllConnections();
   }
 
+  protected void changeDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
   public static class Builder {
+
     private String host = SessionConfig.DEFAULT_HOST;
     private int rpcPort = SessionConfig.DEFAULT_PORT;
     private String username = SessionConfig.DEFAULT_USER;
@@ -3879,6 +3949,10 @@ public class Session implements ISession {
     private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
+
+    private String sqlDialect = SessionConfig.SQL_DIALECT;
+
+    private String database;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3974,6 +4048,16 @@ public class Session implements ISession {
 
     public Builder retryIntervalInMs(long retryIntervalInMs) {
       this.retryIntervalInMs = retryIntervalInMs;
+      return this;
+    }
+
+    public Builder sqlDialect(String sqlDialect) {
+      this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.database = database;
       return this;
     }
 

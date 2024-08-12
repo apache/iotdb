@@ -202,6 +202,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case UPDATE_REGION_ROUTE_MAP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
+      case UPDATE_TABLE:
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -106,7 +106,7 @@ public class PatternTreeMapFactory {
     @Override
     public Modification read(ByteBuffer buffer) {
       int type = ReadWriteIOUtils.read(buffer);
-      PartialPath partialPath = PartialPath.deserialize(buffer);
+      MeasurementPath partialPath = MeasurementPath.deserialize(buffer);
       long fileOffset = ReadWriteIOUtils.readLong(buffer);
       switch (Modification.Type.values()[type]) {
         case DELETION:

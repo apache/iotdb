@@ -33,7 +33,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
@@ -46,6 +46,7 @@ import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -67,9 +68,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private BatchData data;
 
   private boolean isMultiPage;
-  private String currentDevice;
+  private IDeviceID currentDevice;
   private boolean currentIsAligned;
-  private final List<MeasurementSchema> currentMeasurements = new ArrayList<>();
+  private final List<IMeasurementSchema> currentMeasurements = new ArrayList<>();
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -139,7 +140,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     try {
       final Tablet tablet =
           new Tablet(
-              currentDevice,
+              currentDevice.toString(),
               currentMeasurements,
               PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
       tablet.initBitMaps();
@@ -360,10 +361,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             lastMarker = marker;
             return;
           }
-          // TODO: Replace it by IDeviceID
-          final String deviceID =
-              ((PlainDeviceID) tsFileSequenceReader.readChunkGroupHeader().getDeviceID())
-                  .toStringID();
+          final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
           currentDevice = pattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
           break;
         case MetaMarker.OPERATION_INDEX_RANGE:

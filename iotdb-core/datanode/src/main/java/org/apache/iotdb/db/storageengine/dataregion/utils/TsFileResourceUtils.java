@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -36,7 +37,6 @@ import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -67,13 +67,13 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
-    DeviceTimeIndex timeIndex;
+    ArrayDeviceTimeIndex timeIndex;
     try {
-      if (resource.getTimeIndexType() != 1) {
+      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // if time index is not device time index, then deserialize it from resource file
         timeIndex = resource.buildDeviceTimeIndex();
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
@@ -289,7 +289,10 @@ public class TsFileResourceUtils {
         }
       }
 
-    } catch (IOException | NegativeArraySizeException | IllegalArgumentException e) {
+    } catch (IOException
+        | NegativeArraySizeException
+        | IllegalArgumentException
+        | ArrayIndexOutOfBoundsException e) {
       logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
       return false;
     }
@@ -358,8 +361,8 @@ public class TsFileResourceUtils {
     // deviceID -> <TsFileResource, last end time>
     Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
-      DeviceTimeIndex timeIndex;
-      if (resource.getTimeIndexType() != 1) {
+      ArrayDeviceTimeIndex timeIndex;
+      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // if time index is not device time index, then deserialize it from resource file
         try {
           timeIndex = resource.buildDeviceTimeIndex();
@@ -368,7 +371,7 @@ public class TsFileResourceUtils {
           continue;
         }
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         return false;
@@ -384,7 +387,7 @@ public class TsFileResourceUtils {
           logger.error(
               "Device {} is overlapped between {} and {}, "
                   + "end time in {} is {}, start time in {} is {}",
-              ((PlainDeviceID) device).toStringID(),
+              device.toString(),
               lastDeviceInfo.left,
               resource,
               lastDeviceInfo.left,

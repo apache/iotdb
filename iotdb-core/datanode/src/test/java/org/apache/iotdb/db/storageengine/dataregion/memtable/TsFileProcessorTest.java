@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -121,10 +121,9 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    MeasurementPath fullPath =
-        new MeasurementPath(
-            deviceId,
-            measurementId,
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -180,10 +179,9 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    MeasurementPath fullPath =
-        new MeasurementPath(
-            deviceId,
-            measurementId,
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -264,10 +262,9 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    MeasurementPath fullPath =
-        new MeasurementPath(
-            deviceId,
-            measurementId,
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -306,12 +303,12 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test Tablet
-    processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10], true);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
@@ -342,22 +339,26 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test Tablet
-    processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10], true);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10]);
+    processor.insertTablet(
+        genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
@@ -396,12 +397,12 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test tablet
-    processor.insertTablet(genInsertTableNode(0, false), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(0, false), 0, 10, new TSStatus[10], true);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(100, false), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(100, false), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
-    processor.insertTablet(genInsertTableNode(200, false), 0, 10, new TSStatus[10]);
+    processor.insertTablet(genInsertTableNode(200, false), 0, 10, new TSStatus[10], true);
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(1440000, memTable.memSize());
@@ -631,10 +632,9 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
-    MeasurementPath fullPath =
-        new MeasurementPath(
-            deviceId,
-            measurementId,
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);

@@ -24,4 +24,8 @@ public interface IDeviceSchemaInfo extends ISchemaInfo {
   Boolean isAligned();
 
   int getTemplateId();
+
+  String getAttributeValue(String attributeKey);
+
+  String[] getRawNodes();
 }
