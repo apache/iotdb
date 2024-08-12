@@ -36,6 +36,6 @@ public class FilterContainsVisitor extends SchemaFilterVisitor<SchemaFilterType>
   @Override
   public Boolean visitAndFilter(
       final AndFilter andFilter, final SchemaFilterType schemaFilterType) {
-    return visitOrFilter(new OrFilter(andFilter.getChildren()), schemaFilterType);
+    return new OrFilter(andFilter.getChildren()).accept(this, schemaFilterType);
   }
 }
