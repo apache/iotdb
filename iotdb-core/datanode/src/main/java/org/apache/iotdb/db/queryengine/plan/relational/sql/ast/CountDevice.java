@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public class CountDevice extends AbstractQueryDevice {
+public class CountDevice extends AbstractTraverseDevice {
 
   // For sql-input show device usage
   public CountDevice(final String tableName, final Expression rawExpression) {

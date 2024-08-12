@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Objects;
 
 // TODO table metadata: reuse query distinct logic
-public abstract class AbstractQueryDevice extends Statement {
+public abstract class AbstractTraverseDevice extends Statement {
 
   private String database;
 
@@ -53,14 +53,14 @@ public abstract class AbstractQueryDevice extends Statement {
   private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
-  protected AbstractQueryDevice(final String tableName, final Expression rawExpression) {
+  protected AbstractTraverseDevice(final String tableName, final Expression rawExpression) {
     super(null);
     this.tableName = tableName;
     this.rawExpression = rawExpression;
   }
 
   // For device fetch serving data query
-  protected AbstractQueryDevice(
+  protected AbstractTraverseDevice(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedFilterList,
@@ -93,8 +93,16 @@ public abstract class AbstractQueryDevice extends Statement {
     return idDeterminedFilterList;
   }
 
+  public void setIdDeterminedFilterList(final List<List<SchemaFilter>> idDeterminedFilterList) {
+    this.idDeterminedFilterList = idDeterminedFilterList;
+  }
+
   public Expression getIdFuzzyPredicate() {
     return idFuzzyPredicate;
+  }
+
+  public void setIdFuzzyPredicate(final Expression idFuzzyPredicate) {
+    this.idFuzzyPredicate = idFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -103,6 +111,10 @@ public abstract class AbstractQueryDevice extends Statement {
 
   public List<IDeviceID> getPartitionKeyList() {
     return partitionKeyList;
+  }
+
+  public void setPartitionKeyList(final List<IDeviceID> partitionKeyList) {
+    this.partitionKeyList = partitionKeyList;
   }
 
   @Override
@@ -114,7 +126,7 @@ public abstract class AbstractQueryDevice extends Statement {
   public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    final AbstractQueryDevice that = (AbstractQueryDevice) o;
+    final AbstractTraverseDevice that = (AbstractTraverseDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -47,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 
 // Return whether input expression has an attribute column predicate
+// Return null iff the expression has columns not in id/attribute
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
@@ -78,23 +78,24 @@ public class CheckSchemaPredicateVisitor
   protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
     for (final Expression child : node.getTerms()) {
       final Boolean childResult = child.accept(this, context);
-      if (Boolean.FALSE.equals(childResult)) {
-        return Boolean.FALSE;
+      if (Boolean.TRUE.equals(childResult)) {
+        return Boolean.TRUE;
       }
       if (Objects.isNull(childResult)) {
         return null;
       }
     }
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
-      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS
+          && Objects.nonNull(context.queryContext)) {
         LOGGER.info(
             "And expression encountered during id determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return Boolean.FALSE;
+      return Boolean.TRUE;
     }
-    return Boolean.TRUE;
+    return Boolean.FALSE;
   }
 
   @Override
@@ -104,13 +105,14 @@ public class CheckSchemaPredicateVisitor
       return null;
     }
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
-      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS
+          && Objects.nonNull(context.queryContext)) {
         LOGGER.info(
             "Logical expression type encountered in not expression child during id determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return Boolean.FALSE;
+      return Boolean.TRUE;
     }
     return result;
   }
@@ -118,9 +120,13 @@ public class CheckSchemaPredicateVisitor
   @Override
   protected Boolean visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
-    return (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference)
-        ? Boolean.TRUE
-        : processColumn(node, context);
+    if (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference) {
+      return (Objects.isNull(processColumn(node.getLeft(), context))
+              || Objects.isNull(processColumn(node.getRight(), context)))
+          ? null
+          : Boolean.TRUE;
+    }
+    return processColumn(node, context);
   }
 
   @Override
@@ -154,9 +160,16 @@ public class CheckSchemaPredicateVisitor
     final TsTableColumnSchema column =
         context.table.getColumnSchema(
             node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
-    return Objects.nonNull(column)
-        ? column.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)
-        : null;
+    if (Objects.isNull(column)) {
+      return null;
+    }
+    if (column.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      return Boolean.TRUE;
+    }
+    if (column.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      return Boolean.FALSE;
+    }
+    return null;
   }
 
   public static class Context {

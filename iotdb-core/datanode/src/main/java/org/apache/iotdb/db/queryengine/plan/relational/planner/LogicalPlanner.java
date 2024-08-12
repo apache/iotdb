@@ -42,7 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -311,7 +311,7 @@ public class LogicalPlanner {
     return countMergeNode;
   }
 
-  private String planQueryDevice(final AbstractQueryDevice statement, final Analysis analysis) {
+  private String planQueryDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
     queryContext.setQueryType(QueryType.READ);
 
     final String database =

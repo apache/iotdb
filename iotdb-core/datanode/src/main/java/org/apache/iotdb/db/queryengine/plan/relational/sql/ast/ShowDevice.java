@@ -25,7 +25,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.List;
 
-public class ShowDevice extends AbstractQueryDevice {
+public class ShowDevice extends AbstractTraverseDevice {
 
   // For sql-input show device usage
   public ShowDevice(final String tableName, final Expression rawExpression) {

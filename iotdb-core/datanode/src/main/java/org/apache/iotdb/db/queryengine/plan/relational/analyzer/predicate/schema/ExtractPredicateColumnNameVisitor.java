@@ -85,6 +85,11 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   }
 
   @Override
+  protected String visitSymbolReference(final SymbolReference node, final Void context) {
+    return node.getName();
+  }
+
+  @Override
   protected String visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
     return null;
   }
