@@ -132,27 +132,27 @@ public class AnalyzerTest {
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
-    String sql =
+    final String sql =
         "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10 offset 2 limit 3";
-    Metadata metadata = Mockito.mock(Metadata.class);
+    final Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
 
-    Map<String, ColumnHandle> map = new HashMap<>();
-    TableSchema tableSchema = Mockito.mock(TableSchema.class);
+    final Map<String, ColumnHandle> map = new HashMap<>();
+    final TableSchema tableSchema = Mockito.mock(TableSchema.class);
     Mockito.when(tableSchema.getTableName()).thenReturn("table1");
-    ColumnSchema column1 =
+    final ColumnSchema column1 =
         ColumnSchema.builder().setName("time").setType(INT64).setHidden(false).build();
-    ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
+    final ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
     map.put("time", column1Handle);
-    ColumnSchema column2 =
+    final ColumnSchema column2 =
         ColumnSchema.builder().setName("s1").setType(INT32).setHidden(false).build();
-    ColumnHandle column2Handle = Mockito.mock(ColumnHandle.class);
+    final ColumnHandle column2Handle = Mockito.mock(ColumnHandle.class);
     map.put("s1", column2Handle);
-    ColumnSchema column3 =
+    final ColumnSchema column3 =
         ColumnSchema.builder().setName("s2").setType(INT64).setHidden(false).build();
-    ColumnHandle column3Handle = Mockito.mock(ColumnHandle.class);
+    final ColumnHandle column3Handle = Mockito.mock(ColumnHandle.class);
     map.put("s2", column3Handle);
-    List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
+    final List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
     Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
 
     Mockito.when(
@@ -167,7 +167,8 @@ public class AnalyzerTest {
             metadata.getOperatorReturnType(eq(OperatorType.ADD), eq(Arrays.asList(INT32, INT32))))
         .thenReturn(DOUBLE);
 
-    Analysis actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    final Analysis actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     System.out.println(actualAnalysis.getTypes());
   }
@@ -176,11 +177,11 @@ public class AnalyzerTest {
   public void singleTableNoFilterTest() {
     // wildcard
     sql = "SELECT * FROM testdb.table1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
 
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -216,10 +217,10 @@ public class AnalyzerTest {
   public void singleTableWithFilterTest1() {
     // only global time filter
     sql = "SELECT * FROM table1 where time > 1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -267,10 +268,10 @@ public class AnalyzerTest {
   public void singleTableWithFilterTest2() {
     // measurement value filter, which can be pushed down to TableScanNode
     sql = "SELECT tag1, attr1, s2 FROM table1 where s1 > 1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -330,10 +331,10 @@ public class AnalyzerTest {
     // timePredicate of TableScanNode
     sql =
         "SELECT tag1, attr1, s2 FROM table1 where s1 > 1 and s2>2 and tag1='A' and time > 1 and time < 10";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -360,10 +361,10 @@ public class AnalyzerTest {
     // transfer to : ((("time" > 1) OR ("s1" > 1)) AND (("time" > 1) OR ("s2" > 2)) AND (("time" >
     // 1) OR ("time" < 10)))
     sql = "SELECT tag1, attr1, s2 FROM table1 where time > 1 or s1 > 1 and s2 > 2 and time < 10";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -389,10 +390,10 @@ public class AnalyzerTest {
   public void singleTableWithFilterTest5() {
     // measurement value filter with time filter
     sql = "SELECT tag1, attr1, s2 FROM table1 where time > 1 or s1 > 1 or time < 10 or s2 > 2";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -431,9 +432,9 @@ public class AnalyzerTest {
   public void singleTableWithFilterTest6() {
     // value filter which can not be pushed down
     sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) > 1";
-    actualAnalysis = analyzeSQL(sql, metadata);
-    assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
+    assertEquals(1, actualAnalysis.getTables().size());
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -479,7 +480,7 @@ public class AnalyzerTest {
             distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
 
     sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) + 1 > 1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
@@ -504,17 +505,17 @@ public class AnalyzerTest {
     // TODO(beyyes) fix the CNFs parse error
     sql =
         "SELECT tag1, attr1, s2 FROM table1 where (time > 1 and s1 > 1 or s2 < 7) or (time < 10 and s1 > 4)";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
   }
 
   @Test
   public void singleTableProjectTest() {
     // 1. project without filter
     sql = "SELECT time, tag1, attr1, s1 FROM table1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -526,7 +527,7 @@ public class AnalyzerTest {
 
     // 2. project with filter
     sql = "SELECT tag1, attr1, s1 FROM table1 WHERE tag2='A' and s2=8";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
@@ -549,7 +550,7 @@ public class AnalyzerTest {
     // 3. project with filter and function
     sql =
         "SELECT s1+s3, CAST(s2 AS DOUBLE) FROM table1 WHERE REPLACE(tag1, 'low', '!')='!' AND attr2='B'";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
@@ -570,7 +571,7 @@ public class AnalyzerTest {
 
     // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
     sql = "SELECT tag2, attr2, s2 FROM table1";
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
@@ -588,7 +589,7 @@ public class AnalyzerTest {
     // 1. is null / is not null
     sql = "SELECT * FROM table1 WHERE tag1 is not null and s1 is null";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -607,7 +608,7 @@ public class AnalyzerTest {
     // 2. like
     sql = "SELECT * FROM table1 WHERE tag1 like '%m'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -624,7 +625,7 @@ public class AnalyzerTest {
     sql =
         "SELECT *, s1/2, s2+1, s2*3, s1+s2, s2%1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 not in ('A', 'C')";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -641,7 +642,7 @@ public class AnalyzerTest {
     // 4. not
     sql = "SELECT * FROM table1 WHERE tag1 not like '%m'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -650,7 +651,7 @@ public class AnalyzerTest {
     // 5. String literal comparisons
     sql = "SELECT * FROM table1 WHERE tag1 <= 's1'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -665,7 +666,7 @@ public class AnalyzerTest {
     // 6. String column comparisons
     sql = "SELECT * FROM table1 WHERE tag1 != attr1";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -683,7 +684,7 @@ public class AnalyzerTest {
     // 1. cast
     sql = "SELECT CAST(s2 AS DOUBLE) FROM table1 WHERE CAST(s1 AS DOUBLE) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -692,7 +693,7 @@ public class AnalyzerTest {
     sql =
         "SELECT SUBSTRING(tag1, 2), SUBSTRING(tag2, s1) FROM table1 WHERE SUBSTRING(tag2, 1) = 'A'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -700,7 +701,7 @@ public class AnalyzerTest {
     // 3. round
     sql = "SELECT ROUND(s1, 1) FROM table1 WHERE ROUND(s2, 2) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -708,7 +709,7 @@ public class AnalyzerTest {
     // 4. replace
     sql = "SELECT REPLACE(tag1, 'A', 'B') FROM table1 WHERE REPLACE(attr1, 'C', 'D') = 'D'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -719,7 +720,7 @@ public class AnalyzerTest {
     // 1. only diff
     sql = "SELECT DIFF(s1) FROM table1 WHERE DIFF(s2) > 0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -762,7 +763,7 @@ public class AnalyzerTest {
     // 2. diff with time filter, tag filter and measurement filter
     sql = "SELECT s1 FROM table1 WHERE DIFF(s2) > 0 and time > 5 and tag1 = 'A' and s1 = 1";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -780,7 +781,7 @@ public class AnalyzerTest {
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' and tag3 is not null and attr1 like '_'"
             + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -806,7 +807,7 @@ public class AnalyzerTest {
   public void limitOffsetTest() {
     sql = "SELECT tag1, attr1, s1 FROM table1 offset 3 limit 5";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -820,7 +821,7 @@ public class AnalyzerTest {
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
             + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m' offset 3 limit 5";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -836,7 +837,7 @@ public class AnalyzerTest {
   public void predicateCannotNormalizedTest() {
     sql = "SELECT * FROM table1 where (time > 1 and s1 > 1 or s2 < 7) or (time < 10 and s1 > 4)";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -853,7 +854,7 @@ public class AnalyzerTest {
   public void limitEliminationTest() {
     sql = "SELECT s1+s3 FROM table1 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -886,7 +887,7 @@ public class AnalyzerTest {
 
     sql = "SELECT s1,s1+s3 FROM table1 where tag1='beijing' and tag2='A1' limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -909,7 +910,7 @@ public class AnalyzerTest {
 
     sql = "SELECT diff(s1) FROM table1 where tag1='beijing' and tag2='A1' limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -929,7 +930,7 @@ public class AnalyzerTest {
   public void duplicateProjectionsTest() {
     sql = "SELECT Time,time,s1+1,S1+1,tag1,TAG1 FROM table1";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -1029,6 +1030,7 @@ public class AnalyzerTest {
         analyzeStatement(
             insertTabletStatement.toRelationalStatement(context),
             mockMetadata,
+            context,
             new SqlParser(),
             sessionInfo);
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
@@ -1074,6 +1076,7 @@ public class AnalyzerTest {
         analyzeStatement(
             insertStatement.toRelationalStatement(context),
             mockMetadata,
+            context,
             new SqlParser(),
             sessionInfo);
     assertEquals(1, actualAnalysis.getDataPartition().getDataPartitionMap().size());
@@ -1106,30 +1109,35 @@ public class AnalyzerTest {
     assertEquals(1, distributedQueryPlan.getInstances().size());
   }
 
-  public static Analysis analyzeSQL(String sql, Metadata metadata) {
+  public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
-    return analyzeStatement(statement, metadata, sqlParser, session);
+    return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 
   public static Analysis analyzeStatement(
-      Statement statement, Metadata metadata, SqlParser sqlParser, SessionInfo session) {
+      final Statement statement,
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final SqlParser sqlParser,
+      final SessionInfo session) {
     try {
-      StatementAnalyzerFactory statementAnalyzerFactory =
+      final StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 
       Analyzer analyzer =
           new Analyzer(
+              context,
               session,
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
               NOOP);
       return analyzer.analyze(statement);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(statement + ", " + e.getMessage());
     }
