@@ -47,6 +47,11 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
   }
 
   @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);

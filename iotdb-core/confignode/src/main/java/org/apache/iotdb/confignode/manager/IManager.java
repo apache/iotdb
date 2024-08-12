@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
@@ -55,6 +56,7 @@ import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -77,6 +79,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -117,6 +122,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
@@ -126,7 +132,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -356,11 +364,26 @@ public interface IManager {
   TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
+   * Get SchemaPartition with <databaseName, seriesSlot>.
+   *
+   * @return TSchemaPartitionResp
+   */
+  TSchemaPartitionTableResp getSchemaPartition(Map<String, List<TSeriesPartitionSlot>> dbSlotMap);
+
+  /**
    * Get or create SchemaPartition.
    *
    * @return TSchemaPartitionResp
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * Get or create SchemaPartition with <databaseName, seriesSlot>.
+   *
+   * @return TSchemaPartitionResp
+   */
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> dbSlotMap);
 
   /**
    * Create SchemaNodeManagementPartition for child paths node management.
@@ -464,7 +487,7 @@ public interface IManager {
   TSStatus createPipePlugin(TCreatePipePluginReq req);
 
   /** Drop pipe plugin. */
-  TSStatus dropPipePlugin(String pluginName);
+  TSStatus dropPipePlugin(TDropPipePluginReq req);
 
   /** Show pipe plugins. */
   TGetPipePluginTableResp getPipePluginTable();
@@ -631,11 +654,11 @@ public interface IManager {
   /**
    * Drop Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
    *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
-  TSStatus dropPipe(String pipeName);
+  TSStatus dropPipe(TDropPipeReq req);
 
   /**
    * Get Pipe by name. If pipeName is empty, get all Pipe.
@@ -670,7 +693,7 @@ public interface IManager {
   TSStatus createTopic(TCreateTopicReq topic);
 
   /** Drop Topic. */
-  TSStatus dropTopic(String topicName);
+  TSStatus dropTopic(TDropTopicReq req);
 
   /** Show Topic. */
   TShowTopicResp showTopic(TShowTopicReq req);
@@ -736,4 +759,10 @@ public interface IManager {
 
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
+
+  TSStatus createTable(final ByteBuffer tableInfo);
+
+  TSStatus alterTable(final TAlterTableReq req);
+
+  TShowTableResp showTables(final String database);
 }

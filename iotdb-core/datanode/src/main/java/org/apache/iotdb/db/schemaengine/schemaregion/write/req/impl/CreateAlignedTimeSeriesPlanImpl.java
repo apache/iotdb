@@ -43,18 +43,19 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets = null;
+  private transient boolean withMerge;
 
   public CreateAlignedTimeSeriesPlanImpl() {}
 
   public CreateAlignedTimeSeriesPlanImpl(
-      PartialPath devicePath,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> aliasList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList) {
+      final PartialPath devicePath,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<TSEncoding> encodings,
+      final List<CompressionType> compressors,
+      final List<String> aliasList,
+      final List<Map<String, String>> tagsList,
+      final List<Map<String, String>> attributesList) {
     this.devicePath = devicePath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
@@ -66,7 +67,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   public CreateAlignedTimeSeriesPlanImpl(
-      PartialPath devicePath, String measurement, MeasurementSchema schema) {
+      final PartialPath devicePath, final String measurement, final MeasurementSchema schema) {
     this.devicePath = devicePath;
     this.measurements = Collections.singletonList(measurement);
     this.dataTypes = Collections.singletonList(schema.getType());
@@ -80,7 +81,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setDevicePath(PartialPath devicePath) {
+  public void setDevicePath(final PartialPath devicePath) {
     this.devicePath = devicePath;
   }
 
@@ -90,7 +91,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setMeasurements(List<String> measurements) {
+  public void setMeasurements(final List<String> measurements) {
     this.measurements = measurements;
   }
 
@@ -100,7 +101,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setDataTypes(List<TSDataType> dataTypes) {
+  public void setDataTypes(final List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
   }
 
@@ -110,7 +111,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setEncodings(List<TSEncoding> encodings) {
+  public void setEncodings(final List<TSEncoding> encodings) {
     this.encodings = encodings;
   }
 
@@ -120,7 +121,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setCompressors(List<CompressionType> compressors) {
+  public void setCompressors(final List<CompressionType> compressors) {
     this.compressors = compressors;
   }
 
@@ -130,7 +131,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setAliasList(List<String> aliasList) {
+  public void setAliasList(final List<String> aliasList) {
     this.aliasList = aliasList;
   }
 
@@ -140,7 +141,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setTagsList(List<Map<String, String>> tagsList) {
+  public void setTagsList(final List<Map<String, String>> tagsList) {
     this.tagsList = tagsList;
   }
 
@@ -150,7 +151,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setAttributesList(List<Map<String, String>> attributesList) {
+  public void setAttributesList(final List<Map<String, String>> attributesList) {
     this.attributesList = attributesList;
   }
 
@@ -166,7 +167,15 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public void setTagOffsets(List<Long> tagOffsets) {
+  public void setTagOffsets(final List<Long> tagOffsets) {
     this.tagOffsets = tagOffsets;
+  }
+
+  public boolean isWithMerge() {
+    return withMerge;
+  }
+
+  public void setWithMerge(final boolean withMerge) {
+    this.withMerge = withMerge;
   }
 }

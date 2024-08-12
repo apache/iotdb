@@ -58,7 +58,7 @@ public class LoadTsFileRateLimiter {
   private void tryAcquireWithRateCheck(final int bytes) {
     while (!loadWriteRateLimiter.tryAcquire(
         bytes,
-        PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
       if (reloadParams()) {
         return;

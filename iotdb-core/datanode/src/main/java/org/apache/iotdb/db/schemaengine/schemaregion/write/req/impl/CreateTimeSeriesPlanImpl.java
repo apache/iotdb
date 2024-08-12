@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -31,7 +31,7 @@ import java.util.TreeMap;
 
 public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
 
-  private PartialPath path;
+  private MeasurementPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
@@ -40,11 +40,12 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
+  private transient boolean withMerge;
 
   public CreateTimeSeriesPlanImpl() {}
 
   public CreateTimeSeriesPlanImpl(
-      PartialPath path,
+      MeasurementPath path,
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressor,
@@ -65,7 +66,7 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
     }
   }
 
-  public CreateTimeSeriesPlanImpl(PartialPath path, MeasurementSchema schema) {
+  public CreateTimeSeriesPlanImpl(MeasurementPath path, MeasurementSchema schema) {
     this.path = path;
     this.dataType = schema.getType();
     this.encoding = schema.getEncodingType();
@@ -73,12 +74,12 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   }
 
   @Override
-  public PartialPath getPath() {
+  public MeasurementPath getPath() {
     return path;
   }
 
   @Override
-  public void setPath(PartialPath path) {
+  public void setPath(MeasurementPath path) {
     this.path = path;
   }
 
@@ -160,5 +161,13 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   @Override
   public void setTagOffset(long tagOffset) {
     this.tagOffset = tagOffset;
+  }
+
+  public boolean isWithMerge() {
+    return withMerge;
+  }
+
+  public void setWithMerge(final boolean withMerge) {
+    this.withMerge = withMerge;
   }
 }

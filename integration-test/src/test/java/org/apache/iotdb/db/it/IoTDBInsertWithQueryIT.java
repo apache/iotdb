@@ -450,9 +450,9 @@ public class IoTDBInsertWithQueryIT {
         };
     String[] retArray =
         new String[] {
-          "-9223372036854775807,-9223372036854775807,",
-          "-2208952800000,-2208952800000,",
-          "-999999,-9999999,"
+          "-9223372036854775807,-292275055-05-16T16:47:04.193Z,",
+          "-2208952800000,1900-01-01T10:00:00.000Z,",
+          "-999999,1969-12-31T21:13:20.001Z,"
         };
     resultSetEqualTest("SELECT s2 FROM root.fans.d0;", expectedHeader, retArray);
   }

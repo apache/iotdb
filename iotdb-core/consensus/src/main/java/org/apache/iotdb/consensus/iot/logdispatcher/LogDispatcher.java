@@ -303,7 +303,7 @@ public class LogDispatcher {
       stopped = true;
       try {
         if (!threadSemaphore.tryAcquire(30, TimeUnit.SECONDS)) {
-          logger.error("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
+          logger.info("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

@@ -82,7 +82,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 1_000_000_000L;
+  private static final long SLEEP_NS = 100_000_000L; // 100ms
 
   private final String username;
   private final String password;
@@ -102,6 +102,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
@@ -126,7 +127,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Set<TEndPoint> initialEndpoints = new HashSet<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
-    if (Objects.nonNull(builder.host)) {
+    if (Objects.nonNull(builder.host) || Objects.nonNull(builder.port)) {
+      if (Objects.isNull(builder.host)) {
+        builder.host = SessionConfig.DEFAULT_HOST;
+      }
+      if (Objects.isNull(builder.port)) {
+        builder.port = SessionConfig.DEFAULT_PORT;
+      }
+      initialEndpoints.add(new TEndPoint(builder.host, builder.port));
+    } else if (Objects.isNull(builder.nodeUrls)) {
+      builder.host = SessionConfig.DEFAULT_HOST;
+      builder.port = SessionConfig.DEFAULT_PORT;
       initialEndpoints.add(new TEndPoint(builder.host, builder.port));
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
@@ -223,13 +234,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       providers.releaseWriteLock();
     }
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
     // submit heartbeat worker
     submitHeartbeatWorker();
 
     // submit endpoints syncer
     submitEndpointsSyncer();
-
-    isClosed.set(false);
   }
 
   @Override
@@ -975,9 +987,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public abstract static class Builder {
 
-    protected String host = SessionConfig.DEFAULT_HOST;
-    protected int port = SessionConfig.DEFAULT_PORT;
-    protected List<String> nodeUrls = null;
+    protected String host;
+    protected Integer port;
+    protected List<String> nodeUrls;
 
     protected String username = SessionConfig.DEFAULT_USER;
     protected String password = SessionConfig.DEFAULT_PASSWORD;
@@ -1057,31 +1069,27 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("isClosed", isClosed.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("subscribedTopicNames", subscribedTopics.keySet().toString());
-      }
-    };
+    final Map<String, String> result = new HashMap<>(5);
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("isClosed", isClosed.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put("subscribedTopicNames", subscribedTopics.keySet().toString());
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
-        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
-        put("providers", providers.toString());
-        put("isClosed", isClosed.toString());
-        put("isReleased", isReleased.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("fileSaveFsync", String.valueOf(fileSaveFsync));
-        put("subscribedTopics", subscribedTopics.toString());
-      }
-    };
+    final Map<String, String> result = new HashMap<>(10);
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+    result.put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+    result.put("providers", providers.toString());
+    result.put("isClosed", isClosed.toString());
+    result.put("isReleased", isReleased.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
+    result.put("subscribedTopics", subscribedTopics.toString());
+    return result;
   }
 }

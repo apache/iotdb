@@ -60,13 +60,16 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   private final LoadBalancer loadBalancer;
 
+  private final boolean shouldReceiverConvertOnTypeMismatch;
+
   protected IoTDBSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache,
-      String loadBalanceStrategy) {
+      String loadBalanceStrategy,
+      boolean shouldReceiverConvertOnTypeMismatch) {
     super(endPoints, useLeaderCache);
 
     this.useSSL = useSSL;
@@ -93,6 +96,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
+
+    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
@@ -169,6 +174,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
+          Boolean.toString(shouldReceiverConvertOnTypeMismatch));
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));

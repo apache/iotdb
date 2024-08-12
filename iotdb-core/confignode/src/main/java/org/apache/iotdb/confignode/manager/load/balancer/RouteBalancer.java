@@ -155,7 +155,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private void balanceRegionLeader(
       TConsensusGroupType regionGroupType, String consensusProtocolClass) {
     // Collect the latest data and generate the optimal leader distribution
-    Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
+    Map<TConsensusGroupId, Integer> currentLeaderMap =
+        getLoadManager().getLoadCache().getRegionLeaderMap(regionGroupType);
     Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
             getLoadManager().getLoadCache().getCurrentDatabaseRegionGroupMap(regionGroupType),

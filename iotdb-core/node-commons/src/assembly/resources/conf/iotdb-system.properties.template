@@ -1316,7 +1316,7 @@ inner_compaction_task_selection_disk_redundancy=0.05
 # When the size of the mods file corresponding to TsFile exceeds this value, inner compaction tasks containing mods files are selected first.
 # effectiveMode: hot_reload
 # DataType: long
-inner_compaction_task_selection_mods_file_threshold=10485760
+inner_compaction_task_selection_mods_file_threshold=131072
 
 # The number of threads to be set up to select compaction task.
 # effectiveMode: hot_reload

@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -58,7 +60,6 @@ import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -377,14 +378,14 @@ public class AbstractCompactionTest {
       int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
       for (int j = 0; j < deviceIndexes.size(); j++) {
         resource.updateStartTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
                     + (deviceIndexes.get(j) + deviceStartindex)),
             startTime + pointNum * i + timeInterval * i);
         resource.updateEndTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
@@ -416,9 +417,11 @@ public class AbstractCompactionTest {
 
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
       resource.updateStartTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), startTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          startTime);
       resource.updateEndTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), endTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          endTime);
     }
 
     resource.updatePlanIndexes(fileVersion);
@@ -535,14 +538,14 @@ public class AbstractCompactionTest {
     for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
       files.add(resource.getTsFile());
     }
-    TsFileValidationTool.findUncorrectFiles(files);
-    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.findIncorrectFiles(files);
+    Assert.assertEquals(0, TsFileValidationTool.getBadFileNum());
   }
 
-  protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
-      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
-    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
-    for (PartialPath path : timeseriesPaths) {
+  protected Map<IFullPath, List<TimeValuePair>> readSourceFiles(
+      List<IFullPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
+    Map<IFullPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
+    for (IFullPath path : timeseriesPaths) {
       List<TimeValuePair> dataList = new ArrayList<>();
       sourceData.put(path, dataList);
       IDataBlockReader tsBlockReader =
@@ -568,10 +571,10 @@ public class AbstractCompactionTest {
   }
 
   protected void validateTargetDatas(
-      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
+      Map<IFullPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
-    Map<PartialPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
-    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
+    Map<IFullPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
+    for (Map.Entry<IFullPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
               entry.getKey(),
@@ -682,7 +685,7 @@ public class AbstractCompactionTest {
                   "Target file "
                       + targetResource.getTsFile().getPath()
                       + " contains empty chunk group "
-                      + ((PlainDeviceID) deviceID).toStringID());
+                      + deviceID.toString());
             }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -836,9 +839,9 @@ public class AbstractCompactionTest {
     return seqResource1;
   }
 
-  protected List<PartialPath> getPaths(List<TsFileResource> resources)
+  protected List<IFullPath> getPaths(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
-    Set<PartialPath> paths = new HashSet<>();
+    Set<IFullPath> paths = new HashSet<>();
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
@@ -854,14 +857,11 @@ public class AbstractCompactionTest {
             measurementSchemas.stream()
                 .map(IMeasurementSchema::getMeasurementId)
                 .collect(Collectors.toList());
-        PartialPath seriesPath;
+        IFullPath seriesPath;
         if (isAlign) {
-          seriesPath =
-              new AlignedPath(
-                  ((PlainDeviceID) deviceID).toStringID(), existedMeasurements, measurementSchemas);
+          seriesPath = new AlignedFullPath(deviceID, existedMeasurements, measurementSchemas);
         } else {
-          seriesPath =
-              new MeasurementPath(deviceID, existedMeasurements.get(0), measurementSchemas.get(0));
+          seriesPath = new NonAlignedFullPath(deviceID, measurementSchemas.get(0));
         }
         paths.add(seriesPath);
       }

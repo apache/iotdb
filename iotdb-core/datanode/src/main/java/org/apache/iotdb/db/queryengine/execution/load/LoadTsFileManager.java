@@ -47,7 +47,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +65,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -296,26 +295,13 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
-
-    for (final Path loadDirPath :
-        Arrays.stream(LOAD_BASE_DIRS.get())
-            .map(File::new)
-            .filter(File::exists)
-            .map(File::toPath)
-            .collect(Collectors.toList())) {
-      try {
-        Files.deleteIfExists(loadDirPath);
-        LOGGER.info("Load dir {} was deleted.", loadDirPath);
-      } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-      } catch (Exception e) {
-        LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
-      }
-    }
   }
 
   public static void updateWritePointCountMetrics(
-      final DataRegion dataRegion, final String databaseName, final long writePointCount) {
+      final DataRegion dataRegion,
+      final String databaseName,
+      final long writePointCount,
+      final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionId());
     MetricService.getInstance()
@@ -342,7 +328,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionId())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0) {
+    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,
@@ -412,7 +398,7 @@ public class LoadTsFileManager {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
         }
-        writer.startChunkGroup(new PlainDeviceID(chunkData.getDevice()));
+        writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(chunkData.getDevice()));
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
@@ -472,7 +458,7 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName ->
                     updateWritePointCountMetrics(
-                        dataRegion, databaseName, getTsFileWritePointCount(writer)));
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 

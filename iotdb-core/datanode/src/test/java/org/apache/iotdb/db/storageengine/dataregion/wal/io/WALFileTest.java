@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -45,12 +46,15 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class WALFileTest {
 
@@ -64,6 +68,8 @@ public class WALFileTest {
   public void setUp() throws Exception {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
+    } else {
+      walFile.getParentFile().mkdirs();
     }
   }
 
@@ -152,6 +158,18 @@ public class WALFileTest {
       }
     }
     assertEquals(expectedWALEntries, actualWALEntries);
+  }
+
+  @Test
+  public void testReadMetadataFromBrokenFile() throws IOException {
+    ILogWriter walWriter = new WALWriter(walFile);
+    final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
+    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
+    walWriter.close();
+    FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
+    fileChannel2.close();
+    assertTrue(walMetaData.getMemTablesId().isEmpty());
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
@@ -325,7 +343,7 @@ public class WALFileTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(devicePath)),
+            Collections.singletonList(new MeasurementPath(devicePath, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     deleteDataNode.setSearchIndex(100L);

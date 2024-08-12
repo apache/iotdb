@@ -48,6 +48,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -91,19 +93,38 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void validateBeforeCreatingPipePlugin(
-      final String pluginName, final String jarName, final String jarMD5) {
+  /**
+   * @return true if the pipe plugin is already created and the isSetIfNotExistsCondition is true,
+   *     false otherwise
+   * @throws PipeException if the pipe plugin is already created and the isSetIfNotExistsCondition
+   *     is false
+   */
+  public boolean validateBeforeCreatingPipePlugin(
+      final String pluginName, final boolean isSetIfNotExistsCondition) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (isSetIfNotExistsCondition) {
+        return true;
+      }
       throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
+    return false;
   }
 
-  public void validateBeforeDroppingPipePlugin(final String pluginName) {
+  /**
+   * @return true if the pipe plugin is not created and the isSetIfExistsCondition is true, false
+   *     otherwise
+   * @throws PipeException if the pipe plugin is not created and the isSetIfExistsCondition is false
+   */
+  public boolean validateBeforeDroppingPipePlugin(
+      final String pluginName, final boolean isSetIfExistsCondition) {
     if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (isSetIfExistsCondition) {
+        return true;
+      }
       throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], this PipePlugin has not been created", pluginName));
@@ -114,6 +135,7 @@ public class PipePluginInfo implements SnapshotProcessor {
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
               pluginName));
     }
+    return false;
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(final String jarName) {
@@ -231,15 +253,32 @@ public class PipePluginInfo implements SnapshotProcessor {
   public JarResp getPipePluginJar(final GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       final List<ByteBuffer> jarList = new ArrayList<>();
+      final PipePluginExecutableManager manager = PipePluginExecutableManager.getInstance();
+
       for (final String jarName : getPipePluginJarPlan.getJarNames()) {
         String pluginName = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         if (pluginName == null) {
           throw new PipeException(String.format("%s does not exist", jarName));
         }
-        jarList.add(
-            ExecutableManager.transferToBytebuffer(
-                PipePluginExecutableManager.getInstance()
-                    .getPluginInstallPath(pluginName, jarName)));
+
+        String jarPath = manager.getPluginInstallPathV2(pluginName, jarName);
+
+        boolean isJarExistedInV2Dir = Files.exists(Paths.get(jarPath));
+        if (!isJarExistedInV2Dir) {
+          jarPath = manager.getPluginInstallPathV1(jarName);
+        }
+
+        if (!Files.exists(Paths.get(jarPath))) {
+          throw new PipeException(String.format("%s does not exist", jarName));
+        }
+
+        ByteBuffer byteBuffer = ExecutableManager.transferToBytebuffer(jarPath);
+        if (!isJarExistedInV2Dir) {
+          pipePluginExecutableManager.savePluginToInstallDir(
+              byteBuffer.duplicate(), pluginName, jarName);
+        }
+
+        jarList.add(byteBuffer);
       }
       return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
     } catch (final Exception e) {

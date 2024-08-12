@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -143,6 +143,7 @@ public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<State
           statement.getCompressors().get(i));
       group.addProps(new HashMap<>());
     }
+    // Non-null lists
     statement.getTagsList().forEach(group::addTags);
     statement.getAttributesList().forEach(group::addAttributes);
     statement.getAliasList().forEach(group::addAlias);

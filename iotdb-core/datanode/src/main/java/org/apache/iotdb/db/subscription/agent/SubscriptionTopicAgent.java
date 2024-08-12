@@ -71,11 +71,12 @@ public class SubscriptionTopicAgent {
       return null;
     } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
+      LOGGER.warn(
+          "Exception occurred when handling single topic meta changes for topic {}", topicName, e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
               topicName, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -98,11 +99,14 @@ public class SubscriptionTopicAgent {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
+          LOGGER.warn(
+              "Exception occurred when handling single topic meta changes for topic {}",
+              topicName,
+              e);
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
                   topicName, e);
-          LOGGER.warn(exceptionMessage);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
         }
@@ -119,9 +123,9 @@ public class SubscriptionTopicAgent {
       handleDropTopicInternal(topicName);
       return null;
     } catch (final Exception e) {
+      LOGGER.warn("Exception occurred when dropping topic {}", topicName, e);
       final String exceptionMessage =
           String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {

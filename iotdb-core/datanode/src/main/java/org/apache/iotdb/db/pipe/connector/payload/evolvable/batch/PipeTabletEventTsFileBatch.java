@@ -37,7 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +77,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
+  @SuppressWarnings("java:S3077")
   private volatile TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
@@ -203,7 +204,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // Sort the tablets by device id
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
-      final String deviceId = tablet.deviceId;
+      final String deviceId = tablet.getDeviceId();
       device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
       device2Aligned.put(deviceId, isTabletAlignedList.get(i));
     }
@@ -216,7 +217,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     // Sort the devices by device id
-    List<String> devices = new ArrayList<>(device2Tablets.keySet());
+    final List<String> devices = new ArrayList<>(device2Tablets.keySet());
     devices.sort(Comparator.naturalOrder());
 
     // Replace ArrayList with LinkedList to improve performance
@@ -311,8 +312,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
-      LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
-      Map<String, Boolean> device2Aligned)
+      final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
+      final Map<String, Boolean> device2Aligned)
       throws IOException, WriteProcessException {
     final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
         device2TabletsLinkedList.entrySet().iterator();
@@ -346,16 +347,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       for (final Tablet tablet : tabletsToWrite) {
         if (isAligned) {
           try {
-            fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+            fileWriter.registerAlignedTimeseries(
+                new Path(tablet.getDeviceId()), tablet.getSchemas());
           } catch (final WriteProcessException ignore) {
             // Do nothing if the timeSeries has been registered
           }
 
           fileWriter.writeAligned(tablet);
         } else {
-          for (final MeasurementSchema schema : tablet.getSchemas()) {
+          for (final IMeasurementSchema schema : tablet.getSchemas()) {
             try {
-              fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+              fileWriter.registerTimeseries(new Path(tablet.getDeviceId()), schema);
             } catch (final WriteProcessException ignore) {
               // Do nothing if the timeSeries has been registered
             }

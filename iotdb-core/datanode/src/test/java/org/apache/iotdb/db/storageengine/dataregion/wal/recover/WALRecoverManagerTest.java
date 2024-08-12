@@ -50,7 +50,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -93,8 +92,10 @@ public class WALRecoverManagerTest {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DATA_REGION_ID = "1";
-  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
-  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE1_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d2"));
   private static final String FILE_WITH_WAL_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private static final String FILE_WITHOUT_WAL_NAME =
@@ -190,16 +191,12 @@ public class WALRecoverManagerTest {
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
     WALEntry walEntry =
         new WALInfoEntry(
-            targetMemTable.getMemTableId(),
-            getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L),
-            true);
+            targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME.toString(), 4L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     walEntry =
         new WALInfoEntry(
-            targetMemTable.getMemTableId(),
-            getInsertRowsNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 5L),
-            true);
+            targetMemTable.getMemTableId(), getInsertRowsNode(DEVICE2_NAME.toString(), 5L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
@@ -258,15 +255,14 @@ public class WALRecoverManagerTest {
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
-    InsertRowNode insertRowNode = getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L);
+    InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME.toString(), 4L);
     targetMemTable.insert(insertRowNode);
 
     WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowNode, true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
 
-    InsertRowsNode insertRowsNode =
-        getInsertRowsNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 5L);
+    InsertRowsNode insertRowsNode = getInsertRowsNode(DEVICE2_NAME.toString(), 5L);
     for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
       targetMemTable.insert(node);
     }

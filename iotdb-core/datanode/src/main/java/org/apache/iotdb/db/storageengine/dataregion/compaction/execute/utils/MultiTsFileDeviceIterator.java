@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -39,7 +40,6 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -174,7 +174,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @return Pair of device full path and whether this device is aligned
    */
-  @SuppressWarnings("squid:S135")
+  @SuppressWarnings({"squid:S135", "java:S2259"})
   public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<IDeviceID, Boolean> minDevice = null;
@@ -209,8 +209,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     timeLowerBoundForCurrentDevice =
         CommonDateTimeUtils.currentTime()
-            - DataNodeTTLCache.getInstance()
-                .getTTL(((PlainDeviceID) currentDevice.getLeft()).toStringID());
+            - DataNodeTTLCache.getInstance().getTTL(currentDevice.getLeft());
     return currentDevice;
   }
 
@@ -409,7 +408,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
       ttlDeletion =
           new Deletion(
-              CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+              new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
               Long.MAX_VALUE,
               Long.MIN_VALUE,
               timeLowerBoundForCurrentDevice);
@@ -447,6 +446,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     ModificationUtils.modifyAlignedChunkMetaData(
         alignedChunkMetadataList, modificationForCurDevice);
+  }
+
+  public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {
+    return readerMap;
   }
 
   @Override
@@ -487,6 +490,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 }
 
                 @Override
+                @SuppressWarnings("java:S2272")
                 public Map<String, List<ChunkMetadata>> next() {
                   return Collections.emptyMap();
                 }
@@ -631,7 +635,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new Deletion(
-                  CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+                  new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
                   Long.MAX_VALUE,
                   Long.MIN_VALUE,
                   timeLowerBoundForCurrentDevice);

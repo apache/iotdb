@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
@@ -88,14 +87,13 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
     for (final Map.Entry<IDeviceID, List<String>> entry :
         originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+      final IDeviceID deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(
-              new PlainDeviceID(deviceId), new HashSet<>(entry.getValue()));
+          filteredDeviceMeasurementsMap.put(deviceId, new HashSet<>(entry.getValue()));
         }
       }
 
@@ -114,7 +112,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
 

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -50,6 +52,9 @@ import java.util.Objects;
  */
 public class AlignedPath extends PartialPath {
 
+  private static final String NODES_LENGTH_ERROR =
+      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
+
   private static final Logger logger = LoggerFactory.getLogger(AlignedPath.class);
 
   // todo improve vector implementation by remove this placeholder
@@ -62,6 +67,9 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(String vectorPath, List<String> subSensorsList) throws IllegalPathException {
     super(vectorPath);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     // check whether subSensor is legal
     for (String subSensor : subSensorsList) {
       PathUtils.isLegalPath(subSensor);
@@ -71,6 +79,12 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(
       String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    this(Factory.DEFAULT_FACTORY.create(vectorPath), measurementList, schemaList);
+  }
+
+  public AlignedPath(
+      IDeviceID vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
       throws IllegalPathException {
     super(vectorPath);
     // check whether measurement is legal
@@ -83,6 +97,9 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(String vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     measurementList = new ArrayList<>();
     PathUtils.isLegalPath(subSensor);
     measurementList.add(subSensor);
@@ -90,6 +107,9 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(PartialPath vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath.getNodes());
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     measurementList = new ArrayList<>();
     PathUtils.isLegalPath(subSensor);
     measurementList.add(subSensor);
@@ -97,12 +117,18 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(PartialPath vectorPath) {
     super(vectorPath.getNodes());
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
   }
 
   public AlignedPath(MeasurementPath path) {
     super(path.getDevicePath().getNodes());
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     measurementList = new ArrayList<>();
     measurementList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
@@ -111,6 +137,9 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(String vectorPath) throws IllegalPathException {
     super(vectorPath);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
   }
@@ -118,6 +147,9 @@ public class AlignedPath extends PartialPath {
   public AlignedPath(
       String[] nodes, List<String> measurementList, List<IMeasurementSchema> schemaList) {
     super(nodes);
+    if (nodes.length < 2) {
+      throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
+    }
     this.measurementList = measurementList;
     this.schemaList = schemaList;
   }
@@ -144,11 +176,6 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public String getDevice() {
-    return getFullPath();
-  }
-
-  @Override
   public String getMeasurement() {
     throw new UnsupportedOperationException("AlignedPath doesn't have measurement name!");
   }
@@ -162,7 +189,7 @@ public class AlignedPath extends PartialPath {
   }
 
   public PartialPath getPathWithMeasurement(int index) {
-    return new PartialPath(nodes).concatNode(measurementList.get(index));
+    return new MeasurementPath(nodes).concatAsMeasurementPath(measurementList.get(index));
   }
 
   public void setMeasurementList(List<String> measurementList) {
@@ -175,6 +202,10 @@ public class AlignedPath extends PartialPath {
 
   public void addSchemas(List<IMeasurementSchema> schemas) {
     this.schemaList.addAll(schemas);
+  }
+
+  public void setSchemaList(List<IMeasurementSchema> schemaList) {
+    this.schemaList = schemaList;
   }
 
   public void addMeasurement(MeasurementPath measurementPath) {
@@ -286,7 +317,7 @@ public class AlignedPath extends PartialPath {
     try {
       alignedPath =
           new AlignedPath(
-              this.getDevice(),
+              this.getIDeviceID(),
               new ArrayList<>(this.measurementList),
               new ArrayList<>(this.schemaList));
     } catch (IllegalPathException e) {
@@ -366,8 +397,8 @@ public class AlignedPath extends PartialPath {
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
     alignedPath.nodes = partialPath.getNodes();
-    alignedPath.device = partialPath.getDevice();
-    alignedPath.fullPath = partialPath.getFullPath();
+    alignedPath.device = alignedPath.getIDeviceID();
+    alignedPath.fullPath = alignedPath.getFullPath();
     return alignedPath;
   }
 
@@ -376,7 +407,7 @@ public class AlignedPath extends PartialPath {
     if (measurementList.size() != 1) {
       throw new UnsupportedOperationException();
     }
-    return getDevicePath().concatNode(measurementList.get(0));
+    return getDevicePath().concatAsMeasurementPath(measurementList.get(0));
   }
 
   public MeasurementPath getMeasurementPath() {
@@ -396,5 +427,10 @@ public class AlignedPath extends PartialPath {
 
   public String getFormattedString() {
     return getDevicePath().toString() + "[" + String.join(",", measurementList) + "]";
+  }
+
+  @Override
+  protected PartialPath createPartialPath(String[] newPathNodes) {
+    return new AlignedPath(newPathNodes, measurementList, schemaList);
   }
 }

@@ -155,19 +155,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void checkBeforeCreatePipe(final TCreatePipeReq createPipeRequest) throws PipeException {
+  public boolean checkBeforeCreatePipe(final TCreatePipeReq createPipeRequest)
+      throws PipeException {
     acquireReadLock();
     try {
-      checkBeforeCreatePipeInternal(createPipeRequest);
+      return checkBeforeCreatePipeInternal(createPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
+  private boolean checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
       throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
-      return;
+      return true;
+    }
+
+    if (createPipeRequest.isSetIfNotExistsCondition()
+        && createPipeRequest.isIfNotExistsCondition()) {
+      return false;
     }
 
     final String exceptionMessage =
@@ -178,19 +184,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
     throw new PipeException(exceptionMessage);
   }
 
-  public void checkAndUpdateRequestBeforeAlterPipe(final TAlterPipeReq alterPipeRequest)
+  public boolean checkAndUpdateRequestBeforeAlterPipe(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
     acquireReadLock();
     try {
-      checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
+      return checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
+  private boolean checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
     if (!isPipeExisted(alterPipeRequest.getPipeName())) {
+      if (alterPipeRequest.isSetIfExistsCondition() && alterPipeRequest.isIfExistsCondition()) {
+        return false;
+      }
+
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
@@ -213,6 +223,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     //   1.1. if they are empty, the original attributes are filled directly.
     //   1.2. Otherwise, corresponding updates on original attributes are performed.
     // 2. In replace mode, do nothing here.
+    if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
+      if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
+      } else {
+        alterPipeRequest.setExtractorAttributes(
+            copiedPipeStaticMetaFromCoordinator
+                .getExtractorParameters()
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeRequest.getExtractorAttributes()))
+                .getAttribute());
+      }
+    }
+
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
         alterPipeRequest.setProcessorAttributes(
@@ -226,6 +250,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
@@ -239,6 +264,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+
+    return true;
   }
 
   public void checkBeforeStartPipe(final String pipeName) throws PipeException {

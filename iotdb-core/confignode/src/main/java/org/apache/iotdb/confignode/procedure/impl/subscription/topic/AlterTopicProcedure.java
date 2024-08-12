@@ -84,12 +84,14 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("AlterTopicProcedure: executeFromValidate");
 
     subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
 
     existedTopicMeta = subscriptionInfo.get().getTopicMeta(updatedTopicMeta.getTopicName());
+
+    return true;
   }
 
   @Override

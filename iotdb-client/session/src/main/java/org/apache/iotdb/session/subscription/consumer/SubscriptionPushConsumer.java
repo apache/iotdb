@@ -51,6 +51,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
 
+  // avoid interval less than or equal to zero
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
 
@@ -102,8 +103,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     this.ackStrategy = ackStrategy;
     this.consumeListener = consumeListener;
 
-    this.autoPollIntervalMs =
-        Math.max(autoPollIntervalMs, ConsumerConstant.AUTO_POLL_INTERVAL_MS_MIN_VALUE);
+    this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
     this.autoPollTimeoutMs =
         Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
   }
@@ -116,8 +116,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     super.open();
-    submitAutoPollWorker();
+
+    // set isClosed to false before submitting workers
     isClosed.set(false);
+
+    // submit auto poll worker
+    submitAutoPollWorker();
   }
 
   @Override
@@ -180,7 +184,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           final ConsumeResult consumeResult;
           try {
             consumeResult = consumeListener.onReceive(message);
-            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
+            if (Objects.equals(consumeResult, ConsumeResult.SUCCESS)) {
               messagesToAck.add(message);
             } else {
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
@@ -290,8 +294,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     public Builder autoPollIntervalMs(final long autoPollIntervalMs) {
-      this.autoPollIntervalMs =
-          Math.max(autoPollIntervalMs, ConsumerConstant.AUTO_POLL_INTERVAL_MS_MIN_VALUE);
+      // avoid interval less than or equal to zero
+      this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
       return this;
     }
 

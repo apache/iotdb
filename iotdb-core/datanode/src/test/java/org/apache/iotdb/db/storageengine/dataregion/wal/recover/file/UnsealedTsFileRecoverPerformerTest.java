@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,7 +42,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
@@ -79,8 +79,10 @@ public class UnsealedTsFileRecoverPerformerTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
-  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
-  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE1_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d2"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
@@ -182,7 +184,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId("0"),
-            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Collections.singletonList(new MeasurementPath(DEVICE2_NAME, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     int fakeMemTableId = 1;

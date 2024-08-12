@@ -75,10 +75,11 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("AlterConsumerGroupProcedure: executeFromValidate, try to validate");
 
     validateAndGetOldAndNewMeta(env);
+    return true;
   }
 
   protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {

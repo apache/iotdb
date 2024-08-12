@@ -336,6 +336,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    setProperty("wal_buffer_size_in_byte", String.valueOf(walBufferSize));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
     return this;

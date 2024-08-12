@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -44,7 +44,8 @@ public class BindTypeForTimeSeriesOperandVisitor extends ReconstructVisitor<List
         try {
           return reconstructTimeSeriesOperand(
               predicate,
-              new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
+              new PartialPath(columnHeader.getColumnName()),
+              columnHeader.getColumnType());
         } catch (IllegalPathException e) {
           throw new SemanticException(e);
         }

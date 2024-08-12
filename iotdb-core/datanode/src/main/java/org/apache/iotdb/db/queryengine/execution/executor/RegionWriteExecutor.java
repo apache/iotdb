@@ -41,17 +41,17 @@ import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -205,6 +206,12 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitInsertTablet(
         InsertTabletNode node, WritePlanNodeExecutionContext context) {
+      return executeDataInsert(node, context);
+    }
+
+    @Override
+    public RegionExecutionResult visitRelationalInsertTablet(
+        RelationalInsertTabletNode node, WritePlanNodeExecutionContext context) {
       return executeDataInsert(node, context);
     }
 
@@ -611,13 +618,13 @@ public class RegionWriteExecutor {
     }
 
     private RegionExecutionResult executeInternalCreateMultiTimeSeries(
-        InternalCreateMultiTimeSeriesNode node,
-        WritePlanNodeExecutionContext context,
-        boolean receivedFromPipe) {
-      ISchemaRegion schemaRegion =
+        final InternalCreateMultiTimeSeriesNode node,
+        final WritePlanNodeExecutionContext context,
+        final boolean receivedFromPipe) {
+      final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result;
-      for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+      for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
           node.getDeviceMap().entrySet()) {
         result =
             checkQuotaBeforeCreatingTimeSeries(
@@ -629,41 +636,46 @@ public class RegionWriteExecutor {
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
-          List<TSStatus> failingStatus = new ArrayList<>();
-          List<TSStatus> alreadyExistingStatus = new ArrayList<>();
+          final List<TSStatus> failingStatus = new ArrayList<>();
+          final List<TSStatus> alreadyExistingStatus = new ArrayList<>();
 
-          MeasurementGroup measurementGroup;
-          Map<Integer, MetadataException> failingMeasurementMap;
-          MetadataException metadataException;
-          for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
-              node.getDeviceMap().entrySet()) {
-            measurementGroup = deviceEntry.getValue().right;
-            failingMeasurementMap =
-                schemaRegion.checkMeasurementExistence(
-                    deviceEntry.getKey(),
-                    measurementGroup.getMeasurements(),
-                    measurementGroup.getAliasList());
-            // filter failed measurement and keep the rest for execution
-            for (Map.Entry<Integer, MetadataException> failingMeasurement :
-                failingMeasurementMap.entrySet()) {
-              metadataException = failingMeasurement.getValue();
-              if (metadataException.getErrorCode()
-                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                // There's no need to internal create timeseries.
-                alreadyExistingStatus.add(
-                    RpcUtils.getStatus(
-                        metadataException.getErrorCode(),
-                        MeasurementPath.transformDataToString(
-                            ((MeasurementAlreadyExistException) metadataException)
-                                .getMeasurementPath())));
-              } else {
-                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
-                failingStatus.add(
-                    RpcUtils.getStatus(
-                        metadataException.getErrorCode(), metadataException.getMessage()));
+          // Do not filter measurements if the node is generated by pipe
+          // Because pipe may use the InternalCreateMultiTimeSeriesNode to transfer historical data
+          // And the alias/tags/attributes may need to be updated for existing time series
+          if (!receivedFromPipe) {
+            MeasurementGroup measurementGroup;
+            Map<Integer, MetadataException> failingMeasurementMap;
+            MetadataException metadataException;
+            for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+                node.getDeviceMap().entrySet()) {
+              measurementGroup = deviceEntry.getValue().right;
+              failingMeasurementMap =
+                  schemaRegion.checkMeasurementExistence(
+                      deviceEntry.getKey(),
+                      measurementGroup.getMeasurements(),
+                      measurementGroup.getAliasList());
+              // filter failed measurement and keep the rest for execution
+              for (final Map.Entry<Integer, MetadataException> failingMeasurement :
+                  failingMeasurementMap.entrySet()) {
+                metadataException = failingMeasurement.getValue();
+                if (metadataException.getErrorCode()
+                    == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                  // There's no need to internal create time series.
+                  alreadyExistingStatus.add(
+                      RpcUtils.getStatus(
+                          metadataException.getErrorCode(),
+                          MeasurementPath.transformDataToString(
+                              ((MeasurementAlreadyExistException) metadataException)
+                                  .getMeasurementPath())));
+                } else {
+                  LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+                  failingStatus.add(
+                      RpcUtils.getStatus(
+                          metadataException.getErrorCode(), metadataException.getMessage()));
+                }
               }
+              measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
             }
-            measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
           }
 
           return processExecutionResultOfInternalCreateSchema(

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -51,10 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -91,7 +90,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public boolean takeSnapshot(File snapshotDir) {
     try {
-      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      SnapshotTaker snapshotTaker = new SnapshotTaker(region);
+      snapshotTaker.cleanSnapshot();
+      return snapshotTaker.takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
@@ -117,6 +118,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
           e);
       return false;
     }
+  }
+
+  @Override
+  public boolean clearSnapshot() {
+    return SnapshotTaker.clearSnapshotOfDataRegion(region);
   }
 
   @Override
@@ -148,9 +154,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
     for (IConsensusRequest req : indexedRequest.getRequests()) {
       // PlanNode in IndexedConsensusRequest should always be InsertNode
       PlanNode planNode = getPlanNode(req);
+      if (planNode instanceof SearchNode) {
+        ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
+      }
       if (planNode instanceof InsertNode) {
         InsertNode innerNode = (InsertNode) planNode;
-        innerNode.setSearchIndex(indexedRequest.getSearchIndex());
         insertNodes.add(innerNode);
       } else if (indexedRequest.getRequests().size() == 1) {
         // If the planNode is not InsertNode, it is expected that the IndexedConsensusRequest only
@@ -186,6 +194,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     List<Integer> index = new ArrayList<>();
     int i = 0;
     switch (insertNodes.get(0).getType()) {
+      case RELATIONAL_INSERT_TABLET:
       case INSERT_TABLET:
         // merge to InsertMultiTabletsNode
         List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
@@ -230,13 +239,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+          .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",

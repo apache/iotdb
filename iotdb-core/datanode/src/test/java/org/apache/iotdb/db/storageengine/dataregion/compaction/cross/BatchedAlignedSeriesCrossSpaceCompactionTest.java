@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -180,7 +180,7 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
 
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "*"), Long.MAX_VALUE, 200000));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "*"), Long.MAX_VALUE, 200000));
     seqResource1.getModFile().close();
     seqResources.add(seqResource1);
 
@@ -344,10 +344,10 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             true);
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s0"), Long.MAX_VALUE, 15));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s0"), Long.MAX_VALUE, 15));
     seqResource1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 20));
+        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 20));
     seqResource1.getModFile().close();
     seqResources.add(seqResource1);
 

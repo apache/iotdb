@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -74,6 +75,18 @@ public class PipeTaskCoordinator {
   }
 
   /**
+   * Lock the pipe task coordinator.
+   *
+   * @return the {@link PipeTaskInfo} holder, which can be used to get the {@link PipeTaskInfo}.
+   *     Wait until lock is acquired
+   */
+  public AtomicReference<PipeTaskInfo> lock() {
+    pipeTaskCoordinatorLock.lock();
+    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
+    return pipeTaskInfoHolder;
+  }
+
+  /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
    *
@@ -100,7 +113,7 @@ public class PipeTaskCoordinator {
     return pipeTaskCoordinatorLock.isLocked();
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
     final TSStatus status = configManager.getProcedureManager().createPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -109,7 +122,7 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -118,7 +131,7 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -127,7 +140,7 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
@@ -147,14 +160,20 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
-  public TSStatus dropPipe(String pipeName) {
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
+  public TSStatus dropPipe(TDropPipeReq req) {
+    final String pipeName = req.getPipeName();
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
-    return isPipeExistedBeforeDrop
+
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    // If the `IF EXISTS` condition is not set and the pipe does not exist before the delete
+    // operation, return an error status indicating that the pipe does not exist.
+    return isPipeExistedBeforeDrop || isSetIfExistsCondition
         ? status
         : RpcUtils.getStatus(
             TSStatusCode.PIPE_NOT_EXIST_ERROR,

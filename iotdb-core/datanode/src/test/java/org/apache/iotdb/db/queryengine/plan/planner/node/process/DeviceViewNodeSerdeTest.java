@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -52,8 +53,10 @@ public class DeviceViewNodeSerdeTest {
                     new SortItem(OrderByKey.TIME, Ordering.DESC))),
             Arrays.asList("s1", "s2"),
             new HashMap<>());
-    deviceViewNode.addChildDeviceNode("root.sg.d1", fullOuterTimeJoinNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", fullOuterTimeJoinNode2);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), fullOuterTimeJoinNode1);
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), fullOuterTimeJoinNode2);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deviceViewNode.serialize(byteBuffer);

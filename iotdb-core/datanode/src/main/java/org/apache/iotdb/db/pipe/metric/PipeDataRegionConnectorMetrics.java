@@ -43,6 +43,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataRegionConnectorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeConnectorSubtask> connectorMap = new HashMap<>();

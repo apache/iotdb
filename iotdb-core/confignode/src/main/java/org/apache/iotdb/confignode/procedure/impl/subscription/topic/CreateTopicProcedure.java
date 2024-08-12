@@ -20,9 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -68,27 +66,27 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateTopicProcedure: executeFromValidate");
 
     // 1. check if the topic exists
-    subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq);
+    if (!subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq)) {
+      return false;
+    }
 
     // 2. create the topic meta
     topicMeta =
         new TopicMeta(
             createTopicReq.getTopicName(),
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                System.currentTimeMillis(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            System.currentTimeMillis(),
             createTopicReq.getTopicAttributes());
+    return true;
   }
 
   @Override
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info(
-        "CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta);
 
     TSStatus response;
     try {
@@ -109,8 +107,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info(
-        "CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta);
 
     try {
       final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
@@ -130,13 +127,12 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateTopicProcedure: rollbackFromValidate({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: rollbackFromValidate({})", topicMeta);
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
-        "CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta);
 
     TSStatus response;
     try {
@@ -159,8 +155,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
-        "CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta);
 
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()

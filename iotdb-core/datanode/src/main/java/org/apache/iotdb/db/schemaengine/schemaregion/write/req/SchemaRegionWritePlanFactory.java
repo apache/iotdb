@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.write.req;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
@@ -57,7 +58,7 @@ public class SchemaRegionWritePlanFactory {
 
   private SchemaRegionWritePlanFactory() {}
 
-  public static ISchemaRegionPlan getEmptyPlan(SchemaRegionPlanType planType) {
+  public static ISchemaRegionPlan getEmptyPlan(final SchemaRegionPlanType planType) {
     switch (planType) {
       case CREATE_TIMESERIES:
         return new CreateTimeSeriesPlanImpl();
@@ -114,7 +115,7 @@ public class SchemaRegionWritePlanFactory {
   }
 
   public static ICreateTimeSeriesPlan getCreateTimeSeriesPlan(
-      PartialPath path,
+      MeasurementPath path,
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressor,
