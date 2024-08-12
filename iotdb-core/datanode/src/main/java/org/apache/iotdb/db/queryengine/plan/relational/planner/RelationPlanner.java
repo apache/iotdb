@@ -447,6 +447,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         && ((ComparisonExpression) conjunct).getOperator() == ComparisonExpression.Operator.EQUAL;
   }
 
+  @Override
+  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
+    RelationPlan subPlan = process(node.getRelation(), context);
+
+    PlanNode root = subPlan.getRoot();
+    List<Symbol> mappings = subPlan.getFieldMappings();
+
+    if (node.getColumnNames() != null) {
+      ImmutableList.Builder<Symbol> newMappings = ImmutableList.builder();
+
+      // Adjust the mappings to expose only the columns visible in the scope of the aliased relation
+      for (int i = 0; i < subPlan.getDescriptor().getAllFieldCount(); i++) {
+        if (!subPlan.getDescriptor().getFieldByIndex(i).isHidden()) {
+          newMappings.add(subPlan.getFieldMappings().get(i));
+        }
+      }
+
+      mappings = newMappings.build();
+    }
+
+    return new RelationPlan(root, analysis.getScope(node), mappings);
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -457,11 +480,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
     throw new IllegalStateException("SubqueryExpression is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
-    throw new IllegalStateException("AliasedRelation is not supported in current version.");
   }
 
   @Override
