@@ -37,7 +37,7 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
@@ -109,7 +109,9 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(seqResource1.getTsFile().getAbsolutePath())) {
       AlignedChunkMetadata alignedChunkMetadata =
-          reader.getAlignedChunkMetadata(new PlainDeviceID("root.testsg.d0")).get(0);
+          reader
+              .getAlignedChunkMetadata(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"))
+              .get(0);
       ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       List<IChunkMetadata> valueChunkMetadataList =
           alignedChunkMetadata.getValueChunkMetadataList();

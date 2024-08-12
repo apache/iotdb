@@ -40,7 +40,6 @@ import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -279,7 +278,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
                         }
                       });
               try {
-                IDeviceID deviceID = new PlainDeviceID(alignedChunkData.getDevice());
+                IDeviceID deviceID =
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(alignedChunkData.getDevice());
                 if (!deviceID.equals(writer.currentDevice)) {
                   if (writer.currentDevice != null) {
                     writer.endChunkGroup();
