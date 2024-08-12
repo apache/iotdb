@@ -854,7 +854,7 @@ public class AnalyzerTest {
   public void limitEliminationTest() {
     sql = "SELECT s1+s3 FROM table1 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -887,7 +887,7 @@ public class AnalyzerTest {
 
     sql = "SELECT s1,s1+s3 FROM table1 where tag1='beijing' and tag2='A1' limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -910,7 +910,7 @@ public class AnalyzerTest {
 
     sql = "SELECT diff(s1) FROM table1 where tag1='beijing' and tag2='A1' limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
