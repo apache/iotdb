@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -417,6 +418,27 @@ public final class ExpressionTreeRewriter<C> {
       if (!sameElements(node.getArguments(), arguments)) {
         return new FunctionCall(node.getName(), arguments);
       }
+      return node;
+    }
+
+    @Override
+    public Expression visitDereferenceExpression(DereferenceExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteDereferenceExpression(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression base = rewrite(node.getBase(), context.get());
+      if (base != node.getBase()) {
+        if (node.getField().isPresent()) {
+          return new DereferenceExpression(base, node.getField().get());
+        }
+        return new DereferenceExpression((Identifier) base);
+      }
+
       return node;
     }
 
