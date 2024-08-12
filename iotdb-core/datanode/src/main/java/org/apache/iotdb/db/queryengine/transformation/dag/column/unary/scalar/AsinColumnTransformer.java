@@ -19,39 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
-public class AsinColumnTransformer extends UnaryColumnTransformer{
-    public AsinColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
-        super(returnType, childColumnTransformer);
-    }
+public class AsinColumnTransformer extends UnaryColumnTransformer {
+  public AsinColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+    super(returnType, childColumnTransformer);
+  }
 
-    @Override
-    protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-        for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-            if (!column.isNull(i)) {
-                if(TSDataType.DOUBLE.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.asin(column.getDouble(i)));
-                }
-                else if(TSDataType.FLOAT.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.asin(column.getFloat(i)));
-                }
-                else if(TSDataType.INT32.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.asin(column.getInt(i)));
-                }
-                else if(TSDataType.INT64.equals(column.getDataType()) || TSDataType.TIMESTAMP.equals(column.getDataType())){
-                    columnBuilder.writeDouble(Math.asin((double) column.getLong(i)));
-                }
-            } else {
-                columnBuilder.appendNull();
-            }
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.asin(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.asin(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.asin(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())
+            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.asin((double) column.getLong(i)));
         }
+      } else {
+        columnBuilder.appendNull();
+      }
     }
-
-
+  }
 }

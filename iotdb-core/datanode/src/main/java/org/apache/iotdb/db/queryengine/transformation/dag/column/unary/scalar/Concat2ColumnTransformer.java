@@ -30,25 +30,27 @@ import org.apache.tsfile.utils.BytesUtils;
 
 public class Concat2ColumnTransformer extends BinaryColumnTransformer {
 
-    public Concat2ColumnTransformer(Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
-        super(returnType, leftTransformer, rightTransformer);
-    }
+  public Concat2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
+  }
 
-    @Override
-    protected void checkType() {
-        // do nothing
-    }
+  @Override
+  protected void checkType() {
+    // do nothing
+  }
 
-    @Override
-    protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
-        for (int i = 0; i < positionCount; i++) {
-            if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-                String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeBinary(BytesUtils.valueOf(leftValue.concat(rightValue)));
-            } else {
-                columnBuilder.appendNull();
-            }
-        }
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(leftValue.concat(rightValue)));
+      } else {
+        columnBuilder.appendNull();
+      }
     }
+  }
 }

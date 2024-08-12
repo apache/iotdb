@@ -21,29 +21,30 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
 public class StartsWithColumnTransformer extends UnaryColumnTransformer {
-    private final String prefix;
+  private final String prefix;
 
-    public StartsWithColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer, String prefix) {
-        super(returnType, childColumnTransformer);
-        this.prefix = prefix;
-    }
+  public StartsWithColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, String prefix) {
+    super(returnType, childColumnTransformer);
+    this.prefix = prefix;
+  }
 
-    @Override
-    protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-        for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-            if (!column.isNull(i)) {
-                String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeBoolean(currentValue.startsWith(prefix));
-            }
-            else {
-                columnBuilder.appendNull();
-            }
-        }
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
+        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBoolean(currentValue.startsWith(prefix));
+      } else {
+        columnBuilder.appendNull();
+      }
     }
+  }
 }

@@ -28,25 +28,27 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
 public class Strcmp2ColumnTransformer extends BinaryColumnTransformer {
-    public Strcmp2ColumnTransformer(Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
-        super(returnType, leftTransformer, rightTransformer);
-    }
+  public Strcmp2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
+  }
 
-    @Override
-    protected void checkType() {
-        // do nothing
-    }
+  @Override
+  protected void checkType() {
+    // do nothing
+  }
 
-    @Override
-    protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
-        for (int i = 0; i < positionCount; i++) {
-            if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-                String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-                columnBuilder.writeBoolean(leftValue.compareTo(rightValue)==0);
-            } else {
-                columnBuilder.appendNull();
-            }
-        }
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBoolean(leftValue.compareTo(rightValue) == 0);
+      } else {
+        columnBuilder.appendNull();
+      }
     }
+  }
 }

@@ -14,7 +14,6 @@ on:
       - master
       - 'rel/1.*'
       - pipe-meta-sync
-      - ty/TableModelGrammar
     paths-ignore:
       - 'docs/**'
       - 'site/**'
