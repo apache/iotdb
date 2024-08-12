@@ -148,44 +148,44 @@ public class TableMetadataImpl implements Metadata {
     // builtin scalar function
     if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes)
-              && !(argumentTypes.size() == 2
+          && !(argumentTypes.size() == 2
               && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       }
       return DOUBLE;
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
 
       if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only supports text or string data type.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only supports text or string data type.");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
               && isCharType(argumentTypes.get(0))
               && isIntegerNumber(argumentTypes.get(1)))
-              && !(argumentTypes.size() == 3
+          && !(argumentTypes.size() == 3
               && isCharType(argumentTypes.get(0))
               && isIntegerNumber(argumentTypes.get(1))
               && isIntegerNumber(argumentTypes.get(2)))) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
       return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -433,7 +433,6 @@ public class TableMetadataImpl implements Metadata {
       }
       return DOUBLE;
     }
-
 
     // builtin aggregation function
     // check argument type
