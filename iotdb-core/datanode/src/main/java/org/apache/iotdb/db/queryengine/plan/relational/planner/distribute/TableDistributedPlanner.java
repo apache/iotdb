@@ -30,19 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
-import com.google.common.collect.ImmutableSet;
-
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,13 +57,8 @@ public class TableDistributedPlanner {
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = mppQueryContext;
     this.optimizers =
-        Arrays.asList(
-            new IterativeOptimizer(
-                new PlannerContext(null, new InternalTypeManager()),
-                new RuleStatsRecorder(),
-                ImmutableSet.of(
-                    new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort())),
-            new SortElimination());
+        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
+            .getPlanOptimizers();
   }
 
   public DistributedQueryPlan plan() {
