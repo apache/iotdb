@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
 
+import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
+
 public class MemPageReaderTest {
 
   private static final TsBlock tsBlock;
@@ -110,7 +112,7 @@ public class MemPageReaderTest {
   public void testFilter() throws IOException {
     IPageReader pageReader = generatePageReader();
     pageReader.addRecordFilter(TimeFilterApi.gtEq(50));
-    pageReader.addRecordFilter(ValueFilterApi.lt(80));
+    pageReader.addRecordFilter(ValueFilterApi.lt(DEFAULT_MEASUREMENT_INDEX, 80, TSDataType.INT32));
 
     TsBlock tsBlock = pageReader.getAllSatisfiedData();
 
@@ -121,7 +123,7 @@ public class MemPageReaderTest {
   public void testFilterAndLimitOffset() throws IOException {
     IPageReader pageReader = generatePageReader();
     pageReader.addRecordFilter(TimeFilterApi.gtEq(50));
-    pageReader.addRecordFilter(ValueFilterApi.lt(80));
+    pageReader.addRecordFilter(ValueFilterApi.lt(DEFAULT_MEASUREMENT_INDEX, 80, TSDataType.INT32));
     pageReader.setLimitOffset(new PaginationController(10, 10));
 
     TsBlock tsBlock = pageReader.getAllSatisfiedData();

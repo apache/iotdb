@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -41,6 +42,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Verify.verify;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 
 /**
@@ -267,6 +269,36 @@ public class TranslationMap {
                     .map(TranslationMap.this::rewrite)
                     .collect(Collectors.toList());
             return new FunctionCall(node.getName(), node.isDistinct(), newArguments);
+          }
+
+          @Override
+          public Expression rewriteDereferenceExpression(
+              DereferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return coerceIfNecessary(node, mapped.get());
+            }
+
+            if (analysis.isColumnReference(node)) {
+              return coerceIfNecessary(
+                  node,
+                  getSymbolForColumn(node)
+                      .map(Symbol::toSymbolReference)
+                      .orElseThrow(
+                          () -> new IllegalStateException(format("No mapping for %s", node))));
+            } else {
+              throw new IllegalStateException("Subscript is not supported in current version");
+            }
+          }
+
+          private Expression coerceIfNecessary(Expression original, Expression rewritten) {
+            // Don't add a coercion for the top-level expression. That depends on the context the
+            // expression is used, and it's the responsibility of the caller.
+            if (original == expression) {
+              return rewritten;
+            }
+
+            return QueryPlanner.coerceIfNecessary(analysis, original, rewritten);
           }
 
           @Override
