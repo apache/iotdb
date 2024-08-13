@@ -165,6 +165,7 @@ struct TFragmentInstanceInfoResp {
   2: optional i64 endTime
   3: optional list<string> failedMessages
   4: optional list<binary> failureInfoList
+  5: optional common.TSStatus errorCode
 }
 
 struct TCancelQueryReq {
