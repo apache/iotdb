@@ -148,10 +148,8 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
               try {
                 List<Integer> results = consume_tsfile(consumer, devices);
                 System.out.println(results);
-                for (Integer result : results) {
-                  System.out.println("result:" + result);
-                  rowCount.addAndGet(result);
-                }
+                rowCount.addAndGet(results.get(0));
+                rowCount.addAndGet(results.get(1));
               } catch (InterruptedException e) {
                 throw new RuntimeException(e);
               }
