@@ -36,6 +36,7 @@ public abstract class AbstractQueryDevice extends Statement {
   private String database;
 
   private String tableName;
+
   // Temporary
   private QualifiedName name;
 
