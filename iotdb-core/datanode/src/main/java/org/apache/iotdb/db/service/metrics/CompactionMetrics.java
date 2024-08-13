@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -813,7 +813,7 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram settleCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
-  public void updateCompactionTaskSelectionNum(CompactionScheduleSummary summary) {
+  public void updateCompactionTaskSelectionNum(CompactionScheduleContext summary) {
     seqInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     unseqInnerSpaceCompactionTaskSelectedNum.set(
         summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
