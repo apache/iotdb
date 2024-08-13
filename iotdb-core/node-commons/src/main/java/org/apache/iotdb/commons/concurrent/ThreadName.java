@@ -170,7 +170,8 @@ public enum ThreadName {
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
-  ACTIVE_LOAD_TSFILE_SERVICE("Active-Load-TsFile-Service"),
+  ACTIVE_LOAD_TSFILE_LOADER("Active-Load-TsFile-Loader"),
+  ACTIVE_LOAD_DIR_SCANNER("Active-Load-Dir-Scanner"),
   SETTLE("Settle"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
@@ -354,7 +355,8 @@ public enum ThreadName {
   private static final Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
-              ACTIVE_LOAD_TSFILE_SERVICE,
+              ACTIVE_LOAD_TSFILE_LOADER,
+              ACTIVE_LOAD_DIR_SCANNER,
               SETTLE,
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,

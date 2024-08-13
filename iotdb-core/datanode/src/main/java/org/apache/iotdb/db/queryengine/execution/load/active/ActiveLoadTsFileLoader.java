@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load;
+package org.apache.iotdb.db.queryengine.execution.load.active;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -64,13 +63,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class ActiveLoadTsFileService {
+public class ActiveLoadTsFileLoader {
 
-  private final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadTsFileService.class);
+  private final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadTsFileLoader.class);
 
   private final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -91,17 +88,6 @@ public class ActiveLoadTsFileService {
   private final Set<String> waitingLoadTsFileQueue =
       Collections.synchronizedSet(new LinkedHashSet<>());
 
-  private final Lock lock = new ReentrantLock();
-
-  public void registerPeriodicalJob() {
-    LOGGER.info("register auto load tsfile successfully");
-    PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob(
-            "ActiveLoadTsFileService#loadTsFiles",
-            this::monitoringTsFile,
-            IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds());
-  }
-
   // enable file monitoring
   private void monitoringTsFile() {
     try {
@@ -115,7 +101,7 @@ public class ActiveLoadTsFileService {
           if (activeLoadTsFileExecutor.get() == null) {
             activeLoadTsFileExecutor.set(
                 (WrappedThreadPoolExecutor)
-                    newCachedThreadPool(ThreadName.ACTIVE_LOAD_TSFILE_SERVICE.name()));
+                    newCachedThreadPool(ThreadName.ACTIVE_LOAD_TSFILE_LOADER.name()));
           }
         }
       }
@@ -321,17 +307,12 @@ public class ActiveLoadTsFileService {
   }
 
   // take an element from a set and remove
-  private String getAndRemovePathWithLock() {
+  private synchronized String getAndRemovePathWithLock() {
     String absolutePath = "";
     // take an element from a set and remove
-    try {
-      lock.lock();
-      if (waitingLoadTsFileQueue.iterator().hasNext()) {
-        absolutePath = waitingLoadTsFileQueue.iterator().next();
-        waitingLoadTsFileQueue.remove(absolutePath);
-      }
-    } finally {
-      lock.unlock();
+    if (waitingLoadTsFileQueue.iterator().hasNext()) {
+      absolutePath = waitingLoadTsFileQueue.iterator().next();
+      waitingLoadTsFileQueue.remove(absolutePath);
     }
     return absolutePath;
   }

@@ -51,7 +51,7 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.queryengine.execution.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
