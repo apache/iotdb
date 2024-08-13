@@ -38,6 +38,8 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
+
 public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   private SeriesScanUtil getSeriesScanUtil(Filter globalTimeFilter, Filter pushDownFilter)
@@ -155,7 +157,10 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   @Test
   public void testSkipFileByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(10));
+    SeriesScanUtil seriesScanUtil =
+        getSeriesScanUtil(
+            TimeFilterApi.gt(0),
+            ValueFilterApi.gtEq(DEFAULT_MEASUREMENT_INDEX, 10, TSDataType.INT32));
     checkFile1Skipped(seriesScanUtil);
   }
 
@@ -184,7 +189,10 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   @Test
   public void testSkipChunkByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(20));
+    SeriesScanUtil seriesScanUtil =
+        getSeriesScanUtil(
+            TimeFilterApi.gt(0),
+            ValueFilterApi.gtEq(DEFAULT_MEASUREMENT_INDEX, 20, TSDataType.INT32));
     checkFile2Chunk1Skipped(seriesScanUtil);
   }
 
@@ -223,7 +231,10 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   @Test
   public void testSkipPageByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(40));
+    SeriesScanUtil seriesScanUtil =
+        getSeriesScanUtil(
+            TimeFilterApi.gt(0),
+            ValueFilterApi.gtEq(DEFAULT_MEASUREMENT_INDEX, 40, TSDataType.INT32));
     checkFile1AndFile2Skipped(seriesScanUtil);
 
     // File 3 - Chunk 1 - Page 1 skipped
@@ -261,7 +272,10 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   @Test
   public void testSkipMergeReaderPointByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(55));
+    SeriesScanUtil seriesScanUtil =
+        getSeriesScanUtil(
+            TimeFilterApi.gt(0),
+            ValueFilterApi.gtEq(DEFAULT_MEASUREMENT_INDEX, 55, TSDataType.INT32));
     checkFile1AndFile2AndMergeReaderPointSkipped(seriesScanUtil);
   }
 
@@ -307,7 +321,10 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   @Test
   public void testSkipMergeReaderByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(60));
+    SeriesScanUtil seriesScanUtil =
+        getSeriesScanUtil(
+            TimeFilterApi.gt(0),
+            ValueFilterApi.gtEq(DEFAULT_MEASUREMENT_INDEX, 60, TSDataType.INT32));
 
     checkFile1AndFile2AndFile3Chunk1Skipped(seriesScanUtil);
 
