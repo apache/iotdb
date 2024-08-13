@@ -9,6 +9,7 @@ on:
       - master
       - 'rel/*'
       - pipe-meta-sync
+      - "rc/*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -17,6 +18,7 @@ on:
       - master
       - 'rel/*'
       - pipe-meta-sync
+      - "rc/*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
