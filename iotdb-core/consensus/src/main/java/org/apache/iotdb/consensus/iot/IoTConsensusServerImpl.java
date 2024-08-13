@@ -622,12 +622,12 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean hasPipeReleaseRegionRelatedResource() {
-    // TODO: implement the method to check whether the user pipe allows removing peer
+    // TODO: implement the method to check whether the user pipe has released all resources related
     return true;
   }
 
   public boolean hasReleaseAllRegionRelatedResource() {
-    // check all the resources related to the region, now we only check pipe
+    // Release all resources related to the region. Currently, we only check pipe related resources
     boolean allowRemovePeer = true;
     allowRemovePeer &= hasPipeReleaseRegionRelatedResource();
     return allowRemovePeer;
