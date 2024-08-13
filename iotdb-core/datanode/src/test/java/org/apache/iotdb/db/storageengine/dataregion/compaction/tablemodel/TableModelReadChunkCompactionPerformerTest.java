@@ -166,8 +166,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      TableSchema tableSchema = tsFileMetadata.getTableSchemaMap().get("root.testsg");
-      Assert.assertEquals(3, tableSchema.getColumnTypes().size());
+      Assert.assertTrue(tsFileMetadata.getTableSchemaMap().isEmpty());
       Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
       for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
@@ -215,7 +214,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 
@@ -323,7 +322,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(3, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 }

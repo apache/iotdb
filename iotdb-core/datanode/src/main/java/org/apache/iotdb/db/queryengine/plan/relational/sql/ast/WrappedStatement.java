@@ -29,7 +29,7 @@ public abstract class WrappedStatement extends Statement {
   protected org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
   protected MPPQueryContext context;
 
-  public WrappedStatement(
+  protected WrappedStatement(
       org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement,
       MPPQueryContext context) {
     super(null);

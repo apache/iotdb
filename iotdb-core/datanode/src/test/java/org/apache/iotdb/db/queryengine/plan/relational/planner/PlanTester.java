@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -113,17 +114,24 @@ public class PlanTester {
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
-    return analyzeStatement(statement, metadata, sqlParser, session);
+    final MPPQueryContext context =
+        new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
+    return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 
   public static Analysis analyzeStatement(
-      Statement statement, Metadata metadata, SqlParser sqlParser, SessionInfo session) {
+      Statement statement,
+      Metadata metadata,
+      MPPQueryContext context,
+      SqlParser sqlParser,
+      SessionInfo session) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, new NopAccessControl());
 
       Analyzer analyzer =
           new Analyzer(
+              context,
               session,
               statementAnalyzerFactory,
               Collections.emptyList(),

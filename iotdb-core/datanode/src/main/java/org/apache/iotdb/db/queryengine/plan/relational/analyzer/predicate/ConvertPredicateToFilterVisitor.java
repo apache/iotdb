@@ -43,13 +43,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
-import org.apache.tsfile.read.filter.operator.ValueFilterOperators;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -102,11 +103,13 @@ public class ConvertPredicateToFilterVisitor
         context);
   }
 
-  private <T extends Comparable<T>> ValueFilterOperators.ValueIn<T> constructInFilter(
+  private <T extends Comparable<T>> Filter constructInFilter(
       SymbolReference operand, List<Literal> values, Context context) {
     int measurementIndex = context.getMeasurementIndex((operand).getName());
-    Set<T> inSet = constructInSet(values, context.getType(Symbol.from(operand)));
-    return ValueFilterApi.in(measurementIndex, inSet);
+    Type type = context.getType(Symbol.from(operand));
+    TSDataType dataType = InternalTypeManager.getTSDataType(type);
+    Set<T> inSet = constructInSet(values, type);
+    return ValueFilterApi.in(measurementIndex, inSet, dataType);
   }
 
   private <T extends Comparable<T>> Set<T> constructInSet(List<Literal> literals, Type dataType) {
@@ -130,22 +133,22 @@ public class ConvertPredicateToFilterVisitor
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
     Type type = context.getType(Symbol.from(symbolReference));
-
     T value = getValue(literal, type);
+    TSDataType dataType = InternalTypeManager.getTSDataType(type);
 
     switch (operator) {
       case EQUAL:
-        return ValueFilterApi.eq(measurementIndex, value);
+        return ValueFilterApi.eq(measurementIndex, value, dataType);
       case NOT_EQUAL:
-        return ValueFilterApi.notEq(measurementIndex, value);
+        return ValueFilterApi.notEq(measurementIndex, value, dataType);
       case GREATER_THAN:
-        return ValueFilterApi.gt(measurementIndex, value);
+        return ValueFilterApi.gt(measurementIndex, value, dataType);
       case GREATER_THAN_OR_EQUAL:
-        return ValueFilterApi.gtEq(measurementIndex, value);
+        return ValueFilterApi.gtEq(measurementIndex, value, dataType);
       case LESS_THAN:
-        return ValueFilterApi.lt(measurementIndex, value);
+        return ValueFilterApi.lt(measurementIndex, value, dataType);
       case LESS_THAN_OR_EQUAL:
-        return ValueFilterApi.ltEq(measurementIndex, value);
+        return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new IllegalArgumentException(
             String.format("Unsupported comparison operator %s", operator));
@@ -205,7 +208,9 @@ public class ConvertPredicateToFilterVisitor
     checkArgument(context.isMeasurementColumn(operand));
     int measurementIndex = context.getMeasurementIndex(operand.getName());
     Expression pattern = node.getPattern();
-    return ValueFilterApi.like(measurementIndex, getStringValue(pattern));
+    Type type = context.getType(Symbol.from(operand));
+    TSDataType dataType = InternalTypeManager.getTSDataType(type);
+    return ValueFilterApi.like(measurementIndex, getStringValue(pattern), dataType);
   }
 
   @Override
@@ -317,17 +322,17 @@ public class ConvertPredicateToFilterVisitor
       Expression maxValue,
       ConvertPredicateToFilterVisitor.Context context) {
     int measurementIndex = context.getMeasurementIndex(measurementReference.getName());
-    Type dataType = context.getType(Symbol.from(measurementReference));
-
+    Type type = context.getType(Symbol.from(measurementReference));
+    TSDataType dataType = InternalTypeManager.getTSDataType(type);
     checkArgument(isLiteral(minValue) && isLiteral(maxValue));
 
-    T min = getValue((Literal) minValue, dataType);
-    T max = getValue((Literal) maxValue, dataType);
+    T min = getValue((Literal) minValue, type);
+    T max = getValue((Literal) maxValue, type);
 
     if (min.compareTo(max) == 0) {
-      return ValueFilterApi.eq(measurementIndex, min);
+      return ValueFilterApi.eq(measurementIndex, min, dataType);
     }
-    return ValueFilterApi.between(measurementIndex, min, max);
+    return ValueFilterApi.between(measurementIndex, min, max, dataType);
   }
 
   public static double getDoubleValue(Expression expression) {
