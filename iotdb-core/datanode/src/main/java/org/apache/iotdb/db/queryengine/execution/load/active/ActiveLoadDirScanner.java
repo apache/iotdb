@@ -76,7 +76,8 @@ public class ActiveLoadDirScanner {
               MIN_SCAN_INTERVAL_SECONDS,
               MIN_SCAN_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("Active load dir scanner started.");
+      LOGGER.info(
+          "Active load dir scanner started. Scan interval: {}s.", MIN_SCAN_INTERVAL_SECONDS);
     }
   }
 
