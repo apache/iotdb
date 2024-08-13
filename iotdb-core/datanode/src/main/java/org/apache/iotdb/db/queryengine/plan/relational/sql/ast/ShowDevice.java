@@ -28,8 +28,8 @@ import java.util.List;
 public class ShowDevice extends AbstractQueryDevice {
 
   // For sql-input show device usage
-  public ShowDevice(final String tableName, final Expression rawExpression) {
-    super(tableName, rawExpression);
+  public ShowDevice(final QualifiedName name, final Expression rawExpression) {
+    super(name, rawExpression);
   }
 
   // For device fetch serving data query
