@@ -172,10 +172,14 @@ public class TableDeviceSchemaFetcher {
       final MPPQueryContext queryContext) {
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
     final ShowDevice statement = new ShowDevice(table, null);
+    final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
+    if (tableInstance == null) {
+      throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
+    }
 
     if (parseFilter4TraverseDevice(
         database,
-        table,
+        tableInstance,
         expressionList,
         statement,
         deviceEntryList,
@@ -194,18 +198,15 @@ public class TableDeviceSchemaFetcher {
 
   // Used by show/count device and update device.
   // Update device will not access cache
-  public static boolean parseFilter4TraverseDevice(
+  public boolean parseFilter4TraverseDevice(
       final String database,
-      final String table,
+      final TsTable tableInstance,
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
       final List<DeviceEntry> deviceEntryList,
       final @Nullable List<String> attributeColumns,
       final @Nullable MPPQueryContext queryContext) {
-    final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
-    if (tableInstance == null) {
-      throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
-    }
+
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(
             expressionList, tableInstance, queryContext);
