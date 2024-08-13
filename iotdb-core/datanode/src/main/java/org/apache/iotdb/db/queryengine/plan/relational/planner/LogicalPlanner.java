@@ -15,11 +15,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -263,7 +260,8 @@ public class LogicalPlanner {
   }
 
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
-    final String database = planQueryDevice(statement, analysis);
+    planQueryDevice(statement, analysis);
+    final String database = statement.getDatabase();
     List<ColumnHeader> columnHeaderList = null;
     if (!analysis.isFailed()) {
       columnHeaderList = getColumnHeaderList(database, statement.getTableName());
@@ -287,7 +285,8 @@ public class LogicalPlanner {
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
-    final String database = planQueryDevice(statement, analysis);
+    planQueryDevice(statement, analysis);
+    final String database = statement.getDatabase();
     final List<ColumnHeader> columnHeaderList =
         Collections.singletonList(new ColumnHeader("count(devices)", TSDataType.INT64));
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
@@ -308,15 +307,8 @@ public class LogicalPlanner {
     return countMergeNode;
   }
 
-  private String planQueryDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
-    final String database =
-        Objects.isNull(statement.getDatabase())
-            ? analysis.getDatabaseName()
-            : statement.getDatabase();
-
-    if (Objects.isNull(database)) {
-      throw new SemanticException("The database must be set before show devices.");
-    }
+  private void planQueryDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
+    final String database = statement.getDatabase();
 
     final SchemaPartition schemaPartition =
         statement.isIdDetermined()
@@ -327,22 +319,6 @@ public class LogicalPlanner {
     if (schemaPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
     }
-
-    if (Objects.isNull(
-        DataNodeTableCache.getInstance().getTable(database, statement.getTableName()))) {
-      throw new SemanticException(
-          String.format("Table '%s.%s' does not exist.", database, statement.getTableName()));
-    }
-    return database;
-  }
-
-  private List<String> getAttributeList(final TsTable table) {
-    return table.getColumnList().stream()
-        .filter(
-            columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-        .map(TsTableColumnSchema::getColumnName)
-        .collect(Collectors.toList());
   }
 
   private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {

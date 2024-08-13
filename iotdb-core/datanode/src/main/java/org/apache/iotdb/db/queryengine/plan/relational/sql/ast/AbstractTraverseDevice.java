@@ -77,11 +77,14 @@ public abstract class AbstractTraverseDevice extends Statement {
     return tableName;
   }
 
-  public void parseRawExpression(final TsTable tableInstance, final MPPQueryContext context) {
+  public boolean parseRawExpression(
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
     final List<DeviceEntry> entries = new ArrayList<>();
     rawExpression =
         ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(rawExpression);
-    TableDeviceSchemaFetcher.getInstance()
+    return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
             database,
             tableInstance,
@@ -92,7 +95,7 @@ public abstract class AbstractTraverseDevice extends Statement {
                 : Collections.singletonList(rawExpression),
             this,
             entries,
-            null,
+            attributeColumns,
             context);
   }
 
