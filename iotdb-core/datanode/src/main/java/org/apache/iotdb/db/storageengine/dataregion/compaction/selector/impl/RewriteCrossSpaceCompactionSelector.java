@@ -350,8 +350,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     // CrossCompactionTaskResources in this method.
     // Add read lock for candidate source files to avoid being deleted during the selection.
     CrossSpaceCompactionCandidate candidate =
-        new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
-    candidate.setContext(context);
+        new CrossSpaceCompactionCandidate(
+            sequenceFileList, unsequenceFileList, ttlLowerBound, context);
     try {
       CrossCompactionTaskResource taskResources;
       if (isInsertionTask) {

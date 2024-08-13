@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -43,26 +44,35 @@ public class CrossSpaceCompactionCandidate {
   private long ttlLowerBound = Long.MIN_VALUE;
   private CompactionScheduleContext context = null;
 
+  @TestOnly
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    init(seqFiles, unseqFiles);
+    init(seqFiles, unseqFiles, null);
   }
 
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
-    this.ttlLowerBound = ttlLowerBound;
-    init(seqFiles, unseqFiles);
+    this(seqFiles, unseqFiles, ttlLowerBound, null);
   }
 
-  private void init(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public CrossSpaceCompactionCandidate(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      long ttlLowerBound,
+      CompactionScheduleContext context) {
+    this.ttlLowerBound = ttlLowerBound;
+    init(seqFiles, unseqFiles, context);
+  }
+
+  private void init(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      CompactionScheduleContext context) {
+    this.context = context;
     this.seqFiles = copySeqResource(seqFiles);
     // it is necessary that unseqFiles are all available
     this.unseqFiles = filterUnseqResource(unseqFiles);
     this.nextUnseqFileIndex = 0;
-  }
-
-  public void setContext(CompactionScheduleContext context) {
-    this.context = context;
   }
 
   public boolean hasNextSplit() throws IOException {

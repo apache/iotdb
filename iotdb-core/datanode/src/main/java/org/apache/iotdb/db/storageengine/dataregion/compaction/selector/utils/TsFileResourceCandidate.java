@@ -49,7 +49,8 @@ public class TsFileResourceCandidate {
   private boolean hasDetailedDeviceInfo;
   private CompactionScheduleContext compactionScheduleContext;
 
-  protected TsFileResourceCandidate(TsFileResource tsFileResource) {
+  protected TsFileResourceCandidate(
+      TsFileResource tsFileResource, CompactionScheduleContext context) {
     this.resource = tsFileResource;
     this.selected = false;
     // although we do the judgement here, the task should be validated before executing because
@@ -57,12 +58,6 @@ public class TsFileResourceCandidate {
     this.isValidCandidate =
         tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
             && tsFileResource.getTsFileRepairStatus() == TsFileRepairStatus.NORMAL;
-    this.compactionScheduleContext = null;
-  }
-
-  protected TsFileResourceCandidate(
-      TsFileResource tsFileResource, CompactionScheduleContext context) {
-    this(tsFileResource);
     this.compactionScheduleContext = context;
   }
 
