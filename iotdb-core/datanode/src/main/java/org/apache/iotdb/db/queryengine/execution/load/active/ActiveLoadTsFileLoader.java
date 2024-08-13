@@ -38,7 +38,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -294,11 +293,16 @@ public class ActiveLoadTsFileLoader {
   }
 
   private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
-    final String sourceFileMD5 = DigestUtils.md5Hex(Files.newInputStream(sourceFile.toPath()));
-    final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
-    final String targetFileName =
-        sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + TsFileConstant.TSFILE_SUFFIX;
-    final File targetFile = new File(targetDir, targetFileName);
-    FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
+      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+
+      final String targetFileName =
+          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+      final File targetFile = new File(targetDir, targetFileName);
+
+      FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    }
   }
 }
