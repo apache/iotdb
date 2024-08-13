@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -87,5 +88,11 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     return getStatementMemorySource(header, lines);
+  }
+
+  @Override
+  public StatementMemorySource visitShowDevice(
+      final ShowDevice node, final TableModelStatementMemorySourceContext context) {
+    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
   }
 }

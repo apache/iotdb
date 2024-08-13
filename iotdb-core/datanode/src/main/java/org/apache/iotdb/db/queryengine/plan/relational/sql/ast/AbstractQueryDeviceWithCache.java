@@ -19,20 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
   // For query devices fully in cache
-  private ShowDevicesResult result;
+  private List<ShowDevicesResult> results = new ArrayList<>();
 
   private List<ColumnHeader> columnHeaderList;
 
@@ -40,12 +45,31 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(tableName, rawExpression);
   }
 
-  public void setResult(final ShowDevicesResult result) {
-    this.result = result;
+  public boolean parseRawExpression(
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
+    final List<DeviceEntry> entries = new ArrayList<>();
+    final boolean needFetch =
+        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+    if (needFetch) {
+      results =
+          entries.stream()
+              .map(
+                  deviceEntry ->
+                      ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
+                          deviceEntry, attributeColumns))
+              .collect(Collectors.toList());
+    }
+    return needFetch;
   }
 
   public void setColumnHeaderList(final List<ColumnHeader> columnHeaderList) {
     this.columnHeaderList = columnHeaderList;
+  }
+
+  public DatasetHeader getDataSetHeader() {
+    return new DatasetHeader(columnHeaderList, true);
   }
 
   public TsBlock getTsBlock() {
@@ -54,8 +78,10 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
             columnHeaderList.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList()));
-    TableDeviceQuerySource.transformToTsBlockColumns(
-        result, tsBlockBuilder, database, tableName, columnHeaderList);
+    results.forEach(
+        result ->
+            TableDeviceQuerySource.transformToTsBlockColumns(
+                result, tsBlockBuilder, database, tableName, columnHeaderList));
     return tsBlockBuilder.build();
   }
 }

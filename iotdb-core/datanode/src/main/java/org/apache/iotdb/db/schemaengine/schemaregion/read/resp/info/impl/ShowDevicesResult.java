@@ -78,7 +78,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return rawNodes == null ? super.getPartialPath() : new PartialPath(rawNodes);
   }
 
-  public final ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
+  public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
       final DeviceEntry entry, final List<String> attributeColumns) {
     final ShowDevicesResult result =
         new ShowDevicesResult(entry.getDeviceID().toString(), null, -1);

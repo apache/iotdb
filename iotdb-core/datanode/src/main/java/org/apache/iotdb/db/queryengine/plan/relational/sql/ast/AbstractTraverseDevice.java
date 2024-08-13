@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonP
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -78,10 +77,10 @@ public abstract class AbstractTraverseDevice extends Statement {
   }
 
   public boolean parseRawExpression(
+      final List<DeviceEntry> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    final List<DeviceEntry> entries = new ArrayList<>();
     rawExpression =
         ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(rawExpression);
     return TableDeviceSchemaFetcher.getInstance()
