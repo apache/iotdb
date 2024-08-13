@@ -102,11 +102,15 @@ public class FileTimeIndexCacheRecorder {
           () -> {
             try {
               writer.clearFile();
-              for (TsFileResource tsFileResource : sequenceFiles) {
-                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+              if (sequenceFiles != null) {
+                for (TsFileResource tsFileResource : sequenceFiles) {
+                  writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                }
               }
-              for (TsFileResource tsFileResource : unsequenceFiles) {
-                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+              if (unsequenceFiles != null) {
+                for (TsFileResource tsFileResource : unsequenceFiles) {
+                  writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                }
               }
             } catch (IOException e) {
               throw new RuntimeException(e);
