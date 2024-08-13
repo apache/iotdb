@@ -267,9 +267,13 @@ public class FragmentInstanceManager {
               } catch (Throwable t) {
                 clearFIRelatedResources(instanceId);
                 // deal with
-                if (t instanceof IllegalStateException && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
+                if (t instanceof IllegalStateException
+                    && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
                   logger.warn(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
-                  stateMachine.failed(new IoTDBException(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG, TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                  stateMachine.failed(
+                      new IoTDBException(
+                          TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
+                          TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
                 } else {
                   logger.warn("Execute error caused by ", t);
                   stateMachine.failed(t);
