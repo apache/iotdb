@@ -132,6 +132,6 @@ public class LongLiteral extends Literal {
 
   @Override
   public Object getTsValue() {
-    return value;
+    return parsedValue;
   }
 }

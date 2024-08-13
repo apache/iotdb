@@ -65,8 +65,8 @@ public class SchemaValidator {
       Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
     try {
       insertStatement.validateTableSchema(metadata, context);
-      insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
+      insertStatement.validateDeviceSchema(metadata, context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
