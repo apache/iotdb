@@ -31,6 +31,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
@@ -48,6 +49,9 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
+    if (Objects.isNull(rawExpression)) {
+      return true;
+    }
     final List<DeviceEntry> entries = new ArrayList<>();
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);

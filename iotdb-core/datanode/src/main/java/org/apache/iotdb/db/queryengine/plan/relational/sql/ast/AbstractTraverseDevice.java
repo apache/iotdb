@@ -39,8 +39,7 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   protected final String tableName;
 
-  // Currently unused, shall be parsed into idDeterminedPredicateList and idFuzzyPredicate on demand
-  private Expression rawExpression;
+  protected Expression rawExpression;
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -81,6 +80,9 @@ public abstract class AbstractTraverseDevice extends Statement {
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
+    if (Objects.isNull(rawExpression)) {
+      return true;
+    }
     rawExpression =
         ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(rawExpression);
     return TableDeviceSchemaFetcher.getInstance()
