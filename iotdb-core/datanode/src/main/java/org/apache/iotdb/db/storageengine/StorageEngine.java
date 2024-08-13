@@ -357,7 +357,7 @@ public class StorageEngine implements IService {
             () -> {
               checkResults(futures, "async recover tsfile resource meets error.");
               recoverRepairData();
-              isReadyForReadAndWrite.set(true);
+              isReady.set(true);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
