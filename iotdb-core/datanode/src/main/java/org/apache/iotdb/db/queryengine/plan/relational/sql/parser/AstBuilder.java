@@ -537,7 +537,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       throw new UnsupportedOperationException(
           "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
     }
-    return new ShowDevice(getQualifiedName(ctx.tableName).toString(), null);
+    return new ShowDevice(getQualifiedName(ctx.tableName), null);
   }
 
   @Override
@@ -546,7 +546,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.WHERE() != null) {
       throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
     }
-    return new CountDevice(getQualifiedName(ctx.tableName).toString(), null);
+    return new CountDevice(getQualifiedName(ctx.tableName), null);
   }
 
   @Override
