@@ -32,7 +32,7 @@ import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
@@ -58,7 +58,7 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      MeasurementSchema schema = tablet.getSchemas().get(i);
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
       getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
     if (tablet.bitMaps != null) {

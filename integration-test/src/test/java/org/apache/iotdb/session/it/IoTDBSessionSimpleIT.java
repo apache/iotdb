@@ -43,6 +43,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -89,7 +90,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertPartialTabletTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -135,7 +136,7 @@ public class IoTDBSessionSimpleIT {
       session.createTimeseries(
           "root.sg.d2.s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
 
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -422,7 +423,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithAlignedTimeseriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -466,7 +467,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithNullValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -522,7 +523,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithStringValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -569,7 +570,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithNegativeTimestampTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -617,7 +618,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithWrongTimestampPrecisionTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -656,7 +657,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithDuplicatedMeasurementsTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -1633,7 +1634,7 @@ public class IoTDBSessionSimpleIT {
         session.createTimeseries(
             "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -1709,7 +1710,7 @@ public class IoTDBSessionSimpleIT {
             dataBinary);
       }
       // insert data using insertTablet
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.TEXT));
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
       for (int i = 0; i < bytesData.size(); i++) {

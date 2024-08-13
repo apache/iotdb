@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.sort;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -86,15 +87,18 @@ public class SortUtilTest {
     TsBlock tsBlock = new TsBlock(timeColumn, column);
     TsBlock tsBlock2 = new TsBlock(timeColumn2, column2);
 
-    DiskSpiller diskSpiller =
-        new DiskSpiller(folderPath, filePrefix, Collections.singletonList(TSDataType.DOUBLE));
+    TreeDiskSpiller diskSpiller =
+        new TreeDiskSpiller(folderPath, filePrefix, Collections.singletonList(TSDataType.DOUBLE));
 
     List<SortKey> sortKeyList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       sortKeyList.add(new SortKey(tsBlock, i));
     }
 
-    SortBufferManager sortBufferManager = new SortBufferManager();
+    SortBufferManager sortBufferManager =
+        new SortBufferManager(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            IoTDBDescriptor.getInstance().getConfig().getSortBufferSize());
     try {
       sortBufferManager.allocateOneSortBranch();
       diskSpiller.spillSortedData(sortKeyList);

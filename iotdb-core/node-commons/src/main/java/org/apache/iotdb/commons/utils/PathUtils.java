@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.PathParseException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.tsfile.read.common.parser.PathVisitor;
 
@@ -181,8 +182,8 @@ public class PathUtils {
     return PathVisitor.isRealNumber(str);
   }
 
-  public static boolean isStartWith(String deviceName, String storageGroup) {
-    return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
+  public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
+    return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(storageGroup);
   }
 
   /** Remove the back quotes of a measurement if necessary */
@@ -202,5 +203,12 @@ public class PathUtils {
       return false;
     }
     return src.length() == (src.replace("``", "").length() + num);
+  }
+
+  public static String qualifyDatabaseName(String databaseName) {
+    if (databaseName != null && !databaseName.startsWith("root.")) {
+      databaseName = "root." + databaseName;
+    }
+    return databaseName;
   }
 }

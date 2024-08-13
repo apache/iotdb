@@ -41,7 +41,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
-    TimeColumn timestamps = tsBlock.getTimeColumn();
+    TimeColumn timestamps = (TimeColumn) tsBlock.getTimeColumn();
     Column[] columns = tsBlock.getValueColumns();
     int batchSize = tsBlock.getPositionCount();
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];

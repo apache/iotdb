@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+
 import com.google.common.primitives.Bytes;
 import org.apache.tsfile.enums.TSDataType;
 
@@ -69,6 +72,21 @@ public class DatasetHeader {
     this.columnToTsBlockIndexMap = new HashMap<>();
     for (int i = 0; i < outputColumnNames.size(); i++) {
       columnToTsBlockIndexMap.put(outputColumnNames.get(i), i);
+    }
+  }
+
+  public void setTableColumnToTsBlockIndexMap(OutputNode outputNode) {
+    List<Symbol> outputSymbols = outputNode.getChild().getOutputSymbols();
+    Map<Symbol, Integer> outputSymbolsIndexMap = new HashMap<>(outputSymbols.size());
+    for (int i = 0; i < outputSymbols.size(); i++) {
+      outputSymbolsIndexMap.put(outputSymbols.get(i), i);
+    }
+
+    this.columnToTsBlockIndexMap = new HashMap<>();
+    for (int i = 0; i < outputNode.getOutputColumnNames().size(); i++) {
+      columnToTsBlockIndexMap.put(
+          outputNode.getOutputColumnNames().get(i),
+          outputSymbolsIndexMap.get(outputNode.getOutputSymbols().get(i)));
     }
   }
 

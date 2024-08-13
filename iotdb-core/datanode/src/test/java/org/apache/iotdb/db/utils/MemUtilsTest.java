@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.TSRecord;
@@ -35,6 +36,7 @@ import org.apache.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.tsfile.write.record.datapoint.StringDataPoint;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -86,7 +88,7 @@ public class MemUtilsTest {
     dataTypes.add(TSDataType.TEXT);
     // time and index size
     sizeSum += 8 + 4;
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row));
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row, null));
   }
 
   @Test
@@ -162,14 +164,22 @@ public class MemUtilsTest {
             null,
             columns,
             1);
-    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1));
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.FLOAT),
+          new MeasurementSchema("s4", TSDataType.DOUBLE),
+          new MeasurementSchema("s5", TSDataType.TEXT)
+        });
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1, null));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
   @Test
   public void getMemSizeTest() {
     long totalSize = 0;
-    String device = "root.sg.d1";
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
     TSRecord record = new TSRecord(0, device);
 
     DataPoint point1 = new IntDataPoint("s1", 1);
@@ -202,7 +212,7 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point6);
     record.addTuple(point6);
 
-    totalSize += 8L * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
+    totalSize += 8L * record.dataPointList.size() + device.ramBytesUsed() + 16;
 
     Assert.assertEquals(totalSize, MemUtils.getTsRecordMem(record));
   }

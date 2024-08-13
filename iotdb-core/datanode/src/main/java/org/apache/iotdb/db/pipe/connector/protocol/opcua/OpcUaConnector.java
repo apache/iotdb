@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -30,25 +29,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
-import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
-import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
-import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -56,15 +45,23 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_MODEL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_HTTPS_BIND_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_MODEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_SECURITY_DIR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_TCP_BIND_PORT_KEY;
 
@@ -77,15 +74,25 @@ public class OpcUaConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
-  private static final Map<String, Pair<AtomicInteger, OpcUaServer>>
-      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
+  private static final Map<String, Pair<AtomicInteger, OpcUaNameSpace>>
+      SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP = new ConcurrentHashMap<>();
 
   private String serverKey;
-  private OpcUaServer server;
+  private OpcUaNameSpace nameSpace;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
-    // All the parameters are optional
+    validator
+        .validateAttributeValueRange(
+            CONNECTOR_OPC_UA_MODEL_KEY,
+            true,
+            CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE,
+            CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE)
+        .validateAttributeValueRange(
+            SINK_OPC_UA_MODEL_KEY,
+            true,
+            CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE,
+            CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE);
   }
 
   @Override
@@ -113,12 +120,18 @@ public class OpcUaConnector implements PipeConnector {
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
             CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+    final boolean enableAnonymousAccess =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY,
+                SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY),
+            CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE);
 
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
 
-      server =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP
+      nameSpace =
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP
               .computeIfAbsent(
                   serverKey,
                   key -> {
@@ -130,15 +143,26 @@ public class OpcUaConnector implements PipeConnector {
                               .setUser(user)
                               .setPassword(password)
                               .setSecurityDir(securityDir)
+                              .setEnableAnonymousAccess(enableAnonymousAccess)
                               .build();
-                      newServer.startup();
-                      return new Pair<>(new AtomicInteger(0), newServer);
+                      nameSpace =
+                          new OpcUaNameSpace(
+                              newServer,
+                              parameters
+                                  .getStringOrDefault(
+                                      Arrays.asList(
+                                          CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+                                      CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
+                                  .equals(CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
+                      nameSpace.startup();
+                      newServer.startup().get();
+                      return new Pair<>(new AtomicInteger(0), nameSpace);
                     } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);
                     }
                   })
               .getRight();
-      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey).getLeft().incrementAndGet();
+      SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey).getLeft().incrementAndGet();
     }
   }
 
@@ -171,14 +195,13 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTabletWrapper(server, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      transferTabletWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else {
-      transferTabletWrapper(server, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      transferTabletWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     }
   }
 
   private void transferTabletWrapper(
-      final OpcUaServer server,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws UaException {
     try {
@@ -188,7 +211,7 @@ public class OpcUaConnector implements PipeConnector {
         return;
       }
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
-        transferTablet(server, tablet);
+        nameSpace.transfer(tablet);
       }
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -196,136 +219,16 @@ public class OpcUaConnector implements PipeConnector {
     }
   }
 
-  private void transferTabletWrapper(
-      final OpcUaServer server, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void transferTabletWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws UaException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
         return;
       }
-      transferTablet(server, pipeRawTabletInsertionEvent.convertToTablet());
+      nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
-    }
-  }
-
-  /**
-   * Transfer {@link Tablet} into eventNodes and post it on the eventBus, so that they will be heard
-   * at the subscribers. Notice that an eventNode is reused to reduce object creation costs.
-   *
-   * @param server OpcUaServer
-   * @param tablet the tablet to send
-   * @throws UaException if failed to create {@link Event}
-   */
-  private void transferTablet(final OpcUaServer server, final Tablet tablet) throws UaException {
-    // There is no nameSpace, so that nameSpaceIndex is always 0
-    final int pseudoNameSpaceIndex = 0;
-    final BaseEventTypeNode eventNode =
-        server
-            .getEventFactory()
-            .createEvent(
-                new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
-    // Use eventNode here because other nodes doesn't support values and times simultaneously
-    for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-
-      final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
-
-      // Source name --> Sensor path, like root.test.d_0.s_0
-      eventNode.setSourceName(
-          tablet.deviceId
-              + TsFileConstant.PATH_SEPARATOR
-              + tablet.getSchemas().get(columnIndex).getMeasurementId());
-
-      // Source node --> Sensor type, like double
-      eventNode.setSourceNode(convertToOpcDataType(dataType));
-
-      for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
-        // Filter null value
-        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
-          continue;
-        }
-
-        // Time --> TimeStamp
-        eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
-
-        // Message --> Value
-        switch (dataType) {
-          case BOOLEAN:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case INT32:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case DATE:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex]).toString()));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case FLOAT:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Float.toString(((float[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case DOUBLE:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
-            break;
-          case VECTOR:
-          case UNKNOWN:
-          default:
-            throw new PipeRuntimeNonCriticalException(
-                "Unsupported data type: " + tablet.getSchemas().get(columnIndex).getType());
-        }
-
-        // Send the event
-        server.getEventBus().post(eventNode);
-      }
-    }
-    eventNode.delete();
-  }
-
-  private NodeId convertToOpcDataType(final TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return Identifiers.Boolean;
-      case INT32:
-        return Identifiers.Int32;
-      case DATE:
-        return Identifiers.DateTime;
-      case INT64:
-      case TIMESTAMP:
-        return Identifiers.Int64;
-      case FLOAT:
-        return Identifiers.Float;
-      case DOUBLE:
-        return Identifiers.Double;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return Identifiers.String;
-      case VECTOR:
-      case UNKNOWN:
-      default:
-        throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
     }
   }
 
@@ -335,9 +238,9 @@ public class OpcUaConnector implements PipeConnector {
       return;
     }
 
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      final Pair<AtomicInteger, OpcUaServer> pair =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey);
+    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
+      final Pair<AtomicInteger, OpcUaNameSpace> pair =
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
       if (pair == null) {
         return;
       }
@@ -346,7 +249,7 @@ public class OpcUaConnector implements PipeConnector {
         try {
           pair.getRight().shutdown();
         } finally {
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(serverKey);
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
         }
       }
     }

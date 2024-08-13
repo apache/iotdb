@@ -90,7 +90,9 @@ public class InternalCreateTimeSeriesStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return measurements.stream().map(devicePath::concatNode).collect(Collectors.toList());
+    return measurements.stream()
+        .map(devicePath::concatAsMeasurementPath)
+        .collect(Collectors.toList());
   }
 
   @Override

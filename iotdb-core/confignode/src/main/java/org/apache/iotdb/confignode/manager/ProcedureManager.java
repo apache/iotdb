@@ -33,6 +33,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -77,6 +80,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -98,6 +103,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -207,16 +213,67 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteDatabases(
-      List<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
-    List<Long> procedureIds = new ArrayList<>();
-    for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
-      DeleteDatabaseProcedure deleteDatabaseProcedure =
-          new DeleteDatabaseProcedure(storageGroupSchema, isGeneratedByPipe);
-      long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
-      procedureIds.add(procedureId);
+      final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
+    final List<Long> procedureIds = new ArrayList<>();
+    final long startCheckTimeForProcedures = System.currentTimeMillis();
+    for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
+      final String database = databaseSchema.getName();
+      boolean hasOverlappedTask = false;
+      synchronized (this) {
+        while (executor.isRunning()
+            && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
+          ProcedureType type;
+          for (final Procedure<?> procedure : executor.getProcedures().values()) {
+            type = ProcedureFactory.getProcedureType(procedure);
+            if (type == null) {
+              continue;
+            }
+            // A table shall not be concurrently operated or else the dataNode cache
+            // may record fake values
+            switch (type) {
+              case CREATE_TABLE_PROCEDURE:
+                final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
+                if (databaseSchema.getName().equals(createTableProcedure.getDatabase())) {
+                  hasOverlappedTask = true;
+                  break;
+                }
+                break;
+              case ADD_TABLE_COLUMN_PROCEDURE:
+                final AddTableColumnProcedure addTableColumnProcedure =
+                    (AddTableColumnProcedure) procedure;
+                if (database.equals(addTableColumnProcedure.getDatabase())) {
+                  hasOverlappedTask = true;
+                  break;
+                }
+                break;
+              default:
+                break;
+            }
+          }
+          if (!hasOverlappedTask) {
+            final DeleteDatabaseProcedure deleteDatabaseProcedure =
+                new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+            final long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
+            procedureIds.add(procedureId);
+            break;
+          }
+          try {
+            wait(PROCEDURE_WAIT_RETRY_TIMEOUT);
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        }
+      }
+      if (hasOverlappedTask) {
+        return RpcUtils.getStatus(
+            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+            String.format(
+                "Some other task is operating table under the database %s, please retry after the procedure finishes.",
+                database));
+      }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
+    final List<TSStatus> procedureStatus = new ArrayList<>();
+    final boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
     // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
@@ -1247,6 +1304,147 @@ public class ProcedureManager {
     }
     if (interrupted) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  public TSStatus createTable(final String database, final TsTable table) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      for (final Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null) {
+          continue;
+        }
+        // A table shall not be concurrently operated or else the dataNode cache
+        // may record fake values
+        switch (type) {
+          case CREATE_TABLE_PROCEDURE:
+            final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
+            if (database.equals(createTableProcedure.getDatabase())
+                && table.equals(createTableProcedure.getTable())) {
+              procedureId = createTableProcedure.getProcId();
+              break;
+            }
+            if (database.equals(createTableProcedure.getDatabase())
+                && table.getTableName().equals(createTableProcedure.getTable().getTableName())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          case ADD_TABLE_COLUMN_PROCEDURE:
+            final AddTableColumnProcedure addTableColumnProcedure =
+                (AddTableColumnProcedure) procedure;
+            if (database.equals(addTableColumnProcedure.getDatabase())
+                && table.getTableName().equals(addTableColumnProcedure.getTableName())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          case DELETE_DATABASE_PROCEDURE:
+            final DeleteDatabaseProcedure deleteDatabaseProcedure =
+                (DeleteDatabaseProcedure) procedure;
+            if (database.equals(deleteDatabaseProcedure.getDatabase())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
+      }
+    }
+    final List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus alterTableAddColumn(final TAlterTableReq req) {
+    final String database = req.database;
+    final String tableName = req.tableName;
+    final String queryId = req.queryId;
+    final List<TsTableColumnSchema> columnSchemaList =
+        TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo);
+
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      for (final Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null) {
+          continue;
+        }
+        // A table shall not be concurrently operated or else the dataNode cache
+        // may record fake values
+        switch (type) {
+          case CREATE_TABLE_PROCEDURE:
+            final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
+            if (database.equals(createTableProcedure.getDatabase())
+                && tableName.equals(createTableProcedure.getTable().getTableName())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          case ADD_TABLE_COLUMN_PROCEDURE:
+            final AddTableColumnProcedure addTableColumnProcedure =
+                (AddTableColumnProcedure) procedure;
+            if (queryId.equals(addTableColumnProcedure.getQueryId())) {
+              procedureId = addTableColumnProcedure.getProcId();
+              break;
+            }
+            if (database.equals(addTableColumnProcedure.getDatabase())
+                && tableName.equals(addTableColumnProcedure.getTableName())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          case DELETE_DATABASE_PROCEDURE:
+            final DeleteDatabaseProcedure deleteDatabaseProcedure =
+                (DeleteDatabaseProcedure) procedure;
+            if (database.equals(deleteDatabaseProcedure.getDatabase())) {
+              hasOverlappedTask = true;
+              break;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task dropping table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
     }
   }
 

@@ -778,8 +778,8 @@ public class IoTDBSelectIntoIT {
 
     String[] resultSet =
         new String[] {
-          "1,852076800001,Hong Kong,0x486f6e67204b6f6e6720426c6f6221,1997-07-01,",
-          "3,852249600001,Hong Kong-3,0x486f6e67204b6f6e6720426c6f6224,1997-07-03,",
+          "1,1997-01-01T00:00:00.001Z,Hong Kong,0x486f6e67204b6f6e6720426c6f6221,1997-07-01,",
+          "3,1997-01-03T00:00:00.001Z,Hong Kong-3,0x486f6e67204b6f6e6720426c6f6224,1997-07-03,",
         };
 
     String expectedQueryHeader = "Time,root.db.d2.s7,root.db.d2.s8,root.db.d2.s9,root.db.d2.s10,";
