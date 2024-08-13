@@ -181,14 +181,12 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private TSStatus loadTsFile(final Pair<String, Boolean> fileAbsolutePath)
-      throws FileNotFoundException {
-    final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath.getLeft());
+  private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
+    final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     statement.setDeleteAfterLoad(true);
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
-    return executeStatement(
-        fileAbsolutePath.getRight() ? new PipeEnrichedStatement(statement) : statement);
+    return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
   }
 
   private TSStatus executeStatement(final Statement statement) {
