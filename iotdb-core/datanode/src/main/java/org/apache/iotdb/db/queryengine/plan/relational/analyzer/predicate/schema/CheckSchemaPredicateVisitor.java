@@ -45,8 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-// Return whether input expression has an attribute column predicate
-// Return null iff the expression has columns not in id/attribute
+// Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
