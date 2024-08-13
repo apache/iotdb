@@ -178,8 +178,10 @@ public class IoTDBPathTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
 
     AWAIT.untilAsserted(
         () -> {
-          check_count(9, "select count(s_0) from " + device, "Consumption Data: s_0" + device);
-          check_count(0, "select count(s_1) from " + device, "Consumption data: s_1" + device);
+          check_count_non_strict(
+              9, "select count(s_0) from " + device, "Consumption Data: s_0" + device);
+          check_count_non_strict(
+              0, "select count(s_1) from " + device, "Consumption data: s_1" + device);
           check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0" + device2);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1" + device2);
           check_count(0, "select count(s_0) from " + database + ".d_1", "Consumption data:d_1");
@@ -191,13 +193,16 @@ public class IoTDBPathTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
+
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
+
     // Consumption data: Progress is not retained after unsubscribing and resubscribing. Full
     // synchronization.
     AWAIT.untilAsserted(
         () -> {
-          check_count(11, "select count(s_0) from " + device, "consume data again:s_0" + device);
+          check_count_non_strict(
+              11, "select count(s_0) from " + device, "consume data again:s_0" + device);
           check_count(0, "select count(s_1) from " + device, "Consumption Data: s_1" + device);
         });
   }

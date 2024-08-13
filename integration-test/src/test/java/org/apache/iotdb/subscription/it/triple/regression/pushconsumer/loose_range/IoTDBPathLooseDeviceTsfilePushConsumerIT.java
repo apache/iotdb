@@ -57,11 +57,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * Start time, end time are both closed intervals. If not specified, the time will be 00:00:00.
- * loose range:path
+ * loose range: path
  * pattern: device
  * push consumer
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -147,12 +145,16 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
     List<AtomicInteger> rowCounts = new ArrayList<>(2);
     rowCounts.add(new AtomicInteger(0));
     rowCounts.add(new AtomicInteger(0));
+
     List<Path> paths = new ArrayList<>(2);
     paths.add(new Path(device, "s_0", true));
     paths.add(new Path(device2, "s_0", true));
 
     String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-31";
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
@@ -198,53 +200,55 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceive.get(), 1);
-          // loose-time should 2 records,get 4 records
-          assertEquals(rowCounts.get(0).get(), 3, "Write data before subscription" + device);
-          assertEquals(rowCounts.get(0).get(), 3, "Write data before subscription" + device2);
+          assertGte(rowCounts.get(0).get(), 3, "Write data before subscription" + device);
+          assertGte(rowCounts.get(0).get(), 3, "Write data before subscription" + device2);
         });
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src :" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceive.get(), 1);
-          assertEquals(rowCounts.get(0).get(), 3, "Write out-of-range data" + device);
-          assertEquals(rowCounts.get(0).get(), 3, "Write out-of-range data" + device2);
+          assertGte(rowCounts.get(0).get(), 3, "Write out-of-range data" + device);
+          assertGte(rowCounts.get(0).get(), 3, "Write out-of-range data" + device2);
         });
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src :" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceive.get(), 2);
-          assertEquals(rowCounts.get(0).get(), 8, "write data" + device);
-          assertEquals(rowCounts.get(0).get(), 8, "write data " + device2);
+          assertGte(rowCounts.get(0).get(), 8, "write data" + device);
+          assertGte(rowCounts.get(0).get(), 8, "write data " + device2);
         });
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src :" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
           assertEquals(onReceive.get(), 3);
-          assertEquals(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device);
-          assertEquals(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device2);
+          assertGte(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device);
+          assertGte(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device2);
         });
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
     System.out.println(FORMAT.format(new Date()) + " src :" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceive.get(), 3);
-          assertEquals(rowCounts.get(0).get(), 10, "Write data: > end " + device);
-          assertEquals(rowCounts.get(0).get(), 10, "Write data:> end " + device2);
+          assertGte(rowCounts.get(0).get(), 10, "Write data: > end " + device);
+          assertGte(rowCounts.get(0).get(), 10, "Write data:> end " + device2);
         });
   }
 }

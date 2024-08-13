@@ -185,7 +185,9 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
     thread.start();
     thread.join();
     String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-01";
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-01T00:00:00+08:00";
     String sql2 = "select count(s_0) from " + device2;
     System.out.println(FORMAT.format(new Date()) + " src device:" + getCount(session_src, sql));
     System.out.println(FORMAT.format(new Date()) + " src device:" + getCount(session_src, sql2));

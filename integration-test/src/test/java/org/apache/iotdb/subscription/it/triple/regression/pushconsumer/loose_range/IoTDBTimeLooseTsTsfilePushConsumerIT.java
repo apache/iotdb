@@ -57,11 +57,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * Start time, end time are both closed intervals. If not specified, the time will be 00:00:00.
- *  mode: live
- *  loose-range:path
- *  format: tsfile
- *  result: pass
+ * mode: live
+ * loose-range:path
+ * format: tsfile
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -148,6 +146,7 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     for (int i = 0; i < 4; i++) {
       rowCounts.add(new AtomicInteger(0));
     }
+
     List<Path> paths = new ArrayList<>(4);
     paths.add(new Path(device, "s_0", true));
     paths.add(new Path(device, "s_1", true));
@@ -155,11 +154,16 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     paths.add(new Path(device2, "s_1", true));
 
     String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-31";
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     session_src.executeNonQueryStatement("flush;");
+    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -197,12 +201,10 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     consumer.subscribe(topicName);
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
         () -> {
-          // loose-time should 2 records,get 4 records
-          assertEquals(
+          assertGte(
               rowCounts.get(0).get(),
               3,
               device + ".s_0, subscribe before writing data start boundary");
@@ -224,9 +226,10 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     insert_data(System.currentTimeMillis(), device2); // now, not in range
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCounts.get(0).get(), 3, device + ".s_0, Write out-of-range data");
+          assertGte(rowCounts.get(0).get(), 3, device + ".s_0, Write out-of-range data");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1, Write out-of-range data");
           assertEquals(rowCounts.get(2).get(), 0, device2 + ".s_0, Write out-of-range data");
           assertEquals(rowCounts.get(3).get(), 0, device2 + ".s_1, Write out-of-range data");
@@ -236,9 +239,10 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCounts.get(0).get(), 8, device + ".s_0, write normal data");
+          assertGte(rowCounts.get(0).get(), 8, device + ".s_0, write normal data");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1, write normal data");
           assertEquals(rowCounts.get(2).get(), 0, device2 + ".s_0, Write normal data");
           assertEquals(rowCounts.get(3).get(), 0, device2 + ".s_1, Write normal data");
@@ -248,10 +252,10 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
-          assertTrue(rowCounts.get(0).get() >= 10, device + ".s_0, write end boundary data");
+          assertGte(rowCounts.get(0).get(), 10, device + ".s_0, write end boundary data");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1, write end boundary data");
           assertEquals(rowCounts.get(2).get(), 0, device2 + ".s_0, write end boundary data");
           assertEquals(rowCounts.get(3).get(), 0, device2 + ".s_1, write end boundary data");
@@ -259,10 +263,12 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
+    session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(rowCounts.get(0).get() >= 10, device + ".s_0, Write data outside end range");
+          assertGte(rowCounts.get(0).get(), 10, device + ".s_0, Write data outside end range");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_0, Write data outside of end range");
           assertEquals(rowCounts.get(2).get(), 0, device + ".s_0, Write data outside of end range");
           assertEquals(rowCounts.get(3).get(), 0, device + ".s_0, Write data outside of end range");

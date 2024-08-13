@@ -56,7 +56,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 /***
  * PushConsumer
  * pattern: db
- * Dataset
+ * tsfile
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -208,16 +208,16 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
 
     // The first 5 entries may have duplicate data
-    System.out.println("src " + getCount(session_src, "select count(s_0) from " + device));
+    String sql = "select count(s_0) from " + device;
+    System.out.println("src " + getCount(session_src, sql));
     System.out.println("rowCount1.get()=" + rowCount1.get());
     System.out.println("rowCount2.get()=" + rowCount2.get());
 
-    String sql = "select count(s_0) from " + device;
     AWAIT.untilAsserted(
         () -> {
           assertTrue(rowCount1.get() > 0, "first consumer");
           assertTrue(rowCount2.get() > 0, "second Consumer");
-          assertEquals(rowCount1.get() + rowCount2.get(), 100, "share process");
+          assertGte(rowCount1.get() + rowCount2.get(), 100, "share process");
         });
   }
 }

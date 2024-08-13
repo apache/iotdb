@@ -183,8 +183,7 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
             + device2
             + " :"
             + getCount(session_src, "select count(s_0) from " + device2));
-    // TIMECHODB-865
-    assertTrue(rowCount.get() >= 200, "After first consumption");
+    assertEquals(rowCount.get(), 200, "After first consumption");
     // Unsubscribe
     consumer.unsubscribe(topicName);
     System.out.println("###### After cancellation query:");

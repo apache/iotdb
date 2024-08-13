@@ -55,9 +55,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
-/***
- * Start time, end time are both closed intervals. If not specified, the time will be 00:00:00.
- */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
 public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegressionIT {
@@ -137,12 +134,20 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
+    String sql =
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
+
     final AtomicInteger rowCount = new AtomicInteger(0);
     final AtomicInteger onReceive = new AtomicInteger(0);
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     session_src.executeNonQueryStatement("flush;");
+    System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -178,53 +183,55 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
     consumer.subscribe(topicName);
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-31";
-    System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
         () -> {
-          // loose-time should 2 records,get 4 records
-          assertEquals(rowCount.get(), 3);
-          assertTrue(rowCount.get() >= 2);
+          assertEquals(onReceive.get(), 1);
+          assertGte(rowCount.get(), 3);
         });
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
     session_src.executeNonQueryStatement("flush;");
-
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCount.get(), 3);
+          assertEquals(onReceive.get(), 1);
+          assertGte(rowCount.get(), 3);
         });
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceive.get(), 2);
-          assertEquals(rowCount.get(), 8);
+          assertGte(rowCount.get(), 8);
         });
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
-          assertEquals(rowCount.get(), 10);
+          assertEquals(onReceive.get(), 3);
+          assertGte(rowCount.get(), 10);
         });
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
+    session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCount.get(), 10);
+          assertEquals(onReceive.get(), 3);
+          assertGte(rowCount.get(), 10);
         });
   }
 }

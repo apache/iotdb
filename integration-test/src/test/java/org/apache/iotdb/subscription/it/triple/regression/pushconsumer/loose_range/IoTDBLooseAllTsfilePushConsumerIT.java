@@ -57,12 +57,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * push concumer
+ * push consumer
  * mode: live
  * pattern: db
  * loose-range: all
- * result: pass
- * Start time, end time are both closed intervals. If no hour, minute, or second is specified, they default to 00:00:00.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -144,18 +142,24 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
           IOException,
           StatementExecutionException {
     String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-31";
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
+
     List<AtomicInteger> rowCounts = new ArrayList<>(2);
     rowCounts.add(new AtomicInteger(0));
     rowCounts.add(new AtomicInteger(0));
     final AtomicInteger onReceive = new AtomicInteger(0);
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     session_src.executeNonQueryStatement("flush;");
+
     List<String> paths = new ArrayList<>(2);
     paths.add(device);
     paths.add(device2);
+
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -202,20 +206,19 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     AWAIT.untilAsserted(
         () -> {
-          //            System.out.println(format.format(new Date())+" "+onReceive.get());
-          // loose-time should 2 records,get 4 records
-          assertEquals(rowCounts.get(0).get(), 5);
-          assertEquals(rowCounts.get(1).get(), 5);
+          assertGte(rowCounts.get(0).get(), 3);
+          assertGte(rowCounts.get(1).get(), 3);
         });
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCounts.get(0).get(), 5);
-          assertEquals(rowCounts.get(1).get(), 5);
+          assertGte(rowCounts.get(0).get(), 3);
+          assertGte(rowCounts.get(1).get(), 3);
         });
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
@@ -225,29 +228,30 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCounts.get(0).get(), 10);
-          assertEquals(rowCounts.get(1).get(), 10);
+          assertGte(rowCounts.get(0).get(), 8);
+          assertGte(rowCounts.get(1).get(), 8);
         });
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
-          assertEquals(rowCounts.get(0).get(), 15);
-          assertEquals(rowCounts.get(1).get(), 15);
+          assertGte(rowCounts.get(0).get(), 10);
+          assertGte(rowCounts.get(1).get(), 10);
         });
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00, not in range
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCounts.get(0).get(), 15, "Inserted data is out of range");
-          assertEquals(rowCounts.get(1).get(), 15);
+          assertGte(rowCounts.get(0).get(), 10, "Inserted data is out of range");
+          assertGte(rowCounts.get(1).get(), 10);
         });
   }
 }

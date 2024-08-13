@@ -48,11 +48,9 @@ import java.util.List;
 /***
  * PullConsumer
  * pattern: ts
- * Tsfile
+ * format: tsfile
  * loose-range: all
  * mode: snapshot
- * result: fail
- * Time: up to 4 minutes and 43 seconds, as low as 2 minutes
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -65,17 +63,19 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionRe
   private static final String device2 = database + ".d_1";
   private static SubscriptionPullConsumer consumer;
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private long nowTimestamp;
 
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     createDB(database);
+    nowTimestamp = System.currentTimeMillis();
     createTopic_s(
         topicName,
         pattern,
         null,
-        "now",
+        String.valueOf(nowTimestamp),
         true,
         TopicConstant.MODE_SNAPSHOT_VALUE,
         TopicConstant.LOOSE_RANGE_ALL_VALUE);
@@ -143,6 +143,7 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionRe
     // Subscribe before writing data
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
+
     consumer =
         new SubscriptionPullConsumer.Builder()
             .host(SRC_HOST)
@@ -155,37 +156,38 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionRe
     consumer.open();
     // Subscribe
     consumer.subscribe(topicName);
-    long timestamp = System.currentTimeMillis();
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    insert_data(System.currentTimeMillis() - 4000, device);
-    insert_data(System.currentTimeMillis() - 4000, device2);
+
+    insert_data(nowTimestamp - 4000, device);
+    insert_data(nowTimestamp - 4000, device2);
     System.out.println(
         FORMAT.format(new Date())
             + " src filter:"
             + getCount(
-                session_src, "select count(s_0) from " + device + " where time <" + timestamp));
+                session_src, "select count(s_0) from " + device + " where time <=" + nowTimestamp));
+
     // Consumption data
     List<String> paths = new ArrayList<>(3);
     paths.add(device);
     paths.add(device2);
     paths.add(database2 + ".d_2");
-    //        Thread.sleep(40000);
-
     List<Integer> rowCountList = consume_tsfile(consumer, paths);
     // Subscribe and write without consuming
-    //        assertTrue(rowCountList.get(0) >= 6);
     assertEquals(rowCountList.get(0), 5, "Write without consume after subscription");
     assertEquals(rowCountList.get(1), 0);
     assertEquals(rowCountList.get(2), 0);
+
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "After cancellation, show subscriptions");
+
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
+
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
     rowCountList = consume_tsfile(consumer, paths);
@@ -194,7 +196,6 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionRe
         10,
         "Unsubscribe and then resubscribe, progress is not retained. Full synchronization.");
     assertEquals(rowCountList.get(1), 0, "Unsubscribe and then resubscribe," + device2);
-    assertEquals(
-        rowCountList.get(2), 0, "Cancel subscription and subscribe again," + database2 + ".d_2");
+    assertEquals(rowCountList.get(2), 0, "Unsubscribe and then resubscribe," + database2 + ".d_2");
   }
 }

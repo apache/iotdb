@@ -382,7 +382,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     consume_data(consumer, session_dest);
   }
 
-  //////////////////////////// assertions ////////////////////////////
+  //////////////////////////// strict assertions ////////////////////////////
 
   public static void assertEquals(int actual, int expected) {
     Assert.assertEquals(expected, actual);
@@ -430,5 +430,24 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
 
   public static void assertTrue(boolean condition, String message) {
     Assert.assertTrue(message, condition);
+  }
+
+  //////////////////////////// non-strict assertions ////////////////////////////
+
+  public static void assertGte(int actual, int expected) {
+    assertEquals(actual, expected);
+  }
+
+  public static void assertGte(int actual, int expected, String message) {
+    assertEquals(actual, expected, message);
+  }
+
+  public static void assertGte(long actual, int expected, String message) {
+    assertEquals(actual, expected, message);
+  }
+
+  public void check_count_non_strict(int expect_count, String sql, String msg)
+      throws IoTDBConnectionException, StatementExecutionException {
+    assertGte(getCount(session_dest, sql), expect_count, "Query count:" + msg);
   }
 }

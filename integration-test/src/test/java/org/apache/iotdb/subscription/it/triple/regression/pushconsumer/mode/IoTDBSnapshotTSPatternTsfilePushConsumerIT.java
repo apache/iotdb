@@ -149,7 +149,9 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
           IOException,
           StatementExecutionException {
     String sql =
-        "select count(s_0) from " + device + " where time >= 2024-01-01 and time <= 2024-03-31";
+        "select count(s_0) from "
+            + device
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
     // Subscribe before writing data
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     final AtomicInteger onReceiveCount = new AtomicInteger(0);

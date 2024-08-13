@@ -55,8 +55,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * Start time, end time are both closed intervals. If not specified, the time will be 00:00:00.
- * loose range:path
+ * loose range: path
  * push consumer
  */
 @RunWith(IoTDBTestRunner.class)
@@ -141,10 +140,12 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
           StatementExecutionException {
     final AtomicInteger rowCount = new AtomicInteger(0);
     final AtomicInteger onReceive = new AtomicInteger(0);
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     session_src.executeNonQueryStatement("flush;");
+
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -182,40 +183,42 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          // loose-time should 2 records,get 4 records
-          assertTrue(rowCount.get() >= 2);
+          assertGte(rowCount.get(), 3);
         });
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
     session_src.executeNonQueryStatement("flush;");
+
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(rowCount.get() >= 2);
+          assertGte(rowCount.get(), 3);
         });
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
+
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(rowCount.get() >= 6);
+          assertGte(rowCount.get(), 8);
         });
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     session_src.executeNonQueryStatement("flush;");
+
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
-          assertTrue(rowCount.get() >= 8);
+          assertGte(rowCount.get(), 10);
         });
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
+
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(rowCount.get() >= 8);
+          assertGte(rowCount.get(), 10);
         });
   }
 }

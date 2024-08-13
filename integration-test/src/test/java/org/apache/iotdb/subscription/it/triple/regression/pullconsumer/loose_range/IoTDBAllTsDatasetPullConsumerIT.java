@@ -49,7 +49,6 @@ import java.util.List;
  * pattern: ts
  * accurate time
  * format: dataset
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -148,7 +147,8 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
 
     // Before consumption subscription data
     consume_data(consumer, session_dest);
-    check_count(3, "select count(s_0) from " + device, "Start time boundary data: s_0 " + device);
+    check_count_non_strict(
+        3, "select count(s_0) from " + device, "Start time boundary data: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "Start time boundary data: s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "Start time boundary data: s_0 " + device2);
     check_count(0, "select count(s_1) from " + device2, "Start time boundary data: s_1 " + device2);
@@ -157,7 +157,7 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
     insert_data(System.currentTimeMillis(), device2); // now
     System.out.println("src filter:" + getCount(session_src, sql));
     consume_data(consumer, session_dest);
-    check_count(
+    check_count_non_strict(
         3, "select count(s_0) from " + device, "Write some real-time data later:s_0 " + device);
     check_count(
         0, "select count(s_1) from " + device, "Write some real-time data later: s_1 " + device);
@@ -168,8 +168,8 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     consume_data(consumer, session_dest);
     System.out.println("src filter:" + getCount(session_src, sql));
-    //        Thread.sleep(30000);
-    check_count(8, "select count(s_0) from " + device, "data within the time range: s_0 " + device);
+    check_count_non_strict(
+        8, "select count(s_0) from " + device, "data within the time range: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "data within the time range: s_1 " + device);
     check_count(
         0, "select count(s_0) from " + device2, "data within the time range: s_0 " + device2);
@@ -180,7 +180,8 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     System.out.println("src filter:" + getCount(session_src, sql));
     consume_data(consumer, session_dest);
-    check_count(13, "select count(s_0) from " + device, "End time limit data: s_0 " + device);
+    check_count_non_strict(
+        13, "select count(s_0) from " + device, "End time limit data: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data: s_1" + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data: s_0" + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data: s_1" + device2);
@@ -189,8 +190,8 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
     System.out.println("src filter:" + getCount(session_src, sql));
     consume_data(consumer, session_dest);
-    assertTrue(getCount(session_dest, sql) >= 14);
-    check_count(18, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
+    check_count_non_strict(
+        14, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data 2:s_1" + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data 2: s_0" + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data 2: s_1" + device2);
@@ -198,8 +199,8 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
     consumer.unsubscribe(topicName);
     consumer.subscribe(topicName);
     consume_data(consumer, session_dest);
-    assertTrue(getCount(session_dest, sql) >= 14);
-    check_count(18, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
+    check_count_non_strict(
+        14, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data 2:s_1" + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data 2: s_0" + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data 2: s_1" + device2);

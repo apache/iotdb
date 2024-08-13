@@ -47,8 +47,7 @@ import java.util.List;
 /***
  * PullConsumer
  * pattern: ts
- * Tsfile
- * result: pass
+ * format: tsfile
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -63,6 +62,7 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
   private static SubscriptionPullConsumer consumer;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private static List<Integer> rowCountList;
+  private long nowTimestamp;
 
   @Override
   @Before
@@ -70,11 +70,12 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
     super.setUp();
     createDB(database);
     createDB(database2);
+    nowTimestamp = System.currentTimeMillis();
     createTopic_s(
         topicName,
         pattern,
         null,
-        "now",
+        String.valueOf(nowTimestamp),
         true,
         TopicConstant.MODE_LIVE_VALUE,
         TopicConstant.LOOSE_RANGE_TIME_VALUE);
@@ -152,16 +153,16 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
             .fileSaveDir("target/pull-subscription") // hack for license check
             .buildPullConsumer();
     consumer.open();
+
     // Subscribe
-    long timestamp = System.currentTimeMillis();
     consumer.subscribe(topicName);
     subs.getSubscriptions(topicName).forEach(System.out::println);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after subscription");
-    insert_data(timestamp - 4000, device);
-    insert_data(timestamp - 4000, device2);
+    insert_data(nowTimestamp - 4000, device);
+    insert_data(nowTimestamp - 4000, device2);
 
-    String sql = "select count(s_0) from " + device + " where time <" + timestamp;
+    String sql = "select count(s_0) from " + device + " where time <=" + nowTimestamp;
     System.out.println("TimeTsTsfilePullConsumer src1 filter:" + getCount(session_src, sql));
 
     // Consumption data
@@ -171,17 +172,19 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
     paths.add(device3);
 
     rowCountList = consume_tsfile(consumer, paths);
-    // Exact value 6
-    assertTrue(rowCountList.get(0) >= 6, device);
+    assertGte(rowCountList.get(0), 8, device);
     assertEquals(rowCountList.get(1), 0, device2);
     assertEquals(rowCountList.get(2), 0, device3);
+
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after unsubscription");
+
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after re-subscribing");
+
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
@@ -189,8 +192,9 @@ public class IoTDBTimeTsTsfilePullConsumerIT extends AbstractSubscriptionRegress
     System.out.println("TimeTsTsfilePullConsumer src2 filter:" + getCount(session_src, sql));
 
     rowCountList = consume_tsfile(consumer, paths);
-    assertTrue(
-        rowCountList.get(0) >= 12,
+    assertGte(
+        rowCountList.get(0),
+        13,
         "Unsubscribe and then resubscribe, progress is not retained. Full synchronization. Actual="
             + rowCountList.get(0));
     assertEquals(rowCountList.get(1), 0, "Unsubscribe and subscribe again," + device2);

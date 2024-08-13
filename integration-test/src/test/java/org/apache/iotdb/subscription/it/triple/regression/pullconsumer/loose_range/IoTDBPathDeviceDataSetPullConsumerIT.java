@@ -48,7 +48,6 @@ import java.util.List;
  * pull consumer
  * format: dataset
  * loose-range: path
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})

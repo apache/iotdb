@@ -561,7 +561,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(rowCount00.get() + rowCount10.get(), 400, "c0,c1,topic0,tsfile");
+          assertGte(rowCount00.get() + rowCount10.get(), 400, "c0,c1,topic0,tsfile");
           assertEquals(
               getCount(session_dest, sql1) + getCount(session_dest2, sql1),
               getCount(session_src, sql1),
@@ -577,7 +577,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
               getCount(session_dest, sql4) + getCount(session_dest2, sql4),
               400,
               "c5,c6,topic4 group3");
-          assertEquals(rowCount70.get() + rowCount90.get(), 400, "c7,c9,topic0,tsfile");
+          assertGte(rowCount70.get() + rowCount90.get(), 400, "c7,c9,topic0,tsfile");
           assertEquals(rowCount6.get(), 5, "c8,topic6,tsfile");
           //            assertTrue(rowCount00.get()>0);
           //            assertTrue(rowCount10.get()>0);

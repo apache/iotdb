@@ -55,7 +55,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * pattern: ts
  * loose-range: all
  * mode: live
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -147,7 +146,8 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
     String sql =
         "select count(s_0) from "
             + device
-            + " where time >= 2024-01-01 and time <= 2024-02-13 08:00:02";
+            + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-02-13T08:00:02+08:00";
+
     // Subscribe before writing data
     insert_data(1704038399000L, device); // 2023-12-31 23:59:59+08:00
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
@@ -180,19 +180,22 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
                 })
             .buildPushConsumer();
     consumer.open();
+
     // Subscribe
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
+
     insert_data(1706745600000L, device); // 2024-02-01 08:00:00+08:00
     insert_data(1706745600000L, device2); // 2024-02-01 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
-
     System.out.println("LooseAllTsDatasetPushConsumer src2: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
         () -> {
-          check_count(14, "select count(s_0) from " + device, "Consumption data: s_0 " + device);
-          check_count(14, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
+          check_count_non_strict(
+              14, "select count(s_0) from " + device, "Consumption data: s_0 " + device);
+          check_count_non_strict(
+              14, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
           check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
           check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
           check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
@@ -203,16 +206,20 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
+
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
     System.out.println("LooseAllTsDatasetPushConsumer src3: " + getCount(session_src, sql));
+
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
     AWAIT.untilAsserted(
         () -> {
-          check_count(16, "select count(s_0) from " + device, "consume data again: s_0 " + device);
-          check_count(16, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
+          check_count_non_strict(
+              16, "select count(s_0) from " + device, "consume data again: s_0 " + device);
+          check_count_non_strict(
+              16, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
           check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
           check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
           check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");

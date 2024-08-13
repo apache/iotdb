@@ -182,8 +182,9 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
 
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(
-              getCount(session_dest, "select count(s_0) from " + device) >= 9,
+          assertGte(
+              getCount(session_dest, "select count(s_0) from " + device),
+              9,
               "Consumption data: s_0 " + device);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1" + device);
           check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0" + device2);
@@ -198,16 +199,19 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     consumer.subscribe(topicName);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after re-subscribing");
+
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     session_src.executeNonQueryStatement("flush;");
+
     // Consumption data: Progress is not retained after canceling and re-subscribing. Full
     // synchronization.
     AWAIT.untilAsserted(
         () -> {
-          assertTrue(
-              getCount(session_dest, "select count(s_0) from " + device) >= 11,
-              " re-subscribing s_0 count="
+          assertGte(
+              getCount(session_dest, "select count(s_0) from " + device),
+              11,
+              "re-subscribing s_0 count="
                   + getCount(session_dest, "select count(s_0) from " + device));
           check_count(0, "select count(s_1) from " + device, "Consumption Data: s_1" + device);
         });

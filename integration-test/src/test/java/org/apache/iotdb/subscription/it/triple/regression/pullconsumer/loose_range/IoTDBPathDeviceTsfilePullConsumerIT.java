@@ -47,9 +47,8 @@ import java.util.List;
 /***
  * PullConsumer
  * pattern: device
- * format: Tsfile
+ * format: tsfile
  * loose-range: time
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -161,7 +160,7 @@ public class IoTDBPathDeviceTsfilePullConsumerIT extends AbstractSubscriptionReg
     List<String> devices = new ArrayList<>(3);
     devices.add(device);
     devices.add(device2);
-    devices.add("" + database2 + ".d_2");
+    devices.add(database2 + ".d_2");
     List<Integer> results = consume_tsfile(consumer, devices);
 
     assertEquals(results.get(0), 10);

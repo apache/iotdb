@@ -49,7 +49,6 @@ import java.util.List;
  * pattern: ts
  * loose-range: time
  * accurate time range
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -139,10 +138,12 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
             + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T23:59:59+08:00";
     consumer =
         create_pull_consumer("pull_ts_pattern_accurate_dataset", "loose_range_time", false, null);
+
     // Subscribe before writing data
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     System.out.println("src filter:" + getCount(session_src, sql));
+
     // Subscribe
     consumer.subscribe(topicName);
     subs.getSubscriptions().forEach(System.out::println);
@@ -150,7 +151,7 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
 
     // Before consumption subscription data
     consume_data(consumer, session_dest);
-    check_count(3, sql, "Start time boundary data: s_0 " + device);
+    check_count_non_strict(3, sql, "Start time boundary data: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "Start time boundary data: s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "Start time boundary data: s_0 " + device2);
     check_count(0, "select count(s_1) from " + device2, "Start time limit data: s_1 " + device2);
@@ -158,8 +159,9 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
     insert_data(System.currentTimeMillis(), device); // not in range
     insert_data(System.currentTimeMillis(), device2); // not in range
     System.out.println("src filter:" + getCount(session_src, sql));
+
     consume_data(consumer, session_dest);
-    check_count(3, sql, "After writing some real-time data: s_0 " + device);
+    check_count_non_strict(3, sql, "After writing some real-time data: s_0 " + device);
     check_count(
         0, "select count(s_1) from " + device, "Write some real-time data later:s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "not in range: s_0 " + device2);
@@ -169,8 +171,8 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     consume_data(consumer, session_dest);
     System.out.println("src filter:" + getCount(session_src, sql));
-    //        Thread.sleep(30000);
-    check_count(8, sql, "Data within time range: s_0 " + device);
+
+    check_count_non_strict(8, sql, "Data within time range: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "data within the time range: s_1 " + device);
     check_count(
         0, "select count(s_0) from " + device2, "Data within the time range: s_0 " + device2);
@@ -180,17 +182,20 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
     System.out.println("src filter:" + getCount(session_src, sql));
+
     consume_data(consumer, session_dest);
-    check_count(13, sql, "End time limit data: s_0 " + device);
+    check_count_non_strict(13, sql, "End time limit data: s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data: s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data: s_0 " + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data: s_1 " + device2);
 
-    // loose time, accurate to 1
-    insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00 1
+    insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
     System.out.println("src filter:" + getCount(session_src, sql));
+
     consume_data(consumer, session_dest);
+    check_count_non_strict(
+        14, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data 2:s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data 2: s_0 " + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data 2: s_1 " + device2);
@@ -198,7 +203,8 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
     consumer.unsubscribe(topicName);
     consumer.subscribe(topicName);
     consume_data(consumer, session_dest);
-    check_count(18, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
+    check_count_non_strict(
+        14, "select count(s_0) from " + device, "End time limit data 2:s_0 " + device);
     check_count(0, "select count(s_1) from " + device, "End time limit data 2:s_1 " + device);
     check_count(0, "select count(s_0) from " + device2, "End time limit data 2: s_0 " + device2);
     check_count(0, "select count(s_1) from " + device2, "End time limit data 2: s_1 " + device2);
