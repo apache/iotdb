@@ -74,7 +74,7 @@ public class TsTable {
 
   private transient int idNums = 0;
 
-  public TsTable(String tableName) {
+  public TsTable(final String tableName) {
     this.tableName = tableName;
     columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
   }
@@ -83,7 +83,7 @@ public class TsTable {
     return tableName;
   }
 
-  public TsTableColumnSchema getColumnSchema(String columnName) {
+  public TsTableColumnSchema getColumnSchema(final String columnName) {
     readWriteLock.readLock().lock();
     try {
       return columnSchemaMap.get(columnName);
@@ -92,7 +92,7 @@ public class TsTable {
     }
   }
 
-  public void addColumnSchema(TsTableColumnSchema columnSchema) {
+  public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);

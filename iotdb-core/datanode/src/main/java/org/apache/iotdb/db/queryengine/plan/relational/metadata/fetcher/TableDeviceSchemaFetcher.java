@@ -55,8 +55,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -205,8 +203,7 @@ public class TableDeviceSchemaFetcher {
       final AbstractTraverseDevice statement,
       final List<DeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
-      final @Nullable MPPQueryContext queryContext) {
-
+      final MPPQueryContext queryContext) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(
             expressionList, tableInstance, queryContext);
@@ -428,15 +425,15 @@ public class TableDeviceSchemaFetcher {
   }
 
   private void constructNodsArrayAndAttributeMap(
-      Map<String, String> attributeMap,
-      String[] nodes,
+      final Map<String, String> attributeMap,
+      final String[] nodes,
       int startIndex,
-      List<ColumnHeader> columnHeaderList,
-      Column[] columns,
-      TsTable tableInstance,
-      int rowIndex) {
+      final List<ColumnHeader> columnHeaderList,
+      final Column[] columns,
+      final TsTable tableInstance,
+      final int rowIndex) {
     for (int j = 0; j < columnHeaderList.size(); j++) {
-      TsTableColumnSchema columnSchema =
+      final TsTableColumnSchema columnSchema =
           tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
       // means that TsTable tableInstance which previously fetched is outdated, but it's ok that we
       // ignore that newly added column here

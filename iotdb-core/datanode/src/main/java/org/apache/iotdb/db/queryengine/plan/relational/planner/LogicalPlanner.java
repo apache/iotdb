@@ -15,6 +15,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -64,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -334,19 +336,25 @@ public class LogicalPlanner {
     return database;
   }
 
-  private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {
-    final List<TsTableColumnSchema> columnSchemaList =
-        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
+  private List<String> getAttributeList(final TsTable table) {
+    return table.getColumnList().stream()
+        .filter(
+            columnSchema ->
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+        .map(TsTableColumnSchema::getColumnName)
+        .collect(Collectors.toList());
+  }
 
-    final List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
-    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
-          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        columnHeaderList.add(
-            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
-      }
-    }
-    return columnHeaderList;
+  private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {
+    return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
+        .filter(
+            columnSchema ->
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+                    || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+        .map(
+            columnSchema ->
+                new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+        .collect(Collectors.toList());
   }
 
   private enum Stage {

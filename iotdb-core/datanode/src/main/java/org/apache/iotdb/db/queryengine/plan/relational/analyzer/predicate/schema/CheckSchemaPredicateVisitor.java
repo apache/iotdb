@@ -85,8 +85,7 @@ public class CheckSchemaPredicateVisitor
       }
     }
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
-      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS
-          && Objects.nonNull(context.queryContext)) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
             "And expression encountered during id determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
@@ -104,8 +103,7 @@ public class CheckSchemaPredicateVisitor
       return null;
     }
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
-      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS
-          && Objects.nonNull(context.queryContext)) {
+      if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
             "Logical expression type encountered in not expression child during id determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
