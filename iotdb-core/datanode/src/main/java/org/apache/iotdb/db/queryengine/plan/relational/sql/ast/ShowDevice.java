@@ -19,27 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
-
-import java.util.List;
-
-public class ShowDevice extends AbstractTraverseDevice {
+public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   // For sql-input show device usage
   public ShowDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
-  }
-
-  // For device fetch serving data query
-  public ShowDevice(
-      final String database,
-      final String tableName,
-      final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyFilterList,
-      final List<IDeviceID> partitionKeyList) {
-    super(database, tableName, idDeterminedPredicateList, idFuzzyFilterList, partitionKeyList);
   }
 
   @Override

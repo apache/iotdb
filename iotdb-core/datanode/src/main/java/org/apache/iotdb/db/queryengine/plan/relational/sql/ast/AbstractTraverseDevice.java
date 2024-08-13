@@ -30,9 +30,9 @@ import java.util.Objects;
 // TODO table metadata: reuse query distinct logic
 public abstract class AbstractTraverseDevice extends Statement {
 
-  private String database;
+  protected String database;
 
-  private final String tableName;
+  protected final String tableName;
 
   // Currently unused, shall be parsed into idDeterminedPredicateList and idFuzzyPredicate on demand
   private Expression rawExpression;
@@ -59,23 +59,12 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.rawExpression = rawExpression;
   }
 
-  // For device fetch serving data query
-  protected AbstractTraverseDevice(
-      final String database,
-      final String tableName,
-      final List<List<SchemaFilter>> idDeterminedFilterList,
-      final Expression idFuzzyFilterList,
-      final List<IDeviceID> partitionKeyList) {
-    super(null);
-    this.database = database;
-    this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyPredicate = idFuzzyFilterList;
-    this.partitionKeyList = partitionKeyList;
-  }
-
   public String getDatabase() {
     return database;
+  }
+
+  public void setDatabase(final String database) {
+    this.database = database;
   }
 
   public String getTableName() {

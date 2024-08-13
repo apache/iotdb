@@ -186,11 +186,20 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
+    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList);
+  }
+
+  public static void transformToTsBlockColumns(
+      final IDeviceSchemaInfo schemaInfo,
+      final TsBlockBuilder builder,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     int idIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
