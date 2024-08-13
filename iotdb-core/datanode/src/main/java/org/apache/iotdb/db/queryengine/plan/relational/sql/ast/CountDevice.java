@@ -19,11 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.Collections;
+
 public class CountDevice extends AbstractQueryDeviceWithCache {
 
   // For sql-input show device usage
   public CountDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
+  }
+
+  @Override
+  public void setColumnHeaderList() {
+    columnHeaderList =
+        Collections.singletonList(new ColumnHeader("count(devices)", TSDataType.INT64));
+  }
+
+  @Override
+  protected void buildTsBlock(final TsBlockBuilder tsBlockBuilder) {
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(results.size());
+    tsBlockBuilder.declarePosition();
   }
 
   @Override

@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +34,11 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   // For sql-input show device usage
   public ShowDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
+  }
+
+  @Override
+  public void setColumnHeaderList() {
+    columnHeaderList = getDeviceColumnHeaderList(database, tableName);
   }
 
   public static List<ColumnHeader> getDeviceColumnHeaderList(
@@ -44,6 +52,14 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
             columnSchema ->
                 new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
         .collect(Collectors.toList());
+  }
+
+  @Override
+  protected void buildTsBlock(final TsBlockBuilder tsBlockBuilder) {
+    results.forEach(
+        result ->
+            TableDeviceQuerySource.transformToTsBlockColumns(
+                result, tsBlockBuilder, database, tableName, columnHeaderList));
   }
 
   @Override

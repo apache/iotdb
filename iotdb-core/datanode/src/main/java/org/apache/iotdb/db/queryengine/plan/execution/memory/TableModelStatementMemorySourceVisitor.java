@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
@@ -48,8 +49,8 @@ public class TableModelStatementMemorySourceVisitor
 
   @Override
   public StatementMemorySource visitNode(
-      Node node, TableModelStatementMemorySourceContext context) {
-    DatasetHeader datasetHeader = context.getAnalysis().getRespDatasetHeader();
+      final Node node, final TableModelStatementMemorySourceContext context) {
+    final DatasetHeader datasetHeader = context.getAnalysis().getRespDatasetHeader();
     return new StatementMemorySource(
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
@@ -93,6 +94,12 @@ public class TableModelStatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowDevice(
       final ShowDevice node, final TableModelStatementMemorySourceContext context) {
+    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitCountDevice(
+      final CountDevice node, final TableModelStatementMemorySourceContext context) {
     return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
   }
 }

@@ -2535,12 +2535,13 @@ public class StatementAnalyzer {
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
               .map(TsTableColumnSchema::getColumnName)
               .collect(Collectors.toList());
+
+      node.setColumnHeaderList();
       if (!node.parseRawExpression(table, attributeList, queryContext)) {
         // Cache hit
         // Currently we disallow "Or" filter for precise get, thus if it hit cache
         // it'll be only one device
         // TODO: Ensure the disjointness of expressions and allow Or filter
-        node.setColumnHeaderList(ShowDevice.getDeviceColumnHeaderList(database, tableName));
         analysis.setFinishQueryAfterAnalyze();
       }
     }

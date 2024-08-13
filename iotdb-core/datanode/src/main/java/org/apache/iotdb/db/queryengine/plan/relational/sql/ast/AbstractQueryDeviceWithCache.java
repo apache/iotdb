@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
@@ -37,9 +36,9 @@ import java.util.stream.Collectors;
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
   // For query devices fully in cache
-  private List<ShowDevicesResult> results = new ArrayList<>();
+  protected List<ShowDevicesResult> results = new ArrayList<>();
 
-  private List<ColumnHeader> columnHeaderList;
+  protected List<ColumnHeader> columnHeaderList;
 
   protected AbstractQueryDeviceWithCache(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
@@ -64,9 +63,11 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     return needFetch;
   }
 
-  public void setColumnHeaderList(final List<ColumnHeader> columnHeaderList) {
-    this.columnHeaderList = columnHeaderList;
+  public List<ColumnHeader> getColumnHeaderList() {
+    return columnHeaderList;
   }
+
+  public abstract void setColumnHeaderList();
 
   public DatasetHeader getDataSetHeader() {
     return new DatasetHeader(columnHeaderList, true);
@@ -78,10 +79,9 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
             columnHeaderList.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList()));
-    results.forEach(
-        result ->
-            TableDeviceQuerySource.transformToTsBlockColumns(
-                result, tsBlockBuilder, database, tableName, columnHeaderList));
+    buildTsBlock(tsBlockBuilder);
     return tsBlockBuilder.build();
   }
+
+  protected abstract void buildTsBlock(final TsBlockBuilder tsBlockBuilder);
 }
