@@ -210,7 +210,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
     if (transferBuffer.isEmpty()) {
       LOGGER.info(
-          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Will ignore this remove.",
+          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
           consensusGroupId,
           event);
       return;
