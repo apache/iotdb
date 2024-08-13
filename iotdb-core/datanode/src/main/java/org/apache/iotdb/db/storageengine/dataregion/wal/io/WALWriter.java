@@ -67,7 +67,7 @@ public class WALWriter extends LogWriter {
     ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
     // mark info part ends
     endMarker.serialize(markerBuffer);
-    write(markerBuffer);
+    write(markerBuffer, false);
     int metaDataSize = metaData.serializedSize();
 
     ByteBuffer buffer =
