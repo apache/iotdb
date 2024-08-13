@@ -167,6 +167,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             event.getCommitId(),
             event);
       }
+      // Special judge to avoid transfer stuck when re-transfer events that will not be put in
+      // retryQueue.
+      if (transferBuffer.contains(event)) {
+        return true;
+      }
       long currentTime = System.nanoTime();
       boolean result =
           transferBuffer.offer(
@@ -202,6 +207,13 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           event,
           transferBuffer.size(),
           IOTDB_CONFIG.getPipeConsensusPipelineSize());
+    }
+    if (transferBuffer.isEmpty()) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
+          consensusGroupId,
+          event);
+      return;
     }
     Iterator<EnrichedEvent> iterator = transferBuffer.iterator();
     EnrichedEvent current = iterator.next();
@@ -458,7 +470,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
                 polledEvent);
           }
         }
-        if (polledEvent != null && LOGGER.isDebugEnabled()) {
+        if (polledEvent != null) {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Polled event {} from retry queue.", polledEvent);
           }
