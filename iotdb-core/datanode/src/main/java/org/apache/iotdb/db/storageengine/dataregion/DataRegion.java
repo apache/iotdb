@@ -2652,6 +2652,7 @@ public class DataRegion implements IDataRegionForQuery {
               CompactionScheduler.tryToSubmitSettleCompactionTask(
                   tsFileManager, timePartition, context, true);
         } finally {
+          context.clearTimePartitionDeviceInfoCache();
           CompactionScheduler.sharedUnlockCompactionSelection();
         }
       }

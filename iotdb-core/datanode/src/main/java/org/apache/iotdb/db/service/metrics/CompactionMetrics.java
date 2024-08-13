@@ -813,14 +813,14 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram settleCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
-  public void updateCompactionTaskSelectionNum(CompactionScheduleContext summary) {
-    seqInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitSeqInnerSpaceCompactionTaskNum());
+  public void updateCompactionTaskSelectionNum(CompactionScheduleContext context) {
+    seqInnerSpaceCompactionTaskSelectedNum.set(context.getSubmitSeqInnerSpaceCompactionTaskNum());
     unseqInnerSpaceCompactionTaskSelectedNum.set(
-        summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
-    crossInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitCrossSpaceCompactionTaskNum());
+        context.getSubmitUnseqInnerSpaceCompactionTaskNum());
+    crossInnerSpaceCompactionTaskSelectedNum.set(context.getSubmitCrossSpaceCompactionTaskNum());
     insertionCrossSpaceCompactionTaskSelectedNum.set(
-        summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
-    settleCompactionTaskSelectedNum.set(summary.getSubmitSettleCompactionTaskNum());
+        context.getSubmitInsertionCrossSpaceCompactionTaskNum());
+    settleCompactionTaskSelectedNum.set(context.getSubmitSettleCompactionTaskNum());
   }
 
   public void updateCompactionTaskSelectionTimeCost(CompactionTaskType taskType, long time) {
