@@ -1133,6 +1133,13 @@ public class IoTDBConfig {
             + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
       };
 
+  private String loadActiveListeningPipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.PIPE_FOLDER_NAME;
+
   private String loadActiveListeningFailDir =
       IoTDBConstant.EXT_FOLDER_NAME
           + File.separator
@@ -1140,7 +1147,7 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
 
-  private long loadActiveListeningCheckIntervalSeconds = 20L;
+  private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = 8;
 
@@ -1312,6 +1319,7 @@ public class IoTDBConfig {
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
       loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
     }
+    loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
@@ -3941,6 +3949,10 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
     this.loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
+  }
+
+  public String getLoadActiveListeningPipeDir() {
+    return loadActiveListeningPipeDir;
   }
 
   public String[] getLoadActiveListeningDirs() {
