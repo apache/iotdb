@@ -61,6 +61,8 @@ import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
+import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -614,6 +616,43 @@ public class IoTConsensusServerImpl {
       throw new ConsensusGroupModifyPeerException(
           String.format(
               "thread interrupted when waiting %s to complete SyncLog. %s",
+              targetPeer, e.getMessage()),
+          e);
+    }
+  }
+
+  public boolean isUserPipeAllowRemovePeer() {
+    // TODO: implement the method to check whether the user pipe allows removing peer
+    return true;
+  }
+
+  public void waitUserPipeAllowRemovePeer(Peer targetPeer)
+      throws ConsensusGroupModifyPeerException {
+    long checkIntervalInMs = 10_000L;
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      while (true) {
+        TWaitUserPipeAllowRemovePeerRes res =
+            client.waitUserPipeAllowRemovePeer(
+                new TWaitUserPipeAllowRemovePeerReq(
+                    targetPeer.getGroupId().convertToTConsensusGroupId()));
+        if (res.allowRemovePeer) {
+          logger.info("[WAIT USER PIPE] {} allow remove peer.", targetPeer);
+          return;
+        }
+        logger.info("[WAIT USER PIPE] {} wait for permission to remove peer.", targetPeer);
+        Thread.sleep(checkIntervalInMs);
+      }
+    } catch (ClientManagerException | TException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "error when waiting %s to allow remove peer. %s", targetPeer, e.getMessage()),
+          e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "thread interrupted when waiting %s to allow remove peer. %s",
               targetPeer, e.getMessage()),
           e);
     }

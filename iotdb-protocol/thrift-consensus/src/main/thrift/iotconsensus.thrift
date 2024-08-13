@@ -94,6 +94,14 @@ struct TWaitSyncLogCompleteRes {
   3: required i64 safeIndex
 }
 
+struct TWaitUserPipeAllowRemovePeerReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TWaitUserPipeAllowRemovePeerRes {
+  1: required bool allowRemovePeer
+}
+
 struct TSendSnapshotFragmentRes {
   1: required common.TSStatus status
 }
@@ -123,6 +131,7 @@ service IoTConsensusIService {
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
   TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)
   TWaitSyncLogCompleteRes waitSyncLogComplete(TWaitSyncLogCompleteReq req)
+  TWaitUserPipeAllowRemovePeerRes waitUserPipeAllowRemovePeer(TWaitUserPipeAllowRemovePeerReq req)
   TSendSnapshotFragmentRes sendSnapshotFragment(TSendSnapshotFragmentReq req)
   TTriggerSnapshotLoadRes triggerSnapshotLoad(TTriggerSnapshotLoadReq req)
   TCleanupTransferredSnapshotRes cleanupTransferredSnapshot(TCleanupTransferredSnapshotReq req)
