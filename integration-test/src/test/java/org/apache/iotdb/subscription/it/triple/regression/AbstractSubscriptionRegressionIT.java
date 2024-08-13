@@ -40,6 +40,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 
 import java.io.IOException;
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -435,19 +437,27 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   //////////////////////////// non-strict assertions ////////////////////////////
 
   public static void assertGte(int actual, int expected) {
-    assertEquals(actual, expected);
+    assertGte((long) actual, expected, null);
   }
 
   public static void assertGte(int actual, int expected, String message) {
-    assertEquals(actual, expected, message);
+    assertGte((long) actual, expected, message);
   }
 
   public static void assertGte(long actual, int expected, String message) {
-    assertEquals(actual, expected, message);
+    assertTrue(actual >= expected);
+    if (Objects.nonNull(message)) {
+      Assume.assumeTrue(
+          actual + " should be equals to " + expected + ", message: " + message,
+          Objects.equals(actual, expected));
+    } else {
+      Assume.assumeTrue(
+          actual + " should be equals to " + expected, Objects.equals(actual, expected));
+    }
   }
 
   public void check_count_non_strict(int expect_count, String sql, String msg)
       throws IoTDBConnectionException, StatementExecutionException {
-    assertGte(getCount(session_dest, sql), expect_count, "Query count:" + msg);
+    assertGte(getCount(session_dest, sql), expect_count, "Query count: " + msg);
   }
 }

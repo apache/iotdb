@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.junit.AssumptionViolatedException;
+import org.junit.Assume;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.MultipleFailureException;
@@ -56,10 +56,11 @@ public class SkipOnSetUpAndTearDownFailure implements TestRule {
                   && ((MultipleFailureException) e)
                       .getFailures().stream().allMatch(this::isExceptionInSetUpOrTearDown))
               || isExceptionInSetUpOrTearDown(e)) {
-            throw new AssumptionViolatedException(
+            Assume.assumeTrue(
                 String.format(
                     "Skipping test due to setup or tearDown failure for %s#%s",
-                    description.getClassName(), description.getMethodName()));
+                    description.getClassName(), description.getMethodName()),
+                false);
           }
 
           // Re-throw the exception (which means the test has failed).
