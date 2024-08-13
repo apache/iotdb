@@ -42,7 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionTy
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// Return whether input expression has an attribute column predicate
+// Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
@@ -79,10 +79,9 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return true;
     }
-    // TODO: separate or concat expressions, e.g. (id1 or id2 or attr) => (id1 or id2) and (attr)
-    return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
+    return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
   @Override
@@ -94,7 +93,7 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return true;
     }
     return node.getValue().accept(this, context);
   }

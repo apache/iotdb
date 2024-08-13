@@ -187,7 +187,9 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     AlignedSeriesScanUtil seriesScanUtil =
         getAlignedSeriesScanUtil(
             TimeFilterApi.gt(10),
-            FilterFactory.and(ValueFilterApi.gtEq(0, 20), ValueFilterApi.lt(1, 30)));
+            FilterFactory.and(
+                ValueFilterApi.gtEq(0, 20, TSDataType.INT32),
+                ValueFilterApi.lt(1, 30, TSDataType.INT32)));
 
     // File 1 skipped
     // File 2 skipped

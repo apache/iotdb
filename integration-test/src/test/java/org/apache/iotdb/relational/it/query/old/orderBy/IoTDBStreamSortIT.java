@@ -175,6 +175,11 @@ public class IoTDBStreamSortIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select time,level,attr1,device,num from table0 as t order by level asc, t.attr1 desc nulls first, t.device desc, time asc",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test

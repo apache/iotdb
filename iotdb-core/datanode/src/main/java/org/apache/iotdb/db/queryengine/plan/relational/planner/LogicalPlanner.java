@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -40,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.OptimizeFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
@@ -88,7 +87,7 @@ public class LogicalPlanner {
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers =
-        new OptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+        new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
             .getPlanOptimizers();
   }
 
@@ -215,8 +214,6 @@ public class LogicalPlanner {
   }
 
   private PlanNode planCreateDevice(final CreateDevice statement, final Analysis analysis) {
-    queryContext.setQueryType(QueryType.WRITE);
-
     final CreateTableDeviceNode node =
         new CreateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -238,8 +235,6 @@ public class LogicalPlanner {
   }
 
   private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
-    queryContext.setQueryType(QueryType.READ);
-
     final List<ColumnHeader> columnHeaderList =
         getColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
@@ -312,8 +307,6 @@ public class LogicalPlanner {
   }
 
   private String planQueryDevice(final AbstractQueryDevice statement, final Analysis analysis) {
-    queryContext.setQueryType(QueryType.READ);
-
     final String database =
         Objects.isNull(statement.getDatabase())
             ? analysis.getDatabaseName()
@@ -341,12 +334,12 @@ public class LogicalPlanner {
     return database;
   }
 
-  private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {
-    List<TsTableColumnSchema> columnSchemaList =
+  private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {
+    final List<TsTableColumnSchema> columnSchemaList =
         DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
 
-    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
-    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+    final List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
           || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
         columnHeaderList.add(
