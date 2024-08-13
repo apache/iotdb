@@ -2501,17 +2501,18 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node);
+      analyzeQueryDevice(node, context);
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node);
+      analyzeQueryDevice(node, context);
       return null;
     }
 
-    private void analyzeQueryDevice(final AbstractQueryDeviceWithCache node) {
+    private void analyzeQueryDevice(
+        final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
       if (Objects.isNull(node.getDatabase())) {
         node.setDatabase(analysis.getDatabaseName());
       }
@@ -2528,6 +2529,16 @@ public class StatementAnalyzer {
         throw new SemanticException(
             String.format("Table '%s.%s' does not exist.", database, tableName));
       }
+
+      final QualifiedObjectName name = new QualifiedObjectName(database, tableName);
+      final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      // This can only be a table
+      if (!tableSchema.isPresent()) {
+        throw new SemanticException(String.format("Table '%s' does not exist", name));
+      }
+
+      analysis.registerTable(table, tableSchema, name);
+
       final List<String> attributeList =
           table.getColumnList().stream()
               .filter(
@@ -2537,6 +2548,9 @@ public class StatementAnalyzer {
               .collect(Collectors.toList());
 
       node.setColumnHeaderList();
+      if (Objects.nonNull(node.getRawExpression())) {
+        analyzeExpression(node.getRawExpression(), createScope(context));
+      }
       if (!node.parseRawExpression(table, attributeList, queryContext)) {
         // Cache hit
         // Currently we disallow "Or" filter for precise get, thus if it hit cache

@@ -75,6 +75,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     return tableName;
   }
 
+  public Expression getRawExpression() {
+    return rawExpression;
+  }
+
   public boolean parseRawExpression(
       final List<DeviceEntry> entries,
       final TsTable tableInstance,
