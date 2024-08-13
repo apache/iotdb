@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -111,6 +112,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     public PlanNode visitSingleChildProcess(SingleChildProcessNode node, Void context) {
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, Void context) {
+      node.setLeftChild(node.getLeftChild().accept(this, context));
+      node.setRightChild(node.getRightChild().accept(this, context));
       return node;
     }
 
