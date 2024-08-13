@@ -15,7 +15,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -50,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -62,9 +60,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class LogicalPlanner {
@@ -235,7 +233,7 @@ public class LogicalPlanner {
 
   private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
     final List<ColumnHeader> columnHeaderList =
-        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
@@ -264,9 +262,9 @@ public class LogicalPlanner {
     final String database = statement.getDatabase();
     List<ColumnHeader> columnHeaderList = null;
     if (!analysis.isFailed()) {
-      columnHeaderList = getColumnHeaderList(database, statement.getTableName());
+      columnHeaderList = getDeviceColumnHeaderList(database, statement.getTableName());
       analysis.setRespDatasetHeader(
-          new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
+          new DatasetHeader(getDeviceColumnHeaderList(database, statement.getTableName()), true));
     }
 
     final TableDeviceQueryScanNode node =
@@ -319,18 +317,6 @@ public class LogicalPlanner {
     if (schemaPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
     }
-  }
-
-  private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {
-    return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
-        .filter(
-            columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
-                    || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-        .map(
-            columnSchema ->
-                new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
-        .collect(Collectors.toList());
   }
 
   private enum Stage {

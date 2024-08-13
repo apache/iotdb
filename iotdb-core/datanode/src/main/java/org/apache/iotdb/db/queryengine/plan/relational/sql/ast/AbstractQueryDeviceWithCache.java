@@ -34,6 +34,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   // For query devices fully in cache
   private ShowDevicesResult result;
 
+  private List<ColumnHeader> columnHeaderList;
+
   protected AbstractQueryDeviceWithCache(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
   }
@@ -42,7 +44,11 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     this.result = result;
   }
 
-  public TsBlock getTsBlock(final List<ColumnHeader> columnHeaderList) {
+  public void setColumnHeaderList(final List<ColumnHeader> columnHeaderList) {
+    this.columnHeaderList = columnHeaderList;
+  }
+
+  public TsBlock getTsBlock() {
     final TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(
             columnHeaderList.stream()

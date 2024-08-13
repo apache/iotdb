@@ -2539,6 +2539,8 @@ public class StatementAnalyzer {
         // Cache hit
         // Currently we disallow "Or" filter for precise get, thus if it hit cache
         // it'll be only one device
+        // TODO: Ensure the disjointness of expressions and allow Or filter
+        node.setColumnHeaderList(ShowDevice.getDeviceColumnHeaderList(database, tableName));
         analysis.setFinishQueryAfterAnalyze();
       }
     }

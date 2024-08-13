@@ -19,11 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   // For sql-input show device usage
   public ShowDevice(final String tableName, final Expression rawExpression) {
     super(tableName, rawExpression);
+  }
+
+  public static List<ColumnHeader> getDeviceColumnHeaderList(
+      final String database, final String tableName) {
+    return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
+        .filter(
+            columnSchema ->
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+                    || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+        .map(
+            columnSchema ->
+                new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+        .collect(Collectors.toList());
   }
 
   @Override
