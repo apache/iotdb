@@ -204,7 +204,7 @@ public class TableDeviceSchemaFetcher {
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
       final List<DeviceEntry> deviceEntryList,
-      final @Nullable List<String> attributeColumns,
+      final List<String> attributeColumns,
       final @Nullable MPPQueryContext queryContext) {
 
     final Pair<List<Expression>, List<Expression>> separatedExpression =
@@ -234,7 +234,7 @@ public class TableDeviceSchemaFetcher {
     // regions
     final List<IDeviceID> fetchPaths = isExactDeviceQuery ? new ArrayList<>() : null;
 
-    if (!idSingleMatchIndexList.isEmpty() && Objects.nonNull(attributeColumns)) {
+    if (!idSingleMatchIndexList.isEmpty()) {
       // Try get from cache
       final ConvertSchemaPredicateToFilterVisitor visitor =
           new ConvertSchemaPredicateToFilterVisitor();
@@ -261,8 +261,7 @@ public class TableDeviceSchemaFetcher {
     }
 
     if (idSingleMatchIndexList.size() < index2FilterMapList.size()
-        || !idSingleMatchPredicateNotInCache.isEmpty()
-        || Objects.isNull(attributeColumns)) {
+        || !idSingleMatchPredicateNotInCache.isEmpty()) {
       final List<List<SchemaFilter>> idPredicateForFetch =
           new ArrayList<>(
               index2FilterMapList.size()

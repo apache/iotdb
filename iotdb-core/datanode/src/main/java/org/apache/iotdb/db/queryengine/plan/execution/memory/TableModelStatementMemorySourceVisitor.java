@@ -55,14 +55,14 @@ public class TableModelStatementMemorySourceVisitor
 
   @Override
   public StatementMemorySource visitExplain(
-      Explain node, TableModelStatementMemorySourceContext context) {
+      final Explain node, final TableModelStatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getStatement());
-    DatasetHeader header =
+    final DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(
                 new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
             true);
-    LogicalQueryPlan logicalPlan =
+    final LogicalQueryPlan logicalPlan =
         new org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner(
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
@@ -73,14 +73,14 @@ public class TableModelStatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
-    // generate table model distributed plan
-    TableDistributedPlanGenerator.PlanContext planContext =
+    // Generate table model distributed plan
+    final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
-    PlanNode outputNodeWithExchange =
+    final PlanNode outputNodeWithExchange =
         new TableDistributedPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
             .generateDistributedPlanWithOptimize(planContext);
 
-    List<String> lines =
+    final List<String> lines =
         outputNodeWithExchange.accept(
             new PlanGraphPrinter(),
             new PlanGraphPrinter.GraphContext(
