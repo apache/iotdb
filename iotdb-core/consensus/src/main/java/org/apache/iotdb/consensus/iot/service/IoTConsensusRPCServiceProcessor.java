@@ -50,10 +50,10 @@ import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
-import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerReq;
-import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -237,8 +237,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
   }
 
   @Override
-  public TWaitUserPipeAllowRemovePeerRes waitUserPipeAllowRemovePeer(
-      TWaitUserPipeAllowRemovePeerReq req) throws TException {
+  public TWaitReleaseAllRegionRelatedResourceRes waitReleaseAllRegionRelatedResource(
+      TWaitReleaseAllRegionRelatedResourceReq req) throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
@@ -247,9 +247,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
           String.format(
               "unexpected consensusGroupId %s for waitUserPipeAllowRemovePeer request", groupId);
       LOGGER.error(message);
-      return new TWaitUserPipeAllowRemovePeerRes(true);
+      return new TWaitReleaseAllRegionRelatedResourceRes(true);
     }
-    return new TWaitUserPipeAllowRemovePeerRes(impl.isUserPipeAllowRemovePeer());
+    return new TWaitReleaseAllRegionRelatedResourceRes(impl.hasReleaseAllRegionRelatedResource());
   }
 
   @Override

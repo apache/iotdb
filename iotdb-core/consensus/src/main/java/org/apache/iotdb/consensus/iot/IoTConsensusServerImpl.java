@@ -59,10 +59,10 @@ import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
-import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerReq;
-import org.apache.iotdb.consensus.iot.thrift.TWaitUserPipeAllowRemovePeerRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -621,20 +621,27 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public boolean isUserPipeAllowRemovePeer() {
+  public boolean hasPipeReleaseRegionRelatedResource() {
     // TODO: implement the method to check whether the user pipe allows removing peer
     return true;
   }
 
-  public void waitUserPipeAllowRemovePeer(Peer targetPeer)
+  public boolean hasReleaseAllRegionRelatedResource() {
+    // check all the resources related to the region, now we only check pipe
+    boolean allowRemovePeer = true;
+    allowRemovePeer &= hasPipeReleaseRegionRelatedResource();
+    return allowRemovePeer;
+  }
+
+  public void waitReleaseAllRegionRelatedResource(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     long checkIntervalInMs = 10_000L;
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       while (true) {
-        TWaitUserPipeAllowRemovePeerRes res =
-            client.waitUserPipeAllowRemovePeer(
-                new TWaitUserPipeAllowRemovePeerReq(
+        TWaitReleaseAllRegionRelatedResourceRes res =
+            client.waitReleaseAllRegionRelatedResource(
+                new TWaitReleaseAllRegionRelatedResourceReq(
                     targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.allowRemovePeer) {
           logger.info("[WAIT USER PIPE] {} allow remove peer.", targetPeer);
